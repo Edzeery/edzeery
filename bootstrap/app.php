@@ -2,7 +2,7 @@
 
 use App\Http\Middleware\Auth\PlatformRole;
 use App\Http\Middleware\SetLocale;
-use App\Http\Middleware\Store\EnsureStoreMembership;
+use App\Http\Middleware\Merchant\Store\EnsureStoreMembership;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

@@ -50,16 +50,6 @@ class Product extends Model
     protected static function booted()
     {
         static::addGlobalScope(new StoreScope());
-
-        static::creating(function ($product) {
-            \Illuminate\Support\Facades\Log::debug('PRODUCT creating', ['attrs' => $product->getAttributes()]);
-
-            \Illuminate\Support\Facades\DB::listen(function ($q) use ($product) {
-                if (str_contains($q->sql, 'insert into')) {
-                    \Illuminate\Support\Facades\Log::debug('PRODUCT insert bindings', ['bindings' => $q->bindings]);
-                }
-            });
-        });
     }
 
     // المتجر الرئيسي للمنتج

@@ -2,11 +2,13 @@
 
 namespace App\Enums\Store;
 
+use App\Enums\Concerns\InteractsWithStatusKit;
 use App\Enums\Concerns\InteractsWithStatusPresentation;
 
 enum StoreStatusEnum: string
 {
-    use InteractsWithStatusPresentation; // Auto Detect Group
+    use InteractsWithStatusKit; // Auto Detect Group
+    use InteractsWithStatusPresentation;
 
     protected const GROUP = 'stores';
 

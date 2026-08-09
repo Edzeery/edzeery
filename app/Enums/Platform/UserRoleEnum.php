@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Enums\Platform;
 
 use App\Enums\Concerns\InteractsWithRolePresentation;
+use App\Enums\Concerns\InteractsWithStatusKit;
 
 enum UserRoleEnum: string
 {
     use InteractsWithRolePresentation; // Auto Detect Group
+    use InteractsWithStatusKit; // Auto Detect Group
 
     protected const GROUP = 'roles';
+    protected const STATUS_KIT_GROUP = 'role';
         // Platform
     case SUPER_ADMIN    = 'super_admin';   // مالك المنصة
     case ADMIN          = 'admin';         // نائب المالك

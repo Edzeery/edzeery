@@ -3,11 +3,13 @@
 namespace App\Enums\SubscriptionPayment;
 
 use App\Enums\Concerns\HasFilamentPresentation;
+use App\Enums\Concerns\InteractsWithStatusKit;
 use Filament\Support\Contracts\HasLabel;
 
 enum StatusPaymentEnum: string implements HasLabel
 {
     use HasFilamentPresentation;
+    use InteractsWithStatusKit;
 
     protected const GROUP = 'payment';
 

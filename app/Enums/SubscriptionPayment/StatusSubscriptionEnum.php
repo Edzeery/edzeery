@@ -3,13 +3,15 @@
 namespace App\Enums\SubscriptionPayment;
 
 use App\Enums\Concerns\HasFilamentPresentation;
+use App\Enums\Concerns\InteractsWithStatusKit;
 use Filament\Support\Contracts\HasLabel;
 
 enum StatusSubscriptionEnum: string implements HasLabel
 {
     use HasFilamentPresentation;
+    use InteractsWithStatusKit;
 
-    protected const GROUP = 'payment';
+    protected const GROUP = 'subscription';
 
     case ACTIVE    = 'active';
     case PENDING   = 'pending';

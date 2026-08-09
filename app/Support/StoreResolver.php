@@ -23,13 +23,6 @@ class StoreResolver
         if ($id = request()->header('X-Store-Id') ?: request()->query('store_id')) {
             $store = Store::find($id);
 
-            \Illuminate\Support\Facades\Log::debug('StoreResolver API', [
-                'id' => $id,
-                'found' => $store?->id,
-                'user' => auth()->user()?->id,
-                'member' => $store && auth()->user() ? auth()->user()->stores()->where('stores.id', $store->id)->exists() : false,
-            ]);
-
             if ($store && auth()->user()?->stores()->where('stores.id', $store->id)->exists()) {
                 return $store;
             }

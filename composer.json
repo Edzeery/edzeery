@@ -13,6 +13,7 @@
         "alizharb/filament-activity-log": "^1.1",
         "barryvdh/laravel-dompdf": "^3.1",
         "bezhansalleh/filament-language-switch": "^4.1",
+        "edzeery/mystatuskit": "^1.2",
         "filament/filament": "~4.0",
         "filament/infolists": "^4.3",
         "filament/spark-billing-provider": "*",

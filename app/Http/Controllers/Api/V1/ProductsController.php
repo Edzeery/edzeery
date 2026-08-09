@@ -49,7 +49,7 @@ class ProductsController extends Controller
     /**
      * Create a new product inside the current store.
      */
-    public function store(StoreProductRequest $request): ProductResource
+    public function store(StoreProductRequest $request): JsonResponse
     {
         $storeId = currentStoreId();
 
@@ -60,7 +60,7 @@ class ProductsController extends Controller
             'store_id' => $storeId,
         ]);
 
-        return new ProductResource($product->fresh());
+        return (new ProductResource($product->fresh()))->response()->setStatusCode(201);
     }
 
     /**

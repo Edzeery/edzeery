@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7693b9a5a345b5f0541a02ca0232c866",
+    "content-hash": "8c360e099584f25c0e79a9f7a8ba8a23",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -1324,6 +1324,72 @@
                 }
             ],
             "time": "2025-10-31T18:51:33+00:00"
+        },
+        {
+            "name": "edzeery/mystatuskit",
+            "version": "1.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Edzeery/mystatuskit.git",
+                "reference": "936a515a59ef13742f4d58f2c0384603fc4286a0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Edzeery/mystatuskit/zipball/936a515a59ef13742f4d58f2c0384603fc4286a0",
+                "reference": "936a515a59ef13742f4d58f2c0384603fc4286a0",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "orchestra/testbench": "^8.0|^9.0",
+                "phpstan/phpstan": "^1.12",
+                "phpunit/phpunit": "^10.0|^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Icon": "Edzeery\\MyStatusKit\\Facades\\Icon",
+                        "Status": "Edzeery\\MyStatusKit\\Facades\\Status"
+                    },
+                    "providers": [
+                        "Edzeery\\MyStatusKit\\StatusKitServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/Helpers/helpers.php"
+                ],
+                "psr-4": {
+                    "Edzeery\\MyStatusKit\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "مكتبة موحّدة لإدارة ألوان وأيقونات الحالات (Status Colors & Icons) في مشاريع Laravel، بدون اعتماد على Filament أو أي حزمة UI خارجية.",
+            "keywords": [
+                "FontAwesome",
+                "Heroicons",
+                "badge",
+                "bootstrap-icons",
+                "colors",
+                "icons",
+                "ionicons",
+                "laravel",
+                "status"
+            ],
+            "support": {
+                "issues": "https://github.com/Edzeery/mystatuskit/issues",
+                "source": "https://github.com/Edzeery/mystatuskit/tree/v1.2.2"
+            },
+            "time": "2026-07-25T19:44:50+00:00"
         },
         {
             "name": "egulias/email-validator",
