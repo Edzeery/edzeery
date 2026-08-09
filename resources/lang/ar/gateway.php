@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'activate_gateway' => 'تفعيل البوابة',
+    'activation_success' => 'تم تفعيل البوابة بنجاح.',
+    'active' => 'مفعّلة',
+    'available_gateways' => 'البوابات المتاحة',
+    'callback_url' => 'رابط العودة (Callback URL)',
+    'credentials' => 'بيانات الاتصال (Credentials)',
+    'deactivate_gateway' => 'تعطيل البوابة',
+    'default_gateway' => 'البوابة الافتراضية',
+    'edit_credentials' => 'تعديل المفاتيح',
+    'gateway_mode' => 'الوضع',
+    'gateway_name' => 'اسم البوابة',
+    'inactive' => 'غير مفعّلة',
+    'is_default' => 'افتراضية',
+    'merchant_key' => 'مفتاح التاجر',
+    'mode_live' => 'فعلي (Live)',
+    'mode_sandbox' => 'تجريبي (Sandbox)',
+    'no_gateways' => 'لا توجد بوابات متاحة حاليًا.',
+    'payment_gateways' => 'بوابات الدفع',
+    'public_key' => 'المفتاح العام',
+    'secret_key' => 'المفتاح السري',
+    'status' => 'الحالة',
+    'toggle_success' => 'تم تغيير حالة البوابة بنجاح.',
+    'update_success' => 'تم تحديث إعدادات البوابة بنجاح.',
+    'webhook_url' => 'رابط التنبيهات (Webhook URL)',
+];

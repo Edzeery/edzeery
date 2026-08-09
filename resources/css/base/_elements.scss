@@ -1,0 +1,21 @@
+// ============================================================
+//  EDZEERY — BASE / ELEMENTS (scrollbars, focus)
+// ============================================================
+@use '../abstracts/variables' as v;
+@use '../abstracts/mixins' as m;
+
+// Themed scrollbar for any scrollable panel surface.
+.edz-scroll {
+  @include m.edz-scrollbar;
+}
+
+// Neutral, accessible default focus outline.
+:focus-visible {
+  outline: 2px solid rgb(var(--edz-color-brand-500));
+  outline-offset: 2px;
+}
+
+// Elements hidden until Alpine hydrates them.
+[x-cloak] {
+  display: none !important;
+}

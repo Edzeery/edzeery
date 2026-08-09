@@ -1,0 +1,69 @@
+// ============================================================
+//  EDZEERY — SCSS FUNCTIONS
+// ============================================================
+@use 'sass:color';
+@use 'sass:list';
+@use 'sass:map';
+@use 'sass:math';
+@use 'sass:string' as str;
+@use 'variables' as *;
+
+// Convert an SCSS color to its "r, g, b" channel triplet so it can be
+// stored in a CSS custom property and consumed as `rgb(var(--x) / <alpha>)`.
+//   color.channel() requires Dart Sass >= 1.72 (project uses 1.102+).
+@function edz-rgb-channels($color) {
+  @return #{color.channel($color, 'red', $space: rgb), color.channel($color, 'green', $space: rgb), color.channel($color, 'blue', $space: rgb)};
+}
+
+// Build the complete CSS var name for a token path, e.g. color/brand/600.
+@function edz-var($name) {
+  @return var(--edz-#{$name});
+}
+
+// Linearize one sRGB channel (0..1) to linear light for luminance math.
+@function edz-channel-linearize($c) {
+  @if $c <= 0.03928 {
+    @return $c / 12.92;
+  } @else {
+    @return math.pow(($c + 0.055) / 1.055, 2.4);
+  }
+}
+
+// Minimum contrast text (white / dark) for a given background color.
+@function edz-contrast-text($bg) {
+  $r: color.channel($bg, 'red', $space: rgb) / 255;
+  $g: color.channel($bg, 'green', $space: rgb) / 255;
+  $b: color.channel($bg, 'blue', $space: rgb) / 255;
+
+  $r: edz-channel-linearize($r);
+  $g: edz-channel-linearize($g);
+  $b: edz-channel-linearize($b);
+
+  $luminance: 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+
+  @if ($luminance > 0.4) {
+    @return #111827;
+  } @else {
+    @return #ffffff;
+  }
+}
+
+// Spacing value from the $edz-spacing scale.
+@function edz-space($key) {
+  @return map.get($edz-spacing, $key);
+}
+
+// Turn a raw scale key into a valid CSS identifier fragment
+// (replaces dots, since `--edz-space-0.5` would be invalid CSS).
+@function edz-tokenize($key) {
+  $str: #{$key};
+  $result: '';
+
+  @while str.index($str, '.') != null {
+    $i: str.index($str, '.');
+    $result: $result + str.slice($str, 1, $i - 1) + '_';
+    $str: str.slice($str, $i + 1);
+  }
+
+  @return $result + $str;
+}

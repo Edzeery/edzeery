@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'account_created_by' => 'The account was successfully created by :admin',
+    'account_deleted_by' => ':admin deleted :user\'s account.',
+    'account_frozen_by' => ':admin successfully froze user account :user',
+    'account_verified_by' => ':admin has verified the user account :user.',
+    'admin_logged_in' => 'Admin :admin has logged into the control panel.',
+    'backup_completed' => 'System backup completed successfully at :time.',
+    'deposit_review_required' => 'Deposit of :amount DZD from user :user is pending manual review.',
+    'kyc_document_uploaded' => 'User :user uploaded a new KYC document for review.',
+    'kyc_rejected' => 'KYC verification rejected for user :user. Reason: :reason.',
+    'kyc_verified' => 'KYC verification approved for user :user.',
+    'large_withdrawal_request' => 'A large withdrawal of :amount DZD from user :user requires review.',
+    'manual_refund_processed' => 'Manual refund of :amount DZD has been processed for user :user.',
+    'new_support_ticket' => 'New support ticket created by :user titled ":subject".',
+    'plans_and_subscriptions' => 'Plans and subscriptions',
+    'security_incident' => 'Unusual system activity detected. Immediate review required.',
+    'system_error_detected' => 'A system error has been detected: :error.',
+    'transaction_flagged' => 'Suspicious transaction detected: :amount DZD from account :account.',
+    'transfer_limit_exceeded' => 'User :user has exceeded the daily transfer limit.',
+    'user_account_frozen' => 'User :user account has been frozen for security reasons.',
+    'user_account_unfrozen' => 'User :user account has been reactivated.',
+    'user_deleted' => ':user \'s account has been deleted.',
+    'user_suspended' => 'The user account ":user" has been temporarily suspended.',
+    'user_verified' => 'User :user has been successfully verified.',
+];

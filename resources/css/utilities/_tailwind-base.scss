@@ -1,0 +1,7 @@
+// ============================================================
+//  EDZEERY — TAILWIND PREFLIGHT (imported EARLY, before base)
+//  Note: Tailwind v3 emits @layer-components classes on demand
+//  only, so the design system lives outside @layer (plain CSS)
+//  in this project. Preflight is placed before our base styles.
+// ============================================================
+@tailwind base;

@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'about_us' => 'Sobre Edzeery',
+    'best_for_start' => 'Ideal para comenzar sin compromiso',
+    'contact_us' => 'Contáctanos',
+    'free_plan' => 'Gratis',
+    'hero_subtitle' => 'La mejor plataforma para gestionar tu tienda fácil y profesionalmente.',
+    'hero_title' => 'Comienza tu viaje con Edzeery',
+    'monthly' => 'Mensual',
+    'payment_bank_transfer' => 'Transferencia bancaria',
+    'payment_cod' => 'Pago contra entrega',
+    'payment_credit_card' => 'Tarjeta de crédito',
+    'payment_paypal' => 'PayPal',
+    'payments' => 'Pagos',
+    'pricing' => 'Planes de precios',
+    'privacy_policy' => 'Política de privacidad',
+    'save_more' => 'Ahorra hasta un 20% con facturación anual',
+    'service_analytics' => 'Informes y análisis',
+    'service_inventory' => 'Gestión de inventario',
+    'service_orders' => 'Gestión de pedidos',
+    'service_support' => 'Soporte al cliente',
+    'services' => 'Servicios',
+    'start_now' => 'Comenzar ahora',
+    'subscribe_now' => 'Suscribirse',
+    'yearly' => 'Anual',
+];

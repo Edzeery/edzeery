@@ -1,0 +1,35 @@
+// ============================================================
+//  EDZEERY — APP ENTRY (new admin/panel bundle)
+//  ------------------------------------------------------------
+//  Consumed ONLY by the new Livewire panel shell (app.scss).
+//  The legacy resources/css/app.css entry is left untouched.
+//  Pipeline: Sass (7-1 partials) → PostCSS (Tailwind v3 +
+//  Autoprefixer via postcss.config.js).
+//
+//  Order matters:
+//    1. tokens → 2. Tailwind preflight → 3. base → 4. components
+//    → 5. layouts → 6. Tailwind utilities (win on conflict)
+// ============================================================
+@use 'abstracts/variables' as *;
+@use 'abstracts/functions' as *;
+@use 'abstracts/mixins' as *;
+
+// 1. Design tokens → CSS custom properties.
+@use 'design-system/tokens';
+
+// 2. Tailwind preflight (early, so base styles below can layer on top).
+@use 'utilities/tailwind-base';
+
+// 3. Base styles.
+@use 'base/reset';
+@use 'base/typography';
+@use 'base/elements';
+
+// 4. Reusable design-system components.
+@use 'components/index' as components;
+
+// 5. Panel shell: sidebar, topbar, page scaffolding.
+@use 'layouts/index' as layouts;
+
+// 6. Tailwind utilities last, so they win over edz-* classes.
+@use 'utilities/tailwind-utilities';

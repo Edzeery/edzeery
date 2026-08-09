@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'activate_gateway' => 'Activer la passerelle',
+    'activation_success' => 'Passerelle activée avec succès.',
+    'active' => 'Active',
+    'available_gateways' => 'Passerelles disponibles',
+    'callback_url' => 'URL de retour',
+    'credentials' => 'Identifiants API',
+    'deactivate_gateway' => 'Désactiver la passerelle',
+    'default_gateway' => 'Passerelle par défaut',
+    'edit_credentials' => 'Modifier les clés',
+    'gateway_mode' => 'Mode',
+    'gateway_name' => 'Nom de la passerelle',
+    'inactive' => 'Inactive',
+    'is_default' => 'Par défaut',
+    'merchant_key' => 'Clé commerçant',
+    'mode_live' => 'En ligne (live)',
+    'mode_sandbox' => 'Sandbox (test)',
+    'no_gateways' => 'Aucune passerelle disponible pour le moment.',
+    'payment_gateways' => 'Passerelles de paiement',
+    'public_key' => 'Clé publique',
+    'secret_key' => 'Clé secrète',
+    'status' => 'Statut',
+    'toggle_success' => 'Statut de la passerelle changé avec succès.',
+    'update_success' => 'Paramètres de la passerelle mis à jour avec succès.',
+    'webhook_url' => 'URL de webhook',
+];

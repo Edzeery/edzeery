@@ -1,0 +1,211 @@
+// ============================================================
+//  EDZEERY DESIGN TOKENS — SCSS VARIABLES (single source)
+//  ------------------------------------------------------------
+//  The generated design-system/_tokens.scss (CSS custom
+//  properties) and tailwind.config.js both read from here.
+//  Change a value ONCE in this file to propagate everywhere.
+// ============================================================
+
+// --- Typography -------------------------------------------------
+$edz-font-sans: 'Figtree', 'Tajawal', 'Noto Kufi Arabic', ui-sans-serif, system-ui,
+  -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$edz-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+  'Liberation Mono', monospace;
+
+$edz-font-base: 0.875rem;       // 14px
+$edz-font-sm: 0.75rem;          // 12px
+$edz-font-lg: 1rem;             // 16px
+$edz-font-xl: 1.125rem;         // 18px
+$edz-font-2xl: 1.375rem;        // 22px
+$edz-font-3xl: 1.75rem;         // 28px
+$edz-font-4xl: 2.25rem;         // 36px
+
+$edz-line-height-base: 1.5;
+$edz-line-height-tight: 1.25;
+
+$edz-font-weight-normal: 400;
+$edz-font-weight-medium: 500;
+$edz-font-weight-semibold: 600;
+$edz-font-weight-bold: 700;
+
+// --- Brand (primary action) — blue scale ------------------------
+$edz-brand-50:  #eff6ff;
+$edz-brand-100: #dbeafe;
+$edz-brand-200: #bfdbfe;
+$edz-brand-300: #93c5fd;
+$edz-brand-400: #60a5fa;
+$edz-brand-500: #3b82f6;
+$edz-brand-600: #2563eb;
+$edz-brand-700: #1d4ed8;
+$edz-brand-800: #1e40af;
+$edz-brand-900: #1e3a8a;
+$edz-brand-950: #172554;
+
+// --- Accent (distinct, secondary emphasis) — indigo scale -------
+$edz-accent-50:  #eef2ff;
+$edz-accent-100: #e0e7ff;
+$edz-accent-200: #c7d2fe;
+$edz-accent-300: #a5b4fc;
+$edz-accent-400: #818cf8;
+$edz-accent-500: #6366f1;
+$edz-accent-600: #4f46e5;
+$edz-accent-700: #4338ca;
+$edz-accent-800: #3730a3;
+$edz-accent-900: #312e81;
+$edz-accent-950: #1e1b4b;
+
+// --- Semantic status scales (mirror status-colors.php) -----------
+$edz-success-50:  #f0fdf4;
+$edz-success-100: #dcfce7;
+$edz-success-200: #bbf7d0;
+$edz-success-300: #86efac;
+$edz-success-400: #4ade80;
+$edz-success-500: #22c55e;
+$edz-success-600: #16a34a;
+$edz-success-700: #15803d;
+$edz-success-800: #166534;
+$edz-success-900: #14532d;
+$edz-success-950: #052e16;
+
+$edz-warning-50:  #fffbeb;
+$edz-warning-100: #fef3c7;
+$edz-warning-200: #fde68a;
+$edz-warning-300: #fcd34d;
+$edz-warning-400: #fbbf24;
+$edz-warning-500: #f59e0b;
+$edz-warning-600: #d97706;
+$edz-warning-700: #b45309;
+$edz-warning-800: #92400e;
+$edz-warning-900: #78350f;
+$edz-warning-950: #451a03;
+
+$edz-danger-50:  #fef2f2;
+$edz-danger-100: #fee2e2;
+$edz-danger-200: #fecaca;
+$edz-danger-300: #fca5a5;
+$edz-danger-400: #f87171;
+$edz-danger-500: #ef4444;
+$edz-danger-600: #dc2626;
+$edz-danger-700: #b91c1c;
+$edz-danger-800: #991b1b;
+$edz-danger-900: #7f1d1d;
+$edz-danger-950: #450a0a;
+
+$edz-info-50:  #f0f9ff;
+$edz-info-100: #e0f2fe;
+$edz-info-200: #bae6fd;
+$edz-info-300: #7dd3fc;
+$edz-info-400: #38bdf8;
+$edz-info-500: #0ea5e9;
+$edz-info-600: #0284c7;
+$edz-info-700: #0369a1;
+$edz-info-800: #075985;
+$edz-info-900: #0c4a6e;
+$edz-info-950: #082f49;
+
+// --- Neutral gray scale -----------------------------------------
+$edz-gray-50:  #f9fafb;
+$edz-gray-100: #f3f4f6;
+$edz-gray-200: #e5e7eb;
+$edz-gray-300: #d1d5db;
+$edz-gray-400: #9ca3af;
+$edz-gray-500: #6b7280;
+$edz-gray-600: #4b5563;
+$edz-gray-700: #374151;
+$edz-gray-800: #1f2937;
+$edz-gray-900: #111827;
+$edz-gray-950: #030712;
+
+// --- Semantic surface/text tokens (re-map in dark mode) ----------
+$edz-color-bg:         $edz-gray-50;
+$edz-color-surface:    #ffffff;
+$edz-color-secondary:  $edz-gray-100;
+$edz-color-tertiary:   $edz-gray-200;
+$edz-color-border:     $edz-gray-200;
+$edz-color-border-strong: $edz-gray-300;
+$edz-color-text:       $edz-gray-900;
+$edz-color-text-soft:  $edz-gray-500;
+$edz-color-text-muted: $edz-gray-400;
+$edz-color-inverse:    #ffffff;
+
+$edz-dark-bg:        #0b0f19;
+$edz-dark-surface:   $edz-gray-900;
+$edz-dark-secondary: #0f172a;
+$edz-dark-tertiary:  $edz-gray-800;
+$edz-dark-border:    #243048;
+$edz-dark-border-strong: #334155;
+$edz-dark-text:      $edz-gray-50;
+$edz-dark-text-soft: #94a3b8;
+$edz-dark-text-muted: $edz-gray-500;
+
+// --- Radii --------------------------------------------------------
+$edz-radius-none: 0;
+$edz-radius-sm: 0.375rem;   // 6px
+$edz-radius-md: 0.5rem;     // 8px
+$edz-radius-lg: 0.75rem;    // 12px
+$edz-radius-xl: 1rem;       // 16px
+$edz-radius-2xl: 1.25rem;   // 20px
+$edz-radius-full: 9999px;
+
+// --- Elevation (shadows) ------------------------------------------
+$edz-shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+$edz-shadow-card: 0 1px 3px 0 rgb(16 24 40 / 0.10), 0 1px 2px -1px rgb(16 24 40 / 0.10);
+$edz-shadow-lg: 0 10px 15px -3px rgb(16 24 40 / 0.10), 0 4px 6px -4px rgb(16 24 40 / 0.10);
+$edz-shadow-xl: 0 20px 25px -5px rgb(16 24 40 / 0.10), 0 8px 10px -6px rgb(16 24 40 / 0.10);
+$edz-shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.20);
+
+// --- Spacing scale (4px grid) -------------------------------------
+$edz-spacing: (
+  0: 0,
+  0.5: 0.125rem,
+  1: 0.25rem,
+  1.5: 0.375rem,
+  2: 0.5rem,
+  2.5: 0.625rem,
+  3: 0.75rem,
+  3.5: 0.875rem,
+  4: 1rem,
+  5: 1.25rem,
+  6: 1.5rem,
+  7: 1.75rem,
+  8: 2rem,
+  9: 2.25rem,
+  10: 2.5rem,
+  11: 2.75rem,
+  12: 3rem,
+  14: 3.5rem,
+  16: 4rem,
+  20: 5rem,
+  24: 6rem,
+  28: 7rem,
+  32: 8rem,
+  36: 9rem,
+  40: 10rem,
+  44: 11rem,
+  48: 12rem,
+  52: 13rem,
+  56: 14rem,
+  60: 15rem,
+  64: 16rem,
+  72: 18rem,
+  80: 20rem,
+  96: 24rem,
+);
+
+// --- Z-index scale --------------------------------------------------
+$edz-z: (
+  'sidebar': 40,
+  'topbar': 30,
+  'sticky': 20,
+  'dropdown': 40,
+  'modal': 50,
+  'overlay': 60,
+  'popover': 70,
+  'toast': 80,
+);
+
+// --- Layout dims ------------------------------------------------------
+$edz-sidebar-width: 16rem;        // 256px
+$edz-sidebar-collapsed: 4.75rem;  // 76px
+$edz-topbar-height: 4rem;         // 64px
+$edz-content-max: 80rem;          // 1280px

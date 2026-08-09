@@ -1,0 +1,52 @@
+// ============================================================
+//  EDZEERY — SCSS MIXINS
+// ============================================================
+@use 'sass:map';
+@use 'variables' as *;
+
+// Breakpoints (matching tailwind.config.js).
+@mixin edz-breakpoint-up($breakpoint) {
+  $breakpoints: (
+    'sm': 640px,
+    'md': 768px,
+    'lg': 1024px,
+    'xl': 1280px,
+    '2xl': 1536px,
+  );
+
+  @if map.has-key($breakpoints, $breakpoint) {
+    @media (min-width: map.get($breakpoints, $breakpoint)) {
+      @content;
+    }
+  } @else {
+    @warn "Unknown breakpoint `#{$breakpoint}`.";
+  }
+}
+
+// Accessible focus ring built from the design token.
+@mixin edz-focus-ring($color: $edz-brand-500, $width: 3px) {
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 $width rgb(edz-rgb-channels($color) / 0.25);
+  }
+}
+
+// Thin themed scrollbar for panel surfaces.
+@mixin edz-scrollbar($thumb: $edz-color-border-strong, $size: 8px) {
+  scrollbar-width: thin;
+  scrollbar-color: $thumb transparent;
+
+  &::-webkit-scrollbar {
+    width: $size;
+    height: $size;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: $thumb;
+    border-radius: $edz-radius-full;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

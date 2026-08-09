@@ -1,0 +1,272 @@
+<?php
+
+return [
+
+    // ⚙️ الإعدادات الافتراضية
+    'default_set' => 'ion', // fa = FontAwesome, bi = Bootstrap Icons
+
+    // 🎨 ألوان الحالات العامة
+    'colors' => [
+        'default'  => 'bg-gray-200 text-gray-600',
+        'pending'  => 'bg-yellow-100 text-yellow-600',
+        'paid'     => 'bg-green-400 text-green-700',
+        'active'   => 'bg-green-400 text-green-700',
+        'inactive' => 'bg-red-200 text-red-600',
+        'failed'   => 'bg-red-200 text-red-600',
+        'canceled' => 'bg-gray-200 text-gray-600',
+        'expired'  => 'bg-yellow-400 text-yellow-700',
+        'success'  => 'bg-green-400 text-green-700',
+        'warning'  => 'bg-yellow-200 text-yellow-600',
+        'info'     => 'bg-blue-200 text-blue-600',
+    ],
+
+    'lucide' => [
+        'default'  => 'circle',
+        'pending'  => 'clock',
+        'active'   => 'check-circle',
+        'inactive' => 'x-circle',
+        'paid'     => 'badge-check',
+        'failed'   => 'x-circle',
+        'canceled' => 'ban',
+        'expired'  => 'hourglass',
+        'success'  => 'check',
+        'warning'  => 'alert-triangle',
+        'info'     => 'info',
+
+        'home'     => 'home',
+        'user'     => 'user',
+        'users'    => 'users',
+        'settings' => 'settings',
+        'wallet'   => 'wallet',
+        'payment'  => 'credit-card',
+        'chart'    => 'line-chart',
+        'dashboard' => 'layout-dashboard',
+    ],
+
+   'ion' => [
+        'default'  => 'ellipse-outline',
+        'pending'  => 'time-outline',
+        'active'   => 'checkmark-circle-outline',
+        'inactive' => 'close-circle-outline',
+        'paid'     => 'checkmark-done-circle-outline',
+        'failed'   => 'alert-circle-outline',
+        'canceled' => 'ban-outline',
+        'expired'  => 'hourglass-outline',
+        'success'  => 'checkmark-outline',
+        'warning'  => 'warning-outline',
+        'info'     => 'information-circle-outline',
+
+        // محافظ ودفع
+        'wallet'        => 'wallet-outline',
+        'card'          => 'card-outline',
+        'cash'          => 'cash-outline',
+        'bank'          => 'business-outline',
+        'tag'           => 'pricetag-outline',
+        'tags'          => 'pricetags-outline',
+
+        // معاملات
+        'transaction'   => 'swap-horizontal-outline',
+        'transactions'  => 'swap-vertical-outline',
+        'repeat'        => 'repeat-outline',
+        'receipt'       => 'receipt-outline',
+        'history'       => 'file-tray-full-outline',
+        'trend-up'      => 'trending-up-outline',
+        'trend-down'    => 'trending-down-outline',
+
+        // نظام
+        'login'         => 'log-in-outline',
+        'logout'        => 'log-out-outline',
+        'register'      => 'person-add-outline',
+        'user'          => 'person-outline',
+        'settings'      => 'settings-outline',
+        'home'          => 'home-outline',
+        'dashboard'     => 'grid-outline',
+
+        // CRUD
+        'edit'          => 'create-outline',
+        'save'          => 'save-outline',
+        'delete'        => 'trash-outline',
+        'add'           => 'add-outline',
+        'minus'         => 'remove-circle-outline',
+        'eye'           => 'eye-outline',
+        'eye-off'       => 'eye-off-outline',
+        'reset'         => 'refresh-outline',
+        'copy'          => 'copy-outline',
+
+        // أسهم
+        'chevron-down'  => 'chevron-down-outline',
+        'chevron-up'    => 'chevron-up-outline',
+        'chevron-left'  => 'chevron-back-outline',
+        'chevron-right' => 'chevron-forward-outline',
+        'arrow-up'      => 'arrow-up-outline',
+        'arrow-down'    => 'arrow-down-outline',
+        'arrow-left'    => 'arrow-back-outline',
+        'arrow-right'   => 'arrow-forward-outline',
+
+        // إضافيات
+        'search'        => 'search-outline',
+        'filter'        => 'funnel-outline',
+        'download'      => 'download-outline',
+        'upload'        => 'upload-outline',
+        'bell'          => 'notifications-outline',
+        'help'          => 'help-circle-outline',
+        'shield'        => 'shield-checkmark-outline',
+        'qrcode'        => 'qr-code-outline',
+        'menu'          => 'menu-outline',
+        'apps'          => 'apps-outline',
+        'store'          => 'storefront-outline',
+    ],
+
+    // 🧩 FontAwesome icons
+    'fa' => [
+        // الحالات
+        'default'  => 'fa-circle',
+        'pending'  => 'fa-clock',
+        'active'   => 'fa-check-circle',
+        'inactive' => 'fa-times-circle',
+        'paid'     => 'fa-check-circle',
+        'failed'   => 'fa-circle-exclamation',
+        'canceled' => 'fa-ban',
+        'expired'  => 'fa-hourglass-end',
+        'success'  => 'fa-check',
+        'warning'  => 'fa-exclamation-triangle',
+        'info'     => 'fa-info-circle',
+
+        'test' => 'fa-flask',
+        'live' => 'fa-play-circle',
+        'sandbox' => 'fa-play',
+
+
+        // النظام العام
+        'home'     => 'fa-home',
+        'user'     => 'fa-user',
+        'users'    => 'fa-users',
+
+        'settings' => 'fa-cog',
+        'logout'   => 'fa-sign-out-alt',
+        'login'    => 'fa-sign-in-alt',
+        'register' => 'fa-user-plus',
+        'edit'     => 'fa-edit',
+        'delete'   => 'fa-trash',
+        'wallet'   => 'fa-wallet',
+        'money'    => 'fa-money-bill-wave',
+        'payment'  => 'fa-credit-card',
+        'payment_link'  => 'fa-link ',
+        'transaction' => 'fa-exchange-alt',
+        'history'  => 'fa-history',
+        'search'   => 'fa-search',
+        'filter'   => 'fa-filter',
+        'download' => 'fa-download',
+        'upload'   => 'fa-upload',
+        'chart'    => 'fa-chart-line',
+        'dashboard' => 'fa-tachometer-alt',
+        'bell'     => 'fa-bell',
+        'support'  => 'fa-headset',
+        'gateway'  => 'fa-diagram-project',
+
+        // 🔔 إضافية
+        'qrcode'       => 'fa-qrcode',
+        'flag'         => 'fa-flag',
+        'hashtag'      => 'fa-hashtag',
+        'circle-info'      => 'fa-circle-info',
+
+        'eye'      => 'fa-eye',
+        'eye-slash'      => 'fa-eye-slash',
+        'eye-low-vision'      => 'fa-eye-low-vision',
+        'reset'      => 'fa-rotate-left',
+        'copy'      => 'fa-copy',
+
+        'chevron-down'   => 'fa-chevron-down',
+        'chevron-left'   => 'fa-chevron-left',
+        'chevron-right'   => 'fa-chevron-right',
+        'chevron-up'   => 'fa-chevron-up',
+
+        'caret-down'   => 'fa-caret-down',
+        'caret-left'   => 'fa-caret-left',
+        'caret-right'   => 'fa-caret-right',
+        'caret-up'   => 'fa-caret-up',
+
+        'arrow-up'     => 'fa-arrow-up',
+        'arrow-down'   => 'fa-arrow-down',
+        'arrow-left'   => 'fa-arrow-left',
+        'arrow-right'  => 'fa-arrow-right',
+
+        'arrow-up-long' => 'fa-arrow-up-long',
+        'arrow-down-long' => 'fa-arrow-down-long',
+        'arrow-left-long' => 'fa-arrow-left-long',
+        'arrow-right-long' => 'fa-arrow-right-long',
+        'plus'         => 'fa-plus',
+        'plus-circle'  => 'fa-plus-circle',
+        'minus'        => 'fa-minus',
+        'star'         => 'fa-star',
+        'star-half'    => 'fa-star-half-alt',
+        'calendar'     => 'fa-calendar-alt',
+        'bell-slash'   => 'fa-bell-slash',
+        'shield'      => 'fa-shield-alt',
+        'link'      => 'fa-link',
+        'spinner'      => 'fa-spinner fa-spin',
+        'speedometer'      => 'fa-tachometer-alt',
+
+        // methods pay
+        'paypal' => 'fa-paypal',
+        'edahabia'  => 'fa-credit-card',
+        'chargily' => 'fa-dollar-sign',
+        'pndz' => 'fa-earth-africa',
+
+    ],
+
+    // 🧩 Bootstrap Icons
+    'bi' => [
+        'default'  => 'bi-circle',
+        'pending'  => 'bi-clock',
+        'paid'     => 'bi-check-circle',
+        'failed'   => 'bi-x-circle',
+        'canceled' => 'bi-slash-circle',
+        'expired'  => 'bi-hourglass-split',
+        'success'  => 'bi-check-lg',
+        'warning'  => 'bi-exclamation-triangle',
+        'info'     => 'bi-info-circle',
+
+        'home'     => 'bi-house',
+        'user'     => 'bi-person',
+        'users'    => 'bi-people',
+        'settings' => 'bi-gear',
+        'logout'   => 'bi-box-arrow-right',
+        'login'    => 'bi-box-arrow-in-right',
+        'register' => 'bi-person-plus',
+        'edit'     => 'bi-pencil',
+        'delete'   => 'bi-trash',
+        'wallet'   => 'bi-wallet2',
+        'money'    => 'bi-cash',
+        'payment'  => 'bi-credit-card',
+        'transaction' => 'bi-arrow-left-right',
+        'history'  => 'bi-clock-history',
+        'search'   => 'bi-search',
+        'filter'   => 'bi-funnel',
+        'download' => 'bi-download',
+        'upload'   => 'bi-upload',
+        'chart'    => 'bi-graph-up',
+        'dashboard' => 'bi-speedometer2',
+        'bell'     => 'bi-bell',
+        'support'  => 'bi-headset',
+
+        // 🔔 إضافية
+        'qrcode'       => 'bi-qr-code',
+        'flag'         => 'bi-flag',
+        'hashtag'      => 'bi-hash',
+        'arrow-up'     => 'bi-arrow-up',
+        'arrow-down'   => 'bi-arrow-down',
+        'arrow-left'   => 'bi-arrow-left',
+        'arrow-right'  => 'bi-arrow-right',
+        'arrow-up-long' => 'bi-arrow-up-circle', // bi لا يوجد long تمامًا، اخترت الأقرب
+        'arrow-down-long' => 'bi-arrow-down-circle',
+        'arrow-left-long' => 'bi-arrow-left-circle',
+        'arrow-right-long' => 'bi-arrow-right-circle',
+        'plus'         => 'bi-plus',
+        'minus'        => 'bi-dash',
+        'star'         => 'bi-star-fill',
+        'star-half'    => 'bi-star-half',
+        'calendar'     => 'bi-calendar-event',
+        'bell-slash'   => 'bi-bell-slash',
+    ],
+];

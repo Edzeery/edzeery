@@ -1,0 +1,9 @@
+// ============================================================
+//  EDZEERY — STOREFRONT ENTRY (public + landing page builder)
+//  ------------------------------------------------------------
+//  Bootstrap via its SCSS sources, re-themed from the same
+//  design tokens. No Tailwind here — storefront pages load this
+//  bundle only. RTL enabled ($enable-rtl) for Arabic-first.
+// ============================================================
+@use 'design-system/tokens';
+@use 'vendors/bootstrap';

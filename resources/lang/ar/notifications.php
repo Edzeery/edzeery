@@ -1,0 +1,24 @@
+<?php
+
+return [
+    'account_verified' => 'تم تفعيل حسابك بنجاح ✅',
+    'deposit_success' => 'تم إيداع الأموال بنجاح 💵',
+    'gateway_activated' => 'تم تفعيل بوابة الدفع بنجاح 🔌',
+    'gateway_disabled' => 'تم تعطيل بوابة الدفع ⛔',
+    'insufficient_balance' => 'الرصيد غير كافٍ لإتمام العملية ⚠️',
+    'invalid_credentials' => 'بيانات الدخول غير صحيحة 🚫',
+    'mark_all_read' => 'تحديد الكل كمقروء',
+    'new_message' => 'لديك رسالة جديدة ✉️',
+    'new_transaction' => 'تمت إضافة معاملة جديدة 🧾',
+    'no_notifications' => 'لا توجد إشعارات حالياً.',
+    'notifications' => 'الإشعارات',
+    'payment_failed' => 'فشلت عملية الدفع ❌',
+    'payment_success' => 'تمت عملية الدفع بنجاح ✅',
+    'security_alert' => 'تنبيه أمني: تم تسجيل دخول جديد 🔔',
+    'settings_updated' => 'تم تحديث الإعدادات بنجاح ⚙️',
+    'transfer_success' => 'تم تحويل المبلغ بنجاح 🔄',
+    'transfer_successfully' => 'تم تحويل مبلغ :amount دج إلى الحساب رقم :account بنجاح.',
+    'unauthorized_action' => 'ليس لديك صلاحية للقيام بهذه العملية 🔒',
+    'view_all' => 'عرض جميع الإشعارات',
+    'withdraw_success' => 'تم سحب الأموال بنجاح 💰',
+];

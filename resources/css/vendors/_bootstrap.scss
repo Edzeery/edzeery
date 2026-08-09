@@ -1,0 +1,90 @@
+// ============================================================
+//  EDZEERY — VENDORS / BOOTSTRAP (scoped build)
+//  ------------------------------------------------------------
+//  Imported ONLY by storefront.scss (public storefront + landing
+//  page builder). Re-themed from the same design tokens; only the
+//  partials the storefront needs are compiled in.
+// ============================================================
+@use 'sass:math';
+@use '../abstracts/variables' as *;
+
+// 1. Functions + RTL first, so overrides below can use them.
+@import '../../../node_modules/bootstrap/scss/functions';
+
+$enable-rtl: true;   // official Bootstrap RTL (Arabic-first storefront)
+$enable-dark-mode: true;
+
+// 2. Theme overrides from EDZEERY DESIGN TOKENS.
+//    (Bootstrap `_variables.scss` uses `!default`, so values set
+//    here win and feed straight into the theme-colors maps.)
+$primary: $edz-brand-600;
+$secondary: $edz-gray-500;
+$success: $edz-success-600;
+$warning: $edz-warning-500;
+$danger: $edz-danger-600;
+$info: $edz-info-600;
+
+$body-bg: $edz-color-bg;
+$body-color: $edz-color-text;
+
+$font-family-base: $edz-font-sans;
+$font-family-monospace: $edz-font-mono;
+$font-size-base: 0.875rem;
+$enable-rounded: true;
+$enable-shadows: true;
+$enable-gradients: false;
+
+$border-radius: $edz-radius-md;
+$border-radius-sm: $edz-radius-sm;
+$border-radius-lg: $edz-radius-lg;
+$border-radius-xl: $edz-radius-xl;
+$border-radius-pill: $edz-radius-full;
+
+$box-shadow: var(--edz-shadow-card);
+$box-shadow-sm: var(--edz-shadow-sm);
+$box-shadow-lg: var(--edz-shadow-lg);
+
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1140px,
+  xxl: 1320px,
+);
+
+// 3. Core Bootstrap sources.
+@import '../../../node_modules/bootstrap/scss/variables';
+@import '../../../node_modules/bootstrap/scss/variables-dark';
+
+// 4. Dark-mode color overrides (Bootstrap `data-bs-theme="dark"`).
+$body-bg-dark: $edz-dark-bg;
+$body-color-dark: $edz-dark-text;
+$primary-dark: $edz-brand-500;
+
+// 5. Maps, mixins, utilities.
+@import '../../../node_modules/bootstrap/scss/maps';
+@import '../../../node_modules/bootstrap/scss/mixins';
+@import '../../../node_modules/bootstrap/scss/utilities';
+
+// 6. Only the components the storefront + landing builder use.
+@import '../../../node_modules/bootstrap/scss/root';
+@import '../../../node_modules/bootstrap/scss/reboot';
+@import '../../../node_modules/bootstrap/scss/type';
+@import '../../../node_modules/bootstrap/scss/images';
+@import '../../../node_modules/bootstrap/scss/containers';
+@import '../../../node_modules/bootstrap/scss/grid';
+@import '../../../node_modules/bootstrap/scss/forms';
+@import '../../../node_modules/bootstrap/scss/buttons';
+@import '../../../node_modules/bootstrap/scss/dropdown';
+@import '../../../node_modules/bootstrap/scss/nav';
+@import '../../../node_modules/bootstrap/scss/navbar';
+@import '../../../node_modules/bootstrap/scss/card';
+@import '../../../node_modules/bootstrap/scss/badge';
+@import '../../../node_modules/bootstrap/scss/alert';
+@import '../../../node_modules/bootstrap/scss/breadcrumb';
+@import '../../../node_modules/bootstrap/scss/modal';
+@import '../../../node_modules/bootstrap/scss/close';
+@import '../../../node_modules/bootstrap/scss/helpers';
+
+// 7. Utilities API (generates the `.d-*`, `.text-*`, `.bg-*`, … classes).
+@import '../../../node_modules/bootstrap/scss/utilities/api';

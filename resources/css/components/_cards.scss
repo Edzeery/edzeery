@@ -1,0 +1,40 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / CARDS
+// ============================================================
+.edz-card {
+  background-color: rgb(var(--edz-color-surface));
+  border: 1px solid rgb(var(--edz-color-border));
+  border-radius: var(--edz-radius-xl);
+  box-shadow: var(--edz-shadow-card);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.125rem 1.25rem;
+    border-bottom: 1px solid rgb(var(--edz-color-border));
+  }
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  &__body {
+    padding: 1.25rem;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid rgb(var(--edz-color-border));
+  }
+
+  &--padded {
+    padding: 1.25rem;
+  }
+}

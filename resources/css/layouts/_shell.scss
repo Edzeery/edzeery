@@ -1,0 +1,62 @@
+// ============================================================
+//  EDZEERY — LAYOUTS / PANEL SHELL
+// ============================================================
+.edz-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.edz-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.edz-main__content {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+.edz-main__inner {
+  width: 100%;
+  max-width: var(--edz-content-max);
+  margin-inline: auto;
+}
+
+.edz-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.edz-page-head__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.edz-page-head__subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: rgb(var(--edz-color-text-soft));
+}
+
+// Off-canvas overlay (mobile drawer).
+.edz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--edz-z-overlay);
+  background-color: rgb(3 7 18 / 0.55);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.edz-shell--open .edz-overlay {
+  opacity: 1;
+  visibility: visible;
+}

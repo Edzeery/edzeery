@@ -1,0 +1,102 @@
+// ============================================================
+//  EDZEERY — DESIGN TOKENS (CSS Custom Properties)
+//  ------------------------------------------------------------
+//  Single source of truth: abstract/_variables.scss.
+//  The light theme lives on :root; the dark theme re-maps the
+//  semantic tokens under `.dark` AND `[data-bs-theme="dark"]`
+//  so the Bootstrap storefront follows the same identity.
+// ============================================================
+@use 'sass:map';
+@use '../abstracts/variables' as v;
+@use '../abstracts/functions' as f;
+
+// Emit a full scale of channel triplets, e.g. --edz-color-brand-600: 37, 99, 235
+@mixin edz-emit-scale($name, $scale) {
+  @each $step, $hex in $scale {
+    --edz-color-#{$name}-#{$step}: #{f.edz-rgb-channels($hex)};
+  }
+}
+
+:root {
+  // --- Typography ---
+  --edz-font-sans: #{v.$edz-font-sans};
+  --edz-font-mono: #{v.$edz-font-mono};
+  --edz-font-base: #{v.$edz-font-base};
+  --edz-line-height-base: #{v.$edz-line-height-base};
+
+  // --- Brand & semantic scales ---
+  @include edz-emit-scale('brand', (50: v.$edz-brand-50, 100: v.$edz-brand-100, 200: v.$edz-brand-200, 300: v.$edz-brand-300, 400: v.$edz-brand-400, 500: v.$edz-brand-500, 600: v.$edz-brand-600, 700: v.$edz-brand-700, 800: v.$edz-brand-800, 900: v.$edz-brand-900, 950: v.$edz-brand-950));
+  @include edz-emit-scale('accent', (50: v.$edz-accent-50, 100: v.$edz-accent-100, 200: v.$edz-accent-200, 300: v.$edz-accent-300, 400: v.$edz-accent-400, 500: v.$edz-accent-500, 600: v.$edz-accent-600, 700: v.$edz-accent-700, 800: v.$edz-accent-800, 900: v.$edz-accent-900, 950: v.$edz-accent-950));
+  @include edz-emit-scale('success', (50: v.$edz-success-50, 100: v.$edz-success-100, 200: v.$edz-success-200, 300: v.$edz-success-300, 400: v.$edz-success-400, 500: v.$edz-success-500, 600: v.$edz-success-600, 700: v.$edz-success-700, 800: v.$edz-success-800, 900: v.$edz-success-900, 950: v.$edz-success-950));
+  @include edz-emit-scale('warning', (50: v.$edz-warning-50, 100: v.$edz-warning-100, 200: v.$edz-warning-200, 300: v.$edz-warning-300, 400: v.$edz-warning-400, 500: v.$edz-warning-500, 600: v.$edz-warning-600, 700: v.$edz-warning-700, 800: v.$edz-warning-800, 900: v.$edz-warning-900, 950: v.$edz-warning-950));
+  @include edz-emit-scale('danger', (50: v.$edz-danger-50, 100: v.$edz-danger-100, 200: v.$edz-danger-200, 300: v.$edz-danger-300, 400: v.$edz-danger-400, 500: v.$edz-danger-500, 600: v.$edz-danger-600, 700: v.$edz-danger-700, 800: v.$edz-danger-800, 900: v.$edz-danger-900, 950: v.$edz-danger-950));
+  @include edz-emit-scale('info', (50: v.$edz-info-50, 100: v.$edz-info-100, 200: v.$edz-info-200, 300: v.$edz-info-300, 400: v.$edz-info-400, 500: v.$edz-info-500, 600: v.$edz-info-600, 700: v.$edz-info-700, 800: v.$edz-info-800, 900: v.$edz-info-900, 950: v.$edz-info-950));
+  @include edz-emit-scale('gray', (50: v.$edz-gray-50, 100: v.$edz-gray-100, 200: v.$edz-gray-200, 300: v.$edz-gray-300, 400: v.$edz-gray-400, 500: v.$edz-gray-500, 600: v.$edz-gray-600, 700: v.$edz-gray-700, 800: v.$edz-gray-800, 900: v.$edz-gray-900, 950: v.$edz-gray-950));
+
+  // --- Semantic surfaces (LIGHT) ---
+  --edz-color-bg: #{f.edz-rgb-channels(v.$edz-color-bg)};
+  --edz-color-surface: #{f.edz-rgb-channels(v.$edz-color-surface)};
+  --edz-color-secondary: #{f.edz-rgb-channels(v.$edz-color-secondary)};
+  --edz-color-tertiary: #{f.edz-rgb-channels(v.$edz-color-tertiary)};
+  --edz-color-border: #{f.edz-rgb-channels(v.$edz-color-border)};
+  --edz-color-border-strong: #{f.edz-rgb-channels(v.$edz-color-border-strong)};
+  --edz-color-text: #{f.edz-rgb-channels(v.$edz-color-text)};
+  --edz-color-text-soft: #{f.edz-rgb-channels(v.$edz-color-text-soft)};
+  --edz-color-text-muted: #{f.edz-rgb-channels(v.$edz-color-text-muted)};
+  --edz-color-inverse: #{f.edz-rgb-channels(v.$edz-color-inverse)};
+
+  // --- Radii ---
+  --edz-radius-sm: #{v.$edz-radius-sm};
+  --edz-radius-md: #{v.$edz-radius-md};
+  --edz-radius-lg: #{v.$edz-radius-lg};
+  --edz-radius-xl: #{v.$edz-radius-xl};
+  --edz-radius-2xl: #{v.$edz-radius-2xl};
+  --edz-radius-full: #{v.$edz-radius-full};
+
+  // --- Elevation ---
+  --edz-shadow-sm: #{v.$edz-shadow-sm};
+  --edz-shadow-card: #{v.$edz-shadow-card};
+  --edz-shadow-lg: #{v.$edz-shadow-lg};
+  --edz-shadow-xl: #{v.$edz-shadow-xl};
+  --edz-shadow-focus: #{v.$edz-shadow-focus};
+
+  // --- Spacing (4px grid) ---
+  // Dots are not valid inside CSS identifiers, so `0.5` → `0_5`.
+  @each $key, $value in v.$edz-spacing {
+    --edz-space-#{f.edz-tokenize($key)}: #{$value};
+  }
+  // --- Z-index ---
+  @each $name, $value in v.$edz-z {
+    --edz-z-#{$name}: #{$value};
+  }
+
+  // --- Layout ---
+  --edz-sidebar-width: #{v.$edz-sidebar-width};
+  --edz-sidebar-collapsed: #{v.$edz-sidebar-collapsed};
+  --edz-topbar-height: #{v.$edz-topbar-height};
+  --edz-content-max: #{v.$edz-content-max};
+}
+
+// ------------------------------------------------------------------
+//  DARK MODE — re-map semantic tokens under both selectors.
+//  `.dark` is used by the Tailwind panel; `[data-bs-theme="dark"]`
+//  is Bootstrap's own theme attribute for the storefront.
+// ------------------------------------------------------------------
+.dark,
+[data-bs-theme='dark'] {
+  --edz-color-bg: #{f.edz-rgb-channels(v.$edz-dark-bg)};
+  --edz-color-surface: #{f.edz-rgb-channels(v.$edz-dark-surface)};
+  --edz-color-secondary: #{f.edz-rgb-channels(v.$edz-dark-secondary)};
+  --edz-color-tertiary: #{f.edz-rgb-channels(v.$edz-dark-tertiary)};
+  --edz-color-border: #{f.edz-rgb-channels(v.$edz-dark-border)};
+  --edz-color-border-strong: #{f.edz-rgb-channels(v.$edz-dark-border-strong)};
+  --edz-color-text: #{f.edz-rgb-channels(v.$edz-dark-text)};
+  --edz-color-text-soft: #{f.edz-rgb-channels(v.$edz-dark-text-soft)};
+  --edz-color-text-muted: #{f.edz-rgb-channels(v.$edz-dark-text-muted)};
+  --edz-color-inverse: #{f.edz-rgb-channels(v.$edz-dark-bg)};
+
+  --edz-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --edz-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --edz-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --edz-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+}

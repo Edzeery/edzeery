@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'activate_gateway' => 'Activate Gateway',
+    'activation_success' => 'Gateway activated successfully.',
+    'active' => 'Active',
+    'available_gateways' => 'Available Gateways',
+    'callback_url' => 'Callback URL',
+    'credentials' => 'API Credentials',
+    'deactivate_gateway' => 'Deactivate Gateway',
+    'default_gateway' => 'Default Gateway',
+    'edit_credentials' => 'Edit Keys',
+    'gateway_mode' => 'Mode',
+    'gateway_name' => 'Gateway Name',
+    'inactive' => 'Inactive',
+    'is_default' => 'Default',
+    'merchant_key' => 'Merchant Key',
+    'mode_live' => 'Live',
+    'mode_sandbox' => 'Sandbox',
+    'no_gateways' => 'No gateways available at the moment.',
+    'payment_gateways' => 'Payment Gateways',
+    'public_key' => 'Public Key',
+    'secret_key' => 'Secret Key',
+    'status' => 'Status',
+    'toggle_success' => 'Gateway status changed successfully.',
+    'update_success' => 'Gateway settings updated successfully.',
+    'webhook_url' => 'Webhook URL',
+];

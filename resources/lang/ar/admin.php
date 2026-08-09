@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'account_created_by' => 'تم إنشاء الحساب بنجاح ، من طرف :admin',
+    'account_deleted_by' => ':admin لقد حذف حساب :user',
+    'account_frozen_by' => ':admin قام بتجميد حساب المستخدم :user بنجاح',
+    'account_verified_by' => ':admin وثق حساب المستخدم :user بنجاح',
+    'admin_logged_in' => 'قام المسؤول :admin بتسجيل الدخول إلى لوحة التحكم.',
+    'backup_completed' => 'تم إنشاء نسخة احتياطية للنظام بنجاح في :time.',
+    'deposit_review_required' => 'إيداع بقيمة :amount دج من المستخدم :user بانتظار المراجعة اليدوية.',
+    'kyc_document_uploaded' => 'قام المستخدم :user برفع مستند KYC جديد للمراجعة.',
+    'kyc_rejected' => 'تم رفض وثائق KYC الخاصة بالمستخدم :user. السبب: :reason.',
+    'kyc_verified' => 'تمت الموافقة على وثائق KYC الخاصة بالمستخدم :user.',
+    'large_withdrawal_request' => 'طلب سحب كبير بقيمة :amount دج من المستخدم :user يحتاج مراجعة.',
+    'manual_refund_processed' => 'تم تنفيذ استرجاع يدوي بقيمة :amount دج للمستخدم :user.',
+    'new_support_ticket' => 'تم إنشاء تذكرة دعم جديدة من المستخدم :user بعنوان ":subject".',
+    'plans_and_subscriptions' => 'الخطط والاشتراكات',
+    'security_incident' => 'تم رصد نشاط غير معتاد على النظام. يرجى التحقيق فورًا.',
+    'system_error_detected' => 'تم اكتشاف خطأ في النظام: :error.',
+    'transaction_flagged' => 'تم رصد معاملة مشبوهة بقيمة :amount دج من الحساب :account.',
+    'transfer_limit_exceeded' => 'تجاوز المستخدم :user الحد المسموح للتحويلات اليومية.',
+    'user_account_frozen' => 'تم تجميد حساب المستخدم :user لأسباب أمنية.',
+    'user_account_unfrozen' => 'تم إعادة تفعيل حساب المستخدم :user.',
+    'user_deleted' => 'تم حذف حساب المستخدم :user من النظام.',
+    'user_suspended' => 'تم تعليق حساب المستخدم :user مؤقتًا.',
+    'user_verified' => 'تم توثيق حساب المستخدم :user بنجاح.',
+];

@@ -1,0 +1,106 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / BUTTONS
+//  Base class: .edz-btn  +  tone: .edz-btn--primary (default)
+// ============================================================
+.edz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--edz-radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--edz-shadow-focus);
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  &--sm {
+    padding: 0.3125rem 0.625rem;
+    font-size: 0.75rem;
+    border-radius: var(--edz-radius-sm);
+  }
+
+  &--lg {
+    padding: 0.625rem 1.125rem;
+    font-size: 0.9375rem;
+    border-radius: var(--edz-radius-lg);
+  }
+
+  &--icon {
+    padding: 0.5rem;
+  }
+
+  &--block {
+    width: 100%;
+  }
+
+  // --- Tones ---
+  &--primary {
+    background-color: rgb(var(--edz-color-brand-600));
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-brand-700));
+    }
+  }
+
+  &--accent {
+    background-color: rgb(var(--edz-color-accent-600));
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-accent-700));
+    }
+  }
+
+  &--secondary {
+    background-color: rgb(var(--edz-color-secondary));
+    color: rgb(var(--edz-color-text));
+    border-color: rgb(var(--edz-color-border));
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-tertiary));
+    }
+  }
+
+  &--ghost {
+    color: rgb(var(--edz-color-text));
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-secondary));
+    }
+  }
+
+  &--outline {
+    border-color: rgb(var(--edz-color-border-strong));
+    color: rgb(var(--edz-color-text));
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-secondary));
+    }
+  }
+
+  &--danger {
+    background-color: rgb(var(--edz-color-danger-600));
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--edz-color-danger-700));
+    }
+  }
+}

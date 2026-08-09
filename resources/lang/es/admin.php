@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'account_created_by' => 'La cuenta fue creada exitosamente por :admin.',
+    'account_deleted_by' => ':admin eliminó la cuenta del usuario :user.',
+    'account_frozen_by' => ':admin congeló correctamente la cuenta del usuario :user.',
+    'account_verified_by' => ':admin ha verificado la cuenta del usuario :user.',
+    'admin_logged_in' => 'El administrador :admin ha iniciado sesión en el panel de control.',
+    'backup_completed' => 'Copia de seguridad del sistema completada exitosamente a las :time.',
+    'deposit_review_required' => 'El depósito de :amount DZD del usuario :user está pendiente de revisión manual.',
+    'kyc_document_uploaded' => 'El usuario :user subió un nuevo documento KYC para revisión.',
+    'kyc_rejected' => 'Verificación KYC rechazada para el usuario :user. Motivo: :reason.',
+    'kyc_verified' => 'Verificación KYC aprobada para el usuario :user.',
+    'large_withdrawal_request' => 'Una gran retirada de :amount DZD del usuario :user requiere revisión.',
+    'manual_refund_processed' => 'El reembolso manual de :amount DZD ha sido procesado para el usuario :user.',
+    'new_support_ticket' => 'Nuevo ticket de soporte creado por :user titulado ":subject".',
+    'plans_and_subscriptions' => 'Planes y suscripciones',
+    'security_incident' => 'Actividad inusual del sistema detectada. Revisión inmediata requerida.',
+    'system_error_detected' => 'Se ha detectado un error del sistema: :error.',
+    'transaction_flagged' => 'Transacción sospechosa detectada: :amount DZD desde la cuenta :account.',
+    'transfer_limit_exceeded' => 'El usuario :user ha superado el límite diario de transferencia.',
+    'user_account_frozen' => 'La cuenta del usuario :user ha sido congelada por razones de seguridad.',
+    'user_account_unfrozen' => 'La cuenta del usuario :user ha sido reactivada.',
+    'user_deleted' => 'La cuenta de :user ha sido eliminada.',
+    'user_suspended' => 'La cuenta del usuario ":user" ha sido suspendida temporalmente.',
+    'user_verified' => 'El usuario :user ha sido verificado correctamente.',
+];

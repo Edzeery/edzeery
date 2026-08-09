@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'account_created_by' => 'Le compte a été créé avec succès par :admin',
+    'account_deleted_by' => ':admin Compte supprimé :user',
+    'account_frozen_by' => ':admin a réussi à geler le compte utilisateur :user',
+    'account_verified_by' => ':admin a vérifié le compte utilisateur :user.',
+    'admin_logged_in' => 'L’administrateur :admin s’est connecté au panneau de contrôle.',
+    'backup_completed' => 'Sauvegarde du système terminée avec succès à :time.',
+    'deposit_review_required' => 'Dépôt de :amount DZD par l’utilisateur :user en attente de vérification manuelle.',
+    'kyc_document_uploaded' => 'L’utilisateur :user a téléchargé un nouveau document KYC pour vérification.',
+    'kyc_rejected' => 'La vérification KYC de l’utilisateur :user a été rejetée. Raison : :reason.',
+    'kyc_verified' => 'La vérification KYC de l’utilisateur :user a été approuvée.',
+    'large_withdrawal_request' => 'Une demande de retrait importante de :amount DZD par l’utilisateur :user nécessite une révision.',
+    'manual_refund_processed' => 'Un remboursement manuel de :amount DZD a été effectué pour l’utilisateur :user.',
+    'new_support_ticket' => 'Nouveau ticket de support créé par :user intitulé ":subject".',
+    'plans_and_subscriptions' => 'Forfaits et abonnements',
+    'security_incident' => 'Activité inhabituelle détectée sur le système. Vérification immédiate requise.',
+    'system_error_detected' => 'Une erreur système a été détectée : :error.',
+    'transaction_flagged' => 'Transaction suspecte détectée : :amount DZD depuis le compte :account.',
+    'transfer_limit_exceeded' => 'L’utilisateur :user a dépassé la limite quotidienne de transfert.',
+    'user_account_frozen' => 'Le compte de l’utilisateur :user a été bloqué pour des raisons de sécurité.',
+    'user_account_unfrozen' => 'Le compte de l’utilisateur :user a été réactivé.',
+    'user_deleted' => 'Le compte de l’utilisateur :user a été supprimé définitivement.',
+    'user_suspended' => 'Le compte de l’utilisateur :user a été suspendu temporairement.',
+    'user_verified' => 'Le compte de l’utilisateur :user a été vérifié avec succès.',
+];

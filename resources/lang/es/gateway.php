@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'activate_gateway' => 'Activar Pasarela',
+    'activation_success' => 'Pasarela activada correctamente.',
+    'active' => 'Activo',
+    'available_gateways' => 'Pasarelas Disponibles',
+    'callback_url' => 'URL de Callback',
+    'credentials' => 'Credenciales API',
+    'deactivate_gateway' => 'Desactivar Pasarela',
+    'default_gateway' => 'Pasarela Predeterminada',
+    'edit_credentials' => 'Editar Claves',
+    'gateway_mode' => 'Modo',
+    'gateway_name' => 'Nombre de la Pasarela',
+    'inactive' => 'Inactivo',
+    'is_default' => 'Predeterminado',
+    'merchant_key' => 'Clave del Comerciante',
+    'mode_live' => 'Live',
+    'mode_sandbox' => 'Sandbox',
+    'no_gateways' => 'No hay pasarelas disponibles por el momento.',
+    'payment_gateways' => 'Pasarelas de Pago',
+    'public_key' => 'Clave Pública',
+    'secret_key' => 'Clave Secreta',
+    'status' => 'Estado',
+    'toggle_success' => 'Estado de la pasarela cambiado correctamente.',
+    'update_success' => 'Configuración de la pasarela actualizada correctamente.',
+    'webhook_url' => 'URL de Webhook',
+];

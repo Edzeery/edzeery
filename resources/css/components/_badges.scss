@@ -1,0 +1,35 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / BADGES
+//  Base: .edz-badge  +  tone: .edz-badge--{success|warning|danger|info|brand|neutral}
+//  Wraps the status-kit palette so badges match status-colors.php.
+// ============================================================
+.edz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.1875rem 0.625rem;
+  border-radius: var(--edz-radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+
+  &--success { background-color: rgb(var(--edz-color-success-100)); color: rgb(var(--edz-color-success-700)); }
+  &--warning { background-color: rgb(var(--edz-color-warning-100)); color: rgb(var(--edz-color-warning-700)); }
+  &--danger  { background-color: rgb(var(--edz-color-danger-100));  color: rgb(var(--edz-color-danger-700)); }
+  &--info    { background-color: rgb(var(--edz-color-info-100));    color: rgb(var(--edz-color-info-700)); }
+  &--brand   { background-color: rgb(var(--edz-color-brand-100));   color: rgb(var(--edz-color-brand-700)); }
+  &--neutral { background-color: rgb(var(--edz-color-secondary));   color: rgb(var(--edz-color-text-soft)); }
+
+  &--dot {
+    padding-left: 0.5rem;
+
+    &::before {
+      content: '';
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 9999px;
+      background-color: currentColor;
+    }
+  }
+}

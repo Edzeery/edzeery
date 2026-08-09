@@ -1,0 +1,24 @@
+<?php
+
+return [
+    'account_verified' => 'Your account has been verified ✅',
+    'deposit_success' => 'Funds deposited successfully 💵',
+    'gateway_activated' => 'Payment gateway activated successfully 🔌',
+    'gateway_disabled' => 'Payment gateway disabled ⛔',
+    'insufficient_balance' => 'Insufficient balance to complete the operation ⚠️',
+    'invalid_credentials' => 'Invalid login credentials 🚫',
+    'mark_all_read' => 'Mark all as read',
+    'new_message' => 'You have a new message ✉️',
+    'new_transaction' => 'A new transaction has been added 🧾',
+    'no_notifications' => 'No notifications at the moment.',
+    'notifications' => 'Notifications',
+    'payment_failed' => 'Payment failed ❌',
+    'payment_success' => 'Payment completed successfully ✅',
+    'security_alert' => 'Security alert: new login detected 🔔',
+    'settings_updated' => 'Settings updated successfully ⚙️',
+    'transfer_success' => 'Transfer completed successfully 🔄',
+    'transfer_successfully' => 'The :amount DZD has been transferred to account number :account.',
+    'unauthorized_action' => 'You are not authorized to perform this action 🔒',
+    'view_all' => 'View all notifications',
+    'withdraw_success' => 'Funds withdrawn successfully 💰',
+];
