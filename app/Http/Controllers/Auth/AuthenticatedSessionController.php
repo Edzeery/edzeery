@@ -38,10 +38,21 @@ class AuthenticatedSessionController extends Controller
             ])->onlyInput('email');
         }
 
+        $user = Auth::user();
+
+        // صفحة تسجيل الدخول هذه خاصة بالتجار والمستخدمين فقط.
+        // موظفو المنصة (سوبر أدمن / أدمن / دعم فني / دعم عملاء) يدخلون من صفحة منفصلة.
+        if ($user->isPlatformStaff()) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('admin.login');
+        }
 
         $request->session()->regenerate();
         return redirect()->to(
-            $redirectService->handle(Auth::user())
+            $redirectService->handle($user)
         );
     }
 
@@ -52,6 +63,7 @@ class AuthenticatedSessionController extends Controller
     public function destroy(Request $request)
     {
         $user = Auth::user();
+        $isStaff = $user?->isPlatformStaff() ?? false;
         Auth::guard('web')->logout();
 
         // مسح الجلسة
@@ -61,6 +73,6 @@ class AuthenticatedSessionController extends Controller
         // مسح Tenant من Filament
         Filament::setTenant(null);
 
-        return redirect()->route('login');
+        return redirect()->route($isStaff ? 'admin.login' : 'login');
     }
 }

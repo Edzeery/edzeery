@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ChooseStoreController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
@@ -23,6 +24,11 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('admin/login', [AdminSessionController::class, 'create'])
+        ->name('admin.login');
+
+    Route::post('admin/login', [AdminSessionController::class, 'store']);
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');

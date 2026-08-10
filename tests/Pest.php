@@ -45,3 +45,13 @@ function something()
 {
     // ..
 }
+
+/**
+ * إنشاء مستخدم بدور معيّن (guard: web) جاهز للاختبار.
+ */
+function roleUser(string $role): \App\Models\User
+{
+    \Spatie\Permission\Models\Role::findOrCreate($role, 'web');
+
+    return \App\Models\User::factory()->create()->assignRole($role);
+}

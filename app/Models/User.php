@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Enums\Platform\UserRoleEnum;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -217,6 +218,16 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function isUser(): bool
     {
         return $this->hasRole('user', 'web');
+    }
+
+    public function isPlatformStaff(): bool
+    {
+        return $this->hasAnyRoleForGuard([
+            UserRoleEnum::SUPER_ADMIN->value,
+            UserRoleEnum::ADMIN->value,
+            UserRoleEnum::SUPPORT_AGENT->value,
+            UserRoleEnum::TECH_SUPPORT->value,
+        ], 'web');
     }
 
     /* ================= Locations ================= */

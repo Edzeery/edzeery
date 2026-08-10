@@ -15,6 +15,21 @@ export default {
         "./resources/js/**/*.js",
         "./laravel-status-kit/resources/views/**/*.blade.php",
     ],
+    safelist: [
+        // mystatuskit status colors — emitted at runtime from config/statuses.php,
+        // so Tailwind's content scanner never sees them statically.
+        ...["green", "gray", "yellow", "red", "blue", "orange", "purple"].flatMap((c) => [
+            `text-${c}-700`,
+            `bg-${c}-100`,
+            `dark:text-${c}-300`,
+            `dark:bg-${c}-900/40`,
+        ]),
+        "text-red-800", "bg-red-200", "dark:text-red-400", "dark:bg-red-950",
+        "text-blue-600", "text-blue-400", "dark:bg-blue-950",
+        "text-green-400", "dark:bg-green-950",
+        "text-yellow-400", "dark:bg-yellow-950",
+        "text-gray-600", "dark:text-gray-400", "dark:bg-gray-900",
+    ],
     theme: {
         extend: {
             fontFamily: {

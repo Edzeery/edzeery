@@ -3,6 +3,9 @@
 return [
     'accept_terms' => 'I agree to the :terms and :privacy.',
     'account_inactive' => 'The account is not activated yet ⚠️',
+    'admin_login' => 'Platform Admin Login',
+    'admin_only' => 'This page is reserved for platform staff only 🔒',
+    'admin_subtitle' => 'Sign in to the platform admin panel',
     'account_suspended' => 'The account has been suspended 🚫',
     'account_verification_body' => 'Hello :name, thank you for registering on :app_name. To complete your registration, please verify your account by clicking the button below.',
     'account_verification_button' => 'Verify Account',

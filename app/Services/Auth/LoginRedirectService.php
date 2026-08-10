@@ -12,28 +12,13 @@ class LoginRedirectService
 {
     public function handle(User $user): string
     {
-        /** ======================
-         * SUPER / ADMIN PANEL
-         * ====================== */
-
-        if (
-            $user->isSuperAdmin()
-            || $user->isAdmin()
-        ) {
-            return $this->loginToPanel('admin', $user);
-        }
-
-        /** ======================
-         * MERCHANT
-         * ====================== */
-
-        if ($user->isMerchant() || isStoreMember()) {
-
+        if ($user->isMerchant() || isStoreMember() || $user->isUser()) {
             if ($redirect = $this->autoSelectStore($user)) {
                 return $redirect;
             }
         }
-        return '';
+
+        return route('login');
     }
 
     protected function loginToPanel(

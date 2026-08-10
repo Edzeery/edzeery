@@ -14,6 +14,8 @@ test('new users can register', function () {
         'password_confirmation' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    // المسجل الجديد يصبح تاجراً ويدخل مباشرة إلى بوابة التجار
+    $this->assertAuthenticated('merchant');
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))->toContain('/merchant');
 });

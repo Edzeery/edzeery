@@ -20,7 +20,7 @@ return [
     | doesn't conflict with the routing in your application.
     |
     */
-    'path' => env('TRANSLATIONS_PATH', 'translations'),
+    'path' => env('TRANSLATIONS_PATH', 'super-admin/translations'),
 
     /*
     |--------------------------------------------------------------------------
@@ -61,7 +61,7 @@ return [
     | translations from the files.
     |
     */
-    'source_language' => env('TRANSLATIONS_SOURCE_LANGUAGE', 'en'),
+    'source_language' => env('TRANSLATIONS_SOURCE_LANGUAGE', 'ar'),
 
     /*
     |--------------------------------------------------------------------------

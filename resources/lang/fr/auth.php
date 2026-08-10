@@ -2,6 +2,9 @@
 
 return [
     'account_inactive' => 'Le compte n’est pas encore activé ⚠️',
+    'admin_login' => 'Connexion à l’administration de la plateforme',
+    'admin_only' => 'Cette page est réservée au personnel de la plateforme uniquement 🔒',
+    'admin_subtitle' => 'Connectez-vous au panneau d’administration de la plateforme',
     'account_suspended' => 'Le compte a été suspendu 🚫',
     'account_verification_body' => 'Bonjour :name, merci de vous être inscrit sur :app_name. Veuillez confirmer votre compte en cliquant sur le bouton ci-dessous.',
     'account_verification_button' => 'Vérifier le compte',

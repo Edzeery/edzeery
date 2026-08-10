@@ -238,7 +238,7 @@ class ProductService
         ];
 
 
-        if ($product->variants->isNotEmpty()) {
+        if ($product->type === 'variable' && $product->variants->isNotEmpty()) {
             $data['has_variants'] = true;
 
             // بناء options لكل خيار مع دمج جميع القيم المخصصة عبر جميع المتغيرات

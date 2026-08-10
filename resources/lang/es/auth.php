@@ -2,6 +2,9 @@
 
 return [
     'account_inactive' => 'La cuenta aún no está activada ⚠️',
+    'admin_login' => 'Inicio de sesión de administración de la plataforma',
+    'admin_only' => 'Esta página está reservada solo para el personal de la plataforma 🔒',
+    'admin_subtitle' => 'Inicia sesión en el panel de administración de la plataforma',
     'account_suspended' => 'La cuenta ha sido suspendida 🚫',
     'account_verification_body' => 'Hola :name, gracias por registrarte en :app_name. Para completar tu registro, verifica tu cuenta haciendo clic en el botón de abajo.',
     'account_verification_button' => 'Verificar Cuenta',

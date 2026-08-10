@@ -3,6 +3,9 @@
 return [
     'accept_terms' => 'أوافق على :terms و :privacy.',
     'account_inactive' => 'الحساب غير مفعل بعد ⚠️',
+    'admin_login' => 'دخول إدارة المنصة',
+    'admin_only' => 'هذه الصفحة مخصصة لموظفي المنصة فقط 🔒',
+    'admin_subtitle' => 'الدخول للوحة إدارة المنصة',
     'account_suspended' => 'تم تعليق الحساب 🚫',
     'account_verification_body' => 'مرحبًا :name، شكراً لتسجيلك في :app_name. لإكمال عملية التسجيل، يرجى تأكيد حسابك بالنقر على الزر أدناه.',
     'account_verification_button' => 'تأكيد الحساب',

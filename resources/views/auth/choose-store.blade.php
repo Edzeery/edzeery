@@ -61,7 +61,7 @@
 
                                 </div>
 
-                                <x-status-badge :status="$membership->store?->currentStatus()" />
+                                <x-status-badge  domain="general" :status="$membership->store?->currentStatus()->getLabel()" />
 
                             </div>
 
@@ -78,7 +78,8 @@
                                 @endphp
 
                                 <div class="text-xs px-2 py-1 rounded-full {{ $status->css() }}">
-                                    {{ $status?->getLabel() ?? $status }}
+                                    
+                                    <x-status-badge  domain="subscription"  status="{{$status?->getLabel()}}" />
                                 </div>
                             </div>
 

@@ -4,7 +4,7 @@ namespace App\Filament\Merchant\Pages;
 
 use App\Enums\Store\StoreRoleEnum;
 use App\Enums\Store\StoreStatusEnum;
-use App\Filament\Resources\Stores\Schemas\StoreForm;
+use App\Filament\SuperAdmin\Resources\Stores\Schemas\StoreForm;
 use App\Models\Plans\Plan;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;

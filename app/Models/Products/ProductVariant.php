@@ -13,6 +13,16 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class ProductVariant extends Model
 {
     use HasUlids;
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if ($model->store_id === null) {
+                $model->store_id = $model->product?->store_id ?: currentStore()?->id;
+            }
+        });
+    }
+
     protected $fillable = [
         'product_id',
         'store_id',
@@ -47,14 +57,17 @@ class ProductVariant extends Model
     {
         return $this->belongsTo(Store::class, 'store_id');
     }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
+
     public function brand()
     {
         return $this->product()->with('brand');
     }
+
     public function category()
     {
         return $this->product()->with('category');
@@ -72,8 +85,6 @@ class ProductVariant extends Model
             'product_variant_option_value'
         )->withPivot('product_option_id');
     }
-
-
 
     public function images(): MorphMany
     {
@@ -106,6 +117,7 @@ class ProductVariant extends Model
             default => 'in',
         };
     }
+
     public function primaryImage()
     {
         return $this->morphOne(ProductImage::class, 'imageable')

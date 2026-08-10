@@ -14,7 +14,7 @@ Route::get('/calendar', function () {
 })->name('calendar');
 
 // profile pages
-Route::get('/profile', function () {
+Route::get('/pages/profile', function () {
     return view('pages.profile', ['title' => 'Profile']);
 })->name('profile');
 
