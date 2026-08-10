@@ -25,8 +25,8 @@
 
 </head>
 
-<body class="bg-neutral-bg dark:bg-dark-bg
-dark:text-dark-text text-neutral-text
+<body class="bg-surface-bg
+text-ink
 antialiased">
 
     {{-- Navbar --}}

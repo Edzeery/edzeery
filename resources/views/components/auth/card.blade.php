@@ -13,7 +13,7 @@
 
     {{-- Title --}}
     <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-neutral-text dark:text-dark-text">
+        <h2 class="text-2xl font-bold text-ink">
             {{ $title }}
         </h2>
 

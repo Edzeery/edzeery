@@ -16,7 +16,7 @@
                     {{-- logo  --}}
                     <div
                         class="flex items-center justify-center w-12 h-12
-                  text-neutral-text dark:text-dark-text
+                  text-ink
                    bg-gray-100 rounded-xl dark:bg-gray-800">
                         @if (isset($store['store_logo']))
                             <img src="{{ $store['store_logo'] }}" alt="User" />
@@ -31,7 +31,7 @@
                     </div>
                     {{-- Store Info --}}
                     <div class="text-left space-y-1">
-                        <div class="font-semibold text-neutral-text dark:text-dark-text">
+                        <div class="font-semibold text-ink">
                             {{ $store['store_name'] }}
                         </div>
                         <div class="flex justify-between gap-2 ">
@@ -41,7 +41,7 @@
 
                             </div>
 
-                            <x-status-badge :status="$store['store_status']" />
+                            <x-status-badge domain="store" :status="$store['store_status']->getLabel()" />
                         </div>
                     </div>
 
@@ -58,7 +58,7 @@
                         <p class="text-xs text-neutral-soft">
                             {{ __('dashboard.total_memberships') }}
                         </p>
-                        <h4 class="mt-1 text-lg font-bold text-neutral-text dark:text-dark-text">
+                        <h4 class="mt-1 text-lg font-bold text-ink">
                             {{ $store['members_count'] }}
                         </h4>
                     </div>
@@ -67,7 +67,7 @@
                         <p class="text-xs text-neutral-soft">
                             {{ __('titles.plan') }}
                         </p>
-                        <h4 class="mt-1 text-sm font-semibold text-neutral-text dark:text-dark-text">
+                        <h4 class="mt-1 text-sm font-semibold text-ink">
                             {{ $store['plan_name'] }}
                         </h4>
                     </div>

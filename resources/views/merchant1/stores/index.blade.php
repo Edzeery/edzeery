@@ -53,7 +53,7 @@
                         >
                             {{-- Store Info --}}
                             <div class="text-left space-y-1">
-                                <div class="font-semibold text-neutral-text dark:text-dark-text">
+                                <div class="font-semibold text-ink">
                                     {{ $membership->store->name }}
                                 </div>
 
@@ -68,7 +68,7 @@
 
                             {{-- Subscription --}}
                             <div class="text-right space-y-1">
-                                <div class="font-semibold text-neutral-text dark:text-dark-text">
+                                <div class="font-semibold text-ink">
                                     {{ $membership->store?->latestSubscription()?->plan?->name }}
                                 </div>
 

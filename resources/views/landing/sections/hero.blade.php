@@ -3,7 +3,7 @@
         data-aos="fade-up"
         data-aos-delay="100"
         class="text-5xl font-bold mb-6
-        text-neutral-text dark:text-dark-text"
+        text-ink"
     >
         {{ __('landing.hero_title') }}
     </h1>

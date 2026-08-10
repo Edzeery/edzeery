@@ -27,8 +27,8 @@
 
 <body
     class="min-h-screen flex flex-col items-center justify-center
-            bg-neutral-bg dark:bg-dark-bg
-              dark:text-dark-text text-neutral-text
+            bg-surface-bg
+              text-ink
              transition-colors duration-300 antialiased">
 
     {{-- Top Controls: Language + Dark Mode --}}
@@ -49,7 +49,7 @@
         <div class="text-center my-6">
             <a href="{{ route('landing') }}" class="flex items-center justify-center gap-3">
                 <x-application-logo class="w-16 h-16 text-primary-600 dark:text-primary-400" />
-                <span class="font-bold text-2xl text-neutral-text dark:text-dark-text">
+                <span class="font-bold text-2xl text-ink">
                     {{ config('app.name', 'Edzeery') }}
                 </span>
             </a>

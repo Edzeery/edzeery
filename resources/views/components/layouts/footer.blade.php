@@ -1,6 +1,6 @@
 <footer
 {{ $attributes->merge([
-    'class' => 'mt-24 border-t border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface text-sm text-neutral-text dark:text-dark-text'
+    'class' => 'mt-24 border-t border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface text-sm text-ink'
 ]) }} >
     <div class="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-3 gap-8">
 

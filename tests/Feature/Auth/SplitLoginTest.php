@@ -15,7 +15,7 @@ test('guests hitting the admin panel are redirected to the admin login', functio
 });
 
 test('guests hitting the merchant panel are redirected to the merchant login', function () {
-    $this->get('/merchant')->assertRedirect('/login');
+    $this->get('/merchant/legacy')->assertRedirect('/login');
 });
 
 /* ============================ دخول موظفي المنصة ============================ */

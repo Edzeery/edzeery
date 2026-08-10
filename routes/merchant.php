@@ -79,4 +79,7 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/products/create', 'merchant.products.form')->name('products.create');
         Volt::route('/{store:slug}/products/{product}/edit', 'merchant.products.form')->name('products.edit');
         Volt::route('/{store:slug}/products/{product}', 'merchant.products.show')->name('products.show');
+        Volt::route('/{store:slug}/brands', 'merchant.brands.index')->name('brands.index');
+        Volt::route('/{store:slug}/categories', 'merchant.categories.index')->name('categories.index');
+        Volt::route('/{store:slug}/options', 'merchant.options.index')->name('options.index');
     });

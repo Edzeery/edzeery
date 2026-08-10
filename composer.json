@@ -54,6 +54,7 @@
         }
     },
     "scripts": {
+        "post-update-cmd": ["@php artisan translations:update --ansi"],
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",

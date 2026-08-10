@@ -2,7 +2,7 @@
 
     <a href="{{ route('account.merchant.dashboard') }}" class="flex items-center gap-2 w-[150px]">
         <x-application-logo class="w-8 h-8 text-primary-600 dark:text-primary-400" />
-        <span x-show="open" class="font-semibold text-lg text-neutral-text dark:text-dark-text">
+        <span x-show="open" class="font-semibold text-lg text-ink">
             {{ config('app.name', 'Edzeery') }}
         </span>
     </a>

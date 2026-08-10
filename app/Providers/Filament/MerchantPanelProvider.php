@@ -33,7 +33,7 @@ class MerchantPanelProvider extends PanelProvider
     {
         return $panel
             ->id('merchant')
-            ->path('merchant')
+            ->path('merchant/legacy')
             ->authGuard('merchant')
             ->colors([
                 'danger' => Color::Red,

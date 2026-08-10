@@ -1,6 +1,6 @@
 @if (!empty($languages))
     <x-dropdown align="{{$algin}}" width="38"
-        contentClasses="py-2 bg-neutral-bg dark:bg-dark-bg
+        contentClasses="py-2 bg-surface-bg
         border border-gray-200 dark:border-gray-700">
         <x-slot name="trigger">
 

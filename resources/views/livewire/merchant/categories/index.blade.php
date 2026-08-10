@@ -1,0 +1,396 @@
+<?php
+
+use App\Enums\Store\StorePermissionEnum;
+use App\Models\Category;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
+use function Livewire\Volt\updated;
+use function Livewire\Volt\uses;
+use function Livewire\Volt\usesPagination;
+
+uses([WithFileUploads::class]);
+usesPagination();
+
+layout('components.layouts.merchant');
+
+state([
+    'search' => '',
+    'is_active' => '',
+    'selected' => [],
+    'select_all' => false,
+    'creating' => false,
+    'editingId' => null,
+    'parent_id' => '',
+    'name' => '',
+    'slug' => '',
+    'logo' => null,
+    'isActive' => true,
+]);
+
+mount(function (): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_VIEW->value), 403);
+});
+
+updated([
+    'name' => function (): void {
+        $this->slug = $this->slug ?: Str::slug($this->name);
+    },
+    'select_all' => function (string $name, $value): void {
+        $this->selected = $value
+            ? $this->categories->pluck('id')->all()
+            : [];
+    },
+]);
+
+$categories = computed(function () {
+    return Category::query()
+        ->where('store_id', currentStoreId())
+        ->with('parent')
+        ->when($this->search !== '', function ($query) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('slug', 'like', '%'.$this->search.'%');
+            });
+        })
+        ->when($this->is_active !== '', fn ($q) => $q->where('is_active', filter_var($this->is_active, FILTER_VALIDATE_BOOLEAN)))
+        ->orderBy('name')
+        ->paginate(15);
+});
+
+$parentOptions = computed(function () {
+    return Category::query()
+        ->where('store_id', currentStoreId())
+        ->orderBy('name')
+        ->get()
+        ->pluck('full_name', 'id');
+});
+
+$canCreate = fn () => canStore(StorePermissionEnum::PRODUCT_CREATE->value);
+$canUpdate = fn () => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
+$canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
+
+$logoUrl = function (Category $category): string {
+    return $category->logo ? Storage::disk('public')->url($category->logo) : asset('img/icons/noimg.png');
+};
+
+$openCreate = function (): void {
+    abort_unless($this->canCreate(), 403);
+
+    $this->reset('editingId', 'parent_id', 'name', 'slug', 'logo');
+    $this->isActive = true;
+    $this->creating = true;
+};
+
+$beginEdit = function (Category $category): void {
+    abort_unless($this->canUpdate(), 403);
+
+    $this->creating = false;
+    $this->editingId = $category->id;
+    $this->parent_id = $category->parent_id;
+    $this->name = $category->name;
+    $this->slug = $category->slug;
+    $this->isActive = (bool) $category->is_active;
+    $this->logo = null;
+};
+
+$toggleActive = function (Category $category): void {
+    abort_unless($this->canUpdate(), 403);
+
+    $category->update(['is_active' => ! $category->is_active]);
+};
+
+$save = function (): void {
+    abort_unless($this->canCreate() || $this->canUpdate(), 403);
+
+    $validated = $this->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'slug' => [
+            'required',
+            'string',
+            'max:255',
+            Rule::unique('categories', 'slug')
+                ->where('store_id', currentStoreId())
+                ->whereNull('deleted_at')
+                ->ignore($this->editingId),
+        ],
+        'parent_id' => ['nullable', 'string', 'max:26'],
+        'isActive' => ['boolean'],
+        'logo' => ['nullable', 'image', 'max:2048'],
+    ]);
+
+    $parentId = $this->parent_id ?: null;
+
+    if ($this->editingId) {
+        abort_unless($this->canUpdate(), 403);
+
+        $category = Category::query()
+            ->where('store_id', currentStoreId())
+            ->findOrFail($this->editingId);
+
+        if ($parentId && $this->isDescendant($this->editingId, $parentId)) {
+            $this->addError('parent_id', 'A category cannot be its own parent or descendant.');
+
+            return;
+        }
+
+        $data = [
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'parent_id' => $parentId,
+            'is_active' => $validated['isActive'],
+        ];
+
+        if ($this->logo instanceof TemporaryUploadedFile) {
+            $data['logo'] = $this->logo->store('categories', 'public');
+        }
+
+        $category->update($data);
+    } else {
+        abort_unless($this->canCreate(), 403);
+
+        $data = [
+            'store_id' => currentStoreId(),
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'parent_id' => $parentId,
+            'is_active' => $validated['isActive'],
+        ];
+
+        if ($this->logo instanceof TemporaryUploadedFile) {
+            $data['logo'] = $this->logo->store('categories', 'public');
+        }
+
+        Category::create($data);
+    }
+
+    $this->cancelForm();
+};
+
+$isDescendant = function (string $id, string $possibleParentId): bool {
+    $current = Category::find($possibleParentId);
+
+    while ($current) {
+        if ($current->id === $id) {
+            return true;
+        }
+
+        $current = $current->parent_id ? Category::find($current->parent_id) : null;
+    }
+
+    return false;
+};
+
+$cancelForm = function (): void {
+    $this->reset('creating', 'editingId', 'parent_id', 'name', 'slug', 'logo');
+    $this->isActive = true;
+};
+
+$delete = function (Category $category): void {
+    abort_unless($this->canDelete(), 403);
+
+    $category->delete();
+};
+
+$deleteSelected = function (): void {
+    abort_unless($this->canDelete(), 403);
+
+    Category::query()
+        ->where('store_id', currentStoreId())
+        ->whereIn('id', $this->selected)
+        ->delete();
+
+    $this->reset('selected', 'select_all');
+};
+?>
+
+<div>
+    <div class="edz-page-head">
+        <div>
+            <h1 class="edz-page-head__title">Categories</h1>
+            <p class="edz-page-head__subtitle">Organize the catalog of {{ currentStore()?->name }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            @if ($this->canCreate())
+                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">New category</button>
+            @endif
+        </div>
+    </div>
+
+    @if ($creating || $editingId)
+        <div class="edz-card mb-6">
+            <div class="edz-card__header">
+                <div>
+                    <h2 class="edz-card__title">{{ $editingId ? 'Edit category' : 'New category' }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update the category details' : 'Add a category to your catalog' }}</p>
+                </div>
+            </div>
+
+            <form wire:submit="save" class="space-y-4 p-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-name">Name</label>
+                        <input id="category-name" type="text" class="edz-input @error('name') edz-input--error @enderror"
+                               wire:model="name" placeholder="e.g. Electronics">
+                        @error('name')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-slug">Slug</label>
+                        <input id="category-slug" type="text" class="edz-input @error('slug') edz-input--error @enderror"
+                               wire:model="slug" placeholder="electronics">
+                        @error('slug')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-parent">Parent category</label>
+                        <select id="category-parent" class="edz-select" wire:model="parent_id">
+                            <option value="">No parent (top-level)</option>
+                            @foreach ($this->parentOptions as $id => $fullName)
+                                @if ($editingId && (string) $id === (string) $editingId)
+                                    @continue
+                                @endif
+                                <option value="{{ $id }}" @selected((string) $parent_id === (string) $id)>{{ $fullName }}</option>
+                            @endforeach
+                        </select>
+                        @error('parent_id')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div class="flex items-end">
+                        <label class="flex items-center gap-2 text-sm font-medium text-ink">
+                            <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
+                            Active
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-ink" for="category-logo">Logo</label>
+                    <input id="category-logo" type="file" class="edz-input" wire:model="logo" accept="image/*">
+                    @error('logo')
+                        <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">Cancel</button>
+                </div>
+            </form>
+        </div>
+    @endif
+
+    <div class="edz-card">
+        <div class="edz-card__header">
+            <div>
+                <h2 class="edz-card__title">Categories list</h2>
+                <p class="text-sm text-ink-400">All categories across your store</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
+            <div class="sm:col-span-2">
+                <input type="search" class="edz-input" placeholder="Search by name or slug…"
+                       wire:model.live.debounce.300ms="search">
+            </div>
+            <div>
+                <select class="edz-select" wire:model.live="is_active">
+                    <option value="">All statuses</option>
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+        </div>
+
+        @if (! empty($selected))
+            <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
+                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
+                        wire:click="deleteSelected"
+                        wire:confirm="Delete the {{ count($selected) }} selected categories?">Delete</button>
+            </div>
+        @endif
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                        <th class="w-10 px-4 py-3">
+                            <input type="checkbox"
+                                   wire:model.live="select_all"
+                                   aria-label="Select all">
+                        </th>
+                        <th class="px-4 py-3 text-start font-semibold">Logo</th>
+                        <th class="px-4 py-3 text-start font-semibold">Name</th>
+                        <th class="px-4 py-3 text-start font-semibold">Slug</th>
+                        <th class="px-4 py-3 text-start font-semibold">Status</th>
+                        <th class="px-4 py-3 text-start font-semibold">Created</th>
+                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($this->categories as $category)
+                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                            <td class="px-4 py-3">
+                                <input type="checkbox" wire:model.live="selected" value="{{ $category->id }}" aria-label="Select {{ $category->name }}">
+                            </td>
+                            <td class="px-4 py-3">
+                                <img src="{{ $this->logoUrl($category) }}" alt="{{ $category->name }}"
+                                     class="h-10 w-10 flex-none rounded-full border border-surface-border object-cover">
+                            </td>
+                            <td class="px-4 py-3 font-medium text-ink">{{ $category->full_name }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-ink-soft">{{ $category->slug }}</td>
+                            <td class="px-4 py-3">
+                                <x-merchant.status domain="general"
+                                                   :status="$category->is_active ? 'active' : 'inactive'" />
+                            </td>
+                            <td class="px-4 py-3 text-xs text-ink-muted">{{ $category->created_at?->format('Y-m-d') }}</td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-end gap-1">
+                                    @if ($this->canUpdate())
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                                wire:click="beginEdit({{ $category->id }})">Edit</button>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                                wire:click="toggleActive({{ $category->id }})">
+                                            {{ $category->is_active ? 'Deactivate' : 'Activate' }}
+                                        </button>
+                                    @endif
+                                    @if ($this->canDelete())
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
+                                                wire:click="delete({{ $category->id }})"
+                                                wire:confirm="Delete &quot;{{ $category->name }}&quot;?">Delete</button>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-4 py-16 text-center">
+                                <p class="text-sm font-medium text-ink-soft">No categories found</p>
+                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search or filters.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if ($this->categories->hasPages())
+            <div class="border-t border-surface-border px-4 py-3">
+                {{ $this->categories->links() }}
+            </div>
+        @endif
+    </div>
+</div>

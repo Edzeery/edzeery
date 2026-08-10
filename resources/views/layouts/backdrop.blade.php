@@ -8,5 +8,5 @@ sidebarToggle ? 'block xl:hidden' : 'hidden'
 
 <div
   :class="$store.sidebar.isMobileOpen ? 'block xl:hidden' : 'hidden'"
-  class="fixed z-50 h-screen w-full bg-neutral-bg dark:bg-dark-bg"
+  class="fixed z-50 h-screen w-full bg-surface-bg"
 ></div>

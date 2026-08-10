@@ -8,8 +8,8 @@
 
 <aside id="sidebar"
     class="fixed flex flex-col mt-0 top-0 px-5
-    {{ $algin }}-0 bg-neutral-bg dark:bg-dark-bg
-       text-neutral-text dark:text-dark-text
+    {{ $algin }}-0 bg-surface-bg
+       text-ink
      h-screen transition-all duration-300 ease-in-out
      z-99999 {{ $isRtl ? 'border-l' : 'border-r' }} border-neutral-border dark:border-dark-border"
     x-data="{

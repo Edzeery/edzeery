@@ -20,7 +20,7 @@ return [
     | doesn't conflict with the routing in your application.
     |
     */
-    'path' => env('TRANSLATIONS_PATH', 'super-admin/translations'),
+    'path' => env('TRANSLATIONS_PATH', 'translations'),
 
     /*
     |--------------------------------------------------------------------------

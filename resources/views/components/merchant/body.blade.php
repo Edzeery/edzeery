@@ -21,7 +21,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
-<body class="min-h-screen bg-neutral-bg dark:bg-dark-bg text-neutral-text dark:text-dark-text antialiased transition-colors duration-300">
+<body class="min-h-screen bg-surface-bg text-ink antialiased transition-colors duration-300">
 
     {{-- Layout --}}
     <div class="flex h-screen overflow-hidden">
@@ -36,9 +36,9 @@
             <x-merchant.topbar />
 
             {{-- Page Content --}}
-            <main class="flex-1 overflow-y-auto p-6 bg-neutral-bg dark:bg-dark-bg sm:ml-64">
+            <main class="flex-1 overflow-y-auto p-6 bg-surface-bg sm:ml-64">
                 @if ($title)
-                    <h1 class="text-2xl font-semibold text-neutral-text dark:text-dark-text mb-6">
+                    <h1 class="text-2xl font-semibold text-ink mb-6">
                         {{ $title }}
                     </h1>
                 @endif

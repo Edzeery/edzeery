@@ -7,8 +7,7 @@
                             rounded-md text-sm font-medium transition ' .
             ($active
                 ? 'bg-brand text-white '
-                : 'text-neutral-text
-                            dark:text-dark-text
+                : 'text-ink
                             hover:bg-neutral-secondary
                             dark:hover:bg-dark-secondary'),
     ]) }}>

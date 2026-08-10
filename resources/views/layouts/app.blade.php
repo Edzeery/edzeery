@@ -19,7 +19,7 @@
 </head>
 
 <body
-    class=" bg-neutral-bg dark:bg-dark-bg dark:text-dark-text text-neutral-text
+    class=" bg-surface-bg text-ink
         antialiased transition-colors duration-300"
     x-data="{ 'loaded': true }" x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
     const checkMobile = () => {

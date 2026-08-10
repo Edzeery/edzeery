@@ -14,6 +14,9 @@ with([
         ->where('store_id', currentStoreId())
         ->count(),
     'canViewProducts' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewBrands' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewCategories' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewOptions' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
 ]);
 ?>
 
@@ -54,6 +57,42 @@ with([
                 </a>
             @endif
 
+            @if ($canViewBrands)
+                @php
+                    $brandsActive = request()->routeIs('merchant.brands.*');
+                    $brandsHref = $store ? route('merchant.brands.index', $store) : '#';
+                @endphp
+                <a href="{{ $brandsHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($brandsActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Brands</span>
+                </a>
+            @endif
+
+            @if ($canViewCategories)
+                @php
+                    $categoriesActive = request()->routeIs('merchant.categories.*');
+                    $categoriesHref = $store ? route('merchant.categories.index', $store) : '#';
+                @endphp
+                <a href="{{ $categoriesHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($categoriesActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="menu" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Categories</span>
+                </a>
+            @endif
+
+            @if ($canViewOptions)
+                @php
+                    $optionsActive = request()->routeIs('merchant.options.*');
+                    $optionsHref = $store ? route('merchant.options.index', $store) : '#';
+                @endphp
+                <a href="{{ $optionsHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($optionsActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="search" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Options</span>
+                </a>
+            @endif
+
             <a href="#" class="edz-sidebar__link opacity-50">
                 <x-edz.icon name="cart" class="edz-sidebar__icon" />
                 <span class="edz-sidebar__label">Orders</span>
@@ -64,6 +103,32 @@ with([
                 <span class="edz-sidebar__label">Settings</span>
             </a>
         </div>
+
+        @if ($store)
+            <div class="edz-sidebar__group">
+                <p class="edz-sidebar__group-title">Legacy (not migrated yet)</p>
+
+                <a href="{{ route('filament.merchant.products.resources.product-variants.index', $store) }}" target="_blank" class="edz-sidebar__link">
+                    <x-edz.icon name="package" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Product Variants</span>
+                </a>
+
+                <a href="{{ route('filament.merchant.products.resources.inventories.index', $store) }}" target="_blank" class="edz-sidebar__link">
+                    <x-edz.icon name="cart" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Inventories</span>
+                </a>
+
+                <a href="{{ route('filament.merchant.products.resources.stock-alerts.index', $store) }}" target="_blank" class="edz-sidebar__link">
+                    <x-edz.icon name="bell" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Stock Alerts</span>
+                </a>
+
+                <a href="{{ route('filament.merchant.resources.team.index', $store) }}" target="_blank" class="edz-sidebar__link">
+                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">My Teams</span>
+                </a>
+            </div>
+        @endif
     </nav>
 
     <div class="edz-sidebar__footer">

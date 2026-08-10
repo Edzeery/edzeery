@@ -28,8 +28,8 @@ $watch('dark', val => {
 <body
     class="
         min-h-screen
-        bg-neutral-bg dark:bg-dark-bg
-        text-neutral-text dark:text-dark-text
+        bg-surface-bg
+        text-ink
         antialiased
         transition-colors duration-300
     ">

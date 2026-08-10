@@ -20,10 +20,10 @@
                 const body = document.body;
                 if (this.theme === 'dark') {
                     html.classList.add('dark');
-                    body.classList.add('dark', 'bg-dark-bg');
+                    body.classList.add('dark', 'bg-surface-bg');
                 } else {
                     html.classList.remove('dark');
-                    body.classList.remove('dark', 'bg-dark-bg');
+                    body.classList.remove('dark', 'bg-surface-bg');
                 }
             }
         });
@@ -67,10 +67,10 @@
         const theme = savedTheme || systemTheme;
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
-            document.body.classList.add('dark', 'bg-dark-bg');
+            document.body.classList.add('dark', 'bg-surface-bg');
         } else {
             document.documentElement.classList.remove('dark');
-            document.body.classList.remove('dark', 'bg-dark-bg');
+            document.body.classList.remove('dark', 'bg-surface-bg');
         }
     })();
 </script>

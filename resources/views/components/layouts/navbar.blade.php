@@ -4,7 +4,7 @@
         {{-- Logo --}}
         <a href="{{ route('landing') }}" class="flex items-center gap-3">
             <x-application-logo class="w-8 h-8 text-primary-600 dark:text-primary-400" />
-            <span class="font-bold text-lg text-neutral-text dark:text-dark-text">
+            <span class="font-bold text-lg text-ink">
                 {{ config('app.name', 'Edzeery') }}
             </span>
         </a>
@@ -50,7 +50,7 @@
             {{-- Mobile Menu Button --}}
             <button @click="open = !open"
                 class="md:hidden p-2 rounded-md hover:bg-neutral-secondary-soft dark:hover:bg-dark-secondary transition">
-                <svg class="w-6 h-6 text-neutral-text dark:text-dark-text" fill="none" stroke="currentColor"
+                <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
