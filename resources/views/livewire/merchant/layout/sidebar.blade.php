@@ -17,6 +17,9 @@ with([
     'canViewBrands' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
     'canViewCategories' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
     'canViewOptions' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewVariants' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewInventories' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
+    'canViewStockAlerts' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
 ]);
 ?>
 
@@ -93,6 +96,42 @@ with([
                 </a>
             @endif
 
+            @if ($canViewVariants)
+                @php
+                    $variantsActive = request()->routeIs('merchant.variants.*');
+                    $variantsHref = $store ? route('merchant.variants.index', $store) : '#';
+                @endphp
+                <a href="{{ $variantsHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($variantsActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="package" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Variants</span>
+                </a>
+            @endif
+
+            @if ($canViewInventories)
+                @php
+                    $inventoriesActive = request()->routeIs('merchant.inventories.*');
+                    $inventoriesHref = $store ? route('merchant.inventories.index', $store) : '#';
+                @endphp
+                <a href="{{ $inventoriesHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($inventoriesActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="cart" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Inventories</span>
+                </a>
+            @endif
+
+            @if ($canViewStockAlerts)
+                @php
+                    $stockAlertsActive = request()->routeIs('merchant.stock-alerts.*');
+                    $stockAlertsHref = $store ? route('merchant.stock-alerts.index', $store) : '#';
+                @endphp
+                <a href="{{ $stockAlertsHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($stockAlertsActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="bell" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">Stock Alerts</span>
+                </a>
+            @endif
+
             <a href="#" class="edz-sidebar__link opacity-50">
                 <x-edz.icon name="cart" class="edz-sidebar__icon" />
                 <span class="edz-sidebar__label">Orders</span>
@@ -107,21 +146,6 @@ with([
         @if ($store)
             <div class="edz-sidebar__group">
                 <p class="edz-sidebar__group-title">Legacy (not migrated yet)</p>
-
-                <a href="{{ route('filament.merchant.products.resources.product-variants.index', $store) }}" target="_blank" class="edz-sidebar__link">
-                    <x-edz.icon name="package" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Product Variants</span>
-                </a>
-
-                <a href="{{ route('filament.merchant.products.resources.inventories.index', $store) }}" target="_blank" class="edz-sidebar__link">
-                    <x-edz.icon name="cart" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Inventories</span>
-                </a>
-
-                <a href="{{ route('filament.merchant.products.resources.stock-alerts.index', $store) }}" target="_blank" class="edz-sidebar__link">
-                    <x-edz.icon name="bell" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Stock Alerts</span>
-                </a>
 
                 <a href="{{ route('filament.merchant.resources.team.index', $store) }}" target="_blank" class="edz-sidebar__link">
                     <x-edz.icon name="grid" class="edz-sidebar__icon" />

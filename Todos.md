@@ -94,8 +94,8 @@ git rm resources/views/components/merchant/sidebar.blade.php
 1. ✅ **Brands** — مستقل، بسيط، ابدأ به
 2. ✅ **Categories** — مستقل
 3. ✅ **ProductOptions** + **ProductOptionValues** — يعتمدان على Products (منجز)
-4. ⬜ **ProductVariants** — يعتمد على Products + ProductOptions
-5. ⬜ **Inventories** + **InventoryMovements** + **StockAlerts** — يعتمدون على Products/Variants
+4. ✅ **ProductVariants** — يعتمد على Products + ProductOptions (منجز)
+5. ✅ **Inventories** + **InventoryMovements** + **StockAlerts** — يعتمدون على Products/Variants (منجز)
 6. ⬜ **MyTeams** — مستقل، يمكن تنفيذه بالتوازي مع أي مرحلة
 
 بعد اكتمال آخر مورد: احذف `app/Filament/Merchant` بالكامل و`MerchantPanelProvider.php` وتسجيله في `bootstrap/providers.php`.
@@ -153,7 +153,7 @@ git rm "it" "prepareBindings(\$bindings)"
 
 - ✅ **القسم 1**: استبدال الألوان في 24 ملفًا + حذف نسختي `*.blade copy.php`. المكوّنان `body`/`sidebar` أُبقيا (محجوب حتى نقل Billing إلى Livewire).
 - ✅ **القسم 2**: لوحة Filament للتاجر على `/merchant/legacy` + روابط Legacy في القائمة الجانبية + تحديث الاختبار.
-- ⬜ **القسم 3**: Brands + Categories + ProductOptions/ProductOptionValues منقولة إلى Livewire Volt (صفحات `merchant/{store}/brands|categories|options` + روابط القائمة الجانبية + حذف نسخ Filament والـ exporters/importers). المتبقي: ProductVariants، Inventories/InventoryMovements/StockAlerts، MyTeams.
+- ⬜ **القسم 3**: Brands + Categories + ProductOptions/ProductOptionValues + ProductVariants + Inventories/InventoryMovements/StockAlerts منقولة إلى Livewire Volt (صفحات `merchant/{store}/brands|categories|options|variants|inventories|inventory-movements|stock-alerts` + روابط القائمة الجانبية + حذف نسخ Filament والـ exporters/importers). المتبقي: MyTeams.
 - ⬜ **القسم 4**: لم يبدأ.
 - ⬜ **القسم 5**: لم يبدأ.
 - ⬜ **القسم 6**: لم يبدأ.

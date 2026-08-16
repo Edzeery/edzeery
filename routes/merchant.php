@@ -82,4 +82,8 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/brands', 'merchant.brands.index')->name('brands.index');
         Volt::route('/{store:slug}/categories', 'merchant.categories.index')->name('categories.index');
         Volt::route('/{store:slug}/options', 'merchant.options.index')->name('options.index');
+        Volt::route('/{store:slug}/variants', 'merchant.variants.index')->name('variants.index');
+        Volt::route('/{store:slug}/inventories', 'merchant.inventories.index')->name('inventories.index');
+        Volt::route('/{store:slug}/inventory-movements', 'merchant.inventory-movements.index')->name('inventory-movements.index');
+        Volt::route('/{store:slug}/stock-alerts', 'merchant.stock-alerts.index')->name('stock-alerts.index');
     });
