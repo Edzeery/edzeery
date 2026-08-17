@@ -143,8 +143,8 @@ $deleteSelected = function (): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Brands</h1>
-            <p class="edz-page-head__subtitle">Manage the catalog of {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('brands.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('brands.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
     </div>
 
@@ -152,15 +152,15 @@ $deleteSelected = function (): void {
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">Edit brand</h2>
-                    <p class="text-sm text-ink-400">Update the brand details</p>
+                    <h2 class="edz-card__title">{{ __('brands.edit_brand') }}</h2>
+                    <p class="text-sm text-ink-400">{{ __('brands.update_details') }}</p>
                 </div>
             </div>
 
             <form wire:submit="save" class="space-y-4 p-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-name">Name</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-name">{{ __('brands.brand_name') }}</label>
                         <input id="brand-name" type="text" class="edz-input" wire:model="name" placeholder="Brand name">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -168,7 +168,7 @@ $deleteSelected = function (): void {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-slug">Slug</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-slug">{{ __('brands.slug') }}</label>
                         <input id="brand-slug" type="text" class="edz-input" wire:model="slug" placeholder="brand-slug">
                         @error('slug')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -178,7 +178,7 @@ $deleteSelected = function (): void {
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-logo">Logo</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="brand-logo">{{ __('brands.logo') }}</label>
                         <input id="brand-logo" type="file" class="edz-input" wire:model="logo" accept="image/*">
                         @error('logo')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -188,14 +188,14 @@ $deleteSelected = function (): void {
                     <div class="flex items-end">
                         <label class="flex items-center gap-2 text-sm font-medium text-ink">
                             <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
-                            Active
+                            {{ __('brands.brand_active') }}
                         </label>
                     </div>
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
-                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelEdit">Cancel</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelEdit">{{ __('buttons.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -204,21 +204,21 @@ $deleteSelected = function (): void {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Brands list</h2>
-                <p class="text-sm text-ink-400">All brands across your store</p>
+                <h2 class="edz-card__title">{{ __('brands.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('brands.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by name or slug…"
+                <input type="search" class="edz-input" placeholder="{{ __('brands.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
                 <select class="edz-select" wire:model.live="is_active">
-                    <option value="">All statuses</option>
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
+                    <option value="">{{ __('brands.all_statuses') }}</option>
+                    <option value="1">{{ __('brands.active') }}</option>
+                    <option value="0">{{ __('brands.inactive') }}</option>
                 </select>
             </div>
         </div>
@@ -235,23 +235,23 @@ $deleteSelected = function (): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="w-10 px-4 py-3">
                             <input type="checkbox"
                                    wire:model.live="select_all"
                                    aria-label="Select all">
                         </th>
-                        <th class="px-4 py-3 text-start font-semibold">Logo</th>
-                        <th class="px-4 py-3 text-start font-semibold">Name</th>
-                        <th class="px-4 py-3 text-start font-semibold">Slug</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-start font-semibold">Created</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('brands.logo') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('brands.name') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('brands.slug') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('brands.status') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('brands.created') }}</th>
                         <th class="px-4 py-3 text-end font-semibold">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($this->brands as $brand)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $brand->id }}" aria-label="Select {{ $brand->name }}">
                             </td>
@@ -270,16 +270,16 @@ $deleteSelected = function (): void {
                                 <div class="flex items-center justify-end gap-1">
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $brand->id }})">Edit</button>
+                                                wire:click="beginEdit({{ $brand->id }})">{{ __('buttons.edit') }}</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                                 wire:click="toggleActive({{ $brand->id }})">
-                                            {{ $brand->is_active ? 'Deactivate' : 'Activate' }}
+                                            {{ $brand->is_active ? __('brands.deactivate') : __('brands.activate') }}
                                         </button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                                 wire:click="delete({{ $brand->id }})"
-                                                wire:confirm="Delete &quot;{{ $brand->name }}&quot;?">Delete</button>
+                                                wire:confirm="Delete &quot;{{ $brand->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>
@@ -287,8 +287,8 @@ $deleteSelected = function (): void {
                     @empty
                         <tr>
                             <td colspan="7" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No brands found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search or filters.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('brands.no_brands') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('brands.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

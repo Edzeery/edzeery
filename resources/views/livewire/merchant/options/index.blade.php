@@ -184,12 +184,12 @@ $deleteSelected = function (): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Product options</h1>
-            <p class="edz-page-head__subtitle">Manage option attributes for the catalog of {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('product_options.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('product_options.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         <div class="flex items-center gap-2">
             @if ($this->canCreate())
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">New option</button>
+                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">{{ __('product_options.new_option') }}</button>
             @endif
         </div>
     </div>
@@ -204,8 +204,8 @@ $deleteSelected = function (): void {
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">{{ $editingId ? 'Edit option' : 'New option' }}</h2>
-                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update the option details' : 'e.g. Color, Size, Length' }}</p>
+                    <h2 class="edz-card__title">{{ $editingId ? __('product_options.edit_option') : __('product_options.new_option') }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? __('product_options.edit_option_desc') : __('product_options.new_option_desc') }}</p>
                 </div>
             </div>
 
@@ -221,9 +221,9 @@ $deleteSelected = function (): void {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="option-type">Input type</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="option-type">{{ __('product_options.input_type') }}</label>
                         <select id="option-type" class="edz-select" wire:model="type">
-                            <option value="">Select type…</option>
+                            <option value="">{{ __('product_options.select_type') }}</option>
                             @foreach ($this->typeOptions as $value => $label)
                                 <option value="{{ $value }}" @selected($type === $value)>{{ $label }}</option>
                             @endforeach
@@ -235,8 +235,8 @@ $deleteSelected = function (): void {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
-                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">Cancel</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">{{ __('buttons.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -245,14 +245,14 @@ $deleteSelected = function (): void {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Options list</h2>
-                <p class="text-sm text-ink-400">All option attributes across your store</p>
+                <h2 class="edz-card__title">{{ __('product_options.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('product_options.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by option name…"
+                <input type="search" class="edz-input" placeholder="{{ __('product_options.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
         </div>
@@ -269,21 +269,21 @@ $deleteSelected = function (): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="w-10 px-4 py-3">
                             <input type="checkbox"
                                    wire:model.live="select_all"
                                    aria-label="Select all">
                         </th>
-                        <th class="px-4 py-3 text-start font-semibold">Name</th>
-                        <th class="px-4 py-3 text-start font-semibold">Type</th>
-                        <th class="px-4 py-3 text-start font-semibold">Values</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.name') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.type') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.values') }}</th>
                         <th class="px-4 py-3 text-end font-semibold">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($this->options as $option)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $option->id }}" aria-label="Select {{ $option->name }}">
                             </td>
@@ -296,16 +296,16 @@ $deleteSelected = function (): void {
                                 <div class="flex items-center justify-end gap-1">
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="toggleActive({{ $option->id }})">
-                                        {{ $activeOptionId === $option->id ? 'Hide values' : 'Values' }}
+                                        {{ $activeOptionId === $option->id ? __('product_options.hide_values') : __('product_options.show_values') }}
                                     </button>
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $option->id }})">Edit</button>
+                                                wire:click="beginEdit({{ $option->id }})">{{ __('buttons.edit') }}</button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                                 wire:click="delete({{ $option->id }})"
-                                                wire:confirm="Delete &quot;{{ $option->name }}&quot;?">Delete</button>
+                                                wire:confirm="Delete &quot;{{ $option->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>
@@ -322,7 +322,7 @@ $deleteSelected = function (): void {
                                         @endif
                                         @if ($this->canUpdate())
                                             <form wire:submit="addValue({{ $option->id }})" class="flex items-center gap-2">
-                                                <input type="text" class="edz-input edz-input--sm" placeholder="Add value…"
+                                                <input type="text" class="edz-input edz-input--sm" placeholder="{{ __('product_options.add_value_placeholder') }}"
                                                        wire:model="newValue">
                                                 <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Add</button>
                                             </form>
@@ -341,7 +341,7 @@ $deleteSelected = function (): void {
                                                 @endif
                                             </span>
                                         @empty
-                                            <span class="text-sm text-ink-muted">No values yet.</span>
+                                            <span class="text-sm text-ink-muted">{{ __('product_options.no_values') }}</span>
                                         @endforelse
                                     </div>
                                 </td>
@@ -350,8 +350,8 @@ $deleteSelected = function (): void {
                     @empty
                         <tr>
                             <td colspan="5" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No options found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('product_options.no_options') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('product_options.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

@@ -38,7 +38,7 @@ with([
             <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-ink">{{ $store?->name }}</p>
                 <a href="{{ route('choose-store') }}" class="text-xs text-brand-600 hover:underline dark:text-brand-300">
-                    Switch store
+                    {{ __('merchant_panel.switch_store') }}
                 </a>
             </div>
         </div>
@@ -46,7 +46,7 @@ with([
 
     <nav class="edz-sidebar__nav edz-scroll" aria-label="Merchant">
         <div class="edz-sidebar__group">
-            <p class="edz-sidebar__group-title">Store management</p>
+            <p class="edz-sidebar__group-title">{{ __('merchant_panel.store_management') }}</p>
 
             @if ($canViewProducts)
                 @php
@@ -56,7 +56,7 @@ with([
                 <a href="{{ $productsHref }}" wire:navigate
                    class="edz-sidebar__link @if ($productsActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="package" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Products</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.products') }}</span>
                     <span class="edz-sidebar__label ms-auto rounded-full bg-brand-600/10 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:text-brand-300">{{ $productCount }}</span>
                 </a>
             @endif
@@ -69,7 +69,7 @@ with([
                 <a href="{{ $brandsHref }}" wire:navigate
                    class="edz-sidebar__link @if ($brandsActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="grid" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Brands</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.brands') }}</span>
                 </a>
             @endif
 
@@ -81,7 +81,7 @@ with([
                 <a href="{{ $categoriesHref }}" wire:navigate
                    class="edz-sidebar__link @if ($categoriesActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="menu" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Categories</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.categories') }}</span>
                 </a>
             @endif
 
@@ -93,7 +93,7 @@ with([
                 <a href="{{ $optionsHref }}" wire:navigate
                    class="edz-sidebar__link @if ($optionsActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="search" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Options</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.options') }}</span>
                 </a>
             @endif
 
@@ -105,7 +105,7 @@ with([
                 <a href="{{ $variantsHref }}" wire:navigate
                    class="edz-sidebar__link @if ($variantsActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="package" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Variants</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.variants') }}</span>
                 </a>
             @endif
 
@@ -117,7 +117,7 @@ with([
                 <a href="{{ $inventoriesHref }}" wire:navigate
                    class="edz-sidebar__link @if ($inventoriesActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="cart" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Inventories</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.inventories') }}</span>
                 </a>
             @endif
 
@@ -129,13 +129,13 @@ with([
                 <a href="{{ $stockAlertsHref }}" wire:navigate
                    class="edz-sidebar__link @if ($stockAlertsActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="bell" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">Stock Alerts</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.stock_alerts') }}</span>
                 </a>
             @endif
 
             <a href="#" class="edz-sidebar__link opacity-50">
                 <x-edz.icon name="cart" class="edz-sidebar__icon" />
-                <span class="edz-sidebar__label">Orders</span>
+                <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
             </a>
 
             @if ($canViewDebts)
@@ -152,13 +152,13 @@ with([
 
             <a href="#" class="edz-sidebar__link opacity-50">
                 <x-edz.icon name="settings" class="edz-sidebar__icon" />
-                <span class="edz-sidebar__label">Settings</span>
+                <span class="edz-sidebar__label">{{ __('merchant_panel.settings') }}</span>
             </a>
         </div>
 
         @if ($store)
             <div class="edz-sidebar__group">
-                <p class="edz-sidebar__group-title">Team</p>
+                <p class="edz-sidebar__group-title">{{ __('merchant_panel.team_group') }}</p>
 
                 @php
                     $teamActive = request()->routeIs('merchant.teams.*');
@@ -167,7 +167,7 @@ with([
                 <a href="{{ $teamHref }}" wire:navigate
                    class="edz-sidebar__link @if ($teamActive) edz-sidebar__link--active @endif">
                     <x-edz.icon name="users" class="edz-sidebar__icon" />
-                    <span class="edz-sidebar__label">My Teams</span>
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.my_teams') }}</span>
                 </a>
             </div>
         @endif
@@ -177,7 +177,7 @@ with([
         <div class="edz-sidebar__user">
             <span class="edz-sidebar__user-avatar">{{ strtoupper(Str::substr($user?->name ?? 'U', 0, 1)) }}</span>
             <div class="edz-sidebar__user-meta">
-                <p class="edz-sidebar__user-name">{{ $user?->name ?? 'Guest' }}</p>
+                <p class="edz-sidebar__user-name">{{ $user?->name ?? __('merchant_panel.guest') }}</p>
                 <p class="edz-sidebar__user-role">{{ $user?->email ?? '—' }}</p>
             </div>
         </div>

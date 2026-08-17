@@ -39,7 +39,7 @@ $delete = function (Product $product): void {
 
     $product->delete();
 
-    session()->flash('merchant.saved', 'Product deleted.');
+    session()->flash('merchant.saved', __('products.product_deleted'));
     $this->redirectRoute('merchant.products.index', currentStore());
 };
 ?>
@@ -57,15 +57,15 @@ $delete = function (Product $product): void {
         </div>
         <div class="flex items-center gap-2">
             <a href="{{ route('merchant.products.index', currentStore()) }}" wire:navigate
-               class="edz-btn edz-btn--ghost">Back</a>
+               class="edz-btn edz-btn--ghost">{{ __('products.back') }}</a>
             @if ($this->canUpdate())
                 <a href="{{ route('merchant.products.edit', [currentStore(), $product]) }}" wire:navigate
-                   class="edz-btn edz-btn--primary">Edit</a>
+                   class="edz-btn edz-btn--primary">{{ __('products.edit') }}</a>
             @endif
             @if ($this->canDelete())
                 <button type="button" class="edz-btn edz-btn--danger"
                         wire:click="delete({{ $product->id }})"
-                        wire:confirm="Delete &quot;{{ $product->name }}&quot;? This cannot be undone.">Delete</button>
+                        wire:confirm="Delete &quot;{{ $product->name }}&quot;? This cannot be undone.">{{ __('products.delete') }}</button>
             @endif
         </div>
     </div>
@@ -81,8 +81,8 @@ $delete = function (Product $product): void {
             <div class="edz-card">
                 <div class="edz-card__header">
                     <div>
-                        <h2 class="edz-card__title">Media</h2>
-                        <p class="text-sm text-ink-400">{{ $this->images->count() }} image(s)</p>
+                        <h2 class="edz-card__title">{{ __('products.media') }}</h2>
+                        <p class="text-sm text-ink-400">{{ __('products.image_count', ['count' => $this->images->count()]) }}</p>
                     </div>
                 </div>
                 <div class="edz-card__body">
@@ -96,7 +96,7 @@ $delete = function (Product $product): void {
                             @endforeach
                         </div>
                     @else
-                        <p class="text-sm text-ink-muted">No images yet.</p>
+                        <p class="text-sm text-ink-muted">{{ __('products.no_images') }}</p>
                     @endif
                 </div>
             </div>
@@ -104,7 +104,7 @@ $delete = function (Product $product): void {
             <div class="edz-card">
                 <div class="edz-card__header">
                     <div>
-                        <h2 class="edz-card__title">Description</h2>
+                        <h2 class="edz-card__title">{{ __('products.description') }}</h2>
                     </div>
                 </div>
                 <div class="edz-card__body space-y-4">
@@ -114,7 +114,7 @@ $delete = function (Product $product): void {
                     @if ($product->description)
                         <div class="prose-sm prose max-w-none text-ink-soft">{!! $product->description !!}</div>
                     @else
-                        <p class="text-sm text-ink-muted">No description.</p>
+                        <p class="text-sm text-ink-muted">{{ __('products.no_description') }}</p>
                     @endif
                 </div>
             </div>
@@ -123,26 +123,26 @@ $delete = function (Product $product): void {
                 <div class="edz-card">
                     <div class="edz-card__header">
                         <div>
-                            <h2 class="edz-card__title">Variants</h2>
-                            <p class="text-sm text-ink-400">{{ $this->variants->count() }} combination(s)</p>
+                            <h2 class="edz-card__title">{{ __('products.variants') }}</h2>
+                            <p class="text-sm text-ink-400">{{ __('products.variant_count', ['count' => $this->variants->count()]) }}</p>
                         </div>
                     </div>
                     <div class="edz-card__body p-0">
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
-                                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
-                                        <th class="px-4 py-3 text-start font-semibold">Variant</th>
-                                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                                        <th class="px-4 py-3 text-start font-semibold">Price</th>
-                                        <th class="px-4 py-3 text-start font-semibold">Cost</th>
-                                        <th class="px-4 py-3 text-start font-semibold">Stock</th>
-                                        <th class="px-4 py-3 text-start font-semibold">Status</th>
+                                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.variant') }}</th>
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.sku') }}</th>
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.price') }}</th>
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.cost') }}</th>
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.stock') }}</th>
+                                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.status') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($this->variants as $variant)
-                                        <tr class="border-b border-gray-100 last:border-0">
+                                        <tr class="border-b border-surface-border last:border-0">
                                             <td class="px-4 py-3">
                                                 <p class="font-medium text-ink">{{ $variant->name }}</p>
                                                 @if ($variant->barcode)
@@ -172,7 +172,7 @@ $delete = function (Product $product): void {
         <div class="space-y-6">
             <div class="edz-card">
                 <div class="edz-card__header">
-                    <h2 class="edz-card__title">Details</h2>
+                    <h2 class="edz-card__title">{{ __('products.details') }}</h2>
                 </div>
                 <div class="edz-card__body grid grid-cols-1 gap-4 text-sm">
                     <div class="flex items-center gap-2">
@@ -183,27 +183,27 @@ $delete = function (Product $product): void {
                     </div>
                     <dl class="grid grid-cols-1 gap-3">
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Type</dt>
-                            <dd class="font-medium text-ink">{{ $product->hasVariants() ? 'Variable' : 'Simple' }}</dd>
+                            <dt class="text-ink-muted">{{ __('products.type') }}</dt>
+                            <dd class="font-medium text-ink">{{ $product->hasVariants() ? __('products.variable') : __('products.simple') }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Brand</dt>
+                            <dt class="text-ink-muted">{{ __('products.brand') }}</dt>
                             <dd class="font-medium text-ink">{{ $product->brand?->name ?? '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Unit</dt>
+                            <dt class="text-ink-muted">{{ __('products.unit') }}</dt>
                             <dd class="font-medium text-ink">{{ $product->unit ?: '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Primary category</dt>
+                            <dt class="text-ink-muted">{{ __('products.primary_category') }}</dt>
                             <dd class="font-medium text-ink">{{ $product->primaryCategory?->name ?? '—' }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Created</dt>
+                            <dt class="text-ink-muted">{{ __('products.created') }}</dt>
                             <dd class="font-medium text-ink">{{ $product->created_at?->format('Y-m-d') }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Updated</dt>
+                            <dt class="text-ink-muted">{{ __('products.updated') }}</dt>
                             <dd class="font-medium text-ink">{{ $product->updated_at?->format('Y-m-d') }}</dd>
                         </div>
                     </dl>
@@ -213,7 +213,7 @@ $delete = function (Product $product): void {
             @if (! $product->hasVariants() && $this->singleVariant)
                 <div class="edz-card">
                     <div class="edz-card__header">
-                        <h2 class="edz-card__title">Pricing &amp; stock</h2>
+                        <h2 class="edz-card__title">{{ __('products.pricing_stock') }}</h2>
                     </div>
                     <div class="edz-card__body grid grid-cols-1 gap-3 text-sm">
                         @php
@@ -222,28 +222,28 @@ $delete = function (Product $product): void {
                             $svMargin = $sv->price > 0 ? round(($svProfit / $sv->price) * 100, 1) : null;
                         @endphp
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Price</dt>
+                            <dt class="text-ink-muted">{{ __('products.price') }}</dt>
                             <dd class="font-semibold text-ink">{{ number_format($sv->price, 2) }}</dd>
                         </div>
                         @if ($sv->compare_price)
                             <div class="flex justify-between gap-2">
-                                <dt class="text-ink-muted">Compare at</dt>
+                                <dt class="text-ink-muted">{{ __('products.compare_at') }}</dt>
                                 <dd class="font-medium text-ink line-through">{{ number_format($sv->compare_price, 2) }}</dd>
                             </div>
                         @endif
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Cost</dt>
+                            <dt class="text-ink-muted">{{ __('products.cost') }}</dt>
                             <dd class="font-medium text-ink">{{ number_format($sv->cost_price, 2) }}</dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Profit / margin</dt>
+                            <dt class="text-ink-muted">{{ __('products.profit_margin') }}</dt>
                             <dd class="font-medium text-ink">
                                 {{ number_format($svProfit, 2) }}
                                 <span class="text-ink-muted">({{ $svMargin !== null ? $svMargin.'%' : '—' }})</span>
                             </dd>
                         </div>
                         <div class="flex justify-between gap-2">
-                            <dt class="text-ink-muted">Stock</dt>
+                            <dt class="text-ink-muted">{{ __('products.stock') }}</dt>
                             <dd class="font-medium text-ink">{{ $sv->stock }}</dd>
                         </div>
                     </div>

@@ -213,12 +213,12 @@ $deleteSelected = function (): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Categories</h1>
-            <p class="edz-page-head__subtitle">Organize the catalog of {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('categories.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('categories.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         <div class="flex items-center gap-2">
             @if ($this->canCreate())
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">New category</button>
+                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">{{ __('categories.new_category') }}</button>
             @endif
         </div>
     </div>
@@ -227,8 +227,8 @@ $deleteSelected = function (): void {
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">{{ $editingId ? 'Edit category' : 'New category' }}</h2>
-                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update the category details' : 'Add a category to your catalog' }}</p>
+                    <h2 class="edz-card__title">{{ $editingId ? __('categories.edit_category') : __('categories.new_category') }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? __('categories.edit_category_desc') : __('categories.new_category_desc') }}</p>
                 </div>
             </div>
 
@@ -237,7 +237,7 @@ $deleteSelected = function (): void {
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="category-name">Name</label>
                         <input id="category-name" type="text" class="edz-input @error('name') edz-input--error @enderror"
-                               wire:model="name" placeholder="e.g. Electronics">
+                               wire:model="name" placeholder="{{ __('categories.category_name') }}">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -253,9 +253,9 @@ $deleteSelected = function (): void {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="category-parent">Parent category</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-parent">{{ __('categories.parent_category') }}</label>
                         <select id="category-parent" class="edz-select" wire:model="parent_id">
-                            <option value="">No parent (top-level)</option>
+                            <option value="">{{ __('categories.no_parent') }}</option>
                             @foreach ($this->parentOptions as $id => $fullName)
                                 @if ($editingId && (string) $id === (string) $editingId)
                                     @continue
@@ -271,7 +271,7 @@ $deleteSelected = function (): void {
                     <div class="flex items-end">
                         <label class="flex items-center gap-2 text-sm font-medium text-ink">
                             <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
-                            Active
+                            {{ __('categories.category_active') }}
                         </label>
                     </div>
                 </div>
@@ -295,21 +295,21 @@ $deleteSelected = function (): void {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Categories list</h2>
-                <p class="text-sm text-ink-400">All categories across your store</p>
+                <h2 class="edz-card__title">{{ __('categories.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('categories.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by name or slug…"
+                <input type="search" class="edz-input" placeholder="{{ __('categories.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
                 <select class="edz-select" wire:model.live="is_active">
-                    <option value="">All statuses</option>
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
+                    <option value="">{{ __('categories.all_statuses') }}</option>
+                    <option value="1">{{ __('categories.active') }}</option>
+                    <option value="0">{{ __('categories.inactive') }}</option>
                 </select>
             </div>
         </div>
@@ -326,7 +326,7 @@ $deleteSelected = function (): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="w-10 px-4 py-3">
                             <input type="checkbox"
                                    wire:model.live="select_all"
@@ -342,7 +342,7 @@ $deleteSelected = function (): void {
                 </thead>
                 <tbody>
                     @forelse ($this->categories as $category)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $category->id }}" aria-label="Select {{ $category->name }}">
                             </td>
@@ -378,8 +378,8 @@ $deleteSelected = function (): void {
                     @empty
                         <tr>
                             <td colspan="7" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No categories found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search or filters.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('categories.no_categories') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('categories.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

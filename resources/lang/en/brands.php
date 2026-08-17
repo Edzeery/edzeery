@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'Brands',
+    'subtitle' => 'Manage the catalog of :store',
+    'edit_brand' => 'Edit brand',
+    'update_details' => 'Update the brand details',
+    'list_title' => 'Brands list',
+    'list_subtitle' => 'All brands across your store',
+    'search_placeholder' => 'Search by name or slug…',
+    'all_statuses' => 'All statuses',
+    'active' => 'Active',
+    'inactive' => 'Inactive',
+    'selected_count' => ':count selected',
+    'name' => 'Name',
+    'slug' => 'Slug',
+    'logo' => 'Logo',
+    'status' => 'Status',
+    'created' => 'Created',
+    'activate' => 'Activate',
+    'deactivate' => 'Deactivate',
+    'no_brands' => 'No brands found',
+    'try_adjusting' => 'Try adjusting your search or filters.',
+    'brand_name' => 'Brand name',
+    'brand_slug' => 'brand-slug',
+    'brand_active' => 'Active',
+];

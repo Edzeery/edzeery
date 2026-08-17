@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'Marques',
+    'subtitle' => 'Gérer le catalogue de :store',
+    'edit_brand' => 'Modifier la marque',
+    'update_details' => 'Mettre à jour les détails de la marque',
+    'list_title' => 'Liste des marques',
+    'list_subtitle' => 'Toutes les marques de votre magasin',
+    'search_placeholder' => 'Rechercher par nom ou slug…',
+    'all_statuses' => 'Tous les statuts',
+    'active' => 'Actif',
+    'inactive' => 'Inactif',
+    'selected_count' => ':count sélectionné(s)',
+    'name' => 'Nom',
+    'slug' => 'Slug',
+    'logo' => 'Logo',
+    'status' => 'Statut',
+    'created' => 'Créé le',
+    'activate' => 'Activer',
+    'deactivate' => 'Désactiver',
+    'no_brands' => 'Aucune marque trouvée',
+    'try_adjusting' => 'Essayez de modifier votre recherche ou vos filtres.',
+    'brand_name' => 'Nom de la marque',
+    'brand_slug' => 'brand-slug',
+    'brand_active' => 'Actif',
+];

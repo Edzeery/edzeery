@@ -220,12 +220,12 @@ $allPermissions = computed(function () {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Team</h1>
-            <p class="edz-page-head__subtitle">Manage team members of {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('teams.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('teams.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         @if ($this->canCreate())
             <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">
-                <x-heroicon-o-plus class="h-5 w-5" /> Add Member
+                <x-heroicon-o-plus class="h-5 w-5" /> {{ __('teams.add_member') }}
             </button>
         @endif
     </div>
@@ -376,20 +376,20 @@ $allPermissions = computed(function () {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Team members</h2>
-                <p class="text-sm text-ink-400">All members in {{ currentStore()?->name }}</p>
+                <h2 class="edz-card__title">{{ __('teams.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('teams.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="border-b border-surface-border p-4">
-            <input type="search" class="edz-input" placeholder="Search by name or email…"
+            <input type="search" class="edz-input" placeholder="{{ __('teams.search_placeholder') }}"
                    wire:model.live.debounce.300ms="search">
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="px-4 py-3 text-start font-semibold">Name</th>
                         <th class="px-4 py-3 text-start font-semibold">Email</th>
                         <th class="px-4 py-3 text-start font-semibold">Role</th>
@@ -403,7 +403,7 @@ $allPermissions = computed(function () {
                         @php
                             $roleName = $this->memberRoleName($membership);
                         @endphp
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3 font-medium text-ink">{{ $membership->user?->name }}</td>
                             <td class="px-4 py-3 text-ink-soft">{{ $membership->user?->email }}</td>
                             <td class="px-4 py-3">
@@ -434,8 +434,8 @@ $allPermissions = computed(function () {
                     @empty
                         <tr>
                             <td colspan="6" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No team members found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Add a member to get started.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('teams.no_members') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('teams.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

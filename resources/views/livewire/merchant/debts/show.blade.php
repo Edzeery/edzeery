@@ -91,13 +91,13 @@ $formatAmount = function (float $amount): string {
             <div class="edz-card">
                 <div class="edz-card__body">
                     <p class="text-sm text-ink-muted">{{ __('finance.paid_amount') }}</p>
-                    <p class="text-xl font-bold text-green-600">{{ $formatAmount($debt->paid_amount) }}</p>
+                    <p class="text-xl font-bold text-success-600">{{ $formatAmount($debt->paid_amount) }}</p>
                 </div>
             </div>
             <div class="edz-card">
                 <div class="edz-card__body">
                     <p class="text-sm text-ink-muted">{{ __('finance.remaining') }}</p>
-                    <p class="text-xl font-bold text-red-600">{{ $formatAmount($debt->remaining_amount) }}</p>
+                    <p class="text-xl font-bold text-danger-600">{{ $formatAmount($debt->remaining_amount) }}</p>
                 </div>
             </div>
             <div class="edz-card">
@@ -134,8 +134,8 @@ $formatAmount = function (float $amount): string {
                         </div>
                         <div>
                             <dt class="text-sm text-ink-muted mb-1">{{ __('finance.progress') }}</dt>
-                            <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                <div class="bg-green-500 h-2 rounded-full" style="width: {{ $debt->progress }}%"></div>
+                            <div class="w-full bg-surface-tertiary rounded-full h-2 dark:bg-surface-secondary">
+                                <div class="bg-success-500 h-2 rounded-full" style="width: {{ $debt->progress }}%"></div>
                             </div>
                             <span class="text-xs text-ink-muted">{{ $debt->progress }}%</span>
                         </div>
@@ -154,7 +154,7 @@ $formatAmount = function (float $amount): string {
                                 <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.amount') }}</label>
                                 <input type="number" step="0.01" wire:model="payment_amount"
                                        class="edz-input" required />
-                                @error('payment_amount') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                                @error('payment_amount') <p class="mt-1 text-sm text-danger-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.payment_date') }}</label>
@@ -182,7 +182,7 @@ $formatAmount = function (float $amount): string {
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
-                        <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                        <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                             <th class="px-4 py-3 text-start font-semibold">{{ __('finance.date') }}</th>
                             <th class="px-4 py-3 text-start font-semibold">{{ __('finance.amount') }}</th>
                             <th class="px-4 py-3 text-start font-semibold">{{ __('finance.notes') }}</th>
@@ -190,9 +190,9 @@ $formatAmount = function (float $amount): string {
                     </thead>
                     <tbody>
                         @forelse($debt->payments()->latest('payment_date')->get() as $payment)
-                            <tr class="border-b border-gray-100 last:border-0">
+                            <tr class="border-b border-surface-border last:border-0">
                                 <td class="px-4 py-3 text-ink-soft">{{ $payment->payment_date->format('Y-m-d') }}</td>
-                                <td class="px-4 py-3 font-medium text-green-600">{{ $formatAmount($payment->amount) }}</td>
+                                <td class="px-4 py-3 font-medium text-success-600">{{ $formatAmount($payment->amount) }}</td>
                                 <td class="px-4 py-3 text-ink-soft">{{ $payment->notes ?? '—' }}</td>
                             </tr>
                         @empty

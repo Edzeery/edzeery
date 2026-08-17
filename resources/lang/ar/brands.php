@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'العلامات التجارية',
+    'subtitle' => 'إدارة كتالوج :store',
+    'edit_brand' => 'تعديل العلامة التجارية',
+    'update_details' => 'تحديث تفاصيل العلامة التجارية',
+    'list_title' => 'قائمة العلامات التجارية',
+    'list_subtitle' => 'جميع العلامات التجارية في متجرك',
+    'search_placeholder' => 'بحث بالاسم أو الرابط…',
+    'all_statuses' => 'جميع الحالات',
+    'active' => 'نشط',
+    'inactive' => 'غير نشط',
+    'selected_count' => ':count محدد',
+    'name' => 'الاسم',
+    'slug' => 'الرابط',
+    'logo' => 'الشعار',
+    'status' => 'الحالة',
+    'created' => 'تاريخ الإنشاء',
+    'activate' => 'تفعيل',
+    'deactivate' => 'تعطيل',
+    'no_brands' => 'لم يتم العثور على علامات تجارية',
+    'try_adjusting' => 'حاول تعديل البحث أو الفلاتر.',
+    'brand_name' => 'اسم العلامة التجارية',
+    'brand_slug' => 'brand-slug',
+    'brand_active' => 'نشط',
+];

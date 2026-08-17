@@ -57,16 +57,16 @@ $clearVariantFilter = function (): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Inventory movements</h1>
-            <p class="edz-page-head__subtitle">A ledger of every stock change for {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('titles.inventory_movements') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('inventories.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
     </div>
 
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Movements</h2>
-                <p class="text-sm text-ink-400">Read-only history of stock adjustments</p>
+                <h2 class="edz-card__title">{{ __('inventories.movements') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('inventories.list_subtitle') }}</p>
             </div>
             @if (request()->query('variant_id'))
                 <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="clearVariantFilter">Clear variant filter</button>
@@ -75,7 +75,7 @@ $clearVariantFilter = function (): void {
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by SKU or product name…"
+                <input type="search" class="edz-input" placeholder="{{ __('inventories.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
@@ -91,7 +91,7 @@ $clearVariantFilter = function (): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="px-4 py-3 text-start font-semibold">Date</th>
                         <th class="px-4 py-3 text-start font-semibold">Product</th>
                         <th class="px-4 py-3 text-start font-semibold">SKU</th>
@@ -104,15 +104,15 @@ $clearVariantFilter = function (): void {
                 </thead>
                 <tbody>
                     @forelse ($this->movements as $movement)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3 text-xs text-ink-muted">{{ $movement->created_at?->format('Y-m-d H:i') }}</td>
                             <td class="px-4 py-3 font-medium text-ink">{{ $movement->variant?->product?->name ?? '—' }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-ink-soft">{{ $movement->variant?->sku ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                    @if ($movement->type->isDecrease()) bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                                    @elseif ($movement->type->isIncrease()) bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
-                                    @else bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 @endif">
+                                    @if ($movement->type->isDecrease()) bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300
+                                    @elseif ($movement->type->isIncrease()) bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300
+                                    @else bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300 @endif">
                                     {{ $movement->type->label() }}
                                 </span>
                             </td>
@@ -125,7 +125,7 @@ $clearVariantFilter = function (): void {
                                 <div class="flex items-center justify-end gap-1">
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="toggleView({{ $movement->id }})">
-                                        {{ $viewingId === $movement->id ? 'Hide details' : 'View' }}
+                                        {{ $viewingId === $movement->id ? '{{ __('buttons.close') }}' : '{{ __('buttons.view') }}' }}
                                     </button>
                                 </div>
                             </td>
@@ -182,8 +182,8 @@ $clearVariantFilter = function (): void {
                     @empty
                         <tr>
                             <td colspan="8" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No movements found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search or filters.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('inventories.no_inventory') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('inventories.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

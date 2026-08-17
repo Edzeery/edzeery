@@ -84,13 +84,13 @@ $formatAmount = function (float $amount): string {
         <div class="edz-card">
             <div class="edz-card__body">
                 <p class="text-sm text-ink-muted">{{ __('finance.total_receivable') }}</p>
-                <p class="text-2xl font-bold text-green-600">{{ $formatAmount($totalOwed) }}</p>
+                <p class="text-2xl font-bold text-success-600">{{ $formatAmount($totalOwed) }}</p>
             </div>
         </div>
         <div class="edz-card">
             <div class="edz-card__body">
                 <p class="text-sm text-ink-muted">{{ __('finance.total_payable') }}</p>
-                <p class="text-2xl font-bold text-red-600">{{ $formatAmount($totalOwing) }}</p>
+                <p class="text-2xl font-bold text-danger-600">{{ $formatAmount($totalOwing) }}</p>
             </div>
         </div>
     </div>
@@ -129,7 +129,7 @@ $formatAmount = function (float $amount): string {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.counterparty') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.type') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.total_amount') }}</th>
@@ -142,7 +142,7 @@ $formatAmount = function (float $amount): string {
                 </thead>
                 <tbody>
                     @forelse($debts as $debt)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3 font-medium text-ink">{{ $debt->counterparty_name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <x-merchant.status domain="debt_type" :status="$debt->type->value" />
@@ -169,7 +169,7 @@ $formatAmount = function (float $amount): string {
                                     @if ($canDelete())
                                         <button wire:click="delete({{ $debt->id }})"
                                                 wire:confirm="{{ __('finance.confirm_delete') }}"
-                                                class="edz-btn edz-btn--ghost edz-btn--sm text-red-600 hover:text-red-700">
+                                                class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
                                             <x-edz.icon name="trash" class="edz-btn__icon" />
                                         </button>
                                     @endif

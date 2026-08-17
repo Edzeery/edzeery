@@ -66,9 +66,9 @@ $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => 'OUT', 'class' => 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40'],
-        'low' => ['text' => 'LOW', 'class' => 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/40'],
-        default => ['text' => 'IN', 'class' => 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/40'],
+        'out' => ['text' => 'OUT', 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
+        'low' => ['text' => 'LOW', 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
+        default => ['text' => 'IN', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
     };
 };
 
@@ -209,12 +209,12 @@ $deleteSelected = function (): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Variants</h1>
-            <p class="edz-page-head__subtitle">Manage product combinations and stock for {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('variants.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('variants.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         <div class="flex items-center gap-2">
             @if ($this->canCreate())
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">New variant</button>
+                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">{{ __('variants.new_variant') }}</button>
             @endif
         </div>
     </div>
@@ -235,18 +235,18 @@ $deleteSelected = function (): void {
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">{{ $editingId ? 'Edit variant' : 'New variant' }}</h2>
-                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update the variant pricing' : 'Create a variant for a product' }}</p>
+                    <h2 class="edz-card__title">{{ $editingId ? __('variants.edit_variant') : __('variants.new_variant') }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? __('variants.edit_variant_desc') : __('variants.new_variant_desc') }}</p>
                 </div>
             </div>
 
             <form wire:submit="save" class="space-y-4 p-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-sm font-medium text-ink" for="variant-product">Product</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="variant-product">{{ __('variants.product') }}</label>
                         <select id="variant-product" class="edz-select @error('product_id') edz-input--error @enderror"
                                 wire:model="product_id" @disabled($editingId)>
-                            <option value="">Select product…</option>
+                            <option value="">{{ __('variants.select_product') }}</option>
                             @foreach ($this->products as $id => $productName)
                                 <option value="{{ $id }}" @selected((string) $product_id === (string) $id)>{{ $productName }}</option>
                             @endforeach
@@ -262,7 +262,7 @@ $deleteSelected = function (): void {
                                wire:model="sku" @disabled($editingId) placeholder="STORE-PRODUCT-SIZE">
                         @if (! $editingId)
                             <button type="button" class="mt-1 text-xs text-brand-600 hover:underline"
-                                    wire:click="generateSku">Generate SKU</button>
+                                    wire:click="generateSku">{{ __('variants.generate_sku') }}</button>
                         @endif
                         @error('sku')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -294,8 +294,8 @@ $deleteSelected = function (): void {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
-                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">Cancel</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">{{ __('buttons.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -304,14 +304,14 @@ $deleteSelected = function (): void {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Variants list</h2>
-                <p class="text-sm text-ink-400">All product combinations across your store</p>
+                <h2 class="edz-card__title">{{ __('variants.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('variants.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by SKU or product name…"
+                <input type="search" class="edz-input"                        placeholder="{{ __('variants.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
         </div>
@@ -328,7 +328,7 @@ $deleteSelected = function (): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="w-10 px-4 py-3">
                             <input type="checkbox"
                                    wire:model.live="select_all"
@@ -346,7 +346,7 @@ $deleteSelected = function (): void {
                 </thead>
                 <tbody>
                     @forelse ($this->variants as $variant)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $variant->id }}" aria-label="Select {{ $variant->sku }}">
                             </td>
@@ -374,7 +374,7 @@ $deleteSelected = function (): void {
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                                 wire:click="toggleAdjust({{ $variant->id }})">Stock</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $variant->id }})">Edit</button>
+                                                wire:click="beginEdit({{ $variant->id }})">{{ __('buttons.edit') }}</button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
@@ -427,7 +427,7 @@ $deleteSelected = function (): void {
                                         <div class="overflow-x-auto">
                                             <table class="w-full text-sm">
                                                 <thead>
-                                                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+<tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                                                         <th class="px-3 py-2 text-start font-semibold">Date</th>
                                                         <th class="px-3 py-2 text-start font-semibold">Type</th>
                                                         <th class="px-3 py-2 text-start font-semibold">Qty</th>
@@ -437,13 +437,13 @@ $deleteSelected = function (): void {
                                                 </thead>
                                                 <tbody>
                                                     @foreach ($movements as $movement)
-                                                        <tr class="border-b border-gray-100 last:border-0">
+                                                        <tr class="border-b border-surface-border last:border-0">
                                                             <td class="px-3 py-2 text-xs text-ink-muted">{{ $movement->created_at?->format('Y-m-d H:i') }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                                                    @if ($movement->type->isDecrease()) bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                                                                    @elseif ($movement->type->isIncrease()) bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300
-                                                                    @else bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 @endif">
+                                                                    @if ($movement->type->isDecrease()) bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300
+                                                                    @elseif ($movement->type->isIncrease()) bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300
+                                                                    @else bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300 @endif">
                                                                     {{ $movement->type->label() }}
                                                                 </span>
                                                             </td>
@@ -464,8 +464,8 @@ $deleteSelected = function (): void {
                     @empty
                         <tr>
                             <td colspan="9" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No variants found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('variants.no_variants') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('variants.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse

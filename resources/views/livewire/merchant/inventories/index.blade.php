@@ -60,9 +60,9 @@ $canAdjust = fn () => canStore(StorePermissionEnum::INVENTORY_UPDATE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => 'Out of stock', 'class' => 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40'],
-        'low' => ['text' => 'Low stock', 'class' => 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900/40'],
-        default => ['text' => 'In stock', 'class' => 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/40'],
+        'out' => ['text' => 'Out of stock', 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
+        'low' => ['text' => 'Low stock', 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
+        default => ['text' => 'In stock', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
     };
 };
 
@@ -103,8 +103,8 @@ $adjust = function (ProductVariant $variant): void {
 <div>
     <div class="edz-page-head">
         <div>
-            <h1 class="edz-page-head__title">Inventory management</h1>
-            <p class="edz-page-head__subtitle">Monitor and adjust stock across {{ currentStore()?->name }}</p>
+            <h1 class="edz-page-head__title">{{ __('inventories.title') }}</h1>
+            <p class="edz-page-head__subtitle">{{ __('inventories.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
     </div>
 
@@ -118,7 +118,7 @@ $adjust = function (ProductVariant $variant): void {
         <div class="edz-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-ink-soft">Total stock</p>
+                    <p class="text-sm font-medium text-ink-soft">{{ __('inventories.total_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['total']) }}</p>
                 </div>
                 <span class="grid h-10 w-10 place-items-center rounded-lg bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300">Σ</span>
@@ -127,16 +127,16 @@ $adjust = function (ProductVariant $variant): void {
         <div class="edz-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-ink-soft">Low stock</p>
+                    <p class="text-sm font-medium text-ink-soft">{{ __('inventories.low_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['low']) }}</p>
                 </div>
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300">!</span>
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300">!</span>
             </div>
         </div>
         <div class="edz-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-ink-soft">Out of stock</p>
+                    <p class="text-sm font-medium text-ink-soft">{{ __('inventories.out_of_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['out']) }}</p>
                 </div>
                 <span class="grid h-10 w-10 place-items-center rounded-lg bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300">✕</span>
@@ -145,7 +145,7 @@ $adjust = function (ProductVariant $variant): void {
         <div class="edz-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-ink-soft">Movements (7 days)</p>
+                    <p class="text-sm font-medium text-ink-soft">{{ __('inventories.movements_7d') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['movements7']) }}</p>
                 </div>
                 <span class="grid h-10 w-10 place-items-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">⇄</span>
@@ -156,14 +156,14 @@ $adjust = function (ProductVariant $variant): void {
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
-                <h2 class="edz-card__title">Inventory</h2>
-                <p class="text-sm text-ink-400">Every variant and its current stock level</p>
+                <h2 class="edz-card__title">{{ __('inventories.list_title') }}</h2>
+                <p class="text-sm text-ink-400">{{ __('inventories.list_subtitle') }}</p>
             </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-3">
             <div class="sm:col-span-2">
-                <input type="search" class="edz-input" placeholder="Search by SKU or product name…"
+                <input type="search" class="edz-input" placeholder="{{ __('inventories.search_placeholder') }}"
                        wire:model.live.debounce.300ms="search">
             </div>
         </div>
@@ -171,7 +171,7 @@ $adjust = function (ProductVariant $variant): void {
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
-                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                    <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="px-4 py-3 text-start font-semibold">Product</th>
                         <th class="px-4 py-3 text-start font-semibold">SKU</th>
                         <th class="px-4 py-3 text-start font-semibold">Stock</th>
@@ -181,7 +181,7 @@ $adjust = function (ProductVariant $variant): void {
                 </thead>
                 <tbody>
                     @forelse ($this->inventories as $variant)
-                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                        <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3 font-medium text-ink">{{ $variant->product?->name ?? '—' }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-ink-soft">{{ $variant->sku }}</td>
                             <td class="px-4 py-3 font-semibold {{ $variant->stock <= 0 ? 'text-danger-600' : 'text-success-600' }}">{{ $variant->stock }}</td>
@@ -197,10 +197,10 @@ $adjust = function (ProductVariant $variant): void {
                                     @if ($this->canAdjust())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                                 wire:click="toggleAdjust({{ $variant->id }})">
-                                            {{ $adjustingId === $variant->id ? 'Cancel' : 'Adjust Stock' }}
+                                             {{ $adjustingId === $variant->id ? __('inventories.cancel') : __('inventories.adjust_stock') }}
                                         </button>
                                     @endif
-                                    <a href="{{ $this->movementsUrl($variant) }}" wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">Movements</a>
+                                    <a href="{{ $this->movementsUrl($variant) }}" wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('inventories.movements') }}</a>
                                 </div>
                             </td>
                         </tr>
@@ -210,7 +210,7 @@ $adjust = function (ProductVariant $variant): void {
                                 <td colspan="5" class="px-4 py-4">
                                     <form wire:submit="adjust({{ $variant->id }})" class="flex flex-wrap items-end gap-3">
                                         <div>
-                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-qty">New quantity</label>
+                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-qty">{{ __('inventories.new_quantity') }}</label>
                                             <input id="adjust-qty" type="number" min="0" class="edz-input edz-input--sm"
                                                    wire:model="adjust_quantity" placeholder="{{ $variant->stock }}">
                                             @error('adjust_quantity')
@@ -218,12 +218,12 @@ $adjust = function (ProductVariant $variant): void {
                                             @enderror
                                         </div>
                                         <div class="min-w-48">
-                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-reason">Reason</label>
+                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-reason">{{ __('inventories.reason') }}</label>
                                             <input id="adjust-reason" type="text" maxlength="255" class="edz-input edz-input--sm"
-                                                   wire:model="adjust_reason" placeholder="Optional">
+                                                   wire:model="adjust_reason" placeholder="{{ __('inventories.reason_placeholder') }}">
                                         </div>
-                                        <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Adjust</button>
-                                        <span class="text-xs text-ink-muted">Current stock: {{ $variant->stock }}</span>
+                                         <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('inventories.adjust_btn') }}</button>
+                                        <span class="text-xs text-ink-muted">{{ __('inventories.current_stock', ['count' => $variant->stock]) }}</span>
                                     </form>
                                 </td>
                             </tr>
@@ -231,8 +231,8 @@ $adjust = function (ProductVariant $variant): void {
                     @empty
                         <tr>
                             <td colspan="5" class="px-4 py-16 text-center">
-                                <p class="text-sm font-medium text-ink-soft">No inventory found</p>
-                                <p class="mt-1 text-sm text-ink-muted">Try adjusting your search.</p>
+                                <p class="text-sm font-medium text-ink-soft">{{ __('inventories.no_inventory') }}</p>
+                                <p class="mt-1 text-sm text-ink-muted">{{ __('inventories.try_adjusting') }}</p>
                             </td>
                         </tr>
                     @endforelse
