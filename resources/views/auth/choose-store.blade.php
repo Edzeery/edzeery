@@ -6,12 +6,13 @@
 
             {{-- Store Usage --}}
             @php
-                $subscription = auth()->user()->latestSubscription();
+                $user = auth()->user();
+                $subscription = $user->latestSubscription();
                 $featureService = app(\App\Domains\Plan\Services\FeatureUsageService::class);
                 $storesFeature = $subscription?->plan?->features?->firstWhere('slug', 'stores_max');
                 $maxStores = $subscription?->plan?->getFeatureValue('stores_max');
                 $consumption = $storesFeature ? (int) $featureService->getConsumption($subscription, $storesFeature->id) : 0;
-                $storeCount = auth()->user()->stores()->count();
+                $storeCount = $stores->count();
                 $effectiveUsage = max($consumption, $storeCount);
                 $isUnlimited = $maxStores === 'unlimited';
                 $canCreate = $subscription ? $featureService->canUse($subscription, 'stores_max') : false;
@@ -55,8 +56,8 @@
             {{-- Stores List --}}
             <div class="space-y-3">
 
-                @foreach ($memberships as $membership)
-                    <form method="POST" action="{{ route('choose-store.select', $membership) }}">
+                @foreach ($stores as $item)
+                    <form method="POST" action="{{ route('choose-store.select', $item->store) }}">
                         @csrf
 
                         <button type="submit"
@@ -71,47 +72,30 @@
                             {{-- Store Info --}}
                             <div class="text-left space-y-1">
                                 <div class="font-semibold text-ink">
-                                    {{ $membership->store->name }}
+                                    {{ $item->store->name }}
                                 </div>
 
-                                <div class="text-xs text-neutral-soft dark:text-dark-soft">
-                                    @php
-                                        $role = in_array(
-                                            $membership->user?->merchantRole->first()->name,
-                                            App\Enums\Platform\UserRoleEnum::values(),
-                                        )
-                                            ? App\Enums\Platform\UserRoleEnum::from(
-                                                $membership->user?->merchantRole->first()->name,
-                                            )
-                                            : App\Enums\Store\StoreRoleEnum::from(
-                                                $membership->user?->merchantRole->first()->name,
-                                            );
-
-                                    @endphp
-
-                                    <x-role-badge :role="$role" />
-
+                                <div class="text-xs">
+                                    <x-role-badge :role="$item->role" />
                                 </div>
 
-                                <x-status-badge  domain="general" :status="$membership->store?->currentStatus()->getLabel()" />
+                                <x-status-badge domain="general" :status="$item->store->currentStatus()->getLabel()" />
 
                             </div>
 
                             {{-- Subscription --}}
                             <div class="text-right space-y-1">
                                 <div class="font-semibold text-ink">
-                                    {{ $membership->user->latestSubscription()?->plan?->name }}
+                                    {{ $item->subscription?->plan?->name ?? '—' }}
                                 </div>
 
                                 @php
-                                    $status =
-                                        $membership->user->latestSubscription()?->status ??
-                                        App\Enums\SubscriptionPayment\StatusSubscriptionEnum::PENDING;
+                                    $subStatus = $item->subscription?->status
+                                        ?? App\Enums\SubscriptionPayment\StatusSubscriptionEnum::PENDING;
                                 @endphp
 
-                                <div class="text-xs px-2 py-1 rounded-full {{ $status->css() }}">
-                                    
-                                    <x-status-badge  domain="subscription"  status="{{$status?->getLabel()}}" />
+                                <div class="text-xs">
+                                    <x-status-badge domain="general" :status="$subStatus->getLabel()" />
                                 </div>
                             </div>
 

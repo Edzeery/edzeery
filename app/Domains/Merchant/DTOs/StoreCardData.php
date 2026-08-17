@@ -9,7 +9,7 @@ use App\Enums\Store\StoreStatusEnum;
 final class StoreCardData
 {
     public function __construct(
-        public readonly string $membershipId,
+        public readonly string $storeId,
         public readonly UserRoleEnum|StoreRoleEnum $membershipRole,
         public readonly string $storeName,
         public readonly ?string $storeLogo,
@@ -22,10 +22,10 @@ final class StoreCardData
     public function toArray(): array
     {
         return [
-            'membership_id' => $this->membershipId,
+            'store_id' => $this->storeId,
             'membership_role' => $this->membershipRole,
             'store_name' => $this->storeName,
-            'store_logo' => $this->storeLogo ,
+            'store_logo' => $this->storeLogo,
             'plan_name' => $this->planName,
             'store_status' => $this->storeStatus,
             'members_count' => $this->membersCount,

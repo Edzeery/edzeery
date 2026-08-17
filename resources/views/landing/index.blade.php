@@ -1,6 +1,10 @@
 <x-layouts.landing-layout>
     @include('landing.sections.hero')
+    @include('landing.sections.social-proof')
     @include('landing.sections.services')
+    @include('landing.sections.how-it-works')
     @include('landing.sections.plans')
     @include('landing.sections.payments')
+    @include('landing.sections.faq')
+    @include('landing.sections.final-cta')
 </x-layouts.landing-layout>

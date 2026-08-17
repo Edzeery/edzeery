@@ -66,7 +66,7 @@ if (!function_exists('user_setting')) {
 }
 
 
-if (!function_exists('membershipRoles')) {
+if (!function_exists('membershipRole')) {
     function membershipRole()
     {
         return currentMembership()->membershipRole()->name;

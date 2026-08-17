@@ -80,6 +80,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/choose-store', [ChooseStoreController::class, 'index'])
         ->name('choose-store');
 
-    Route::post('/choose-store/{membership}', [ChooseStoreController::class, 'select'])
+    Route::post('/choose-store/{store:slug}', [ChooseStoreController::class, 'select'])
         ->name('choose-store.select');
 });

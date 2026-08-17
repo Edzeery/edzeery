@@ -20,6 +20,7 @@ with([
     'canViewVariants' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
     'canViewInventories' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
     'canViewStockAlerts' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
+    'canViewDebts' => canStore(StorePermissionEnum::FINANCE_DEBT_VIEW->value),
 ]);
 ?>
 
@@ -136,6 +137,18 @@ with([
                 <x-edz.icon name="cart" class="edz-sidebar__icon" />
                 <span class="edz-sidebar__label">Orders</span>
             </a>
+
+            @if ($canViewDebts)
+                @php
+                    $debtsActive = request()->routeIs('merchant.debts.*');
+                    $debtsHref = $store ? route('merchant.debts.index', $store) : '#';
+                @endphp
+                <a href="{{ $debtsHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($debtsActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="credit-card" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>
+                </a>
+            @endif
 
             <a href="#" class="edz-sidebar__link opacity-50">
                 <x-edz.icon name="settings" class="edz-sidebar__icon" />

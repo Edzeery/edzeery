@@ -2,42 +2,97 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\Store\StoreRoleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Support\StoreContext;
-use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Request;
 
 class ChooseStoreController extends Controller
 {
     public function index()
     {
-        $memberships = auth()->user()
-            ->storeMemberships()
+        $user = auth()->user();
+
+        // 1) Stores owned by the user
+        $ownedStoreIds = Store::where('user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        // 2) Stores where user has an active membership (team member)
+        $memberStoreIds = StoreMembership::where('user_id', $user->id)
             ->where('is_active', true)
-            ->with('store')
-            ->get();
+            ->pluck('store_id');
 
-        abort_if($memberships->isEmpty(), 403);
+        // 3) Merge + deduplicate
+        $storeIds = $ownedStoreIds->merge($memberStoreIds)->unique();
 
-        return view('auth.choose-store', compact('memberships'));
+        abort_if($storeIds->isEmpty(), 403);
+
+        // 4) Build a clean collection: store + role + membership
+        $stores = Store::whereIn('id', $storeIds)
+            ->with(['owner', 'settings'])
+            ->get()
+            ->map(function (Store $store) use ($user, $memberStoreIds) {
+                $isOwner = $store->user_id === $user->id;
+                $isMember = $memberStoreIds->contains($store->id);
+
+                // Determine role: owner takes priority
+                $role = $isOwner
+                    ? StoreRoleEnum::OWNER
+                    : ($isMember
+                        ? $this->getMembershipRole($user, $store)
+                        : StoreRoleEnum::STAFF);
+
+                // Subscription comes from the store OWNER, not the current user
+                $subscription = $store->owner?->latestSubscription();
+
+                return (object) [
+                    'store' => $store,
+                    'role' => $role,
+                    'subscription' => $subscription,
+                ];
+            });
+
+        return view('auth.choose-store', ['stores' => $stores]);
     }
 
-    public function select(StoreMembership $membership)
+    public function select(Store $store)
     {
-        abort_unless(
-            $membership->user_id === auth()->id(),
-            403
-        );
+        $user = auth()->user();
 
-        session(['current_store_id' => $membership->store_id]);
+        // Must be owner OR active member
+        $isOwner = $store->user_id === $user->id;
+        $isMember = StoreMembership::where('store_id', $store->id)
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->exists();
 
-        app(StoreContext::class)->set($membership->store);
+        abort_unless($isOwner || $isMember, 403);
 
-        Filament::setTenant($membership->store);
+        session(['current_store_id' => $store->id]);
 
-        return redirect(
-            Filament::getPanel('merchant')->getUrl($membership->store)
-        );
+        app(StoreContext::class)->set($store);
+
+        return redirect()->route('merchant.dashboard.index', ['store' => $store->slug]);
+    }
+
+    private function getMembershipRole($user, Store $store): StoreRoleEnum
+    {
+        // Try to resolve the role from Spatie permissions assigned to the user
+        // for this store context
+        $permissions = $user->getAllPermissions()->pluck('name')->toArray();
+
+        if (in_array('store.delete.final', $permissions)) {
+            return StoreRoleEnum::OWNER;
+        }
+        if (in_array('store.settings.sensitive', $permissions)) {
+            return StoreRoleEnum::ADMIN;
+        }
+        if (in_array('team.manage.own', $permissions)) {
+            return StoreRoleEnum::MANAGER;
+        }
+
+        return StoreRoleEnum::STAFF;
     }
 }

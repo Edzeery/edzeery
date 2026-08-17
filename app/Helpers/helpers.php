@@ -16,6 +16,7 @@ if (!function_exists('user')) {
         return Auth::check() ? auth()->user() : null;
     }
 }
+
 if (!function_exists('currentGuard')) {
 
     function currentGuard(): string

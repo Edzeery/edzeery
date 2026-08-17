@@ -10,6 +10,8 @@ use App\Observers\OrderObserver;
 use App\Observers\ProductObserver;
 use App\Observers\StoreObserver;
 use App\Observers\SubscriptionObserver;
+use App\Models\Finance\DebtPayment;
+use App\Observers\Finance\DebtPaymentObserver;
 use App\Support\StoreContext;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -60,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         Store::observe(StoreObserver::class);
         Product::observe(ProductObserver::class);
         Order::observe(OrderObserver::class);
+        DebtPayment::observe(DebtPaymentObserver::class);
 
         Paginator::useBootstrapFive();
 

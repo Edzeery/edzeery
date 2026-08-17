@@ -94,8 +94,18 @@ enum StorePermissionEnum: string
     | Delivery & Accounting
     |--------------------------------------------------------------------------
     */
-    case DELIVERY_PRICING_MANAGE = 'delivery.pricing.manage';
-    case ACCOUNTING_CONFIRM_TEAM = 'accounting.confirm.team'; // soon
+        case DELIVERY_PRICING_MANAGE = 'delivery.pricing.manage';
+        case ACCOUNTING_CONFIRM_TEAM = 'accounting.confirm.team'; // soon
+
+        /*
+    |--------------------------------------------------------------------------
+    | Finance / Debts
+    |--------------------------------------------------------------------------
+    */
+        case FINANCE_DEBT_VIEW   = 'finance.debt.view';
+        case FINANCE_DEBT_CREATE = 'finance.debt.create';
+        case FINANCE_DEBT_UPDATE = 'finance.debt.update';
+        case FINANCE_DEBT_DELETE = 'finance.debt.delete';
 
         /*
     |--------------------------------------------------------------------------

@@ -26,6 +26,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
+use phpDocumentor\Reflection\PseudoTypes\LowercaseString;
 use Spatie\Permission\Traits\HasRoles;
 
 
@@ -77,6 +78,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     }
     protected static function booted()
     {
+
         static::created(function (user $user) {
 
             // إنشاء اشتراك trial افتراضي
