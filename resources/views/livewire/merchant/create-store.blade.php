@@ -131,13 +131,13 @@ $createStore = function (): void {
 <div class="min-h-screen bg-surface-primary flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-2xl">
         <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-ink">Create your store</h1>
-            <p class="mt-1 text-ink-muted">Set up your online store in a few steps.</p>
+            <h1 class="text-2xl font-bold text-ink">{{ __('stores.create_your_store') }}</h1>
+            <p class="mt-1 text-ink-muted">{{ __('stores.setup_steps_hint') }}</p>
         </div>
 
         {{-- Steps indicator --}}
         <div class="mb-8 flex items-center justify-center gap-2">
-            @foreach ([1 => 'Info', 2 => 'Settings', 3 => 'SEO', 4 => 'Design'] as $s => $label)
+            @foreach ([1 => __('stores.step_info'), 2 => __('stores.step_settings'), 3 => __('stores.step_seo'), 4 => __('stores.step_design')] as $s => $label)
                 <button type="button" wire:click="$set('step', {{ $s }})"
                         class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition
                                {{ $step === $s ? 'bg-brand-600 text-white' : ($step > $s ? 'bg-success-100 text-success-700' : 'bg-surface-secondary text-ink-muted') }}">
@@ -160,17 +160,17 @@ $createStore = function (): void {
                 {{-- Step 1: Store Info --}}
                 @if ($step === 1)
                     <div class="space-y-4">
-                        <h2 class="text-lg font-semibold text-ink">Store Information</h2>
+                        <h2 class="text-lg font-semibold text-ink">{{ __('stores.store_information') }}</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Store Name</label>
-                                <input type="text" class="edz-input" wire:model.live="name" placeholder="My Store">
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.store_name') }}</label>
+                                <input type="text" class="edz-input" wire:model.live="name" placeholder="{{ __('stores.name_placeholder') }}">
                                 @error('name')
                                     <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                                 @enderror
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Slug</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.slug') }}</label>
                                 <input type="text" class="edz-input" wire:model="slug" readonly>
                                 @error('slug')
                                     <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -178,16 +178,16 @@ $createStore = function (): void {
                             </div>
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink">Description</label>
-                            <textarea class="edz-input" wire:model="description" rows="3" placeholder="Describe your store…"></textarea>
+                            <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.description') }}</label>
+                            <textarea class="edz-input" wire:model="description" rows="3" placeholder="{{ __('stores.description_placeholder') }}"></textarea>
                         </div>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Logo</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.logo') }}</label>
                                 <input type="file" class="edz-input" wire:model="logo" accept="image/*">
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Cover</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.cover') }}</label>
                                 <input type="file" class="edz-input" wire:model="cover" accept="image/*">
                             </div>
                         </div>
@@ -197,10 +197,10 @@ $createStore = function (): void {
                 {{-- Step 2: Settings --}}
                 @if ($step === 2)
                     <div class="space-y-4">
-                        <h2 class="text-lg font-semibold text-ink">General Settings</h2>
+                        <h2 class="text-lg font-semibold text-ink">{{ __('stores.general_settings') }}</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Currency</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.currency') }}</label>
                                 <select class="edz-select" wire:model="currency">
                                     <option value="DZD">DZD</option>
                                     <option value="USD">USD</option>
@@ -208,26 +208,26 @@ $createStore = function (): void {
                                 </select>
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Symbol</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.symbol') }}</label>
                                 <input type="text" class="edz-input" wire:model="currency_symbol">
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Language</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.language') }}</label>
                                 <select class="edz-select" wire:model="language">
-                                    <option value="ar">Arabic</option>
-                                    <option value="en">English</option>
-                                    <option value="fr">French</option>
+                                    <option value="ar">{{ __('stores.lang_arabic') }}</option>
+                                    <option value="en">{{ __('stores.lang_english') }}</option>
+                                    <option value="fr">{{ __('stores.lang_french') }}</option>
                                 </select>
                             </div>
                         </div>
                         <div class="flex items-center gap-6">
                             <label class="flex items-center gap-2 text-sm font-medium text-ink">
                                 <input type="checkbox" wire:model="inventory_tracking" class="h-4 w-4 rounded border-surface-border">
-                                Inventory Tracking
+                                {{ __('stores.inventory_tracking') }}
                             </label>
                             <label class="flex items-center gap-2 text-sm font-medium text-ink">
                                 <input type="checkbox" wire:model="guest_checkout" class="h-4 w-4 rounded border-surface-border">
-                                Guest Checkout
+                                {{ __('stores.guest_checkout') }}
                             </label>
                         </div>
                     </div>
@@ -236,18 +236,18 @@ $createStore = function (): void {
                 {{-- Step 3: SEO --}}
                 @if ($step === 3)
                     <div class="space-y-4">
-                        <h2 class="text-lg font-semibold text-ink">SEO</h2>
+                        <h2 class="text-lg font-semibold text-ink">{{ __('stores.seo') }}</h2>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink">Meta Title</label>
-                            <input type="text" class="edz-input" wire:model="meta_title" placeholder="My Store – Online Shopping">
+                            <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.meta_title') }}</label>
+                            <input type="text" class="edz-input" wire:model="meta_title" placeholder="{{ __('stores.meta_title_placeholder') }}">
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink">Meta Description</label>
-                            <textarea class="edz-input" wire:model="meta_description" rows="2" placeholder="Describe your store for search engines…"></textarea>
+                            <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.meta_description') }}</label>
+                            <textarea class="edz-input" wire:model="meta_description" rows="2" placeholder="{{ __('stores.meta_description_placeholder') }}"></textarea>
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink">Meta Keywords</label>
-                            <input type="text" class="edz-input" wire:model="meta_keywords" placeholder="shop, online, algeria">
+                            <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.meta_keywords') }}</label>
+                            <input type="text" class="edz-input" wire:model="meta_keywords" placeholder="{{ __('stores.meta_keywords_placeholder') }}">
                         </div>
                     </div>
                 @endif
@@ -255,25 +255,25 @@ $createStore = function (): void {
                 {{-- Step 4: Design --}}
                 @if ($step === 4)
                     <div class="space-y-4">
-                        <h2 class="text-lg font-semibold text-ink">Design</h2>
+                        <h2 class="text-lg font-semibold text-ink">{{ __('stores.design') }}</h2>
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Theme</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.theme') }}</label>
                                 <select class="edz-select" wire:model="theme">
-                                    <option value="default">Default</option>
+                                    <option value="default">{{ __('stores.default') }}</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Primary Color</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.primary_color') }}</label>
                                 <input type="color" class="h-10 w-full rounded border border-surface-border" wire:model="primary_color">
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">Secondary Color</label>
+                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.secondary_color') }}</label>
                                 <input type="color" class="h-10 w-full rounded border border-surface-border" wire:model="secondary_color">
                             </div>
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink">Font Family</label>
+                            <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.font_family') }}</label>
                             <select class="edz-select" wire:model="font_family">
                                 <option value="Cairo">Cairo</option>
                                 <option value="Roboto">Roboto</option>
@@ -286,14 +286,14 @@ $createStore = function (): void {
                 <div class="mt-6 flex items-center justify-between">
                     <div>
                         @if ($step > 1)
-                            <button type="button" class="edz-btn edz-btn--ghost" wire:click="prevStep">Back</button>
+                            <button type="button" class="edz-btn edz-btn--ghost" wire:click="prevStep">{{ __('buttons.back') }}</button>
                         @endif
                     </div>
                     <div>
                         @if ($step < 4)
-                            <button type="submit" class="edz-btn edz-btn--primary">Next</button>
+                            <button type="submit" class="edz-btn edz-btn--primary">{{ __('buttons.next') }}</button>
                         @else
-                            <button type="submit" class="edz-btn edz-btn--primary edz-btn--lg">Launch My Store</button>
+                            <button type="submit" class="edz-btn edz-btn--primary edz-btn--lg">{{ __('stores.launch_my_store') }}</button>
                         @endif
                     </div>
                 </div>
@@ -301,7 +301,7 @@ $createStore = function (): void {
         </div>
 
         <p class="mt-4 text-center text-sm text-ink-muted">
-            <a href="{{ route('choose-store') }}" class="text-brand-600 hover:underline">Back to store selection</a>
+            <a href="{{ route('choose-store') }}" class="text-brand-600 hover:underline">{{ __('stores.back_to_selection') }}</a>
         </p>
     </div>
 </div>

@@ -66,8 +66,8 @@ $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => 'OUT', 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => 'LOW', 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
+        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
+        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
         default => ['text' => 'IN', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
     };
 };
@@ -120,8 +120,11 @@ $save = function (): void {
         'cost_price' => ['nullable', 'numeric', 'min:0'],
     ]);
 
+    $product = Product::findOrFail($validated['product_id']);
+
     $data = [
         'product_id' => $validated['product_id'],
+        'name' => $product->name,
         'sku' => $validated['sku'],
         'price' => $validated['price'],
         'compare_price' => $validated['compare_price'],
@@ -180,7 +183,7 @@ $applyStock = function (ProductVariant $variant): void {
             auth()->user()
         );
 
-        session()->flash('merchant.saved', 'Stock adjusted successfully.');
+        session()->flash('merchant.saved', __('inventories.adjust_stock'));
     } catch (\Illuminate\Validation\ValidationException $e) {
         $this->addError('adjust_quantity', $e->getMessage());
     }
@@ -257,7 +260,7 @@ $deleteSelected = function (): void {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="variant-sku">SKU</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="variant-sku">{{ __('variants.sku') }}</label>
                         <input id="variant-sku" type="text" class="edz-input @error('sku') edz-input--error @enderror"
                                wire:model="sku" @disabled($editingId) placeholder="STORE-PRODUCT-SIZE">
                         @if (! $editingId)
@@ -271,7 +274,7 @@ $deleteSelected = function (): void {
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-price">Price</label>
+                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-price">{{ __('variants.price') }}</label>
                             <input id="variant-price" type="number" step="0.01" min="0" class="edz-input @error('price') edz-input--error @enderror"
                                    wire:model="price" placeholder="0.00">
                             @error('price')
@@ -280,13 +283,13 @@ $deleteSelected = function (): void {
                         </div>
 
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-compare">Compare at price</label>
+                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-compare">{{ __('variants.compare_price') }}</label>
                             <input id="variant-compare" type="number" step="0.01" min="0" class="edz-input"
                                    wire:model="compare_price" placeholder="0.00">
                         </div>
 
                         <div>
-                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-cost">Cost price</label>
+                            <label class="mb-1 block text-sm font-medium text-ink" for="variant-cost">{{ __('variants.cost_price') }}</label>
                             <input id="variant-cost" type="number" step="0.01" min="0" class="edz-input"
                                    wire:model="cost_price" placeholder="0.00">
                         </div>
@@ -318,10 +321,10 @@ $deleteSelected = function (): void {
 
         @if (! empty($selected))
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
-                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         wire:click="deleteSelected"
-                        wire:confirm="Delete the {{ count($selected) }} selected variants?">Delete</button>
+                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -334,14 +337,14 @@ $deleteSelected = function (): void {
                                    wire:model.live="select_all"
                                    aria-label="Select all">
                         </th>
-                        <th class="px-4 py-3 text-start font-semibold">Product</th>
-                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-start font-semibold">Price</th>
-                        <th class="px-4 py-3 text-start font-semibold">Compare</th>
-                        <th class="px-4 py-3 text-start font-semibold">Cost</th>
-                        <th class="px-4 py-3 text-start font-semibold">Stock</th>
-                        <th class="px-4 py-3 text-start font-semibold">Created</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.product') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.sku') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.price') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.compare_price') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.cost_price') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.stock') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('variants.created') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -367,19 +370,19 @@ $deleteSelected = function (): void {
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                            wire:click="toggleHistory({{ $variant->id }})">
-                                        {{ $historyId === $variant->id ? 'Hide history' : 'History' }}
+                                            wire:click="toggleHistory('{{ $variant->id }}')">
+                                        {{ $historyId === $variant->id ? __('buttons.close') : __('variants.history') }}
                                     </button>
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="toggleAdjust({{ $variant->id }})">Stock</button>
+                                                wire:click="toggleAdjust('{{ $variant->id }}')">{{ __('variants.adjust_stock') }}</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $variant->id }})">{{ __('buttons.edit') }}</button>
+                                                wire:click="beginEdit('{{ $variant->id }}')">{{ __('buttons.edit') }}</button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete({{ $variant->id }})"
-                                                wire:confirm="Delete variant &quot;{{ $variant->sku }}&quot;?">Delete</button>
+                                                wire:click="delete('{{ $variant->id }}')"
+                                                wire:confirm="Delete variant &quot;{{ $variant->sku }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>
@@ -388,9 +391,9 @@ $deleteSelected = function (): void {
                         @if ($adjustingId === $variant->id)
                             <tr class="bg-surface-secondary/40">
                                 <td colspan="9" class="px-4 py-4">
-                                    <form wire:submit="applyStock({{ $variant->id }})" class="flex flex-wrap items-end gap-3">
+                                    <form wire:submit="applyStock('{{ $variant->id }}')" class="flex flex-wrap items-end gap-3">
                                         <div>
-                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-qty">Quantity</label>
+                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-qty">{{ __('table.quantity') }}</label>
                                             <input id="adjust-qty" type="number" min="1" class="edz-input edz-input--sm"
                                                    wire:model="adjust_quantity" placeholder="1">
                                             @error('adjust_quantity')
@@ -398,9 +401,9 @@ $deleteSelected = function (): void {
                                             @enderror
                                         </div>
                                         <div>
-                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-type">Type</label>
+                                            <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-type">{{ __('table.type') }}</label>
                                             <select id="adjust-type" class="edz-select edz-input--sm" wire:model="adjust_type">
-                                                <option value="">Select type…</option>
+                                                <option value="">{{ __('product_options.select_type') }}</option>
                                                 @foreach ($this->manualTypes as $value => $label)
                                                     <option value="{{ $value }}" @selected($adjust_type === $value)>{{ $label }}</option>
                                                 @endforeach
@@ -409,8 +412,8 @@ $deleteSelected = function (): void {
                                                 <p class="mt-1 text-xs text-danger-600">{{ $message }}</p>
                                             @enderror
                                         </div>
-                                        <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Apply</button>
-                                        <span class="text-xs text-ink-muted">Current stock: {{ $variant->stock }}</span>
+                                        <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.apply') }}</button>
+                                        <span class="text-xs text-ink-muted">{{ __('inventories.current_stock', ['count' => $variant->stock]) }}</span>
                                     </form>
                                 </td>
                             </tr>
@@ -420,19 +423,19 @@ $deleteSelected = function (): void {
                             <tr class="bg-surface-secondary/40">
                                 <td colspan="9" class="px-4 py-4">
                                     @php $movements = $this->movements($variant); @endphp
-                                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">Stock history</p>
+                                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('variants.history') }}</p>
                                     @if ($movements->isEmpty())
-                                        <p class="text-sm text-ink-muted">No stock movements recorded.</p>
+                                        <p class="text-sm text-ink-muted">{{ __('variants.no_adjustments') }}</p>
                                     @else
                                         <div class="overflow-x-auto">
                                             <table class="w-full text-sm">
                                                 <thead>
 <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
-                                                        <th class="px-3 py-2 text-start font-semibold">Date</th>
-                                                        <th class="px-3 py-2 text-start font-semibold">Type</th>
-                                                        <th class="px-3 py-2 text-start font-semibold">Qty</th>
-                                                        <th class="px-3 py-2 text-start font-semibold">After</th>
-                                                        <th class="px-3 py-2 text-start font-semibold">By</th>
+                                                        <th class="px-3 py-2 text-start font-semibold">{{ __('table.date') }}</th>
+                                                        <th class="px-3 py-2 text-start font-semibold">{{ __('table.type') }}</th>
+                                                        <th class="px-3 py-2 text-start font-semibold">{{ __('table.qty') }}</th>
+                                                        <th class="px-3 py-2 text-start font-semibold">{{ __('table.after') }}</th>
+                                                        <th class="px-3 py-2 text-start font-semibold">{{ __('table.by') }}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -451,7 +454,7 @@ $deleteSelected = function (): void {
                                                                 {{ $movement->type->isDecrease() ? '-' : '+' }}{{ $movement->quantity }}
                                                             </td>
                                                             <td class="px-3 py-2 text-ink-soft">{{ $movement->balance_after }}</td>
-                                                            <td class="px-3 py-2 text-xs text-ink-muted">{{ $movement->user?->name ?? 'System' }}</td>
+                                                            <td class="px-3 py-2 text-xs text-ink-muted">{{ $movement->user?->name ?? __('general.system') }}</td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>

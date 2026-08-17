@@ -3,47 +3,47 @@
         console.log('Saving profile...');
     }
 }">
-    <div class="p-5 mb-6 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
+    <div class="p-5 mb-6 border border-surface-200 rounded-2xl dark:border-surface-800 lg:p-6">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-                <h4 class="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-6">
-                    Personal Information
+                <h4 class="text-lg font-semibold text-ink-800 dark:text-white/90 lg:mb-6">
+                    {{ __('profile.personal_information') }}
                 </h4>
 
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
                     <div>
-                        <p class="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                        <p class="mb-2 text-xs leading-normal text-ink-500 dark:text-ink-400">
                             {{ __('titles.full_name') }}</p>
-                        <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        <p class="text-sm font-medium text-ink-800 dark:text-white/90">
                             {{ $profile?->fullName ?? $profile->name }}</p>
                     </div>
 
                     <div>
-                        <p class="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                        <p class="mb-2 text-xs leading-normal text-ink-500 dark:text-ink-400">
                             {{ __('titles.email') }}
                         </p>
-                        <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        <p class="text-sm font-medium text-ink-800 dark:text-white/90">
                             {{ $profile?->email }}
                         </p>
                     </div>
 
                     <div>
-                        <p class="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400"> {{ __('titles.phone') }}
+                        <p class="mb-2 text-xs leading-normal text-ink-500 dark:text-ink-400"> {{ __('titles.phone') }}
                         </p>
-                        <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        <p class="text-sm font-medium text-ink-800 dark:text-white/90">
                             {{ empty($profile->phone) ? __('general.not_available') : $profile->phone }}</p>
                     </div>
 
                     <div>
-                        <p class="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">{{ __('titles.role') }}
+                        <p class="mb-2 text-xs leading-normal text-ink-500 dark:text-ink-400">{{ __('titles.role') }}
                         </p>
-                        <p class="text-sm font-medium text-gray-800 dark:text-white/90"> <x-role-badge
+                        <p class="text-sm font-medium text-ink-800 dark:text-white/90"> <x-role-badge
                                 :role="$profile?->membershipRole" /></p>
                     </div>
                 </div>
             </div>
             <button @click="$dispatch('open-profile-info-modal')"
-                class="shadow-theme-xs flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 lg:inline-flex lg:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                class="shadow-theme-xs flex w-full items-center justify-center gap-2 rounded-full border border-surface-300 bg-white px-4 py-3 text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 lg:inline-flex lg:w-auto dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                 <svg class="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"

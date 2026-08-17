@@ -6,11 +6,7 @@ if (! function_exists('getCurrentPanel')) {
 
     function getCurrentPanel(): string
     {
-        return  user()->isSuperAdmin() || user()->isAdmin()
-            ? Filament\Facades\Filament::getPanel('admin')->getUrl()
-            : (user()->isMerchant()
-                ?  route('account.merchant.dashboard')
-                : Filament\Facades\Filament::getPanel('merchant')->getUrl());
+        return route('choose-store');
     }
 }
 

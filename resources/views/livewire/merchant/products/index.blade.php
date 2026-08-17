@@ -152,15 +152,15 @@ $deactivateSelected = function (): void {
             <div>
                 <select class="edz-select" wire:model.live="is_active">
                     <option value="">{{ __('products.all_statuses') }}</option>
-                    <option value="1">Active</option>
-                    <option value="0">Inactive</option>
+                    <option value="1">{{ __('products.active') }}</option>
+                    <option value="0">{{ __('products.inactive') }}</option>
                 </select>
             </div>
             <div>
                 <select class="edz-select" wire:model.live="is_featured">
                     <option value="">{{ __('products.all_featured') }}</option>
-                    <option value="1">Featured</option>
-                    <option value="0">Not featured</option>
+                    <option value="1">{{ __('products.featured') }}</option>
+                    <option value="0">{{ __('products.not_featured') }}</option>
                 </select>
             </div>
             <div>
@@ -170,12 +170,12 @@ $deactivateSelected = function (): void {
 
         @if (! empty($selected))
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
-                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm" wire:click="activateSelected">{{ __('products.activate') }}</button>
                 <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm" wire:click="deactivateSelected">{{ __('products.deactivate') }}</button>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         wire:click="deleteSelected"
-                        wire:confirm="Delete the {{ count($selected) }} selected products?">Delete</button>
+                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -188,14 +188,14 @@ $deactivateSelected = function (): void {
                                    wire:model.live="select_all"
                                    aria-label="Select all">
                         </th>
-                        <th class="px-4 py-3 text-start font-semibold">Product</th>
-                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-start font-semibold">Variants</th>
-                        <th class="px-4 py-3 text-start font-semibold">Brand</th>
-                        <th class="px-4 py-3 text-start font-semibold">Category</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-start font-semibold">Created</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.product') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.sku') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('products.variants_label') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.brand') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.category') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('general.status') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.created') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -235,15 +235,15 @@ $deactivateSelected = function (): void {
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <a href="{{ route('merchant.products.show', [currentStore(), $product]) }}" wire:navigate
-                                       class="edz-btn edz-btn--ghost edz-btn--sm">View</a>
+                                       class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('buttons.view') }}</a>
                                     @if ($this->canUpdate())
                                         <a href="{{ route('merchant.products.edit', [currentStore(), $product]) }}" wire:navigate
-                                           class="edz-btn edz-btn--ghost edz-btn--sm">Edit</a>
+                                           class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('buttons.edit') }}</a>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete({{ $product->id }})"
-                                                wire:confirm="Delete &quot;{{ $product->name }}&quot;?">Delete</button>
+                                                wire:click="delete('{{ $product->id }}')"
+                                                wire:confirm="Delete &quot;{{ $product->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>
@@ -255,7 +255,7 @@ $deactivateSelected = function (): void {
                                 <p class="mt-1 text-sm text-ink-muted">{{ __('products.try_adjusting') }}</p>
                                 @if ($this->canCreate())
                                     <a href="{{ route('merchant.products.create', currentStore()) }}" wire:navigate
-                                       class="edz-btn edz-btn--primary edz-btn--sm mt-4">New product</a>
+                                       class="edz-btn edz-btn--primary edz-btn--sm mt-4">{{ __('products.new_product') }}</a>
                                 @endif
                             </td>
                         </tr>

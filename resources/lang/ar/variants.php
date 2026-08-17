@@ -13,6 +13,8 @@ return [
     'selected_count' => ':count محدد',
     'product' => 'المنتج',
     'select_product' => 'اختر المنتج…',
+    'name' => 'اسم المتغير',
+    'name_placeholder' => 'مثال: أحمر – كبير',
     'sku' => 'الكود',
     'sku_placeholder' => 'STORE-PRODUCT-SIZE',
     'price' => 'السعر',

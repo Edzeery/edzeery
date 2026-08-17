@@ -40,8 +40,8 @@ $alerts = computed(function () {
 
 $statusBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => 'OUT', 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => 'LOW', 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
+        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
+        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
         default => ['text' => 'IN', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
     };
 };
@@ -74,12 +74,12 @@ $statusBadge = function (ProductVariant $variant): array {
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
-                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-start font-semibold">Product</th>
-                        <th class="px-4 py-3 text-start font-semibold">Stock</th>
-                        <th class="px-4 py-3 text-start font-semibold">Threshold</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('stock_alerts.sku') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('stock_alerts.product') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('stock_alerts.stock_col') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('stock_alerts.threshold') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('stock_alerts.status') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('stock_alerts.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>

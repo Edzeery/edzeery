@@ -13,6 +13,8 @@ return [
     'selected_count' => ':count seleccionado(s)',
     'product' => 'Producto',
     'select_product' => 'Seleccionar producto…',
+    'name' => 'Nombre de variante',
+    'name_placeholder' => 'ej. Rojo – Grande',
     'sku' => 'SKU',
     'sku_placeholder' => 'STORE-PRODUCT-SIZE',
     'price' => 'Precio',

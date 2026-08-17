@@ -1,10 +1,9 @@
-import Alpine from "alpinejs";
 import "./bootstrap.js";
 
-window.Alpine = Alpine;
-
 document.addEventListener("alpine:init", () => {
-    const theme = Alpine.store("theme", {
+    const Alpine = window.Alpine;
+
+    Alpine.store("theme", {
         theme:
             localStorage.getItem("edz-theme") ||
             (window.matchMedia?.("(prefers-color-scheme: dark)").matches
@@ -23,8 +22,8 @@ document.addEventListener("alpine:init", () => {
         },
     });
 
-    // Shared shell state so the topbar trigger can open the sidebar
-    // even though both are separate Livewire components.
+    Alpine.store("theme").apply();
+
     Alpine.store("shell", {
         open: false,
         collapsed: localStorage.getItem("edz-sidebar-collapsed") === "1",
@@ -42,8 +41,4 @@ document.addEventListener("alpine:init", () => {
             );
         },
     });
-
-    theme.apply();
 });
-
-Alpine.start();

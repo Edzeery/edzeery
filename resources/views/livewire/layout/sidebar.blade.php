@@ -76,6 +76,26 @@ with([
             <div class="edz-sidebar__group">
                 <p class="edz-sidebar__group-title">{{ __('merchant_panel.store_management') }}</p>
 
+                @php
+                    $active = request()->routeIs('merchant.dashboard');
+                    $href = $store ? route('merchant.dashboard', $store) : '#';
+                @endphp
+                <a href="{{ $href }}" wire:navigate
+                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('titles.dashboard') }}</span>
+                </a>
+
+                @php
+                    $active = request()->routeIs('merchant.stores.*');
+                    $href = route('merchant.stores.index');
+                @endphp
+                <a href="{{ $href }}" wire:navigate
+                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('titles.stores') }}</span>
+                </a>
+
                 @if ($canViewProducts)
                     @php
                         $active = request()->routeIs('merchant.products.*');
@@ -146,6 +166,16 @@ with([
                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="cart" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.inventories') }}</span>
+                    </a>
+
+                    @php
+                        $active = request()->routeIs('merchant.inventory-movements.*');
+                        $href = $store ? route('merchant.inventory-movements.index', $store) : '#';
+                    @endphp
+                    <a href="{{ $href }}" wire:navigate
+                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        <x-edz.icon name="refresh" class="edz-sidebar__icon" />
+                        <span class="edz-sidebar__label">{{ __('titles.inventory_movements') }}</span>
                     </a>
                 @endif
 

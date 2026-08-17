@@ -242,22 +242,22 @@ $allPermissions = computed(function () {
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">{{ $editingId ? 'Edit member' : 'Add member' }}</h2>
-                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update team member details' : 'Invite or add a new team member' }}</p>
+                    <h2 class="edz-card__title">{{ $editingId ? __('teams.update_member') : __('teams.add_member') }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? __('teams.update_member') : __('teams.invite_member') }}</p>
                 </div>
             </div>
 
             <form wire:submit="{{ $editingId ? 'saveEdit' : 'saveNew' }}" class="space-y-4 p-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-name">Name</label>
-                        <input id="tm-name" type="text" class="edz-input" wire:model="name" placeholder="Full name">
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-name">{{ __('teams.name') }}</label>
+                        <input id="tm-name" type="text" class="edz-input" wire:model="name" placeholder="{{ __('teams.name') }}">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-email">Email</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-email">{{ __('teams.email') }}</label>
                         <input id="tm-email" type="email" class="edz-input" wire:model="email" placeholder="member@example.com">
                         @error('email')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -267,16 +267,16 @@ $allPermissions = computed(function () {
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-password">Password{{ $editingId ? ' (leave blank to keep)' : '' }}</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-password">{{ __('table.password') }}{{ $editingId ? ' (leave blank to keep)' : '' }}</label>
                         <input id="tm-password" type="password" class="edz-input" wire:model="password" placeholder="{{ $editingId ? '••••••••' : 'Minimum 8 characters' }}">
                         @error('password')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">Role</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">{{ __('teams.role') }}</label>
                         <select id="tm-role" class="edz-select" wire:model.live="store_role">
-                            <option value="">Select role…</option>
+                            <option value="">{{ __('teams.all_roles') }}</option>
                             @foreach (collect(StoreRoleEnum::cases())->reject(fn ($r) => $r === StoreRoleEnum::OWNER) as $role)
                                 <option value="{{ $role->value }}">{{ $role->label() }}</option>
                             @endforeach
@@ -329,21 +329,21 @@ $allPermissions = computed(function () {
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 text-sm font-medium text-ink">
                         <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
-                        Active
+                        {{ __('general.active') }}
                     </label>
                 </div>
 
                 @if ($this->store_role && $this->store_role !== 'staff' && $this->allPermissions->isNotEmpty())
                     <div class="border-t border-surface-border pt-4">
                         <div class="mb-3 flex items-center gap-2">
-                            <span class="text-sm font-medium text-ink">Permissions</span>
+                            <span class="text-sm font-medium text-ink">{{ __('titles.permissions') }}</span>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                     wire:click="$set('permissions', {{ json_encode(\App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role))) }})">
-                                Select All
+                                {{ __('buttons.select_all') }}
                             </button>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600"
                                     wire:click="$set('permissions', [])">
-                                Deselect All
+                                {{ __('buttons.unselect_all') }}
                             </button>
                         </div>
 
@@ -364,9 +364,9 @@ $allPermissions = computed(function () {
                 @endif
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                            wire:click="{{ $editingId ? 'closeEdit' : 'closeCreate' }}">Cancel</button>
+                            wire:click="{{ $editingId ? 'closeEdit' : 'closeCreate' }}">{{ __('buttons.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -390,12 +390,12 @@ $allPermissions = computed(function () {
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
-                        <th class="px-4 py-3 text-start font-semibold">Name</th>
-                        <th class="px-4 py-3 text-start font-semibold">Email</th>
-                        <th class="px-4 py-3 text-start font-semibold">Role</th>
-                        <th class="px-4 py-3 text-start font-semibold">Location</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('teams.name') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('teams.email') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('teams.role') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.address') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('teams.status') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -419,14 +419,14 @@ $allPermissions = computed(function () {
                                 <div class="flex items-center justify-end gap-1">
                                     @if ($this->canModify($membership))
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="openEdit({{ $membership->id }})">Edit</button>
+                                                wire:click="openEdit('{{ $membership->id }}')">{{ __('buttons.edit') }}</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="toggleActive({{ $membership->id }})">
-                                            {{ $membership->is_active ? 'Deactivate' : 'Activate' }}
+                                                wire:click="toggleActive('{{ $membership->id }}')">
+                                            {{ $membership->is_active ? __('buttons.deactivate') : __('buttons.activate') }}
                                         </button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="remove({{ $membership->id }})"
-                                                wire:confirm="Remove this team member?">Remove</button>
+                                                wire:click="remove('{{ $membership->id }}')"
+                                                wire:confirm="{{ __('teams.remove_member') }}">{{ __('buttons.remove') }}</button>
                                     @endif
                                 </div>
                             </td>

@@ -101,5 +101,8 @@ return [
     'updated_at' => 'آخر تحديث',
     'value' => 'Value',
     'withdraw' => 'السحب',
+    'confirm_delete_selected' => 'حذف العناصر المحددة (:count)؟',
+    'selected_count' => ':count محدد',
+    'system' => 'النظام',
     'yes' => 'نعم',
 ];

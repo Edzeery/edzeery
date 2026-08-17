@@ -33,7 +33,7 @@ class LoginRedirectService
             $membership = $activeMemberships->first();
             session(['current_store_id' => $membership->store_id]);
 
-            return route('merchant.dashboard', $membership->store);
+            return route('merchant.dashboard', ['store' => $membership->store->slug]);
         }
 
         // Multiple stores → choose

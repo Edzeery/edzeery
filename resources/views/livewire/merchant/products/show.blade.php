@@ -64,7 +64,7 @@ $delete = function (Product $product): void {
             @endif
             @if ($this->canDelete())
                 <button type="button" class="edz-btn edz-btn--danger"
-                        wire:click="delete({{ $product->id }})"
+                        wire:click="delete('{{ $product->id }}')"
                         wire:confirm="Delete &quot;{{ $product->name }}&quot;? This cannot be undone.">{{ __('products.delete') }}</button>
             @endif
         </div>

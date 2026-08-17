@@ -99,5 +99,8 @@ return [
     'updated_at' => 'Actualizado el',
     'value' => 'Valor',
     'withdraw' => 'Retirar',
+    'confirm_delete_selected' => '¿Eliminar los :count elementos seleccionados?',
+    'selected_count' => ':count seleccionado(s)',
+    'system' => 'Sistema',
     'yes' => 'Sí',
 ];

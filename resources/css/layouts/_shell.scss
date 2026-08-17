@@ -51,6 +51,17 @@
   flex-wrap: wrap;
 }
 
+// --- Desktop: offset main content by sidebar width ---
+@media (min-width: 1024px) {
+  .edz-shell__main {
+    margin-inline-start: var(--edz-sidebar-width);
+  }
+
+  .edz-shell--collapsed .edz-shell__main {
+    margin-inline-start: var(--edz-sidebar-collapsed);
+  }
+}
+
 // Off-canvas overlay (mobile drawer).
 .edz-overlay {
   position: fixed;

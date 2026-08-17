@@ -74,7 +74,7 @@ class ChooseStoreController extends Controller
 
         app(StoreContext::class)->set($store);
 
-        return redirect()->route('merchant.dashboard.index', ['store' => $store->slug]);
+        return redirect()->route('merchant.dashboard', ['store' => $store->slug]);
     }
 
     private function getMembershipRole($user, Store $store): StoreRoleEnum

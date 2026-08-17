@@ -212,9 +212,9 @@ $deleteSelected = function (): void {
             <form wire:submit="save" class="space-y-4 p-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="option-name">Name</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="option-name">{{ __('product_options.name') }}</label>
                         <input id="option-name" type="text" class="edz-input @error('name') edz-input--error @enderror"
-                               wire:model="name" placeholder="e.g. Color">
+                               wire:model="name" placeholder="{{ __('product_options.option_name') }}">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -259,10 +259,10 @@ $deleteSelected = function (): void {
 
         @if (! empty($selected))
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
-                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         wire:click="deleteSelected"
-                        wire:confirm="Delete the {{ count($selected) }} selected options?">Delete</button>
+                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -278,7 +278,7 @@ $deleteSelected = function (): void {
                         <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.name') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.type') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('product_options.values') }}</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -295,16 +295,16 @@ $deleteSelected = function (): void {
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                            wire:click="toggleActive({{ $option->id }})">
+                                            wire:click="toggleActive('{{ $option->id }}')">
                                         {{ $activeOptionId === $option->id ? __('product_options.hide_values') : __('product_options.show_values') }}
                                     </button>
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $option->id }})">{{ __('buttons.edit') }}</button>
+                                                wire:click="beginEdit('{{ $option->id }}')">{{ __('buttons.edit') }}</button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete({{ $option->id }})"
+                                                wire:click="delete('{{ $option->id }}')"
                                                 wire:confirm="Delete &quot;{{ $option->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
@@ -318,13 +318,13 @@ $deleteSelected = function (): void {
                                     <div class="flex flex-wrap items-center gap-2">
                                         @if (strtolower($option->name) === 'size' && $this->canUpdate())
                                             <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm"
-                                                    wire:click="generateSizes({{ $option->id }})">Generate sizes (25–45)</button>
+                                                    wire:click="generateSizes('{{ $option->id }}')">{{ __('product_options.generate_sizes') }}</button>
                                         @endif
                                         @if ($this->canUpdate())
-                                            <form wire:submit="addValue({{ $option->id }})" class="flex items-center gap-2">
+                                            <form wire:submit="addValue('{{ $option->id }}')" class="flex items-center gap-2">
                                                 <input type="text" class="edz-input edz-input--sm" placeholder="{{ __('product_options.add_value_placeholder') }}"
                                                        wire:model="newValue">
-                                                <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Add</button>
+                                                <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.add') }}</button>
                                             </form>
                                         @endif
                                     </div>
@@ -333,10 +333,10 @@ $deleteSelected = function (): void {
                                         @forelse ($values as $value)
                                             <span class="inline-flex items-center gap-2 rounded-full border border-surface-border bg-surface px-3 py-1 text-sm text-ink">
                                                 {{ $value->value }}
-                                                <span class="text-xs text-ink-muted">{{ $value->variants_count }} variant{{ $value->variants_count === 1 ? '' : 's' }}</span>
+                                                <span class="text-xs text-ink-muted">{{ trans_choice('product_options.variant_count', $value->variants_count, ['count' => $value->variants_count]) }}</span>
                                                 @if ($this->canDelete() && ! $value->variants()->exists())
                                                     <button type="button" class="text-danger-600 hover:text-danger-700"
-                                                            wire:click="deleteValue({{ $value->id }})"
+                                                            wire:click="deleteValue('{{ $value->id }}')"
                                                             wire:confirm="Delete value &quot;{{ $value->value }}&quot;?">×</button>
                                                 @endif
                                             </span>

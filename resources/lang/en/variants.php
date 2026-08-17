@@ -13,6 +13,8 @@ return [
     'selected_count' => ':count selected',
     'product' => 'Product',
     'select_product' => 'Select product…',
+    'name' => 'Variant Name',
+    'name_placeholder' => 'e.g. Red – Large',
     'sku' => 'SKU',
     'sku_placeholder' => 'STORE-PRODUCT-SIZE',
     'price' => 'Price',

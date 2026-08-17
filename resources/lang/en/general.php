@@ -101,5 +101,8 @@ return [
     'updated_at' => 'Updated At',
     'value' => 'Value',
     'withdraw' => 'Withdraw',
+    'confirm_delete_selected' => 'Delete the :count selected items?',
+    'selected_count' => ':count selected',
+    'system' => 'System',
     'yes' => 'Yes',
 ];

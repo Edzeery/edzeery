@@ -161,7 +161,7 @@ $deleteSelected = function (): void {
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="brand-name">{{ __('brands.brand_name') }}</label>
-                        <input id="brand-name" type="text" class="edz-input" wire:model="name" placeholder="Brand name">
+                        <input id="brand-name" type="text" class="edz-input" wire:model="name" placeholder="{{ __('brands.brand_name') }}">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -169,7 +169,7 @@ $deleteSelected = function (): void {
 
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="brand-slug">{{ __('brands.slug') }}</label>
-                        <input id="brand-slug" type="text" class="edz-input" wire:model="slug" placeholder="brand-slug">
+                        <input id="brand-slug" type="text" class="edz-input" wire:model="slug" placeholder="{{ __('brands.brand_slug') }}">
                         @error('slug')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -225,10 +225,10 @@ $deleteSelected = function (): void {
 
         @if (! empty($selected))
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
-                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         wire:click="deleteSelected"
-                        wire:confirm="Delete the {{ count($selected) }} selected brands?">Delete</button>
+                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -246,7 +246,7 @@ $deleteSelected = function (): void {
                         <th class="px-4 py-3 text-start font-semibold">{{ __('brands.slug') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('brands.status') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('brands.created') }}</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -270,15 +270,15 @@ $deleteSelected = function (): void {
                                 <div class="flex items-center justify-end gap-1">
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $brand->id }})">{{ __('buttons.edit') }}</button>
+                                                wire:click="beginEdit('{{ $brand->id }}')">{{ __('buttons.edit') }}</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="toggleActive({{ $brand->id }})">
+                                                wire:click="toggleActive('{{ $brand->id }}')">
                                             {{ $brand->is_active ? __('brands.deactivate') : __('brands.activate') }}
                                         </button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete({{ $brand->id }})"
+                                                wire:click="delete('{{ $brand->id }}')"
                                                 wire:confirm="Delete &quot;{{ $brand->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>

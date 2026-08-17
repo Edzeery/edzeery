@@ -11,8 +11,8 @@ class MenuHelper
                 'icon' => 'dashboard',
                 'name' => 'Dashboard',
                 'subItems' => [
-                    ['name' => 'Ecommerce', 'path' => route('account.merchant.dashboard')],
-                    ['name' => 'Stores', 'path' => route('account.merchant.stores')],
+                    ['name' => 'Ecommerce', 'path' => route('choose-store')],
+                    ['name' => 'Stores', 'path' => route('choose-store')],
                 ],
             ],
             [

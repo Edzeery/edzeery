@@ -14,6 +14,7 @@ return [
     'notifications' => 'Notifications',
     'payment_failed' => 'Échec du paiement ❌',
     'payment_success' => 'Paiement effectué avec succès ✅',
+    'password_updated' => 'Mot de passe mis à jour avec succès 🔑',
     'security_alert' => 'Alerte de sécurité : nouvelle connexion détectée 🔔',
     'settings_updated' => 'Paramètres mis à jour avec succès ⚙️',
     'transfer_success' => 'Transfert effectué avec succès 🔄',

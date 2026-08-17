@@ -167,7 +167,7 @@ $formatAmount = function (float $amount): string {
                                         </a>
                                     @endif
                                     @if ($canDelete())
-                                        <button wire:click="delete({{ $debt->id }})"
+                                        <button wire:click="delete('{{ $debt->id }}')"
                                                 wire:confirm="{{ __('finance.confirm_delete') }}"
                                                 class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
                                             <x-edz.icon name="trash" class="edz-btn__icon" />

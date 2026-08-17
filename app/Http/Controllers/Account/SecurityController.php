@@ -15,6 +15,6 @@ class SecurityController extends Controller
             PasswordData::fromArray($request->validated())
         );
 
-        return back()->with('success','Password updated');
+        return back()->with('success', __('notifications.password_updated'));
     }
 }

@@ -10,6 +10,8 @@ trait HasOptionValues
     {
         return $this->values()->firstOrCreate([
             'value' => $value,
+        ], [
+            'store_id' => $this->store_id ?? currentStoreId(),
         ]);
     }
 

@@ -14,6 +14,7 @@ return [
     'notifications' => 'Notifications',
     'payment_failed' => 'Payment failed ❌',
     'payment_success' => 'Payment completed successfully ✅',
+    'password_updated' => 'Password updated successfully 🔑',
     'security_alert' => 'Security alert: new login detected 🔔',
     'settings_updated' => 'Settings updated successfully ⚙️',
     'transfer_success' => 'Transfer completed successfully 🔄',

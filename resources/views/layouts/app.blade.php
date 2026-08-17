@@ -9,41 +9,52 @@
 
     <title>{{ $title ?? 'Dashboard' }} | {{ config('app.name') }}</title>
 
-    @vite(['resources/css/app.scss', 'resources/js/panel.js'])
+    <!-- Legacy TailAdmin -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
 
-<body class="edz-body" x-data="{
-    loaded: true,
-    init() {
-        $store.shell.init();
-    }
-}">
+<body
+    class=" bg-surface-bg text-ink
+        antialiased transition-colors duration-300"
+    x-data="{ 'loaded': true }" x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
+    const checkMobile = () => {
+        if (window.innerWidth < 1280) {
+            $store.sidebar.setMobileOpen(false);
+            $store.sidebar.isExpanded = false;
+        } else {
+            $store.sidebar.isMobileOpen = false;
+            $store.sidebar.isExpanded = true;
+        }
+    };
+    window.addEventListener('resize', checkMobile);">
 
-    @php
-        $isMerchant = request()->routeIs('merchant.*');
-        $isCollapsed = $isMerchant && !$isExpanded;
-    @endphp
+    {{-- preloader --}}
+    <x-common.preloader />
+    {{-- preloader end --}}
 
-    <div class="edz-shell"
-         :class="{
-            'edz-shell--collapsed': {{ $isCollapsed ? 'true' : 'false' }},
-            'edz-shell--open': $store.shell.open
-         }">
-
+    <div class="min-h-screen xl:flex">
+        @include('layouts.backdrop')
         @include('layouts.sidebar')
 
-        <div class="edz-shell__main">
+        <div class="flex-1 transition-all duration-300 ease-in-out"
+            :class="{
+                '{{ $isRtl ? 'xl:mr-[290px]' : 'xl:ml-[290px]' }}': $store.sidebar.isExpanded || $store.sidebar
+                    .isHovered,
+                '{{ $isRtl ? 'xl:mr-[90px]' : 'xl:ml-[90px]' }}': !$store.sidebar.isExpanded && !$store.sidebar
+                    .isHovered,
+                'ml-0 mr-0': $store.sidebar.isMobileOpen
+            }">
+            <!-- app header start -->
             @include('layouts.app-header')
-
-            <main class="edz-shell__content">
-                <div class="edz-shell__inner">
-                    @yield('content')
-                </div>
-            </main>
+            <!-- app header end -->
+            <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+                @yield('content')
+            </div>
         </div>
+
     </div>
 
 </body>

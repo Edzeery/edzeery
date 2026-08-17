@@ -14,7 +14,7 @@
             @if (auth()->user()->profile?->profile_picture)
               <img src="{{ asset('/storage/img/users/profiles/' .auth()->user()->profile->profile_picture) }}" alt="User" />
             @else
-              <img src="{{ asset('/storage/img/icons/noimg.png') }}" alt="User" />
+              <img src="{{ asset('img/icons/noimg.png') }}" alt="User" />
             @endif
         </span>
 

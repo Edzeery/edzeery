@@ -14,6 +14,7 @@ return [
     'notifications' => 'الإشعارات',
     'payment_failed' => 'فشلت عملية الدفع ❌',
     'payment_success' => 'تمت عملية الدفع بنجاح ✅',
+    'password_updated' => 'تم تحديث كلمة المرور بنجاح 🔑',
     'security_alert' => 'تنبيه أمني: تم تسجيل دخول جديد 🔔',
     'settings_updated' => 'تم تحديث الإعدادات بنجاح ⚙️',
     'transfer_success' => 'تم تحويل المبلغ بنجاح 🔄',

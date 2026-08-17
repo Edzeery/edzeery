@@ -16,7 +16,7 @@ with([
 <header class="edz-topbar">
     <button type="button" class="edz-topbar__trigger"
             @click="$store.shell.toggle()"
-            aria-label="Toggle navigation">
+            aria-label="{{ __('buttons.toggle_navigation') }}">
         <x-edz.icon name="menu" class="w-5 h-5" />
     </button>
 
@@ -37,7 +37,7 @@ with([
 
         <button type="button" class="edz-topbar__icon-btn"
                 @click="$store.theme.toggle()"
-                aria-label="Toggle theme">
+                aria-label="{{ __('buttons.toggle_theme') }}">
             <template x-if="$store.theme.theme === 'dark'">
                 <x-edz.icon name="sun" class="w-5 h-5" />
             </template>

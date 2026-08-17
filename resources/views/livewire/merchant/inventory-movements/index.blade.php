@@ -69,7 +69,7 @@ $clearVariantFilter = function (): void {
                 <p class="text-sm text-ink-400">{{ __('inventories.list_subtitle') }}</p>
             </div>
             @if (request()->query('variant_id'))
-                <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="clearVariantFilter">Clear variant filter</button>
+                <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="clearVariantFilter">{{ __('buttons.clear') }}</button>
             @endif
         </div>
 
@@ -80,7 +80,7 @@ $clearVariantFilter = function (): void {
             </div>
             <div>
                 <select class="edz-select" wire:model.live="typeFilter">
-                    <option value="">All types</option>
+                    <option value="">{{ __('general.all') }}</option>
                     @foreach ($this->typeOptions as $value => $label)
                         <option value="{{ $value }}" @selected($typeFilter === $value)>{{ $label }}</option>
                     @endforeach
@@ -92,14 +92,14 @@ $clearVariantFilter = function (): void {
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
-                        <th class="px-4 py-3 text-start font-semibold">Date</th>
-                        <th class="px-4 py-3 text-start font-semibold">Product</th>
-                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-start font-semibold">Type</th>
-                        <th class="px-4 py-3 text-start font-semibold">Qty</th>
-                        <th class="px-4 py-3 text-start font-semibold">After</th>
-                        <th class="px-4 py-3 text-start font-semibold">By</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.date') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.product') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.sku') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.type') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.qty') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.after') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.by') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -120,12 +120,12 @@ $clearVariantFilter = function (): void {
                                 {{ $movement->type->isDecrease() ? '-' : '+' }}{{ $movement->quantity }}
                             </td>
                             <td class="px-4 py-3 font-bold {{ $movement->balance_after <= 0 ? 'text-danger-600' : 'text-ink' }}">{{ $movement->balance_after }}</td>
-                            <td class="px-4 py-3 text-xs text-ink-muted">{{ $movement->user?->name ?? 'System' }}</td>
+                            <td class="px-4 py-3 text-xs text-ink-muted">{{ $movement->user?->name ?? __('general.system') }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                            wire:click="toggleView({{ $movement->id }})">
-                                        {{ $viewingId === $movement->id ? '{{ __('buttons.close') }}' : '{{ __('buttons.view') }}' }}
+                                            wire:click="toggleView('{{ $movement->id }}')">
+                                        {{ $viewingId === $movement->id ? __('buttons.close') : __('buttons.view') }}
                                     </button>
                                 </div>
                             </td>
@@ -136,42 +136,42 @@ $clearVariantFilter = function (): void {
                                 <td colspan="8" class="px-4 py-4">
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Type</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.type') }}</p>
                                             <p class="mt-1 text-sm font-semibold text-ink">{{ $movement->type->label() }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Date</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.date') }}</p>
                                             <p class="mt-1 text-sm text-ink">{{ $movement->created_at?->format('Y-m-d H:i:s') }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Quantity</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.quantity') }}</p>
                                             <p class="mt-1 text-sm font-semibold {{ $movement->type->isDecrease() ? 'text-danger-600' : 'text-success-600' }}">
                                                 {{ $movement->type->isDecrease() ? '-' : '+' }}{{ $movement->quantity }}
                                             </p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Stock after</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.after') }}</p>
                                             <p class="mt-1 text-sm font-semibold text-ink">{{ $movement->balance_after }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Performed by</p>
-                                            <p class="mt-1 text-sm text-ink">{{ $movement->user?->name ?? 'System' }}
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.by') }}</p>
+                                            <p class="mt-1 text-sm text-ink">{{ $movement->user?->name ?? __('general.system') }}
                                                 @if ($movement->user?->email)
                                                     <span class="text-xs text-ink-muted">({{ $movement->user->email }})</span>
                                                 @endif
                                             </p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">Product</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.product') }}</p>
                                             <p class="mt-1 text-sm text-ink">{{ $movement->variant?->product?->name ?? '—' }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-medium text-ink-muted">SKU</p>
+                                            <p class="text-xs font-medium text-ink-muted">{{ __('table.sku') }}</p>
                                             <p class="mt-1 font-mono text-sm text-ink">{{ $movement->variant?->sku ?? '—' }}</p>
                                         </div>
                                         @if ($movement->source_type)
                                             <div>
-                                                <p class="text-xs font-medium text-ink-muted">Source</p>
+                                                <p class="text-xs font-medium text-ink-muted">{{ __('general.type') }}</p>
                                                 <p class="mt-1 text-sm text-ink">{{ class_basename($movement->source_type) }}</p>
                                             </div>
                                         @endif

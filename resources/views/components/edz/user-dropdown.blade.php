@@ -24,7 +24,7 @@
             @if (auth()->user()->profile?->profile_picture)
                 <img src="{{ asset('/storage/img/users/profiles/' . auth()->user()->profile->profile_picture) }}" alt="{{ auth()->user()->name }}" />
             @else
-                <img src="{{ asset('/storage/img/icons/noimg.png') }}" alt="{{ auth()->user()->name }}" />
+                <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ auth()->user()->name }}" />
             @endif
         </span>
         <span class="edz-dropdown__label">{{ auth()->user()->name }}</span>

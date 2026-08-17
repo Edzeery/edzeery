@@ -18,4 +18,6 @@ return [
     'all_statuses' => 'Tous les statuts',
     'active' => 'Actif',
     'inactive' => 'Inactif',
+    'your_stores' => 'Gérer et basculer entre vos magasins',
+    'no_stores' => 'Vous n\'avez pas encore de magasins',
 ];

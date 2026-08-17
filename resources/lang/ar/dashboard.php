@@ -12,6 +12,7 @@ return [
     'settings' => 'الإعدادات',
     'statistics' => 'الإحصائيات',
     'today_summary' => 'ملخص اليوم',
+    'total_memberships' => 'إجمالي العضويات',
     'transactions' => 'المعاملات',
     'welcome' => 'مرحباً بك في لوحة التحكم',
     'welcome_back' => 'مرحبًا بعودتك',

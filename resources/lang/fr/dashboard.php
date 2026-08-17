@@ -12,6 +12,7 @@ return [
     'settings' => 'Paramètres',
     'statistics' => 'Statistiques',
     'today_summary' => 'Résumé du jour',
+    'total_memberships' => 'Adhésions totales',
     'transactions' => 'Transactions',
     'welcome' => 'Welcome to the dashboard',
     'welcome_back' => 'Bon retour',

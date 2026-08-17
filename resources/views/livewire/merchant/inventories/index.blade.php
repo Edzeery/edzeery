@@ -60,8 +60,8 @@ $canAdjust = fn () => canStore(StorePermissionEnum::INVENTORY_UPDATE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => 'Out of stock', 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => 'Low stock', 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
+        'out' => ['text' => __('stock_alerts.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
+        'low' => ['text' => __('stock_alerts.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
         default => ['text' => 'In stock', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
     };
 };
@@ -91,7 +91,7 @@ $adjust = function (ProductVariant $variant): void {
             $validated['adjust_reason'] ?: null
         );
 
-        session()->flash('merchant.saved', 'Stock adjusted successfully.');
+        session()->flash('merchant.saved', __('inventories.adjust_stock'));
     } catch (\Illuminate\Validation\ValidationException $e) {
         $this->addError('adjust_quantity', $e->getMessage());
     }
@@ -172,11 +172,11 @@ $adjust = function (ProductVariant $variant): void {
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
-                        <th class="px-4 py-3 text-start font-semibold">Product</th>
-                        <th class="px-4 py-3 text-start font-semibold">SKU</th>
-                        <th class="px-4 py-3 text-start font-semibold">Stock</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.product') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.sku') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('table.stock') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('general.status') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -196,7 +196,7 @@ $adjust = function (ProductVariant $variant): void {
                                 <div class="flex items-center justify-end gap-1">
                                     @if ($this->canAdjust())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="toggleAdjust({{ $variant->id }})">
+                                                wire:click="toggleAdjust('{{ $variant->id }}')">
                                              {{ $adjustingId === $variant->id ? __('inventories.cancel') : __('inventories.adjust_stock') }}
                                         </button>
                                     @endif
@@ -208,7 +208,7 @@ $adjust = function (ProductVariant $variant): void {
                         @if ($adjustingId === $variant->id)
                             <tr class="bg-surface-secondary/40">
                                 <td colspan="5" class="px-4 py-4">
-                                    <form wire:submit="adjust({{ $variant->id }})" class="flex flex-wrap items-end gap-3">
+                                    <form wire:submit="adjust('{{ $variant->id }}')" class="flex flex-wrap items-end gap-3">
                                         <div>
                                             <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-qty">{{ __('inventories.new_quantity') }}</label>
                                             <input id="adjust-qty" type="number" min="0" class="edz-input edz-input--sm"

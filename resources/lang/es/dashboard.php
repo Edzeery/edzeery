@@ -12,6 +12,7 @@ return [
     'settings' => 'Ajustes',
     'statistics' => 'Estadística',
     'today_summary' => 'Resumen de hoy',
+    'total_memberships' => 'Membresías totales',
     'transactions' => 'Actas',
     'welcome' => 'Bienvenido al tablero',
     'welcome_back' => 'Bienvenido de nuevo',

@@ -18,4 +18,6 @@ return [
     'all_statuses' => 'All statuses',
     'active' => 'Active',
     'inactive' => 'Inactive',
+    'your_stores' => 'Manage and switch between your stores',
+    'no_stores' => 'You don\'t have any stores yet',
 ];

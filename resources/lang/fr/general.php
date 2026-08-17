@@ -100,5 +100,8 @@ return [
     'updated_at' => 'Dernière mise à jour',
     'value' => 'Valeur',
     'withdraw' => 'retirer',
+    'confirm_delete_selected' => 'Supprimer les :count éléments sélectionnés ?',
+    'selected_count' => ':count sélectionné(s)',
+    'system' => 'Système',
     'yes' => 'Oui',
 ];

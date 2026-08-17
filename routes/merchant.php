@@ -8,34 +8,16 @@ use App\Http\Middleware\Merchant\Store\EnsureStoreIsActive;
 use App\Http\Middleware\Merchant\Store\EnsureStoreMembership;
 use App\Http\Middleware\Merchant\Store\EnsureStoreResolved;
 use App\Http\Middleware\Merchant\Store\ResolveStoreFromRoute;
-use App\Http\Controllers\Merchant\DashboardController;
-use App\Http\Controllers\Merchant\StoreController;
-use App\Http\Controllers\Merchant\BillingController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::prefix('account')
-    ->middleware(['auth', 'verified']) // تأكد أن المستخدم مسجل دخول والتحقق من البريد
+    ->middleware(['auth', 'verified'])
     ->name('account.')
     ->group(function () {
 
-        // Dashboard
-        Route::get('/dashboard', [DashboardController::class, 'index'])->name('merchant.dashboard');
-
-
-        // Stores
-        Route::get('/stores', [StoreController::class, 'index'])->name('stores');
-        Route::get('/stores/create', [StoreController::class, 'create'])->name('stores.create');
-        Route::get('/stores/{store}/edit', [StoreController::class, 'edit'])->name('stores.edit');
-
         // Billing / Subscriptions
-        Route::get('/billing', [BillingController::class, 'index'])->name('billing');
-
-        // Route::get('/profile', function () {
-        //     return view('pages.profile', ['title' => 'Profile']);
-        // })->name('profile');
-        // // Profile
-
+        Volt::route('/billing', 'merchant.billing')->name('billing');
 
         Route::get('/profile', [ProfileController::class, 'index'])
             ->name('index');
@@ -44,7 +26,7 @@ Route::prefix('account')
 
         Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
-        Route::post('/password', [SecurityController::class, 'updatePassword'])->name('password.update');
+        Route::post('/password', [SecurityController::class, 'update'])->name('password.update');
     });
 
 /*
@@ -62,6 +44,7 @@ Route::prefix('merchant')
     ->name('merchant.')
     ->group(function (): void {
         Volt::route('/create-store', 'merchant.create-store')->name('create-store');
+        Volt::route('/stores', 'merchant.stores.index')->name('stores.index');
     });
 
 Route::prefix('merchant')
@@ -76,6 +59,7 @@ Route::prefix('merchant')
     ])
     ->name('merchant.')
     ->group(function (): void {
+        Volt::route('/{store:slug}/dashboard', 'merchant.dashboard')->name('dashboard');
         Volt::route('/{store:slug}/products', 'merchant.products.index')->name('products.index');
         Volt::route('/{store:slug}/products/create', 'merchant.products.form')->name('products.create');
         Volt::route('/{store:slug}/products/{product}/edit', 'merchant.products.form')->name('products.edit');

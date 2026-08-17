@@ -16,7 +16,7 @@
     @vite(['resources/css/app.scss', 'resources/js/panel.js'])
     @livewireStyles
 </head>
-<body class="antialiased bg-surface-bg text-ink">
+<body class="edz-body">
 
     <div class="edz-shell"
          x-data

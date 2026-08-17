@@ -235,7 +235,7 @@ $deleteSelected = function (): void {
             <form wire:submit="save" class="space-y-4 p-4">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="category-name">Name</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-name">{{ __('categories.name') }}</label>
                         <input id="category-name" type="text" class="edz-input @error('name') edz-input--error @enderror"
                                wire:model="name" placeholder="{{ __('categories.category_name') }}">
                         @error('name')
@@ -244,7 +244,7 @@ $deleteSelected = function (): void {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="category-slug">Slug</label>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="category-slug">{{ __('categories.slug') }}</label>
                         <input id="category-slug" type="text" class="edz-input @error('slug') edz-input--error @enderror"
                                wire:model="slug" placeholder="electronics">
                         @error('slug')
@@ -277,7 +277,7 @@ $deleteSelected = function (): void {
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-ink" for="category-logo">Logo</label>
+                    <label class="mb-1 block text-sm font-medium text-ink" for="category-logo">{{ __('categories.logo') }}</label>
                     <input id="category-logo" type="file" class="edz-input" wire:model="logo" accept="image/*">
                     @error('logo')
                         <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
@@ -285,8 +285,8 @@ $deleteSelected = function (): void {
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
-                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">Cancel</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" wire:click="cancelForm">{{ __('buttons.cancel') }}</button>
                 </div>
             </form>
         </div>
@@ -316,10 +316,10 @@ $deleteSelected = function (): void {
 
         @if (! empty($selected))
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
-                <span class="text-sm font-medium text-ink">{{ count($selected) }} selected</span>
+                <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         wire:click="deleteSelected"
-                        wire:confirm="Delete the {{ count($selected) }} selected categories?">Delete</button>
+                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -332,12 +332,12 @@ $deleteSelected = function (): void {
                                    wire:model.live="select_all"
                                    aria-label="Select all">
                         </th>
-                        <th class="px-4 py-3 text-start font-semibold">Logo</th>
-                        <th class="px-4 py-3 text-start font-semibold">Name</th>
-                        <th class="px-4 py-3 text-start font-semibold">Slug</th>
-                        <th class="px-4 py-3 text-start font-semibold">Status</th>
-                        <th class="px-4 py-3 text-start font-semibold">Created</th>
-                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('categories.logo') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('categories.name') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('categories.slug') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('categories.status') }}</th>
+                        <th class="px-4 py-3 text-start font-semibold">{{ __('categories.created') }}</th>
+                        <th class="px-4 py-3 text-end font-semibold">{{ __('general.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -361,16 +361,16 @@ $deleteSelected = function (): void {
                                 <div class="flex items-center justify-end gap-1">
                                     @if ($this->canUpdate())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="beginEdit({{ $category->id }})">Edit</button>
+                                                wire:click="beginEdit('{{ $category->id }}')">{{ __('buttons.edit') }}</button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                                wire:click="toggleActive({{ $category->id }})">
-                                            {{ $category->is_active ? 'Deactivate' : 'Activate' }}
+                                                wire:click="toggleActive('{{ $category->id }}')">
+                                            {{ $category->is_active ? __('categories.deactivate') : __('categories.activate') }}
                                         </button>
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete({{ $category->id }})"
-                                                wire:confirm="Delete &quot;{{ $category->name }}&quot;?">Delete</button>
+                                                wire:click="delete('{{ $category->id }}')"
+                                                wire:confirm="Delete &quot;{{ $category->name }}&quot;?">{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>

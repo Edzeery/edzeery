@@ -3,30 +3,30 @@
         console.log('Saving profile...');
     }
 }">
-    <div class="mb-6 rounded-2xl border border-gray-200 p-5 lg:p-6 dark:border-gray-800">
+    <div class="mb-6 rounded-2xl border border-surface-200 p-5 lg:p-6 dark:border-surface-800">
         <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div class="flex w-full flex-col items-center gap-6 xl:flex-row">
-                <div class="h-20 w-20 overflow-hidden rounded-full border border-gray-200 dark:border-gray-800">
+                <div class="h-20 w-20 overflow-hidden rounded-full border border-surface-200 dark:border-surface-800">
                     <img src="{{ $profile?->avatar }}" />
                 </div>
                 <div class="order-3 xl:order-2">
-                    <h4 class="mb-2 text-center text-lg font-semibold text-gray-800 xl:text-left dark:text-white/90">
+                    <h4 class="mb-2 text-center text-lg font-semibold text-ink-800 xl:text-left dark:text-white/90">
                         {{ $profile?->fullName ?? $profile->name }}
                     </h4>
                     <div class="flex flex-col items-center gap-1 text-center xl:flex-row xl:gap-3 xl:text-left">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                        <p class="text-sm text-ink-500 dark:text-ink-400">
                             <x-role-badge :role="$profile?->membershipRole" />
                         </p>
-                        <div class="hidden h-3.5 w-px bg-gray-300 xl:block dark:bg-gray-700"></div>
+                        <div class="hidden h-3.5 w-px bg-surface-300 xl:block dark:bg-surface-700"></div>
 
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                        <p class="text-sm text-ink-500 dark:text-ink-400">
                             {{ $profile?->country }} - {{ $profile?->city }} - {{ $profile?->state }}
                         </p>
                     </div>
                 </div>
                 <div class="order-2 flex grow items-center gap-2 xl:order-3 xl:justify-end">
                     <button
-                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-surface-300 bg-white text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                         <svg class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path
@@ -36,7 +36,7 @@
                     </button>
 
                     <button
-                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-surface-300 bg-white text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                         <svg class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path
@@ -46,7 +46,7 @@
                     </button>
 
                     <button
-                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-surface-300 bg-white text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                         <svg class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path
@@ -56,7 +56,7 @@
                     </button>
 
                     <button
-                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                        class="shadow-theme-xs flex h-11 w-11 items-center justify-center gap-2 rounded-full border border-surface-300 bg-white text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                         <svg class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <path
@@ -68,7 +68,7 @@
             </div>
 
             <button @click="$dispatch('open-profile-info-modal')"
-                class="shadow-theme-xs flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-800 lg:inline-flex lg:w-auto dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200">
+                class="shadow-theme-xs flex w-full items-center justify-center gap-2 rounded-full border border-surface-300 bg-white px-4 py-3 text-sm font-medium text-ink-700 hover:bg-surface-50 hover:text-ink-800 lg:inline-flex lg:w-auto dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] dark:hover:text-ink-200">
                 <svg class="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none"
                     xmlns="http://www.w3.org/2000/svg">
                     <path fill-rule="evenodd" clip-rule="evenodd"
@@ -84,100 +84,100 @@
     <x-ui.modal x-data="{ open: false }" @open-profile-info-modal.window="open = true" :isOpen="false"
         class="max-w-[700px]">
         <div
-            class="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-11">
+            class="no-scrollbar relative w-full max-w-[700px] overflow-y-auto rounded-3xl bg-white p-4 dark:bg-surface-900 lg:p-11">
             <div class="px-2 pr-14">
-                <h4 class="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
-                    Edit Personal Information
+                <h4 class="mb-2 text-2xl font-semibold text-ink-800 dark:text-white/90">
+                    {{ __('profile.edit_personal_info') }}
                 </h4>
-                <p class="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
-                    Update your details to keep your profile up-to-date.
+                <p class="mb-6 text-sm text-ink-500 dark:text-ink-400 lg:mb-7">
+                    {{ __('profile.update_details_hint') }}
                 </p>
             </div>
             <form method="POST" action="{{ route('account.profile.update') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="custom-scrollbar h-[458px] overflow-y-auto p-2">
                     <div>
-                        <h5 class="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                            Social Links
+                        <h5 class="mb-5 text-lg font-medium text-ink-800 dark:text-white/90 lg:mb-6">
+                            {{ __('profile.social_links') }}
                         </h5>
 
                         <div class="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    Facebook
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
+                                    {{ __('profile.facebook') }}
                                 </label>
-                                <input type="text" value="https://www.facebook.com/PimjoHQ"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                <input type="text" value="{{ $profile?->facebook_url }}"
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    X.com
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
+                                    {{ __('profile.x_com') }}
                                 </label>
-                                <input type="text" value="https://x.com/PimjoHQ"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                <input type="text" value="{{ $profile?->x_url }}"
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    Linkedin
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
+                                    {{ __('profile.linkedin') }}
                                 </label>
-                                <input type="text" value="https://www.linkedin.com/company/pimjo/posts/?feedView=all"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                <input type="text" value="{{ $profile?->linkedin_url }}"
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div>
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                    Instagram
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
+                                    {{ __('profile.instagram') }}
                                 </label>
-                                <input type="text" value="https://instagram.com/emirhan55"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                <input type="text" value="{{ $profile?->instagram_url }}"
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
                         </div>
                     </div>
                     <div class="mt-7">
-                        <h5 class="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
-                            Personal Information
+                        <h5 class="mb-5 text-lg font-medium text-ink-800 dark:text-white/90 lg:mb-6">
+                            {{ __('profile.personal_information') }}
                         </h5>
 
                         <div class="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                             <div class="col-span-2 lg:col-span-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
                                     {{ __('profile.full_name') }}
                                 </label>
                                 <input type="text" value="{{ $profile?->fullName }}"
-                                    class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                    class="dark:bg-dark-900 h-11 w-full rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div class="col-span-2 lg:col-span-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
                                        {{ __('profile.email') }}
                                 </label>
                                 <input type="text" name="email" value="{{ $profile?->email }}"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div class="col-span-2 lg:col-span-1">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
                                       {{ __('profile.phone') }}
                                 </label>
                                 <input type="text" value="{{ $profile?->phone }}"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
 
                             <div class="col-span-2">
-                                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                <label class="mb-1.5 block text-sm font-medium text-ink-700 dark:text-ink-400">
                                     {{ __('titles.role') }}
                                 </label>
                                 <input type="text" value="{{ $profile?->membershipRole }}"
-                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                                    class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-surface-300 bg-transparent bg-none px-4 py-2.5 text-sm text-ink-800 shadow-theme-xs placeholder:text-ink-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-surface-700 dark:bg-surface-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-3 px-2 mt-6 lg:justify-end">
                     <button @click="open = false" type="button"
-                        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto">
+                        class="flex w-full justify-center rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-medium text-ink-700 hover:bg-surface-50 dark:border-surface-700 dark:bg-surface-800 dark:text-ink-400 dark:hover:bg-white/[0.03] sm:w-auto">
                         {{ __('general.close') }}
                     </button>
                     <button @click="saveProfile" type="submit"

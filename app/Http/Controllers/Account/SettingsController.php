@@ -15,6 +15,6 @@ class SettingsController extends Controller
             SettingsData::fromArray($request->validated())
         );
 
-        return back()->with('success','Settings updated');
+        return back()->with('success', __('notifications.settings_updated'));
     }
 }
