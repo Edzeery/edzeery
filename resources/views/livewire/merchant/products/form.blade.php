@@ -448,7 +448,7 @@ $wizardSteps = computed(fn () => [
 ]);
 ?>
 
-<div wire:ignore.self x-data="{ step: @entangle('currentStep') }">
+<div x-data="{ step: @entangle('currentStep') }">
     <div class="edz-page-head">
         <div>
             <h1 class="edz-page-head__title">{{ $product ? __('products.edit_product') : __('products.new_product') }}</h1>

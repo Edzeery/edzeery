@@ -6,19 +6,19 @@
   min-height: 100vh;
 }
 
-.edz-main {
+.edz-shell__main {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.edz-main__content {
+.edz-shell__content {
   flex: 1;
   padding: 1.5rem;
 }
 
-.edz-main__inner {
+.edz-shell__inner {
   width: 100%;
   max-width: var(--edz-content-max);
   margin-inline: auto;
@@ -42,6 +42,13 @@
   margin-top: 0.25rem;
   font-size: 0.875rem;
   color: rgb(var(--edz-color-text-soft));
+}
+
+.edz-page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 // Off-canvas overlay (mobile drawer).

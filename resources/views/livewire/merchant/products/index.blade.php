@@ -115,21 +115,17 @@ $deactivateSelected = function (): void {
 ?>
 
 <div>
-    <div class="edz-page-head">
-        <div>
-            <h1 class="edz-page-head__title">{{ __('products.title') }}</h1>
-            <p class="edz-page-head__subtitle">{{ __('products.subtitle', ['store' => currentStore()?->name]) }}</p>
-        </div>
-        @if ($this->canCreate())
-            <a href="{{ route('merchant.products.create', currentStore()) }}" wire:navigate
-               class="edz-btn edz-btn--primary edz-btn--sm">{{ __('products.new_product') }}</a>
-        @endif
-    </div>
+    <x-edz.page-header :title="__('products.title')" :description="__('products.subtitle', ['store' => currentStore()?->name])">
+        <x-slot:actions>
+            @if ($this->canCreate())
+                <a href="{{ route('merchant.products.create', currentStore()) }}" wire:navigate
+                   class="edz-btn edz-btn--primary edz-btn--sm">{{ __('products.new_product') }}</a>
+            @endif
+        </x-slot:actions>
+    </x-edz.page-header>
 
     @if (session('merchant.saved'))
-        <div class="mb-6 rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-800 dark:bg-success-950 dark:text-success-300">
-            {{ session('merchant.saved') }}
-        </div>
+        <x-edz.alert type="success" class="mb-6">{{ session('merchant.saved') }}</x-edz.alert>
     @endif
 
     <div class="edz-card">

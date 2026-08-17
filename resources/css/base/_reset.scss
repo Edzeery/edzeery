@@ -3,6 +3,7 @@
 //  Minimal, intentional reset layered on top of Tailwind preflight
 //  (which is emitted earlier, so these rules win).
 // ============================================================
+@use '../abstracts/variables' as *;
 *,
 *::before,
 *::after {
@@ -22,6 +23,15 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.edz-body {
+  background-color: rgb(var(--edz-color-bg));
+  color: rgb(var(--edz-color-text));
+  font-family: $edz-font-sans;
+  font-size: $edz-font-base;
+  line-height: $edz-line-height-base;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 img,

@@ -23,16 +23,12 @@ with([
 ?>
 
 <div>
-    <div class="edz-page-head">
-        <div>
-            <h1 class="edz-page-head__title">Dashboard</h1>
-            <p class="edz-page-head__subtitle">Welcome back, {{ auth()->user()?->name ?? 'guest' }}.</p>
-        </div>
-        <div class="flex items-center gap-2">
+    <x-edz.page-header title="Dashboard" description="Welcome back, {{ auth()->user()?->name ?? 'guest' }}.">
+        <x-slot:actions>
             <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm">Export</button>
             <button type="button" class="edz-btn edz-btn--primary edz-btn--sm">New Report</button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-edz.page-header>
 
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         @foreach ($stats as $stat)

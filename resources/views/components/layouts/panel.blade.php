@@ -1,6 +1,7 @@
 @props([
     'title' => null,
     'description' => null,
+    'context' => 'panel',
 ])
 
 <!DOCTYPE html>

@@ -135,6 +135,76 @@
   flex: none;
 }
 
+// --- Store info (merchant context) ---
+.edz-sidebar__store {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgb(var(--edz-color-border));
+}
+
+.edz-sidebar__store-avatar {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--edz-radius-lg);
+  background-color: rgb(var(--edz-color-accent-600));
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.875rem;
+  flex: none;
+}
+
+.edz-sidebar__store-meta {
+  min-width: 0;
+}
+
+.edz-sidebar__store-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(var(--edz-color-text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edz-sidebar__store-switch {
+  font-size: 0.6875rem;
+  color: rgb(var(--edz-color-brand-600));
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  .dark & {
+    color: rgb(var(--edz-color-brand-300));
+  }
+}
+
+// --- Badge (count) ---
+.edz-sidebar__badge {
+  margin-inline-start: auto;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--edz-radius-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background-color: rgb(var(--edz-color-brand-600) / 0.1);
+  color: rgb(var(--edz-color-brand-700));
+
+  .dark & {
+    color: rgb(var(--edz-color-brand-300));
+  }
+}
+
+// --- Disabled link ---
+.edz-sidebar__link--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 // --- Footer / user chip ---
 .edz-sidebar__footer {
   flex: none;
