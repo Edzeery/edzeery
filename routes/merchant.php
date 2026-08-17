@@ -11,7 +11,6 @@ use App\Http\Middleware\Merchant\Store\ResolveStoreFromRoute;
 use App\Http\Controllers\Merchant\DashboardController;
 use App\Http\Controllers\Merchant\StoreController;
 use App\Http\Controllers\Merchant\BillingController;
-use App\Http\Controllers\Merchant\TeamController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -31,11 +30,6 @@ Route::prefix('account')
 
         // Billing / Subscriptions
         Route::get('/billing', [BillingController::class, 'index'])->name('billing');
-
-        // Team
-        Route::get('/team', [TeamController::class, 'index'])->name('team');
-        Route::get('/team/create', [TeamController::class, 'create'])->name('team.create');
-        Route::get('/team/{member}/edit', [TeamController::class, 'edit'])->name('team.edit');
 
         // Route::get('/profile', function () {
         //     return view('pages.profile', ['title' => 'Profile']);
@@ -64,6 +58,13 @@ Route::prefix('account')
 */
 
 Route::prefix('merchant')
+    ->middleware(['auth', 'verified'])
+    ->name('merchant.')
+    ->group(function (): void {
+        Volt::route('/create-store', 'merchant.create-store')->name('create-store');
+    });
+
+Route::prefix('merchant')
     ->middleware([
         'auth',
         'verified',
@@ -86,4 +87,5 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/inventories', 'merchant.inventories.index')->name('inventories.index');
         Volt::route('/{store:slug}/inventory-movements', 'merchant.inventory-movements.index')->name('inventory-movements.index');
         Volt::route('/{store:slug}/stock-alerts', 'merchant.stock-alerts.index')->name('stock-alerts.index');
+        Volt::route('/{store:slug}/teams', 'merchant.teams.index')->name('teams.index');
     });

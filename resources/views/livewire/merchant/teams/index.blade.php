@@ -1,0 +1,452 @@
+<?php
+
+use App\Enums\Store\StorePermissionEnum;
+use App\Enums\Store\StoreRoleEnum;
+use App\Models\Locations\City;
+use App\Models\Locations\Country;
+use App\Models\Locations\State;
+use App\Models\Stores\Team\StoreMembership;
+use App\Services\Stores\StoreTeamService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use function Livewire\Volt\computed;
+use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
+
+layout('components.layouts.merchant');
+
+state([
+    'search' => '',
+    'creating' => false,
+    'editingId' => null,
+    'name' => '',
+    'email' => '',
+    'password' => '',
+    'country_id' => '',
+    'state_id' => '',
+    'city_id' => '',
+    'store_role' => '',
+    'isActive' => true,
+    'permissions' => [],
+]);
+
+mount(function (): void {
+    abort_unless(canManageTeam(), 403);
+});
+
+$members = computed(function () {
+    $user = user();
+
+    $query = StoreMembership::query()
+        ->with('user')
+        ->where('store_id', currentStoreId())
+        ->where('user_id', '!=', $user->id)
+        ->latest('created_at');
+
+    if (isStoreOwner($user) || isStoreAdmin($user)) {
+        // Owner & Admin see everyone
+    } elseif (isStoreManager($user)) {
+        $query->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+                ->orWhere('invited_by', $user->id);
+        });
+    } else {
+        $query->where('user_id', $user->id);
+    }
+
+    if ($this->search !== '') {
+        $query->where(function ($q) {
+            $q->whereHas('user', function ($uq) {
+                $uq->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('email', 'like', '%' . $this->search . '%');
+            });
+        });
+    }
+
+    return $query->paginate(15);
+});
+
+$canCreate = fn () => canManageTeam();
+
+$canModify = fn (StoreMembership $membership) => canModifyMember($membership);
+
+$memberRoleName = function (StoreMembership $membership): string {
+    $role = $membership->membershipRole();
+    return $role?->name ?? 'staff';
+};
+
+$openCreate = function (): void {
+    abort_unless($this->canCreate(), 403);
+
+    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions');
+    $this->creating = true;
+};
+
+$closeCreate = function (): void {
+    $this->reset('creating', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions');
+};
+
+$openEdit = function (StoreMembership $membership): void {
+    abort_unless($this->canModify($membership), 403);
+
+    $user = $membership->user;
+    $role = $membership->membershipRole();
+
+    $this->editingId = $membership->id;
+    $this->name = $user->name;
+    $this->email = $user->email;
+    $this->password = '';
+    $this->country_id = $user->country_id ?? '';
+    $this->state_id = $user->state_id ?? '';
+    $this->city_id = $user->city_id ?? '';
+    $this->store_role = $role?->name ?? '';
+    $this->isActive = (bool) $membership->is_active;
+    $this->permissions = $user->getAllPermissions()->pluck('name')->toArray();
+    $this->creating = false;
+};
+
+$closeEdit = function (): void {
+    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions');
+};
+
+$saveNew = function (): void {
+    abort_unless($this->canCreate(), 403);
+
+    $this->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'email', 'max:255'],
+        'password' => ['required', 'string', 'min:8'],
+        'country_id' => ['required'],
+        'state_id' => ['required'],
+        'city_id' => ['required'],
+        'store_role' => ['required', Rule::in(array_column(StoreRoleEnum::cases(), 'value'))],
+    ]);
+
+    try {
+        app(StoreTeamService::class)->addMember(currentStore(), [
+            'name' => $this->name,
+            'email' => $this->email,
+            'password' => $this->password,
+            'country_id' => $this->country_id,
+            'state_id' => $this->state_id,
+            'city_id' => $this->city_id,
+            'store_role' => $this->store_role,
+            'is_active' => $this->isActive,
+            'permissions' => $this->permissions,
+        ]);
+
+        $this->closeCreate();
+        session()->flash('success', __('messages.created_successfully'));
+    } catch (\Exception $e) {
+        session()->flash('error', $e->getMessage());
+    }
+};
+
+$saveEdit = function (): void {
+    $membership = StoreMembership::findOrFail($this->editingId);
+    abort_unless($this->canModify($membership), 403);
+
+    $this->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'email', 'max:255'],
+        'password' => ['nullable', 'string', 'min:8'],
+        'country_id' => ['required'],
+        'state_id' => ['required'],
+        'city_id' => ['required'],
+        'store_role' => ['required', Rule::in(array_column(StoreRoleEnum::cases(), 'value'))],
+    ]);
+
+    try {
+        app(StoreTeamService::class)->updateMember(currentStore(), $membership, [
+            'name' => $this->name,
+            'email' => $this->email,
+            'password' => $this->password,
+            'country_id' => $this->country_id,
+            'state_id' => $this->state_id,
+            'city_id' => $this->city_id,
+            'store_role' => $this->store_role,
+            'is_active' => $this->isActive,
+            'permissions' => $this->permissions,
+        ]);
+
+        $this->closeEdit();
+        session()->flash('success', __('messages.updated_successfully'));
+    } catch (\Exception $e) {
+        session()->flash('error', $e->getMessage());
+    }
+};
+
+$toggleActive = function (StoreMembership $membership): void {
+    abort_unless($this->canModify($membership), 403);
+
+    $membership->update(['is_active' => ! $membership->is_active]);
+};
+
+$remove = function (StoreMembership $membership): void {
+    abort_unless($this->canModify($membership), 403);
+
+    $membership->delete();
+
+    session()->flash('success', __('messages.deleted_successfully'));
+};
+
+$states = computed(fn () => $this->state_id
+    ? State::where('country_id', $this->country_id)->pluck('name', 'id')
+    : []);
+
+$cities = computed(fn () => $this->state_id
+    ? City::where('state_id', $this->state_id)->pluck('name', 'id')
+    : []);
+
+$allPermissions = computed(function () {
+    if (! $this->store_role) {
+        return collect();
+    }
+
+    try {
+        $role = StoreRoleEnum::from($this->store_role);
+    } catch (\ValueError) {
+        return collect();
+    }
+
+    $all = \App\Support\StoreRoles::permissions($role);
+
+    return collect($all)->groupBy(fn ($p) => explode('.', $p)[0]);
+});
+?>
+
+<div>
+    <div class="edz-page-head">
+        <div>
+            <h1 class="edz-page-head__title">Team</h1>
+            <p class="edz-page-head__subtitle">Manage team members of {{ currentStore()?->name }}</p>
+        </div>
+        @if ($this->canCreate())
+            <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">
+                <x-heroicon-o-plus class="h-5 w-5" /> Add Member
+            </button>
+        @endif
+    </div>
+
+    @if (session('success'))
+        <div class="mb-4 rounded-lg bg-success-50 p-4 text-sm text-success-700">{{ session('success') }}</div>
+    @endif
+    @if (session('error'))
+        <div class="mb-4 rounded-lg bg-danger-50 p-4 text-sm text-danger-700">{{ session('error') }}</div>
+    @endif
+
+    {{-- Create / Edit Form --}}
+    @if ($creating || $editingId)
+        <div class="edz-card mb-6">
+            <div class="edz-card__header">
+                <div>
+                    <h2 class="edz-card__title">{{ $editingId ? 'Edit member' : 'Add member' }}</h2>
+                    <p class="text-sm text-ink-400">{{ $editingId ? 'Update team member details' : 'Invite or add a new team member' }}</p>
+                </div>
+            </div>
+
+            <form wire:submit="{{ $editingId ? 'saveEdit' : 'saveNew' }}" class="space-y-4 p-4">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-name">Name</label>
+                        <input id="tm-name" type="text" class="edz-input" wire:model="name" placeholder="Full name">
+                        @error('name')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-email">Email</label>
+                        <input id="tm-email" type="email" class="edz-input" wire:model="email" placeholder="member@example.com">
+                        @error('email')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-password">Password{{ $editingId ? ' (leave blank to keep)' : '' }}</label>
+                        <input id="tm-password" type="password" class="edz-input" wire:model="password" placeholder="{{ $editingId ? '••••••••' : 'Minimum 8 characters' }}">
+                        @error('password')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">Role</label>
+                        <select id="tm-role" class="edz-select" wire:model.live="store_role">
+                            <option value="">Select role…</option>
+                            @foreach (collect(StoreRoleEnum::cases())->reject(fn ($r) => $r === StoreRoleEnum::OWNER) as $role)
+                                <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('store_role')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-country">Country</label>
+                        <select id="tm-country" class="edz-select" wire:model.live="country_id">
+                            <option value="">Select country…</option>
+                            @foreach (countries() as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        @error('country_id')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-state">State / Wilaya</label>
+                        <select id="tm-state" class="edz-select" wire:model.live="state_id" {{ empty($this->country_id) ? 'disabled' : '' }}>
+                            <option value="">Select state…</option>
+                            @foreach ($this->states as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        @error('state_id')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-city">City</label>
+                        <select id="tm-city" class="edz-select" wire:model="city_id" {{ empty($this->state_id) ? 'disabled' : '' }}>
+                            <option value="">Select city…</option>
+                            @foreach ($this->cities as $id => $name)
+                                <option value="{{ $id }}">{{ $name }}</option>
+                            @endforeach
+                        </select>
+                        @error('city_id')
+                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-sm font-medium text-ink">
+                        <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
+                        Active
+                    </label>
+                </div>
+
+                @if ($this->store_role && $this->store_role !== 'staff' && $this->allPermissions->isNotEmpty())
+                    <div class="border-t border-surface-border pt-4">
+                        <div class="mb-3 flex items-center gap-2">
+                            <span class="text-sm font-medium text-ink">Permissions</span>
+                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    wire:click="$set('permissions', {{ json_encode(\App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role))) }})">
+                                Select All
+                            </button>
+                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600"
+                                    wire:click="$set('permissions', [])">
+                                Deselect All
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            @foreach ($this->allPermissions as $group => $perms)
+                                <div>
+                                    <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">{{ ucfirst($group) }}</p>
+                                    @foreach ($perms as $perm)
+                                        <label class="flex items-center gap-2 py-0.5 text-sm text-ink">
+                                            <input type="checkbox" wire:model="permissions" value="{{ $perm }}" class="h-3.5 w-3.5 rounded border-surface-border">
+                                            {{ __("permissions.{$perm}") }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">Save</button>
+                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                            wire:click="{{ $editingId ? 'closeEdit' : 'closeCreate' }}">Cancel</button>
+                </div>
+            </form>
+        </div>
+    @endif
+
+    {{-- Members Table --}}
+    <div class="edz-card">
+        <div class="edz-card__header">
+            <div>
+                <h2 class="edz-card__title">Team members</h2>
+                <p class="text-sm text-ink-400">All members in {{ currentStore()?->name }}</p>
+            </div>
+        </div>
+
+        <div class="border-b border-surface-border p-4">
+            <input type="search" class="edz-input" placeholder="Search by name or email…"
+                   wire:model.live.debounce.300ms="search">
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 text-start text-xs uppercase tracking-wider text-gray-400">
+                        <th class="px-4 py-3 text-start font-semibold">Name</th>
+                        <th class="px-4 py-3 text-start font-semibold">Email</th>
+                        <th class="px-4 py-3 text-start font-semibold">Role</th>
+                        <th class="px-4 py-3 text-start font-semibold">Location</th>
+                        <th class="px-4 py-3 text-start font-semibold">Status</th>
+                        <th class="px-4 py-3 text-end font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($this->members as $membership)
+                        @php
+                            $roleName = $this->memberRoleName($membership);
+                        @endphp
+                        <tr class="border-b border-gray-100 last:border-0 hover:bg-surface-secondary/50">
+                            <td class="px-4 py-3 font-medium text-ink">{{ $membership->user?->name }}</td>
+                            <td class="px-4 py-3 text-ink-soft">{{ $membership->user?->email }}</td>
+                            <td class="px-4 py-3">
+                                <x-merchant.status domain="roles" :status="$roleName" />
+                            </td>
+                            <td class="px-4 py-3 text-xs text-ink-muted">
+                                {{ $membership->user?->city?->name }}, {{ $membership->user?->state?->name }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <x-merchant.status domain="general" :status="$membership->is_active ? 'active' : 'inactive'" />
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center justify-end gap-1">
+                                    @if ($this->canModify($membership))
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                                wire:click="openEdit({{ $membership->id }})">Edit</button>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                                wire:click="toggleActive({{ $membership->id }})">
+                                            {{ $membership->is_active ? 'Deactivate' : 'Activate' }}
+                                        </button>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
+                                                wire:click="remove({{ $membership->id }})"
+                                                wire:confirm="Remove this team member?">Remove</button>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-4 py-16 text-center">
+                                <p class="text-sm font-medium text-ink-soft">No team members found</p>
+                                <p class="mt-1 text-sm text-ink-muted">Add a member to get started.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if ($this->members->hasPages())
+            <div class="border-t border-surface-border px-4 py-3">
+                {{ $this->members->links() }}
+            </div>
+        @endif
+    </div>
+</div>

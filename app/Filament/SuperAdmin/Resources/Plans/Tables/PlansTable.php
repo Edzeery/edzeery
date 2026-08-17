@@ -5,6 +5,7 @@ namespace App\Filament\SuperAdmin\Resources\Plans\Tables;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -36,10 +37,15 @@ class PlansTable
 
                 IconColumn::make('is_default')
                     ->boolean(),
+
+                IconColumn::make('is_custom')
+                    ->label('Custom')
+                    ->boolean(),
             ])
             ->defaultSort('sort_order')
             ->filters([
-                //
+                TernaryFilter::make('is_custom')
+                    ->label('Custom Plan'),
             ])
             ->recordActions([
                 EditAction::make(), 

@@ -70,6 +70,22 @@ class PlanForm
                             ->maxLength(10),
 
                     ])->columns(3),
+
+                Section::make('Custom Plan')
+                    ->description('Mark this plan as a negotiated/custom package for a specific merchant.')
+                    ->schema([
+
+                        Toggle::make('is_custom')
+                            ->default(false),
+
+                        Select::make('assigned_to_user_id')
+                            ->label('Assigned Merchant')
+                            ->relationship('assignedUser', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn ($get) => $get('is_custom')),
+
+                    ])->columns(2),
             ]);
     }
 }

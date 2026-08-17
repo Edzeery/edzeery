@@ -28,6 +28,7 @@ class PlansSeeder extends Seeder
             ['slug' => 'delivery_agents_limit', 'name' => 'plans.nbr_delivery_agents', 'type' => 'number', 'unit' => 'agents'],
             ['slug' => 'delivery_companies_limit', 'name' => 'plans.nbr_delivery_companies', 'type' => 'number', 'unit' => 'companies'],
             ['slug' => 'store_orders_limit', 'name' => 'plans.nbr_store_orders', 'type' => 'number', 'unit' => 'orders'],
+            ['slug' => 'stores_max', 'name' => 'plans.max_stores', 'type' => 'number', 'unit' => 'stores', 'consumable' => true, 'quota' => true],
             ['slug' => 'analytics', 'name' => 'plans.advanced_analytics', 'type' => 'boolean', 'unit' => null],
             ['slug' => 'priority_support', 'name' => 'plans.priority_support', 'type' => 'boolean', 'unit' => null],
             ['slug' => 'integrations', 'name' => 'plans.future_integrations', 'type' => 'boolean', 'unit' => null],
@@ -54,6 +55,7 @@ class PlansSeeder extends Seeder
                     'delivery_agents_limit' => 1,
                     'delivery_companies_limit' => 1,
                     'store_orders_limit' => 50,
+                    'stores_max' => 1,
                     'analytics' => false,
                     'priority_support' => false,
                     'integrations' => false,
@@ -64,7 +66,7 @@ class PlansSeeder extends Seeder
                 'trial_days' => 0,
                 'max_stores' => 1,
                 'price_monthly' => 3000,
-                'price_yearly' => 32400, // 3000 * 12 * 0.9
+                'price_yearly' => 32400,
                 'features' => [
                     'products_limit' => 500,
                     'staff_limit' => 3,
@@ -72,6 +74,7 @@ class PlansSeeder extends Seeder
                     'delivery_agents_limit' => 5,
                     'delivery_companies_limit' => 2,
                     'store_orders_limit' => 500,
+                    'stores_max' => 1,
                     'analytics' => true,
                     'priority_support' => false,
                     'integrations' => false,
@@ -82,7 +85,7 @@ class PlansSeeder extends Seeder
                 'trial_days' => 0,
                 'max_stores' => 5,
                 'price_monthly' => 7000,
-                'price_yearly' => 75600, // 7000*12*0.9
+                'price_yearly' => 75600,
                 'features' => [
                     'products_limit' => 2000,
                     'staff_limit' => 10,
@@ -90,6 +93,7 @@ class PlansSeeder extends Seeder
                     'delivery_agents_limit' => 20,
                     'delivery_companies_limit' => 5,
                     'store_orders_limit' => 2000,
+                    'stores_max' => 5,
                     'analytics' => true,
                     'priority_support' => true,
                     'integrations' => true,
@@ -108,6 +112,7 @@ class PlansSeeder extends Seeder
                     'delivery_agents_limit' => 'unlimited',
                     'delivery_companies_limit' => 'unlimited',
                     'store_orders_limit' => 'unlimited',
+                    'stores_max' => 'unlimited',
                     'analytics' => true,
                     'priority_support' => true,
                     'integrations' => true,

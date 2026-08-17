@@ -3,8 +3,10 @@
 namespace App\Models\Plans;
 
 use App\Models\billing\Subscription;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Plan extends Model
@@ -21,6 +23,8 @@ class Plan extends Model
         'currency',
         'is_active',
         'is_default',
+        'is_custom',
+        'assigned_to_user_id',
     ];
 
     /* ================= Relations ================= */
@@ -54,6 +58,11 @@ class Plan extends Model
         return $this->belongsTo(Plan::class, 'upgrade_to_plan_id');
     }
 
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
     public function prices()
     {
         return $this->hasMany(PlanPrice::class);
@@ -80,5 +89,10 @@ class Plan extends Model
     public function hasUnlimitedFeature(string $slug): bool
     {
         return $this->getFeatureValue($slug) === 'unlimited';
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->where('is_custom', false);
     }
 }

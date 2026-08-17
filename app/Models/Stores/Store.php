@@ -147,8 +147,14 @@ class Store extends Model
 
     public function canCreateMultiStore(): bool
     {
-        return  $this->user->stores()->count()
-            < $this->user->latestSubscription()?->plan?->max_stores;
+        $subscription = $this->user->latestSubscription();
+
+        if (! $subscription || ! $subscription->plan) {
+            return false;
+        }
+
+        return app(\App\Domains\Plan\Services\FeatureUsageService::class)
+            ->canUse($subscription, 'stores_max');
     }
 
 

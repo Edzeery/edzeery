@@ -78,7 +78,7 @@
 
     {{-- Create New Store --}}
     @if (user()?->canCreateMultiStore())
-        <a href="{{ route('filament.merchant.tenant.registration') }}"
+        <a href="{{ route('merchant.create-store') }}"
             class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/40 p-6 text-center transition hover:bg-primary-50 dark:border-primary-700 dark:bg-primary-900/10">
 
             <div

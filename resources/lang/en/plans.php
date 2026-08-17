@@ -5,6 +5,7 @@ return [
     'basic' => 'Basic',
     'enterprise' => 'Enterprise',
     'future_integrations' => 'Future integrations',
+    'max_stores' => 'Maximum stores',
     'nbr_daily_orders' => 'Daily orders limit',
     'nbr_delivery_agents' => 'Number of delivery agents',
     'nbr_delivery_companies' => 'Number of delivery companies',

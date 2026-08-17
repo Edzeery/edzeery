@@ -4,10 +4,42 @@
 
         <x-auth.card :title="__('messages.choose_store_title')" :subtitle="__('messages.choose_store_desc')">
 
+            {{-- Store Usage --}}
+            @php
+                $subscription = auth()->user()->latestSubscription();
+                $featureService = app(\App\Domains\Plan\Services\FeatureUsageService::class);
+                $storesFeature = $subscription?->plan?->features?->firstWhere('slug', 'stores_max');
+                $maxStores = $subscription?->plan?->getFeatureValue('stores_max');
+                $consumption = $storesFeature ? (int) $featureService->getConsumption($subscription, $storesFeature->id) : 0;
+                $storeCount = auth()->user()->stores()->count();
+                $effectiveUsage = max($consumption, $storeCount);
+                $isUnlimited = $maxStores === 'unlimited';
+                $canCreate = $subscription ? $featureService->canUse($subscription, 'stores_max') : false;
+            @endphp
+
+            @if ($subscription && $maxStores)
+                <div class="mb-6 rounded-lg border border-surface-border bg-surface-secondary/50 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-ink">{{ __('stores.stores_used', ['used' => $effectiveUsage, 'max' => $isUnlimited ? '∞' : $maxStores]) }}</p>
+                            <p class="mt-0.5 text-xs text-ink-muted">{{ __('plans.max_stores') }}: {{ $subscription->plan->name }}</p>
+                        </div>
+                        @if (! $canCreate)
+                            <a href="#" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('stores.upgrade_plan') }}</a>
+                        @endif
+                    </div>
+                    @if (! $isUnlimited && $maxStores > 0)
+                        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-border">
+                            <div class="h-full rounded-full bg-brand-600 transition-all" style="width: {{ min(100, ($effectiveUsage / (int) $maxStores) * 100) }}%"></div>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             {{-- Create Store --}}
-            @if (currentStore()?->canCreateMultiStore())
+            @if ($canCreate)
                 <div class="mb-6 text-center">
-                    <x-nav-link href="{{ route('filament.merchant.tenant.registration') }}"
+                    <x-nav-link href="{{ route('merchant.create-store') }}"
                         class="inline-flex items-center gap-2 text-success hover:underline">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">

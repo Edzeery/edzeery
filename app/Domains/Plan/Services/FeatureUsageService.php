@@ -71,6 +71,27 @@ class FeatureUsageService
             ->value('consumption') ?? 0;
     }
 
+    /* ================= DECREMENT ================= */
+
+    public function decrement(Subscription $subscription, string $featureSlug, int $amount = 1): void
+    {
+        $feature = $this->getFeature($subscription, $featureSlug);
+
+        if (!$feature || !$feature->consumable) {
+            return;
+        }
+
+        DB::transaction(function () use ($subscription, $feature, $amount) {
+            $record = $subscription->featureConsumptions()
+                ->where('plan_feature_id', $feature->id)
+                ->first();
+
+            if ($record && $record->consumption > 0) {
+                $record->decrement('consumption', min($amount, $record->consumption));
+            }
+        });
+    }
+
     /* ================= RESET ================= */
 
     public function reset(Subscription $subscription, PlanFeature $feature): void

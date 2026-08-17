@@ -301,6 +301,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
             return false;
         }
 
-        return $this->stores()->count() < $subscription->plan->max_stores;
+        return app(\App\Domains\Plan\Services\FeatureUsageService::class)
+            ->canUse($subscription, 'stores_max');
     }
 }

@@ -14,10 +14,6 @@ test('guests hitting the admin panel are redirected to the admin login', functio
     $this->get('/super-admin')->assertRedirect('/admin/login');
 });
 
-test('guests hitting the merchant panel are redirected to the merchant login', function () {
-    $this->get('/merchant/legacy')->assertRedirect('/login');
-});
-
 /* ============================ دخول موظفي المنصة ============================ */
 
 $staffRoles = ['super_admin', 'admin', 'support_agent', 'tech_support'];

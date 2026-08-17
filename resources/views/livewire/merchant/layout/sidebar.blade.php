@@ -145,10 +145,15 @@ with([
 
         @if ($store)
             <div class="edz-sidebar__group">
-                <p class="edz-sidebar__group-title">Legacy (not migrated yet)</p>
+                <p class="edz-sidebar__group-title">Team</p>
 
-                <a href="{{ route('filament.merchant.resources.team.index', $store) }}" target="_blank" class="edz-sidebar__link">
-                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                @php
+                    $teamActive = request()->routeIs('merchant.teams.*');
+                    $teamHref = $store ? route('merchant.teams.index', $store) : '#';
+                @endphp
+                <a href="{{ $teamHref }}" wire:navigate
+                   class="edz-sidebar__link @if ($teamActive) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="users" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">My Teams</span>
                 </a>
             </div>

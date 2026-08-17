@@ -8,7 +8,7 @@
 
 ## القسم 0 — نتائج التدقيق (سياق، ليس عمل تنفيذي)
 
-- Livewire مطبّق فعليًا فقط على **مورد واحد** (Products) من أصل 9 موارد تاجر. الباقي (Brands, Categories, Inventories, InventoryMovements, MyTeams, ProductOptions, ProductOptionValues, ProductVariants, StockAlerts) لا يزال Filament فقط
+- Livewire مطبّق فعليًا على **جميع** موارد التاجر الـ 9 (Products, Brands, Categories, ProductOptions, ProductOptionValues, ProductVariants, Inventories, InventoryMovements, StockAlerts, MyTeams). حُذف `app/Filament/Merchant` بالكامل — Filament لا يوجد الآن إلا للإدارة العامة (`SuperAdminPanelProvider`).
 - `MerchantPanelProvider` (Filament، `path('merchant')`) لا يزال مسجّلاً ونشطًا **بالتوازي** مع `routes/merchant.php` الجديد (`Route::prefix('merchant')`) — نفس البادئة، نظامان مختلفان يعملان في نفس الوقت تحت `/merchant/*`
 - يوجد نظامان مصمّمان للألوان يعملان بالتوازي في الكود:
   - **صحيح ومتّصل بالـ design tokens**: `bg-surface-bg`, `text-ink` — مستعمل فقط في `components/layouts/panel.blade.php`, `components/layouts/merchant.blade.php`, وكل `resources/views/livewire/merchant/*`
@@ -96,11 +96,9 @@ git rm resources/views/components/merchant/sidebar.blade.php
 3. ✅ **ProductOptions** + **ProductOptionValues** — يعتمدان على Products (منجز)
 4. ✅ **ProductVariants** — يعتمد على Products + ProductOptions (منجز)
 5. ✅ **Inventories** + **InventoryMovements** + **StockAlerts** — يعتمدون على Products/Variants (منجز)
-6. ⬜ **MyTeams** — مستقل، يمكن تنفيذه بالتوازي مع أي مرحلة
+6. ✅ **MyTeams** — مستقل، يمكن تنفيذه بالتوازي مع أي مرحلة
 
-بعد اكتمال آخر مورد: احذف `app/Filament/Merchant` بالكامل و`MerchantPanelProvider.php` وتسجيله في `bootstrap/providers.php`.
-
-> ملاحظة إضافية رصدت أثناء القسم 1: `TeamController` (المسارات الحية في `routes/merchant.php` — `/team`, `/team/create`, `/team/{member}/edit`) يستدعي `view('merchant.team.*')` بينما الملفات الفعلية تحت `merchant/pages/team/index.blade.php` — **عرض `merchant.team.*` مفقود وسيسبب 500**. يُعالج ضمن نقل MyTeams.
+بعد اكتمال آخر مورد: احذف `app/Filament/Merchant` بالكامل و`MerchantPanelProvider.php` وتسجيله في `bootstrap/providers.php`. ✅ تم الحذف بالكامل.
 
 ---
 
@@ -152,8 +150,8 @@ git rm "it" "prepareBindings(\$bindings)"
 ## حالة التنفيذ الحالية
 
 - ✅ **القسم 1**: استبدال الألوان في 24 ملفًا + حذف نسختي `*.blade copy.php`. المكوّنان `body`/`sidebar` أُبقيا (محجوب حتى نقل Billing إلى Livewire).
-- ✅ **القسم 2**: لوحة Filament للتاجر على `/merchant/legacy` + روابط Legacy في القائمة الجانبية + تحديث الاختبار.
-- ⬜ **القسم 3**: Brands + Categories + ProductOptions/ProductOptionValues + ProductVariants + Inventories/InventoryMovements/StockAlerts منقولة إلى Livewire Volt (صفحات `merchant/{store}/brands|categories|options|variants|inventories|inventory-movements|stock-alerts` + روابط القائمة الجانبية + حذف نسخ Filament والـ exporters/importers). المتبقي: MyTeams.
+- ✅ **القسم 2**: لوحة Filament للتاجر على `/merchant/legacy` + روابط Legacy في القائمة الجانبية + تحديث الاختبار. حُذف بالكامل مع باقي Filament Merchant.
+- ✅ **القسم 3**: Brands + Categories + ProductOptions/ProductOptionValues + ProductVariants + Inventories/InventoryMovements/StockAlerts + **MyTeams** — جميعها منقولة إلى Livewire Volt. حُذف `app/Filament/Merchant` بالكامل + `MerchantPanelProvider` + `TeamController`. الفيلامنت لم يعد موجودًا في طبقة التاجر.
 - ⬜ **القسم 4**: لم يبدأ.
 - ⬜ **القسم 5**: لم يبدأ.
 - ⬜ **القسم 6**: لم يبدأ.
