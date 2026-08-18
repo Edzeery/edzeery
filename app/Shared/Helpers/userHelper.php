@@ -13,12 +13,11 @@ if (! function_exists('getCurrentPanel')) {
 
 
 if (!function_exists('currency')) {
-    function currency()
+    function currency($amount = null, string $code = 'DZD'): string
     {
-        if (Auth::check()) {
-            return user()->wallet->currency ?? "DZD";
-        }
-        return null;
+        $formatted = number_format((float) $amount, 2, '.', ',');
+
+        return $formatted . ' ' . $code;
     }
 }
 

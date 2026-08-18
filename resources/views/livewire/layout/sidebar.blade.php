@@ -3,10 +3,7 @@
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Products\Product;
 use Illuminate\Support\Facades\Route;
-use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
-
-layout('components.layouts.panel');
 
 with([
     'context' => request()->routeIs('merchant.*') ? 'merchant' : 'panel',
@@ -191,7 +188,12 @@ with([
                     </a>
                 @endif
 
-                <a href="#" class="edz-sidebar__link edz-sidebar__link--disabled">
+                @php
+                    $active = request()->routeIs('merchant.orders.*');
+                    $href = $store ? route('merchant.orders.index', $store) : '#';
+                @endphp
+                <a href="{{ $href }}" wire:navigate
+                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="cart" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
                 </a>
@@ -212,6 +214,19 @@ with([
                     <x-edz.icon name="settings" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.settings') }}</span>
                 </a>
+
+                @if ($store)
+                    @php
+                        $active = request()->routeIs('merchant.storefront-settings');
+                        $href = $store ? route('merchant.storefront-settings', $store) : '#';
+
+                    @endphp
+                    <a href="{{ $href }}" wire:navigate
+                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        <x-edz.icon name="storefront" class="edz-sidebar__icon" />
+                        <span class="edz-sidebar__label">{{ __('merchant_panel.storefront') }}</span>
+                    </a>
+                @endif
             </div>
 
             @if ($store)

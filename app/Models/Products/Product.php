@@ -122,4 +122,9 @@ class Product extends Model
     {
         return $this->primaryCategory?->full_name;
     }
+
+    public function getMinPriceAttribute(): float
+    {
+        return $this->variants()->min('price') ?? (float) $this->price;
+    }
 }

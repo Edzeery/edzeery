@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Orders\Order;
+use App\Models\Orders\OrderStatusHistory;
 use App\Models\Status;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,18 @@ class OrderObserver
     {
         $status = $order->status; // eager loaded or fresh
 
-        if (! $status || ! $status->affects_inventory) {
+        if (! $status) {
+            return;
+        }
+
+        // Record status history
+        OrderStatusHistory::create([
+            'order_id'  => $order->id,
+            'status_id' => $status->id,
+            'reason'    => null,
+        ]);
+
+        if (! $status->affects_inventory) {
             return;
         }
 

@@ -27,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(StoreContext::class);
+        $this->app->singleton(\App\Domains\Shipping\Services\ShippingCostCalculator::class);
+        $this->app->singleton(\App\Domains\Cart\Services\CartService::class);
+        $this->app->singleton(\App\Domains\Order\Services\OrderService::class);
     }
 
     /**
@@ -36,7 +39,9 @@ class AppServiceProvider extends ServiceProvider
     {
         View::composer('*', function ($view) {
             $view->with('user', user());
-            $view->with('currency', currency());
+            $store = currentStore();
+            $view->with('store', $store);
+            $view->with('currency', $store ? ($store->settings->currency ?? 'DZD') : 'DZD');
             $view->with('theme', user_setting('theme') ?? 'light');
             $view->with('lang',  getCurrentLocale());
             $view->with('languages',  getLanguages() ?? []);

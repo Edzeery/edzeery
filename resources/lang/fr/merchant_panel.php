@@ -20,4 +20,9 @@ return [
     'inactive' => 'Inactif',
     'your_stores' => 'Gérer et basculer entre vos magasins',
     'no_stores' => 'Vous n\'avez pas encore de magasins',
+    'storefront' => 'Vitrine',
+    'storefront_template' => 'Modèle de vitrine',
+    'storefront_template_desc' => 'Choisissez l\'apparence de votre magasin public',
+    'save_template' => 'Enregistrer le modèle',
+    'template_updated' => 'Le modèle de vitrine a été mis à jour avec succès',
 ];

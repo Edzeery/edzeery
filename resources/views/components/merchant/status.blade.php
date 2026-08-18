@@ -4,7 +4,7 @@
 ])
 
 @php
-    $result = \Edzeery\MyStatusKit\Facades\Status::for($domain, $status);
+    $result = \Edzeery\MyStatusKit\Facades\Status::for($domain, $status instanceof \BackedEnum ? $status->value : (string) $status);
     $classes = 'status-badge inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium '
         . $result->color(true, 'tailwind');
 @endphp

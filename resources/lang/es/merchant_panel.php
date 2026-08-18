@@ -20,4 +20,9 @@ return [
     'inactive' => 'Inactivo',
     'your_stores' => 'Administrar y cambiar entre tus tiendas',
     'no_stores' => 'Aún no tienes tiendas',
+    'storefront' => 'Vitrina',
+    'storefront_template' => 'Plantilla de vitrina',
+    'storefront_template_desc' => 'Elige cómo se ve tu tienda pública',
+    'save_template' => 'Guardar plantilla',
+    'template_updated' => 'La plantilla de vitrina se ha actualizado correctamente',
 ];

@@ -72,6 +72,8 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/inventory-movements', 'merchant.inventory-movements.index')->name('inventory-movements.index');
         Volt::route('/{store:slug}/stock-alerts', 'merchant.stock-alerts.index')->name('stock-alerts.index');
         Volt::route('/{store:slug}/teams', 'merchant.teams.index')->name('teams.index');
+        Volt::route('/{store:slug}/orders', 'merchant.orders.index')->name('orders.index');
+        Volt::route('/{store:slug}/storefront-settings', 'merchant.storefront-settings')->name('storefront-settings');
 
         // Finance / Debts
         Volt::route('/{store:slug}/debts', 'merchant.debts.index')->name('debts.index');

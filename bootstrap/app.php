@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function (): void {
             // panel.php removed — all pages migrated to merchant Volt routes
+
+            // Storefront routes (domain-based: {store}.edzeery.test)
+            require __DIR__ . '/../routes/storefront.php';
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -24,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => PlatformRole::class,
             'merchant.access' => EnsureStoreMembership::class,
             'store.context' => \App\Http\Middleware\Api\EnsureStoreContext::class,
+            'resolve.store' => \App\Http\Middleware\ResolveStoreFromSubdomain::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

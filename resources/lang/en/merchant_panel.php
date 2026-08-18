@@ -20,4 +20,9 @@ return [
     'inactive' => 'Inactive',
     'your_stores' => 'Manage and switch between your stores',
     'no_stores' => 'You don\'t have any stores yet',
+    'storefront' => 'Storefront',
+    'storefront_template' => 'Storefront Template',
+    'storefront_template_desc' => 'Choose how your public store looks',
+    'save_template' => 'Save Template',
+    'template_updated' => 'Storefront template updated successfully',
 ];

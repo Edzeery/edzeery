@@ -1,9 +1,6 @@
 <?php
 
-use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
-
-layout('components.layouts.panel');
 
 $isMerchant = request()->routeIs('merchant.*');
 

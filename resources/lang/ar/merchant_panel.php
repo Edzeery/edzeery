@@ -20,4 +20,9 @@ return [
     'inactive' => 'غير نشط',
     'your_stores' => 'إدارة والتبديل بين متاجرك',
     'no_stores' => 'ليس لديك أي متاجر بعد',
+    'storefront' => 'واجهة المتجر',
+    'storefront_template' => 'قالب واجهة المتجر',
+    'storefront_template_desc' => 'اختر شكل متجرك العام',
+    'save_template' => 'حفظ القالب',
+    'template_updated' => 'تم تحديث قالب واجهة المتجر بنجاح',
 ];

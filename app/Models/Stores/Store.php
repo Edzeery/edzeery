@@ -27,6 +27,12 @@ class Store extends Model
     use HasFactory;
     use HasStoreDefaults;
     use SoftDeletes;
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
     protected $fillable = [
         'user_id',
         'name',
@@ -34,12 +40,14 @@ class Store extends Model
         'logo',
         'cover',
         'description',
+        'landing_template',
         'status',
     ];
+
     protected $casts = [
         'status' => StoreStatusEnum::class,
+        'landing_template' => \App\Enums\Store\LandingTemplateEnum::class,
     ];
-
 
 
     /* ================= Relations ================= */
