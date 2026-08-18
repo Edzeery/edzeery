@@ -26,7 +26,7 @@ use function Livewire\Volt\uses;
 
 uses([WithFileUploads::class]);
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 state([
     'product' => null,

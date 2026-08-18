@@ -7,7 +7,7 @@ use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 state([
     'statusFilter' => '',

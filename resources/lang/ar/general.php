@@ -105,4 +105,13 @@ return [
     'selected_count' => ':count محدد',
     'system' => 'النظام',
     'yes' => 'نعم',
+    'name' => 'الاسم',
+    'email' => 'البريد الإلكتروني',
+    'phone' => 'الهاتف',
+    'country' => 'الدولة',
+    'select_country' => 'اختر الدولة',
+    'birthdate' => 'تاريخ الميلاد',
+    'address' => 'العنوان',
+    'description' => 'الوصف',
+    'store_name' => 'اسم المتجر',
 ];

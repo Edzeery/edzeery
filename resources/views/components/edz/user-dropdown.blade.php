@@ -3,12 +3,12 @@
         [
             'text' => __('buttons.profile'),
             'icon' => 'user',
-            'path' => route('account.index'),
+            'path' => route('account.profile'),
         ],
         [
             'text' => __('buttons.settings'),
             'icon' => 'settings',
-            'path' => '#',
+            'path' => route('merchant.stores.index'),
         ],
         [
             'text' => __('buttons.support'),

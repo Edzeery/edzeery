@@ -105,4 +105,13 @@ return [
     'selected_count' => ':count selected',
     'system' => 'System',
     'yes' => 'Yes',
+    'name' => 'Name',
+    'email' => 'Email',
+    'phone' => 'Phone',
+    'country' => 'Country',
+    'select_country' => 'Select Country',
+    'birthdate' => 'Birthdate',
+    'address' => 'Address',
+    'description' => 'Description',
+    'store_name' => 'Store Name',
 ];

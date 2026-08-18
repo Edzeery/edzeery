@@ -103,4 +103,13 @@ return [
     'selected_count' => ':count seleccionado(s)',
     'system' => 'Sistema',
     'yes' => 'Sí',
+    'name' => 'Nombre',
+    'email' => 'Correo electrónico',
+    'phone' => 'Teléfono',
+    'country' => 'País',
+    'select_country' => 'Seleccionar país',
+    'birthdate' => 'Fecha de nacimiento',
+    'address' => 'Dirección',
+    'description' => 'Descripción',
+    'store_name' => 'Nombre de la tienda',
 ];

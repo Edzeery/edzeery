@@ -18,7 +18,7 @@ use function Livewire\Volt\usesPagination;
 uses([WithFileUploads::class]);
 usesPagination();
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 state([
     'search' => '',

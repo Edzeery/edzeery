@@ -13,7 +13,7 @@ use function Livewire\Volt\usesPagination;
 
 usesPagination();
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 state([
     'search' => '',

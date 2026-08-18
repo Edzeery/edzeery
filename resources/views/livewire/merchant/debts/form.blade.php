@@ -10,7 +10,7 @@ use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 use Carbon\Carbon;
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 state([
     'debtId' => null,

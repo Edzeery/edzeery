@@ -2,6 +2,7 @@
     'title' => null,
     'description' => null,
     'context' => 'panel',
+    'sidebar' => 'account',
 ])
 
 <!DOCTYPE html>
@@ -22,7 +23,13 @@
          x-data
          :class="{ 'edz-shell--open': $store.shell.open, 'edz-shell--collapsed': $store.shell.collapsed }">
 
-        <livewire:layout.sidebar />
+        @if ($sidebar === 'store')
+            <livewire:layout.store-sidebar />
+        @elseif ($sidebar === 'merchant')
+            <livewire:layout.merchant-sidebar />
+        @else
+            <livewire:layout.account-sidebar />
+        @endif
 
         <div class="edz-overlay"
              @click="$store.shell.close()"

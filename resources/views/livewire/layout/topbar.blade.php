@@ -2,11 +2,10 @@
 
 use function Livewire\Volt\with;
 
-$isMerchant = request()->routeIs('merchant.*');
+$store = currentStore();
 
 with([
-    'context' => $isMerchant ? 'merchant' : 'panel',
-    'store' => $isMerchant ? currentStore() : null,
+    'store' => $store,
 ]);
 ?>
 
@@ -24,7 +23,7 @@ with([
     </div>
 
     <div class="edz-topbar__actions">
-        @if ($context === 'merchant' && $store)
+        @if ($store)
             <a href="{{ route('choose-store') }}" class="edz-topbar__store-link">
                 <x-edz.icon name="grid" class="w-4 h-4" />
                 <span class="edz-topbar__store-name">{{ $store?->name }}</span>

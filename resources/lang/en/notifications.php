@@ -17,6 +17,7 @@ return [
     'password_updated' => 'Password updated successfully 🔑',
     'security_alert' => 'Security alert: new login detected 🔔',
     'settings_updated' => 'Settings updated successfully ⚙️',
+    'profile_updated' => 'Profile updated successfully',
     'transfer_success' => 'Transfer completed successfully 🔄',
     'transfer_successfully' => 'The :amount DZD has been transferred to account number :account.',
     'unauthorized_action' => 'You are not authorized to perform this action 🔒',

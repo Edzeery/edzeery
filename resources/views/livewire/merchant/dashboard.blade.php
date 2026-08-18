@@ -6,7 +6,7 @@ use App\Models\Stores\Team\StoreMembership;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
 
 with([
     'userName' => user()?->name ?? __('merchant_panel.guest'),
@@ -95,7 +95,7 @@ with([
                 <a href="{{ route('merchant.products.create', currentStore()) }}"
                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
                     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-success-50 dark:bg-success-900/20 flex items-center justify-center text-success-600 dark:text-success-400">
-                        <x-heroicon-s-plus class="w-5 h-5" />
+                        <x-edz.icon name="plus" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('buttons.create') }} {{ __('titles.product') }}</p>
@@ -105,7 +105,7 @@ with([
                 <a href="{{ route('merchant.products.index', currentStore()) }}"
                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
                     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-accent-50 dark:bg-accent-900/20 flex items-center justify-center text-accent-600 dark:text-accent-400">
-                        <x-heroicon-s-eye class="w-5 h-5" />
+                        <x-edz.icon name="eye" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('titles.products') }}</p>
@@ -115,7 +115,7 @@ with([
                 <a href="{{ route('merchant.teams.index', currentStore()) }}"
                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
                     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center text-warning-600 dark:text-warning-400">
-                        <x-heroicon-s-users class="w-5 h-5" />
+                        <x-edz.icon name="users" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('titles.teams') }}</p>
@@ -125,7 +125,7 @@ with([
                 <a href="{{ route('merchant.stock-alerts.index', currentStore()) }}"
                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
                     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-danger-50 dark:bg-danger-900/20 flex items-center justify-center text-danger-600 dark:text-danger-400">
-                        <x-heroicon-s-exclamation-triangle class="w-5 h-5" />
+                        <x-edz.icon name="bell" class="w-5 h-5" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('titles.stock_alerts') }}</p>
@@ -147,7 +147,7 @@ with([
                                  alt="{{ $product->name }}"
                                  class="w-8 h-8 rounded object-cover" />
                         @else
-                            <x-heroicon-s-photo class="w-4 h-4 text-ink-400" />
+                            <x-edz.icon name="image" class="w-4 h-4 text-ink-400" />
                         @endif
                     </div>
                     <div class="min-w-0 flex-1">
@@ -178,7 +178,7 @@ with([
             @forelse ($lowStockVariants as $variant)
                 <div class="flex items-center gap-3 {{ !$loop->last ? 'pb-3 mb-3 border-b border-surface-100 dark:border-ink-800' : '' }}">
                     <div class="flex-shrink-0 w-8 h-8 rounded bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
-                        <x-heroicon-s-exclamation-triangle class="w-4 h-4 text-warning-600 dark:text-warning-400" />
+                        <x-edz.icon name="bell" class="w-4 h-4 text-warning-600 dark:text-warning-400" />
                     </div>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-medium text-ink truncate">{{ $variant->product->name }}</p>

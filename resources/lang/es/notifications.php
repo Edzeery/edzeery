@@ -17,6 +17,7 @@ return [
     'password_updated' => 'Contraseña actualizada exitosamente 🔑',
     'security_alert' => 'Alerta de seguridad: nuevo inicio de sesión detectado 🔔',
     'settings_updated' => 'Configuración actualizada exitosamente ⚙️',
+    'profile_updated' => 'Perfil actualizado correctamente',
     'transfer_success' => 'Transferencia completada exitosamente 🔄',
     'transfer_successfully' => 'El :amount DZD ha sido transferido a la cuenta número :account.',
     'unauthorized_action' => 'No estás autorizado a realizar esta acción 🔒',

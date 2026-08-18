@@ -1,68 +1,65 @@
 <?php
 
-use App\Enums\Store\LandingTemplateEnum;
-use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Store;
-use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 
-layout('components.layouts.merchant');
+layout('components.layouts.store');
+
+$store = null;
+$template = '';
 
 state([
-    'landing_template' => 'single_product',
+    'template' => '',
 ]);
 
 mount(function (): void {
-    $store = currentStore();
-    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
-
-    $this->landing_template = $store->landing_template?->value ?? LandingTemplateEnum::SINGLE_PRODUCT->value;
+    $this->store = currentStore();
+    abort_unless($this->store, 404);
+    $this->template = $this->store->landing_template ?? 'single-product';
 });
 
-$save = function () {
-    Validator::make(
-        ['landing_template' => $this->landing_template],
-        ['landing_template' => 'required|string|in:' . implode(',', array_column(LandingTemplateEnum::cases(), 'value'))]
-    )->validate();
-
+$save = function (): void {
     $store = currentStore();
-    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+    abort_unless($store, 404);
 
-    $store->update(['landing_template' => $this->landing_template]);
+    $store->update(['landing_template' => $this->template]);
 
-    session()->flash('success', __('Storefront template updated successfully'));
+    session()->flash('success', __('merchant_panel.template_updated'));
 };
 ?>
 
 <div>
     <x-edz.page-header
-        title="{{ __('Storefront Template') }}"
-        description="{{ __('Choose how your public store looks') }}">
+        title="{{ __('merchant_panel.storefront_template') }}"
+        description="{{ __('merchant_panel.storefront_template_desc') }}">
     </x-edz.page-header>
 
-    @if(session('success'))
-        <div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">
+    @if (session('success'))
+        <div class="mb-6 p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg text-success-700 dark:text-success-300 text-sm">
             {{ session('success') }}
         </div>
     @endif
 
-    <form wire:submit="save" class="space-y-6">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            @foreach(\App\Enums\Store\LandingTemplateEnum::options() as $option)
-                <label class="cursor-pointer">
-                    <input type="radio" wire:model="landing_template" value="{{ $option['value'] }}" class="peer sr-only">
-                    <div class="border-2 rounded-xl p-6 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
-                        <h3 class="font-semibold text-gray-900 dark:text-white mb-2">{{ $option['label'] }}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $option['description'] }}</p>
-                    </div>
-                </label>
-            @endforeach
-        </div>
+    <form wire:submit="save">
+        <div class="edz-card edz-card--padded space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                @foreach (['single-product' => __('merchant_panel.template_single'), 'catalog' => __('merchant_panel.template_catalog'), 'brand' => __('merchant_panel.template_brand')] as $key => $label)
+                    <label class="edz-card edz-card--padded cursor-pointer border-2 transition-all duration-200 @if ($template === $key) border-accent-500 bg-accent-50 dark:bg-accent-900/10 @else border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 @endif">
+                        <input type="radio" name="template" value="{{ $key }}" wire:model.live="template" class="sr-only" />
+                        <div class="text-center py-4">
+                            <p class="font-semibold text-ink">{{ $label }}</p>
+                        </div>
+                    </label>
+                @endforeach
+            </div>
 
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition">
-            {{ __('Save Template') }}
-        </button>
+            <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button type="submit" class="edz-btn edz-btn--primary">
+                    {{ __('merchant_panel.save_template') }}
+                </button>
+            </div>
+        </div>
     </form>
 </div>

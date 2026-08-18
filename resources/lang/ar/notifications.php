@@ -17,6 +17,7 @@ return [
     'password_updated' => 'تم تحديث كلمة المرور بنجاح 🔑',
     'security_alert' => 'تنبيه أمني: تم تسجيل دخول جديد 🔔',
     'settings_updated' => 'تم تحديث الإعدادات بنجاح ⚙️',
+    'profile_updated' => 'تم تحديث الملف الشخصي بنجاح',
     'transfer_success' => 'تم تحويل المبلغ بنجاح 🔄',
     'transfer_successfully' => 'تم تحويل مبلغ :amount دج إلى الحساب رقم :account بنجاح.',
     'unauthorized_action' => 'ليس لديك صلاحية للقيام بهذه العملية 🔒',
