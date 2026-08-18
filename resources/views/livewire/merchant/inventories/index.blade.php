@@ -91,7 +91,7 @@ $adjust = function (ProductVariant $variant): void {
             $validated['adjust_reason'] ?: null
         );
 
-        session()->flash('merchant.saved', __('inventories.adjust_stock'));
+        $this->dispatch('swal', type: 'success', title: __('inventories.adjust_stock'));
     } catch (\Illuminate\Validation\ValidationException $e) {
         $this->addError('adjust_quantity', $e->getMessage());
     }
@@ -107,12 +107,6 @@ $adjust = function (ProductVariant $variant): void {
             <p class="edz-page-head__subtitle">{{ __('inventories.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
     </div>
-
-    @if (session('merchant.saved'))
-        <div class="mb-6 rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-800 dark:bg-success-950 dark:text-success-300">
-            {{ session('merchant.saved') }}
-        </div>
-    @endif
 
     <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="edz-card">

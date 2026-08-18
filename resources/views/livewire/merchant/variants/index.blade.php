@@ -183,7 +183,7 @@ $applyStock = function (ProductVariant $variant): void {
             auth()->user()
         );
 
-        session()->flash('merchant.saved', __('inventories.adjust_stock'));
+        $this->dispatch('swal', type: 'success', title: __('inventories.adjust_stock'));
     } catch (\Illuminate\Validation\ValidationException $e) {
         $this->addError('adjust_quantity', $e->getMessage());
     }
@@ -222,18 +222,6 @@ $deleteSelected = function (): void {
         </div>
     </div>
 
-    @if (session('merchant.error'))
-        <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
-            {{ session('merchant.error') }}
-        </div>
-    @endif
-
-    @if (session('merchant.saved'))
-        <div class="mb-6 rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-800 dark:bg-success-950 dark:text-success-300">
-            {{ session('merchant.saved') }}
-        </div>
-    @endif
-
     @if ($creating || $editingId)
         <div class="edz-card mb-6">
             <div class="edz-card__header">
@@ -243,7 +231,7 @@ $deleteSelected = function (): void {
                 </div>
             </div>
 
-            <form wire:submit="save" class="space-y-4 p-4">
+            <form wire:submit="save" class="space-y-4 p-4" x-data="edzDirty()">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <label class="mb-1 block text-sm font-medium text-ink" for="variant-product">{{ __('variants.product') }}</label>
@@ -323,8 +311,8 @@ $deleteSelected = function (): void {
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
-                        wire:click="deleteSelected"
-                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
+                        x-data
+                        @click.prevent="if (await EdzSwal.confirmBulkDelete({{ count($selected) }})) $wire.deleteSelected()">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -381,8 +369,9 @@ $deleteSelected = function (): void {
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete('{{ $variant->id }}')"
-                                                wire:confirm="Delete variant &quot;{{ $variant->sku }}&quot;?">{{ __('buttons.delete') }}</button>
+                                                x-data
+                                                @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($variant->sku) }}')) $wire.delete('{{ $variant->id }}')"
+                                                >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>

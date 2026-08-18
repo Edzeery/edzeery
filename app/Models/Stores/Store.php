@@ -209,4 +209,23 @@ class Store extends Model
     {
         return $this->latestStatus()?->reason;
     }
+
+    /**
+     * الرابط العام للمتجر (واجهة العميل).
+     */
+    public function getPublicUrlAttribute(): string
+    {
+        $scheme = request()->secure() ? 'https' : 'http';
+        $domain = config('app.domain');
+
+        return "{$scheme}://{$this->slug}.{$domain}";
+    }
+
+    /**
+     * هل المتجر نشط ومتاح للزيارة؟
+     */
+    public function isPubliclyActive(): bool
+    {
+        return $this->status === StoreStatusEnum::ACTIVE;
+    }
 }

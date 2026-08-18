@@ -124,10 +124,6 @@ $deactivateSelected = function (): void {
         </x-slot:actions>
     </x-edz.page-header>
 
-    @if (session('merchant.saved'))
-        <x-edz.alert type="success" class="mb-6">{{ session('merchant.saved') }}</x-edz.alert>
-    @endif
-
     <div class="edz-card">
         <div class="edz-card__header">
             <div>
@@ -174,8 +170,8 @@ $deactivateSelected = function (): void {
                 <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm" wire:click="activateSelected">{{ __('products.activate') }}</button>
                 <button type="button" class="edz-btn edz-btn--secondary edz-btn--sm" wire:click="deactivateSelected">{{ __('products.deactivate') }}</button>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
-                        wire:click="deleteSelected"
-                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
+                        x-data
+                        @click.prevent="if (await EdzSwal.confirmBulkDelete({{ count($selected) }})) $wire.deleteSelected()">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -242,8 +238,9 @@ $deactivateSelected = function (): void {
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete('{{ $product->id }}')"
-                                                wire:confirm="Delete &quot;{{ $product->name }}&quot;?">{{ __('buttons.delete') }}</button>
+                                                x-data
+                                                @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($product->name) }}')) $wire.delete('{{ $product->id }}')"
+                                                >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>

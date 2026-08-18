@@ -11,20 +11,28 @@ class EnsureStoreIsActive
     public function handle(Request $request, Closure $next)
     {
         $store = currentStore();
-        // جلب أحدث حالة للمتجر من جدول StoreStatusHistory
-        $latestStatusHistory = $store->latestStatus(); // دالة في موديل Store
 
+        $latestStatusHistory = $store->latestStatus();
 
-        // إذا كانت الحالة غير مسموح بها
-        if (in_array($latestStatusHistory, [
-            StoreStatusEnum::PENDING,
-            StoreStatusEnum::CLOSED,
-            StoreStatusEnum::SUSPENDED,
-        ], true) ) {
+        if (
+            $latestStatusHistory
+            && in_array($latestStatusHistory->status, [
+                StoreStatusEnum::PENDING,
+                StoreStatusEnum::CLOSED,
+                StoreStatusEnum::SUSPENDED,
+            ], true)
+        ) {
+            if (! $request->routeIs('account.billing')) {
+                return redirect()->route('account.billing');
+            }
+        }
 
-            // إذا لم نكن في صفحة حالة المتجر، نعيد التوجيه
-            if (! $request->routeIs('filament.merchant.settings.pages.status')) {
-                return redirect()->route('filament.merchant.settings.pages.status', $store);
+        $subscription = user()?->latestSubscription();
+
+        if (! $subscription || ! $subscription->isActive()) {
+            if (! $request->routeIs('account.billing')) {
+                return redirect()->route('account.billing')
+                    ->with('subscription_warning', true);
             }
         }
 

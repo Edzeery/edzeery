@@ -157,7 +157,7 @@ $deleteSelected = function (): void {
                 </div>
             </div>
 
-            <form wire:submit="save" class="space-y-4 p-4">
+            <form wire:submit="save" class="space-y-4 p-4" x-data="edzDirty()">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="brand-name">{{ __('brands.brand_name') }}</label>
@@ -227,8 +227,8 @@ $deleteSelected = function (): void {
             <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
-                        wire:click="deleteSelected"
-                        wire:confirm="{{ __('general.confirm_delete_selected', ['count' => count($selected)]) }}">{{ __('buttons.delete') }}</button>
+                        x-data
+                        @click.prevent="if (await EdzSwal.confirmBulkDelete({{ count($selected) }})) $wire.deleteSelected()">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -278,8 +278,9 @@ $deleteSelected = function (): void {
                                     @endif
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="delete('{{ $brand->id }}')"
-                                                wire:confirm="Delete &quot;{{ $brand->name }}&quot;?">{{ __('buttons.delete') }}</button>
+                                                x-data
+                                                @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($brand->name) }}')) $wire.delete('{{ $brand->id }}')"
+                                                >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
                             </td>

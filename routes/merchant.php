@@ -20,7 +20,9 @@ Route::prefix('merchant/account')
     ->group(function () {
 
         Volt::route('/profile', 'account.profile')->name('profile');
+        Volt::route('/stores', 'merchant.stores.index')->name('stores');
         Volt::route('/billing', 'account.billing')->name('billing');
+        Volt::route('/personal-data', 'account.personal-data')->name('personal-data');
 
         Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/password', [SecurityController::class, 'update'])->name('password.update');
@@ -34,7 +36,6 @@ Route::prefix('merchant')
     ->middleware(['auth', 'verified'])
     ->name('merchant.')
     ->group(function (): void {
-        Volt::route('/stores', 'merchant.stores.index')->name('stores.index');
         Volt::route('/create-store', 'merchant.create-store')->name('create-store');
     });
 

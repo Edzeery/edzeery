@@ -16,42 +16,32 @@ class StoreTeamService
     {
         return DB::transaction(function () use ($store, $data) {
 
-            // 1️⃣ منع ربط حسابات المنصة
             $this->ensureUserIsNotPlatformStaff($data['email']);
 
-            // 2️⃣ إيجاد أو إنشاء المستخدم
             $member_user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
                     'name'     => $data['name'],
-                    'password' =>  Hash::make($data['password']),
+                    'password' => Hash::make($data['password']),
                 ]
             );
-            // 2️⃣.1 تحديث بيانات المستخدم إذا كان موجودًا مسبقًا
-            $updateData = [
+
+            $member_user->update([
                 'name'       => $data['name'],
                 'country_id' => $data['country_id'] ?? $member_user->country_id,
                 'state_id'   => $data['state_id'] ?? $member_user->state_id,
                 'city_id'    => $data['city_id'] ?? $member_user->city_id,
-            ];
+                ...(! empty($data['password']) ? ['password' => Hash::make($data['password'])] : []),
+            ]);
 
-            // تحديث كلمة المرور فقط إذا تم إدخالها
-            if (!empty($data['password'])) {
-                $updateData['password'] = Hash::make($data['password']);
-            }
-
-            $member_user->update($updateData);
-            // 3️⃣ منع التكرار
             if (
                 StoreMembership::where('store_id', $store->id)
                 ->where('user_id', $member_user->id)
-                ->where('invited_by', user()->id)
                 ->exists()
             ) {
-                throw new \Exception('User already member of this store.');
+                throw new \Exception(__('teams.member_already_exists'));
             }
 
-            // 4️⃣ إنشاء العضوية للمتجر
             $member = StoreMembership::create([
                 'store_id'  => $store->id,
                 'user_id'   => $member_user->id,
@@ -59,15 +49,10 @@ class StoreTeamService
                 'is_active' => $data['is_active'] ?? true,
             ]);
 
-            // 5️⃣ تحقق أمني: المستخدم لا يمكن أن يكون نفسه المتجر
-            if ($member_user->id === $store->id) {
-                throw new \Exception('User id and store id cannot be the same.');
-            }
-
             $role = StoreRoleEnum::from($data['store_role']);
 
+            $member_user->guard_name = 'merchant';
             $member_user->syncRoles([]);
-
             $member_user->assignRole($role->value);
 
             $permissions = $data['permissions'] ?? \App\Support\StoreRoles::permissions($role);
@@ -83,7 +68,6 @@ class StoreTeamService
 
             $user = $membership->user;
 
-            // 1️⃣ تحديث بيانات المستخدم
             $userData = [
                 'name'       => $data['name'],
                 'email'      => $data['email'],
@@ -98,28 +82,20 @@ class StoreTeamService
 
             $user->update($userData);
 
-
-            // 2️⃣ تحديث حالة العضوية
             $membership->update([
                 'is_active' => $data['is_active'] ?? $membership->is_active,
             ]);
 
-            // 3️⃣ تحديث الدور
             if (! empty($data['store_role'])) {
                 $role = StoreRoleEnum::from($data['store_role']);
 
-                // مهم: إزالة الأدوار السابقة
+                $user->guard_name = 'merchant';
                 $user->syncRoles([]);
-
-                // تعيين الدور
                 $user->assignRole($role->value);
             }
 
-            // 4️⃣ تحديث الصلاحيات (Checkboxes)
-            if (
-                isset($data['permissions']) &&
-                is_array($data['permissions'])
-            ) {
+            if (isset($data['permissions']) && is_array($data['permissions'])) {
+                $user->guard_name = 'merchant';
                 $user->syncPermissions($data['permissions']);
             }
 
@@ -138,7 +114,7 @@ class StoreTeamService
         }
 
         if ($user->hasAnyRole(['super_admin', 'admin', 'tech_support', 'support_agent'])) {
-            throw new \Exception('This account cannot be added to a store.');
+            throw new \Exception(__('teams.cannot_add_platform_staff'));
         }
     }
 }

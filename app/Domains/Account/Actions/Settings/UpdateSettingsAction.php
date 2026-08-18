@@ -15,7 +15,13 @@ class UpdateSettingsAction
                 'preferences' => array_filter([
                     'language' => $data->language,
                     'theme' => $data->theme,
-                ]),
+                    'timezone' => $data->timezone,
+                    'date_format' => $data->date_format,
+                    'email_notifications' => $data->email_notifications,
+                    'order_notifications' => $data->order_notifications,
+                    'stock_notifications' => $data->stock_notifications,
+                    'marketing_notifications' => $data->marketing_notifications,
+                ], fn ($v) => $v !== null),
             ]
         );
     }

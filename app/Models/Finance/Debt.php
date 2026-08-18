@@ -7,6 +7,7 @@ use App\Enums\Finance\DebtTypeEnum;
 use App\Models\Stores\Store;
 use App\Models\User;
 use App\Scopes\StoreScope;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Debt extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasUlids, HasFactory, SoftDeletes;
 
     protected static function booted(): void
     {

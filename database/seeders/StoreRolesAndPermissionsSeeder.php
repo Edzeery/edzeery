@@ -62,14 +62,15 @@ class StoreRolesAndPermissionsSeeder extends Seeder
             // Step 3: Create a default Store
             // =========================
             $store = Store::firstOrCreate(
-                ['slug' => 'default-merchant-store'],
+                ['slug' => 'default-store'],
                 [
                     'user_id' => $merchantUser->id,
                     'name' => 'Default Merchant Store',
+
                     'status' => 'active',
                 ]
             );
- 
+
             // =========================
             // Step 5: Assign Owner Role to Merchant in this Store
             // =========================

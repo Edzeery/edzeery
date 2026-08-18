@@ -8,6 +8,32 @@
 
     <title>{{ $title ?? $store->name ?? config('app.name') }}</title>
 
+    @php
+        $theme = $store->theme ?? null;
+        $primaryColor = $theme?->primary_color ?? '#4f46e5';
+        $secondaryColor = $theme?->secondary_color ?? '#7c3aed';
+        $fontFamily = $theme?->font_family ?? 'Cairo';
+        $sections = $theme?->homepage_sections ?? ['hero', 'social_proof', 'faq', 'cta'];
+    @endphp
+
+    <style>
+        :root {
+            --store-primary: {{ $primaryColor }};
+            --store-secondary: {{ $secondaryColor }};
+            --store-font: '{{ $fontFamily }}', sans-serif;
+        }
+        body { font-family: var(--store-font); }
+        .store-btn-primary { background-color: var(--store-primary); }
+        .store-btn-primary:hover { filter: brightness(0.9); }
+        .store-text-primary { color: var(--store-primary); }
+        .store-bg-primary { background-color: var(--store-primary); }
+        .store-border-primary { border-color: var(--store-primary); }
+        .store-btn-secondary { background-color: var(--store-secondary); }
+        .store-btn-secondary:hover { filter: brightness(0.9); }
+        .store-text-secondary { color: var(--store-secondary); }
+        .store-gradient { background: linear-gradient(135deg, var(--store-primary), var(--store-secondary)); }
+    </style>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
@@ -22,7 +48,7 @@
                 @if($store->logo ?? null)
                     <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="h-9 w-9 rounded-full object-cover">
                 @else
-                    <div class="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                    <div class="h-9 w-9 rounded-full store-bg-primary flex items-center justify-center text-white font-bold text-sm">
                         {{ strtoupper(substr($store->name, 0, 1)) }}
                     </div>
                 @endif
@@ -30,7 +56,6 @@
             </a>
 
             <div class="flex items-center gap-4">
-                {{-- Mini Cart Livewire component --}}
                 @livewire('storefront.mini-cart')
             </div>
         </div>
@@ -47,6 +72,16 @@
             &copy; {{ date('Y') }} {{ $store->name }} — {{ __('Powered by') }} Edzeery
         </div>
     </footer>
+
+    @if (session('swal.type'))
+        <div data-sw="{{ session('swal.type') }}"
+             data-sw-title="{{ session('swal.title', '') }}"
+             data-sw-message="{{ session('swal.message', '') }}" hidden></div>
+    @elseif (session('success'))
+        <div data-sw="success" data-sw-message="{{ session('success') }}" hidden></div>
+    @elseif (session('error'))
+        <div data-sw="error" data-sw-message="{{ session('error') }}" hidden></div>
+    @endif
 
 </body>
 

@@ -160,4 +160,12 @@ return [
     'wellat_page' => 'Gérez votre portefeuille électronique et suivez facilement votre solde et vos transactions à partir d\'ici.',
     'withdraw_success' => 'Un montant de :amount DZD a été retiré de votre portefeuille.',
     'yes' => 'Oui',
+    'unsaved_changes_title' => 'Modifications non enregistrées',
+    'unsaved_changes_text' => 'Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir quitter ?',
+    'leave' => 'Quitter',
+    'stay' => 'Rester',
+    'confirm_order_action' => 'Êtes-vous sûr de vouloir :action cette commande ?',
+    'subscription_required' => 'Abonnement actif requis',
+    'subscription_expired_text' => 'Vous avez besoin d\'un abonnement actif pour créer ou modifier des produits. Veuillez renouveler votre forgun pour continuer.',
+    'go_to_billing' => 'Aller à la facturation',
 ];

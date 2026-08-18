@@ -1,18 +1,20 @@
 <?php
 
 use App\Enums\Store\LandingTemplateEnum;
-use Livewire\Volt\Component;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.storefront');
+
+state([
+    'template' => LandingTemplateEnum::SINGLE_PRODUCT->value,
+]);
 
 mount(function (): void {
     $store = currentStore();
     $this->template = $store->landing_template?->value ?? LandingTemplateEnum::SINGLE_PRODUCT->value;
 });
-
-$props = ['template' => 'single_product'];
 ?>
 
 <div>

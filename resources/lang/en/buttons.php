@@ -70,4 +70,6 @@ return [
     'view' => 'View',
     'view_all' => 'View All',
     'yes' => 'Yes',
+    'copy_link' => 'Copy Link',
+    'copied' => 'Copied!',
 ];

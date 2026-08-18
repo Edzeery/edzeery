@@ -11,6 +11,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="swal-i18n" content="{{ json_encode([
+        'confirm_delete_title' => __('messages.action_confirm'),
+        'confirm_delete' => __('messages.action_confirm_delete'),
+        'confirm_delete_named' => __('messages.action_confirm_delete') . ' "{name}"?',
+        'confirm_bulk_delete' => __('messages.ask_delete'),
+        'delete' => __('buttons.delete'),
+        'confirm' => __('buttons.confirm'),
+        'cancel' => __('buttons.cancel'),
+        'unsaved_title' => __('messages.unsaved_changes_title'),
+        'unsaved_text' => __('messages.unsaved_changes_text'),
+        'leave' => __('messages.leave'),
+        'stay' => __('buttons.cancel'),
+    ]) }}">
 
     <title>{{ $title ? $title . ' · ' . config('app.name') : config('app.name') }}</title>
 
@@ -23,9 +36,7 @@
          x-data
          :class="{ 'edz-shell--open': $store.shell.open, 'edz-shell--collapsed': $store.shell.collapsed }">
 
-        @if ($sidebar === 'store')
-            <livewire:layout.store-sidebar />
-        @elseif ($sidebar === 'merchant')
+        @if ($sidebar === 'merchant')
             <livewire:layout.merchant-sidebar />
         @else
             <livewire:layout.account-sidebar />
@@ -66,5 +77,17 @@
     </div>
 
     @livewireScripts
+
+    @if (session('swal.type'))
+        <div data-sw="{{ session('swal.type') }}"
+             data-sw-title="{{ session('swal.title', '') }}"
+             data-sw-message="{{ session('swal.message', '') }}" hidden></div>
+    @elseif (session('success') || session('merchant.saved'))
+        <div data-sw="success" data-sw-message="{{ session('success') ?: session('merchant.saved') }}" hidden></div>
+    @elseif (session('error') || session('merchant.error'))
+        <div data-sw="error" data-sw-message="{{ session('error') ?: session('merchant.error') }}" hidden></div>
+    @elseif (session('status'))
+        <div data-sw="success" data-sw-message="{{ session('status') }}" hidden></div>
+    @endif
 </body>
 </html>

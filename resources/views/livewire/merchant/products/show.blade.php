@@ -64,17 +64,12 @@ $delete = function (Product $product): void {
             @endif
             @if ($this->canDelete())
                 <button type="button" class="edz-btn edz-btn--danger"
-                        wire:click="delete('{{ $product->id }}')"
-                        wire:confirm="Delete &quot;{{ $product->name }}&quot;? This cannot be undone.">{{ __('products.delete') }}</button>
+                        x-data
+                        @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($product->name) }}')) $wire.delete('{{ $product->id }}')"
+                        >{{ __('products.delete') }}</button>
             @endif
         </div>
     </div>
-
-    @if (session('merchant.saved'))
-        <div class="mb-6 rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-800 dark:bg-success-950 dark:text-success-300">
-            {{ session('merchant.saved') }}
-        </div>
-    @endif
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div class="space-y-6 xl:col-span-2">

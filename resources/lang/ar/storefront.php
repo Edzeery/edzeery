@@ -72,4 +72,11 @@ return [
     'added_to_cart'            => 'تمت الإضافة إلى السلة',
     'order_notes'              => 'ملاحظات الطلب',
     'failed_to_place_order'    => 'فشل في تثبيت الطلب. يرجى المحاولة مرة أخرى.',
+    'your_store_link'          => 'رابط متجرك',
+    'visit_store'              => 'زر متجرك',
+    'active'                   => 'نشط',
+    'inactive'                 => 'غير نشط',
+    'preview'                  => 'معاينة',
+    'preview_template'         => 'معاينة القالب',
+    'open_in_new_tab'          => 'فتح في تبويب جديد',
 ];

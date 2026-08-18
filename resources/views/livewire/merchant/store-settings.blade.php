@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\StoreSetting;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,8 @@ state([
 ]);
 
 mount(function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
     $store = currentStore();
     abort_unless($store, 404);
 
@@ -45,7 +48,7 @@ $save = function (): void {
         'guest_checkout' => $this->guest_checkout,
     ]);
 
-    session()->flash('success', __('merchant_panel.settings_saved'));
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
 };
 ?>
 
@@ -55,13 +58,7 @@ $save = function (): void {
         description="{{ __('merchant_panel.store_settings_desc') }}">
     </x-edz.page-header>
 
-    @if (session('success'))
-        <div class="mb-6 p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg text-success-700 dark:text-success-300 text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    <form wire:submit="save">
+    <form wire:submit="save" x-data="edzDirty()">
         <div class="edz-card edz-card--padded space-y-6">
             <h3 class="text-lg font-semibold text-ink">{{ __('merchant_panel.general_info') }}</h3>
 

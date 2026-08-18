@@ -34,6 +34,7 @@
         "jsvectormap": "^1.7.0",
         "lucide": "^0.575.0",
         "prismjs": "^1.30.0",
+        "sweetalert2": "^11.26.25",
         "swiper": "^12.1.0"
     }
 }

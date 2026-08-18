@@ -113,7 +113,7 @@ if (!function_exists('canStore')) {
         }
 
         // Super Admin / Platform Admin bypass
-        if ($user->hasAnyRole(['super_admin', 'admin'], 'web')) {
+        if ($user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web')) {
             return true;
         }
 

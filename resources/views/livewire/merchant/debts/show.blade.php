@@ -149,7 +149,7 @@ $formatAmount = function (float $amount): string {
                         <h3 class="edz-card__title">{{ __('finance.add_payment') }}</h3>
                     </div>
                     <div class="edz-card__body">
-                        <form wire:submit="addPayment" class="space-y-4">
+                        <form wire:submit="addPayment" class="space-y-4" x-data="edzDirty()">
                             <div>
                                 <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.amount') }}</label>
                                 <input type="number" step="0.01" wire:model="payment_amount"

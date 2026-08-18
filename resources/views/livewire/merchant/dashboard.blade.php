@@ -86,6 +86,48 @@ with([
                 <x-merchant.status domain="stores" :status="currentStore()?->status?->value" />
             </p>
         </div>
+
+        <div class="edz-card edz-card--padded col-span-full sm:col-span-2 xl:col-span-4">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm font-medium text-ink-400">{{ __('storefront.your_store_link') }}</p>
+                @if (currentStore()?->isPubliclyActive())
+                    <span class="edz-badge edz-badge--success edz-badge--dot">
+                        {{ __('storefront.active') }}
+                    </span>
+                @else
+                    <span class="edz-badge edz-badge--warning edz-badge--dot">
+                        {{ __('storefront.inactive') }}
+                    </span>
+                @endif
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex-1 min-w-0 p-3 bg-surface-50 dark:bg-ink-800 rounded-lg border border-surface-200 dark:border-ink-700">
+                    <p class="text-sm font-mono text-ink truncate" id="store-url">
+                        {{ currentStore()?->public_url ?? '-' }}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    x-data="{ copied: false }"
+                    x-on:click="
+                        navigator.clipboard.writeText(document.getElementById('store-url').textContent.trim());
+                        copied = true;
+                        setTimeout(() => copied = false, 2000);
+                    "
+                    class="edz-btn edz-btn--primary edz-btn--sm flex-shrink-0"
+                >
+                    <x-edz.icon name="copy" class="w-4 h-4 me-1" />
+                    <span x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
+                </button>
+                @if (currentStore()?->isPubliclyActive())
+                    <a href="{{ currentStore()?->public_url }}" target="_blank" rel="noopener noreferrer"
+                       class="edz-btn edz-btn--secondary edz-btn--sm flex-shrink-0">
+                        <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
+                        {{ __('storefront.visit_store') }}
+                    </a>
+                @endif
+            </div>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">

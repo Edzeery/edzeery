@@ -51,6 +51,7 @@ class GetStoreCardsAction
 
                 return new StoreCardData(
                     storeId: $store->id,
+                    storeSlug: $store->slug,
                     membershipRole: $role,
                     storeName: $store->name,
                     storeLogo: $store->logo,
@@ -70,6 +71,7 @@ class GetStoreCardsAction
 
     private function resolveMembershipRole(User $user): StoreRoleEnum
     {
+        $user->guard_name = 'merchant';
         $permissions = $user->getAllPermissions()->pluck('name')->toArray();
 
         if (in_array('store.delete.final', $permissions)) {

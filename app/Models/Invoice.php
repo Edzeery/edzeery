@@ -35,7 +35,7 @@ class Invoice extends Model
 
 
         'invoice_date',
-        'due_invoice',
+        'due_date',
         'notes',
         'terms',
 

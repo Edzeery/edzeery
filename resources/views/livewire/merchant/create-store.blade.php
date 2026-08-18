@@ -67,7 +67,7 @@ $createStore = function (): void {
     if ($subscription) {
         $featureService = app(FeatureUsageService::class);
         if (! $featureService->canUse($subscription, 'stores_max')) {
-            session()->flash('error', __('stores.limit_reached'));
+            $this->dispatch('swal', type: 'error', title: __('stores.limit_reached'));
             return;
         }
     }
@@ -152,11 +152,7 @@ $createStore = function (): void {
         </div>
 
         <div class="edz-card p-6">
-            @if (session('error'))
-                <div class="mb-4 rounded-lg bg-danger-50 p-4 text-sm text-danger-700">{{ session('error') }}</div>
-            @endif
-
-            <form wire:submit="{{ $step === 4 ? 'createStore' : 'nextStep' }}">
+            <form wire:submit="{{ $step === 4 ? 'createStore' : 'nextStep' }}" x-data="edzDirty()">
                 {{-- Step 1: Store Info --}}
                 @if ($step === 1)
                     <div class="space-y-4">

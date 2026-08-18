@@ -1,101 +1,52 @@
 <?php
 
 return [
-    'accounting' => [
-        'confirm' => [
-            'team' => 'Confirmar equipo contable',
-        ],
-    ],
-    'crm' => [
-        'inventory' => [
-            'manage' => 'Gestionar inventario',
-            'track' => 'Seguimiento de inventario',
-        ],
-        'orders' => [
-            'confirm' => 'Confirmar pedidos en CRM',
-            'track' => 'Seguimiento de pedidos',
-        ],
-    ],
-    'delivery' => [
-        'pricing' => [
-            'manage' => 'Gestionar precios de envío',
-        ],
-    ],
-    'inventory' => [
-        'update' => 'Actualizar inventario',
-        'view' => 'Ver inventario',
-    ],
-    'order' => [
-        'manage' => 'Gestionar pedidos',
-        'view' => 'Ver pedido',
-    ],
-    'orders' => [
-        'cancel' => 'Cancelar pedidos',
-        'confirm' => 'Confirmar pedidos',
-        'delete' => 'Eliminar pedidos',
-    ],
-    'products' => [
-        'create' => 'Crear producto',
-        'delete' => 'Eliminar producto',
-        'update' => 'Actualizar producto',
-        'view' => 'Ver producto',
-    ],
-    'returns' => [
-        'process' => 'Procesar devoluciones',
-        'verify' => [
-            'barcode' => 'Verificar código de barras de devoluciones',
-        ],
-    ],
-    'stats' => [
-        'confirmation' => 'Estadísticas de confirmación de pedidos',
-        'delivery' => 'Estadísticas de entrega',
-        'team' => [
-            'view' => 'Ver estadísticas del equipo',
-        ],
-        'top' => [
-            'kpis' => 'Principales KPI',
-        ],
-    ],
-    'store' => [
-        'billing' => [
-            'manage' => 'Gestionar facturación',
-        ],
-        'delete' => [
-            'final' => 'Eliminar tienda (final)',
-        ],
-        'settings' => [
-            'sensitive' => 'Gestionar configuraciones sensibles',
-        ],
-        'team' => [
-            'manage' => 'Gestionar equipo de tienda',
-        ],
-        'transfer' => [
-            'ownership' => 'Transferir propiedad de la tienda',
-        ],
-        'update' => 'Actualizar tienda',
-        'view' => 'Ver tienda',
-    ],
-    'stores' => [
-        'approve' => 'Aprobar tiendas',
-        'create' => 'Crear tienda',
-        'delete' => 'Eliminar tiendas',
-        'update' => 'Actualizar tiendas',
-        'view' => 'Ver tiendas',
-    ],
-    'team' => [
-        'invite' => 'Invitar miembros',
-        'manage' => [
-            'own' => 'Gestionar propio equipo',
-        ],
-        'remove' => 'Eliminar miembros',
-        'view' => [
-            'own' => 'Ver propio equipo',
-        ],
-    ],
-    'users' => [
-        'create' => 'Crear usuarios',
-        'delete' => 'Eliminar usuarios',
-        'update' => 'Actualizar usuarios',
-        'view' => 'Ver usuarios',
-    ],
+    'accounting.confirm.team' => 'Confirmar equipo contable',
+    'crm.inventory.manage' => 'Gestionar inventario',
+    'crm.inventory.track' => 'Seguimiento de inventario',
+    'crm.orders.confirm' => 'Confirmar pedidos en CRM',
+    'crm.orders.track' => 'Seguimiento de pedidos',
+    'delivery.pricing.manage' => 'Gestionar precios de envío',
+    'inventory.update' => 'Actualizar inventario',
+    'inventory.view' => 'Ver inventario',
+    'order.manage' => 'Gestionar pedidos',
+    'order.view' => 'Ver pedido',
+    'order.confirm' => 'Confirmar pedidos',
+    'order.cancel' => 'Cancelar pedidos',
+    'order.delete' => 'Eliminar pedidos',
+    'products.create' => 'Crear producto',
+    'products.delete' => 'Eliminar producto',
+    'products.update' => 'Actualizar producto',
+    'products.view' => 'Ver producto',
+    'returns.process' => 'Procesar devoluciones',
+    'returns.verify.barcode' => 'Verificar código de barras de devoluciones',
+    'stats.confirmation' => 'Estadísticas de confirmación de pedidos',
+    'stats.delivery' => 'Estadísticas de entrega',
+    'stats.team.view' => 'Ver estadísticas del equipo',
+    'stats.top.kpis' => 'Principales KPI',
+    'store.billing.manage' => 'Gestionar facturación',
+    'store.delete.final' => 'Eliminar tienda (final)',
+    'store.settings.sensitive' => 'Gestionar configuraciones sensibles',
+    'store.team.manage' => 'Gestionar equipo de tienda',
+    'store.transfer.ownership' => 'Transferir propiedad de la tienda',
+    'store.update' => 'Actualizar tienda',
+    'store.view' => 'Ver tienda',
+    'stores.approve' => 'Aprobar tiendas',
+    'stores.create' => 'Crear tienda',
+    'stores.delete' => 'Eliminar tiendas',
+    'stores.update' => 'Actualizar tiendas',
+    'stores.view' => 'Ver tiendas',
+    'team.invite' => 'Invitar miembros',
+    'team.manage.own' => 'Gestionar propio equipo',
+    'team.remove' => 'Eliminar miembros',
+    'team.view' => 'Ver equipo',
+    'team.view.own' => 'Ver propio equipo',
+    'finance.debt.view' => 'Ver deudas',
+    'finance.debt.create' => 'Crear deuda',
+    'finance.debt.update' => 'Actualizar deuda',
+    'finance.debt.delete' => 'Eliminar deuda',
+    'users.create' => 'Crear usuarios',
+    'users.delete' => 'Eliminar usuarios',
+    'users.update' => 'Actualizar usuarios',
+    'users.view' => 'Ver usuarios',
 ];

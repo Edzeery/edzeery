@@ -160,4 +160,12 @@ return [
     'wellat_page' => 'Gestiona tu monedero electrónico y sigue tu saldo y transacciones desde aquí.',
     'withdraw_success' => 'Se ha retirado :amount DZD de tu monedero.',
     'yes' => 'Sí',
+    'unsaved_changes_title' => 'Cambios sin guardar',
+    'unsaved_changes_text' => 'Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?',
+    'leave' => 'Salir',
+    'stay' => 'Quedarse',
+    'confirm_order_action' => '¿Estás seguro de que quieres :action este pedido?',
+    'subscription_required' => 'Se requiere suscripción activa',
+    'subscription_expired_text' => 'Necesitas una suscripción activa para crear o editar productos. Por favor renueva tu plan para continuar.',
+    'go_to_billing' => 'Ir a facturación',
 ];

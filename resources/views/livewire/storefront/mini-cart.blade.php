@@ -96,7 +96,8 @@ $updateQty = function (string $variantId, int $qty) {
                             <div class="text-right shrink-0">
                                 <p class="font-semibold text-gray-900 dark:text-white">{{ currency($item['price'] * $item['quantity']) }}</p>
                                 <button
-                                    wire:click="$wire.removeItem('{{ $item['variant_id'] }}')"
+                                    x-data
+                                    @click.prevent="if (await EdzSwal.confirmAction('{{ __('Remove') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.removeItem('{{ $item['variant_id'] }}')"
                                     class="text-xs text-red-500 hover:text-red-700 mt-1"
                                 >{{ __('Remove') }}</button>
                             </div>

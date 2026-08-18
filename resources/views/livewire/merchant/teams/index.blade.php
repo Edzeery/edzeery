@@ -17,6 +17,10 @@ use function Livewire\Volt\state;
 
 layout('components.layouts.store');
 
+mount(function (): void {
+    abort_unless(canStore(StorePermissionEnum::TEAM_VIEW->value), 403);
+});
+
 state([
     'search' => '',
     'creating' => false,
@@ -103,6 +107,7 @@ $openEdit = function (StoreMembership $membership): void {
     $this->city_id = $user->city_id ?? '';
     $this->store_role = $role?->name ?? '';
     $this->isActive = (bool) $membership->is_active;
+    $user->guard_name = 'merchant';
     $this->permissions = $user->getAllPermissions()->pluck('name')->toArray();
     $this->creating = false;
 };
@@ -138,9 +143,9 @@ $saveNew = function (): void {
         ]);
 
         $this->closeCreate();
-        session()->flash('success', __('messages.created_successfully'));
+        $this->dispatch('swal', type: 'success', title: __('messages.created_successfully'));
     } catch (\Exception $e) {
-        session()->flash('error', $e->getMessage());
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
     }
 };
 
@@ -172,9 +177,9 @@ $saveEdit = function (): void {
         ]);
 
         $this->closeEdit();
-        session()->flash('success', __('messages.updated_successfully'));
+        $this->dispatch('swal', type: 'success', title: __('messages.updated_successfully'));
     } catch (\Exception $e) {
-        session()->flash('error', $e->getMessage());
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
     }
 };
 
@@ -189,10 +194,19 @@ $remove = function (StoreMembership $membership): void {
 
     $membership->delete();
 
-    session()->flash('success', __('messages.deleted_successfully'));
+    $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));
 };
 
-$states = computed(fn () => $this->state_id
+$updatedCountryId = function (?string $value): void {
+    $this->state_id = '';
+    $this->city_id = '';
+};
+
+$updatedStateId = function (?string $value): void {
+    $this->city_id = '';
+};
+
+$states = computed(fn () => $this->country_id
     ? State::where('country_id', $this->country_id)->pluck('name', 'id')
     : []);
 
@@ -230,13 +244,6 @@ $allPermissions = computed(function () {
         @endif
     </div>
 
-    @if (session('success'))
-        <div class="mb-4 rounded-lg bg-success-50 p-4 text-sm text-success-700">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="mb-4 rounded-lg bg-danger-50 p-4 text-sm text-danger-700">{{ session('error') }}</div>
-    @endif
-
     {{-- Create / Edit Form --}}
     @if ($creating || $editingId)
         <div class="edz-card mb-6">
@@ -247,18 +254,18 @@ $allPermissions = computed(function () {
                 </div>
             </div>
 
-            <form wire:submit="{{ $editingId ? 'saveEdit' : 'saveNew' }}" class="space-y-4 p-4">
+            <form wire:submit="{{ $editingId ? 'saveEdit' : 'saveNew' }}" class="space-y-4 p-4" x-data="edzDirty()">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-name">{{ __('teams.name') }}</label>
-                        <input id="tm-name" type="text" class="edz-input" wire:model="name" placeholder="{{ __('teams.name') }}">
+                        <input id="tm-name" type="text" class="edz-input @error('name') edz-input--error @enderror" wire:model="name" placeholder="{{ __('teams.name') }}">
                         @error('name')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-email">{{ __('teams.email') }}</label>
-                        <input id="tm-email" type="email" class="edz-input" wire:model="email" placeholder="member@example.com">
+                        <input id="tm-email" type="email" class="edz-input @error('email') edz-input--error @enderror" wire:model="email" placeholder="member@example.com">
                         @error('email')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -267,15 +274,15 @@ $allPermissions = computed(function () {
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-password">{{ __('table.password') }}{{ $editingId ? ' (leave blank to keep)' : '' }}</label>
-                        <input id="tm-password" type="password" class="edz-input" wire:model="password" placeholder="{{ $editingId ? '••••••••' : 'Minimum 8 characters' }}">
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-password">{{ __('table.password') }}{{ $editingId ? ' ('.__('teams.password_hint').')' : '' }}</label>
+                        <input id="tm-password" type="password" class="edz-input @error('password') edz-input--error @enderror" wire:model="password" placeholder="{{ $editingId ? '••••••••' : __('teams.min_8_chars') }}">
                         @error('password')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">{{ __('teams.role') }}</label>
-                        <select id="tm-role" class="edz-select" wire:model.live="store_role">
+                        <select id="tm-role" class="edz-select @error('store_role') edz-input--error @enderror" wire:model.live="store_role">
                             <option value="">{{ __('teams.all_roles') }}</option>
                             @foreach (collect(StoreRoleEnum::cases())->reject(fn ($r) => $r === StoreRoleEnum::OWNER) as $role)
                                 <option value="{{ $role->value }}">{{ $role->label() }}</option>
@@ -289,9 +296,9 @@ $allPermissions = computed(function () {
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-country">Country</label>
-                        <select id="tm-country" class="edz-select" wire:model.live="country_id">
-                            <option value="">Select country…</option>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-country">{{ __('teams.country') }}</label>
+                        <select id="tm-country" class="edz-select @error('country_id') edz-input--error @enderror" wire:model.live="country_id">
+                            <option value="">{{ __('teams.select_country') }}</option>
                             @foreach (countries() as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
                             @endforeach
@@ -301,9 +308,9 @@ $allPermissions = computed(function () {
                         @enderror
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-state">State / Wilaya</label>
-                        <select id="tm-state" class="edz-select" wire:model.live="state_id" {{ empty($this->country_id) ? 'disabled' : '' }}>
-                            <option value="">Select state…</option>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-state">{{ __('teams.state') }}</label>
+                        <select id="tm-state" class="edz-select @error('state_id') edz-input--error @enderror" wire:model.live="state_id" {{ empty($this->country_id) ? 'disabled' : '' }}>
+                            <option value="">{{ __('teams.select_state') }}</option>
                             @foreach ($this->states as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
                             @endforeach
@@ -313,9 +320,9 @@ $allPermissions = computed(function () {
                         @enderror
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-city">City</label>
-                        <select id="tm-city" class="edz-select" wire:model="city_id" {{ empty($this->state_id) ? 'disabled' : '' }}>
-                            <option value="">Select city…</option>
+                        <label class="mb-1 block text-sm font-medium text-ink" for="tm-city">{{ __('teams.city') }}</label>
+                        <select id="tm-city" class="edz-select @error('city_id') edz-input--error @enderror" wire:model="city_id" {{ empty($this->state_id) ? 'disabled' : '' }}>
+                            <option value="">{{ __('teams.select_city') }}</option>
                             @foreach ($this->cities as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
                             @endforeach
@@ -364,7 +371,10 @@ $allPermissions = computed(function () {
                 @endif
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.save') }}</button>
+                    <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm" wire:loading.attr="disabled" wire:loading.class="opacity-50">
+                        <span wire:loading.remove wire:target="saveNew,saveEdit">{{ __('buttons.save') }}</span>
+                        <span wire:loading wire:target="saveNew,saveEdit">{{ __('buttons.processing') }}</span>
+                    </button>
                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                             wire:click="{{ $editingId ? 'closeEdit' : 'closeCreate' }}">{{ __('buttons.cancel') }}</button>
                 </div>
@@ -425,8 +435,9 @@ $allPermissions = computed(function () {
                                             {{ $membership->is_active ? __('buttons.deactivate') : __('buttons.activate') }}
                                         </button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                                wire:click="remove('{{ $membership->id }}')"
-                                                wire:confirm="{{ __('teams.remove_member') }}">{{ __('buttons.remove') }}</button>
+                                                x-data
+                                                @click.prevent="if (await EdzSwal.confirmAction('{{ __('teams.remove_member') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.remove('{{ $membership->id }}')"
+                                                >{{ __('buttons.remove') }}</button>
                                     @endif
                                 </div>
                             </td>

@@ -38,7 +38,7 @@ $updateProfile = function (UpdateProfileRequest $request, AccountService $servic
     );
 
     $this->dispatch('profile-updated');
-    session()->flash('success', __('notifications.profile_updated'));
+    $this->dispatch('swal', type: 'success', title: __('notifications.profile_updated'));
 };
 ?>
 
@@ -48,13 +48,7 @@ $updateProfile = function (UpdateProfileRequest $request, AccountService $servic
         description="{{ __('merchant_panel.profile_desc') }}">
     </x-edz.page-header>
 
-    @if (session('success'))
-        <div class="mb-6 p-4 bg-success-50 dark:bg-success-900/20 border border-success-200 dark:border-success-800 rounded-lg text-success-700 dark:text-success-300 text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    <form wire:submit="updateProfile">
+    <form wire:submit="updateProfile" x-data="edzDirty()">
         <div class="edz-card edz-card--padded space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>

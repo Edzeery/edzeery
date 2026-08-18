@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\User\Services\SubscriptionGuardService;
 use App\Enums\Store\ProductOptionInputType;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Brand;
@@ -19,7 +20,6 @@ use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\protect;
-use function Livewire\Volt\rules;
 use function Livewire\Volt\state;
 use function Livewire\Volt\updated;
 use function Livewire\Volt\uses;
@@ -121,29 +121,6 @@ updated([
     },
 ]);
 
-rules(fn () => [
-    'name' => ['required', 'string', 'max:255'],
-    'slug' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('products', 'slug')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
-    'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
-    'barcode' => ['nullable', 'string', 'max:255', Rule::unique('products', 'barcode')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
-    'brand_id' => ['nullable', 'string', 'max:255'],
-    'unit' => ['nullable', 'string', 'max:50'],
-    'short_description' => ['nullable', 'string', 'max:500'],
-    'description' => ['nullable', 'string'],
-    'meta_title' => ['nullable', 'string', 'max:255'],
-    'meta_description' => ['nullable', 'string', 'max:500'],
-    'is_active' => ['nullable', 'boolean'],
-    'is_featured' => ['nullable', 'boolean'],
-    'has_variants' => ['nullable', 'boolean'],
-    'auto_generate_sku' => ['nullable', 'boolean'],
-    'auto_generate_barcode' => ['nullable', 'boolean'],
-    'price' => ['nullable', 'numeric', 'min:0'],
-    'compare_price' => ['nullable', 'numeric', 'min:0'],
-    'cost_price' => ['nullable', 'numeric', 'min:0'],
-    'stock' => ['nullable', 'integer', 'min:0'],
-    'low_stock_threshold' => ['nullable', 'integer', 'min:0'],
-]);
-
 $brands = computed(fn () => Brand::query()
     ->where('store_id', currentStoreId())
     ->orderBy('name')
@@ -165,6 +142,10 @@ $optionValuesByOption = computed(fn () => ProductOptionValue::query()
     ->orderBy('value')
     ->get()
     ->groupBy('product_option_id'));
+
+$hasActiveSubscription = computed(fn () => app(SubscriptionGuardService::class)->hasActiveSubscription());
+
+$subscriptionStatus = computed(fn () => app(SubscriptionGuardService::class)->statusLabel());
 
 $normalizeOptions = protect(function (array $options): array {
     return collect($options)
@@ -328,10 +309,15 @@ $removeNewImage = action(function (int $index): void {
 });
 
 $applyAll = action(function (): void {
-    $fields = ['price', 'cost_price', 'stock', 'low_stock_threshold'];
+    $fieldMap = [
+        'price' => 'apply_all_price',
+        'cost_price' => 'apply_all_cost_price',
+        'stock' => 'apply_all_stock',
+        'low_stock_threshold' => 'apply_all_low_stock',
+    ];
 
-    foreach ($fields as $field) {
-        $value = $this->{'apply_all_'.$field};
+    foreach ($fieldMap as $field => $prop) {
+        $value = $this->{$prop};
 
         if ($value === null || $value === '') {
             continue;
@@ -341,7 +327,7 @@ $applyAll = action(function (): void {
             $this->variants_preview[$index][$field] = $value;
         }
 
-        $this->{'apply_all_'.$field} = null;
+        $this->{$prop} = null;
     }
 });
 
@@ -372,7 +358,11 @@ $stepRules = protect(function (int $step): array {
 });
 
 $nextStep = action(function (): void {
-    $this->validate($this->stepRules($this->currentStep));
+    $v = \Illuminate\Support\Facades\Validator::make(
+        $this->all(),
+        $this->stepRules($this->currentStep)
+    );
+    $v->validate();
     $this->currentStep = min(5, $this->currentStep + 1);
 });
 
@@ -387,7 +377,37 @@ $goToStep = action(function (int $step): void {
 });
 
 $save = action(function (): void {
-    $data = $this->validate();
+    if (! app(SubscriptionGuardService::class)->hasActiveSubscription()) {
+        $this->dispatch('swal', type: 'warning', title: __('messages.subscription_required'), text: __('messages.subscription_expired_text'));
+        return;
+    }
+
+    $allRules = [
+        'name' => ['required', 'string', 'max:255'],
+        'slug' => ['required', 'string', 'max:255', 'alpha_dash', Rule::unique('products', 'slug')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
+        'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
+        'barcode' => ['nullable', 'string', 'max:255', Rule::unique('products', 'barcode')->where('store_id', currentStoreId())->whereNull('deleted_at')->ignore($this->product?->id)],
+        'brand_id' => ['nullable', 'string', 'max:255'],
+        'unit' => ['nullable', 'string', 'max:50'],
+        'short_description' => ['nullable', 'string', 'max:500'],
+        'description' => ['nullable', 'string'],
+        'meta_title' => ['nullable', 'string', 'max:255'],
+        'meta_description' => ['nullable', 'string', 'max:500'],
+        'is_active' => ['nullable', 'boolean'],
+        'is_featured' => ['nullable', 'boolean'],
+        'has_variants' => ['nullable', 'boolean'],
+        'auto_generate_sku' => ['nullable', 'boolean'],
+        'auto_generate_barcode' => ['nullable', 'boolean'],
+        'price' => ['nullable', 'numeric', 'min:0'],
+        'compare_price' => ['nullable', 'numeric', 'min:0'],
+        'cost_price' => ['nullable', 'numeric', 'min:0'],
+        'stock' => ['nullable', 'integer', 'min:0'],
+        'low_stock_threshold' => ['nullable', 'integer', 'min:0'],
+    ];
+
+    $v = \Illuminate\Support\Facades\Validator::make($this->all(), $allRules);
+    $v->validate();
+    $data = $v->validated();
 
     $data['has_variants'] = (bool) $this->has_variants;
     $data['auto_generate_sku'] = (bool) $this->auto_generate_sku;
@@ -428,14 +448,14 @@ $save = action(function (): void {
             $message = __('products.product_created');
         }
     } catch (\DomainException $e) {
-        session()->flash('merchant.error', $e->getMessage());
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
 
         return;
     }
 
     $product->categories()->sync($this->categories);
 
-    session()->flash('merchant.saved', $message);
+    $this->dispatch('swal', type: 'success', title: $message);
     $this->redirectRoute('merchant.products.edit', [currentStore(), $product]);
 });
 
@@ -460,9 +480,20 @@ $wizardSteps = computed(fn () => [
 
     <x-merchant.wizard-steps :steps="$this->wizardSteps" :currentStep="$currentStep" />
 
-    @if (session('merchant.error'))
-        <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
-            {{ session('merchant.error') }}
+    @if (! $this->hasActiveSubscription)
+        <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-4 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
+            <div class="flex items-start gap-3">
+                <x-edz.icon name="exclamation-triangle" class="mt-0.5 h-5 w-5 flex-shrink-0 text-warning-500" />
+                <div>
+                    <p class="font-semibold">{{ __('messages.subscription_required') }}</p>
+                    <p class="mt-1">{{ __('messages.subscription_expired_text') }}</p>
+                    <a href="{{ route('account.billing') }}" wire:navigate
+                       class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-warning-700 underline hover:text-warning-900 dark:text-warning-400 dark:hover:text-warning-200">
+                        {{ __('messages.go_to_billing') }}
+                        <x-edz.icon name="arrow-right" class="h-4 w-4" />
+                    </a>
+                </div>
+            </div>
         </div>
     @endif
 
@@ -477,7 +508,7 @@ $wizardSteps = computed(fn () => [
         </div>
     @endif
 
-    <form wire:submit="save">
+    <form wire:submit="save" x-data="edzDirty()">
         {{-- Step 1: Basic Information --}}
         <div x-show="step === 1" x-transition.opacity>
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -624,18 +655,21 @@ $wizardSteps = computed(fn () => [
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                     <div class="edz-field">
                                         <label class="edz-field__label" for="product-price">{{ __('products.price') }}</label>
-                                        <input id="product-price" type="number" step="0.01" min="0" class="edz-input"
+                                        <input id="product-price" type="number" step="0.01" min="0" class="edz-input @error('price') edz-input--error @enderror"
                                                wire:model="price" placeholder="0.00">
+                                        @error('price') <span class="edz-field__error">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="edz-field">
                                         <label class="edz-field__label" for="product-compare-price">{{ __('products.compare_at_price') }}</label>
-                                        <input id="product-compare-price" type="number" step="0.01" min="0" class="edz-input"
+                                        <input id="product-compare-price" type="number" step="0.01" min="0" class="edz-input @error('compare_price') edz-input--error @enderror"
                                                wire:model="compare_price" placeholder="0.00">
+                                        @error('compare_price') <span class="edz-field__error">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="edz-field">
                                         <label class="edz-field__label" for="product-cost-price">{{ __('products.cost_price') }}</label>
-                                        <input id="product-cost-price" type="number" step="0.01" min="0" class="edz-input"
+                                        <input id="product-cost-price" type="number" step="0.01" min="0" class="edz-input @error('cost_price') edz-input--error @enderror"
                                                wire:model="cost_price" placeholder="0.00">
+                                        @error('cost_price') <span class="edz-field__error">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="rounded-lg border border-surface-border bg-surface-secondary/60 p-3 sm:col-span-2 lg:col-span-3">
                                         <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('products.profit_margin') }}</p>
@@ -673,7 +707,7 @@ $wizardSteps = computed(fn () => [
                                     <h2 class="edz-card__title">{{ __('products.options') }}</h2>
                                     <p class="text-sm text-ink-400">{{ __('products.options_hint') }}</p>
                                 </div>
-                                <button type="button" wire:click="addOption" class="edz-btn edz-btn--secondary edz-btn--sm">{{ __('products.add_option') }}</button>
+                                <button type="button" wire:click="addOption" wire:loading.attr="disabled" class="edz-btn edz-btn--secondary edz-btn--sm">{{ __('products.add_option') }}</button>
                             </div>
                             <div class="edz-card__body space-y-4">
                                 @forelse ($options as $index => $option)
@@ -762,7 +796,7 @@ $wizardSteps = computed(fn () => [
                                                    wire:model="apply_all_low_stock" placeholder="5">
                                         </div>
                                         <div class="flex items-end">
-                                            <button type="button" wire:click="applyAll" class="edz-btn edz-btn--secondary w-full">{{ __('products.apply_to_all') }}</button>
+                                            <button type="button" wire:click="applyAll" wire:loading.attr="disabled" class="edz-btn edz-btn--secondary w-full">{{ __('products.apply_to_all') }}</button>
                                         </div>
                                     </div>
 
@@ -862,16 +896,18 @@ $wizardSteps = computed(fn () => [
                                 </div>
                             </div>
                             <div class="edz-card__body grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div class="edz-field">
-                                    <label class="edz-field__label" for="product-stock">{{ __('products.stock') }}</label>
-                                    <input id="product-stock" type="number" min="0" class="edz-input"
-                                           wire:model="stock" placeholder="0">
-                                </div>
-                                <div class="edz-field">
-                                    <label class="edz-field__label" for="product-low-stock">{{ __('products.low_stock_threshold') }}</label>
-                                    <input id="product-low-stock" type="number" min="0" class="edz-input"
-                                           wire:model="low_stock_threshold" placeholder="5">
-                                </div>
+                            <div class="edz-field">
+                                <label class="edz-field__label" for="product-stock">{{ __('products.stock') }}</label>
+                                <input id="product-stock" type="number" min="0" class="edz-input @error('stock') edz-input--error @enderror"
+                                       wire:model="stock" placeholder="0">
+                                @error('stock') <span class="edz-field__error">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="edz-field">
+                                <label class="edz-field__label" for="product-low-stock">{{ __('products.low_stock_threshold') }}</label>
+                                <input id="product-low-stock" type="number" min="0" class="edz-input @error('low_stock_threshold') edz-input--error @enderror"
+                                       wire:model="low_stock_threshold" placeholder="5">
+                                @error('low_stock_threshold') <span class="edz-field__error">{{ $message }}</span> @enderror
+                            </div>
                             </div>
                         </div>
                     @else
@@ -999,7 +1035,8 @@ $wizardSteps = computed(fn () => [
                     x-show="step > 1"
                     @click="$wire.prevStep()"
                     class="edz-btn edz-btn--ghost">
-                &larr;                 {{ __('buttons.previous') }}
+                <x-edz.icon name="arrow-left" class="h-4 w-4" />
+                {{ __('buttons.previous') }}
             </button>
             <div x-show="step <= 1"></div>
 
@@ -1010,14 +1047,29 @@ $wizardSteps = computed(fn () => [
                 <button type="button"
                         x-show="step < 5"
                         @click="$wire.nextStep()"
-                        class="edz-btn edz-btn--primary">
-                    {{ __('buttons.next') }} &rarr;
+                        wire:loading.attr="disabled"
+                        :disabled="! $wire.hasActiveSubscription"
+                        class="edz-btn edz-btn--primary"
+                        :class="{ 'opacity-50 cursor-not-allowed': ! $wire.hasActiveSubscription }">
+                    <span wire:loading.remove>{{ __('buttons.next') }}</span>
+                    <span wire:loading class="inline-flex items-center gap-1">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg>
+                        {{ __('buttons.processing') }}
+                    </span>
+                    <x-edz.icon name="arrow-right" class="h-4 w-4" />
                 </button>
 
                 <button type="submit"
                         x-show="step === 5"
-                        class="edz-btn edz-btn--primary">
-                    {{ __('products.save_product') }}
+                        wire:loading.attr="disabled"
+                        :disabled="! $wire.hasActiveSubscription"
+                        class="edz-btn edz-btn--primary"
+                        :class="{ 'opacity-50 cursor-not-allowed': ! $wire.hasActiveSubscription }">
+                    <span wire:loading.remove>{{ __('products.save_product') }}</span>
+                    <span wire:loading class="inline-flex items-center gap-1">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg>
+                        {{ __('buttons.processing') }}
+                    </span>
                 </button>
             </div>
         </div>

@@ -1,6 +1,11 @@
 @php
     $menuItems = [
         [
+            'text' => __('merchant_panel.my_stores'),
+            'icon' => 'grid',
+            'path' => route('account.stores'),
+        ],
+        [
             'text' => __('buttons.profile'),
             'icon' => 'user',
             'path' => route('account.profile'),

@@ -18,64 +18,48 @@ class StorePolicy
             ->where('is_active', true)
             ->first();
 
-        if (! $membership || ! $membership->role || !$user->isAdmin() || ! $user->isSuperAdmin() ) {
+        if (! $membership || ! $membership->role) {
             return false;
         }
 
-        return $membership->role->permissions
-            ->contains('key', $permission) || $user->isAdmin() ||  $user->isSuperAdmin();
+        return $membership->can(StorePermissionEnum::tryFrom($permission));
     }
 
-    /**
-     * عرض القائمة
-     */
     public function viewAny(User $user): bool
     {
         return $user->can(PlatformPermissionEnum::STORES_VIEW);
     }
 
-    /**
-     * عرض متجر واحد
-     */
     public function view(User $user, Store $store): bool
     {
-        return $this->hasPermission($user, $store, 'store.view');
+        return $this->hasPermission($user, $store, StorePermissionEnum::STORE_VIEW->value);
     }
 
-
-    /**
-     * إنشاء متجر
-     */
-    public function create(User $user ): bool
+    public function create(User $user): bool
     {
-        return $user->isAdmin() || $user->isSuperAdmin() || $user->can(PlatformPermissionEnum::STORES_APPROVE);
+        return $user->isAdmin() || $user->isSuperAdmin();
     }
 
-    /**
-     * تعديل متجر
-     */
     public function update(User $user, Store $store): bool
     {
-        return $user->isAdmin() || $user->isSuperAdmin() || $this->hasPermission($user, $store,'store.update');;
+        return $this->hasPermission($user, $store, StorePermissionEnum::STORE_UPDATE->value);
     }
 
+    public function delete(User $user, Store $store): bool
+    {
+        return $user->isSuperAdmin();
+    }
 
     public function manageTeam(User $user, Store $store): bool
     {
-        return $this->hasPermission($user, $store, 'store.team.manage');
+        return $this->hasPermission($user, $store, StorePermissionEnum::STORE_TEAM_MANAGE->value);
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Store $store): bool
     {
-        return $user->can('store.restore');
+        return $user->isSuperAdmin();
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Store $store): bool
     {
         return false;
@@ -83,14 +67,16 @@ class StorePolicy
 
     public function approve(User $user): bool
     {
-        return  $user->can('store.approve');
+        return $user->isAdmin() || $user->isSuperAdmin();
     }
 
-    /**
-     * حذف متجر
-     */
-    public function delete(User $user, Store $store): bool
+    public function transferOwnership(User $user, Store $store): bool
     {
-        return  $user->isSuperAdmin();
+        return $this->hasPermission($user, $store, StorePermissionEnum::STORE_TRANSFER_OWNERSHIP->value);
+    }
+
+    public function manageBilling(User $user, Store $store): bool
+    {
+        return $this->hasPermission($user, $store, StorePermissionEnum::STORE_BILLING_MANAGE->value);
     }
 }

@@ -10,6 +10,7 @@ final class StoreCardData
 {
     public function __construct(
         public readonly string $storeId,
+        public readonly string $storeSlug,
         public readonly UserRoleEnum|StoreRoleEnum $membershipRole,
         public readonly string $storeName,
         public readonly ?string $storeLogo,
@@ -23,6 +24,7 @@ final class StoreCardData
     {
         return [
             'store_id' => $this->storeId,
+            'store_slug' => $this->storeSlug,
             'membership_role' => $this->membershipRole,
             'store_name' => $this->storeName,
             'store_logo' => $this->storeLogo,

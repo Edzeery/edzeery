@@ -79,8 +79,7 @@ class ChooseStoreController extends Controller
 
     private function getMembershipRole($user, Store $store): StoreRoleEnum
     {
-        // Try to resolve the role from Spatie permissions assigned to the user
-        // for this store context
+        $user->guard_name = 'merchant';
         $permissions = $user->getAllPermissions()->pluck('name')->toArray();
 
         if (in_array('store.delete.final', $permissions)) {

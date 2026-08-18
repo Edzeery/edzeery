@@ -40,6 +40,16 @@ antialiased">
     {{-- Footer --}}
     <x-layouts.footer />
 
+    @if (session('swal.type'))
+        <div data-sw="{{ session('swal.type') }}"
+             data-sw-title="{{ session('swal.title', '') }}"
+             data-sw-message="{{ session('swal.message', '') }}" hidden></div>
+    @elseif (session('success'))
+        <div data-sw="success" data-sw-message="{{ session('success') }}" hidden></div>
+    @elseif (session('error'))
+        <div data-sw="error" data-sw-message="{{ session('error') }}" hidden></div>
+    @endif
+
 </body>
 
 </html>

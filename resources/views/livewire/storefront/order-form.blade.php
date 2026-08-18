@@ -11,7 +11,6 @@ use App\Models\Orders\OrderItem;
 use App\Models\Status;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Livewire\Attributes\Rule;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -97,7 +96,7 @@ $submitOrder = function () {
     $storeId = currentStoreId();
 
     if ($cartService->isEmpty($storeId)) {
-        session()->flash('error', __('storefront.cart_is_empty'));
+        $this->dispatch('swal', type: 'error', title: __('storefront.cart_is_empty'));
         return;
     }
 
@@ -169,7 +168,7 @@ $submitOrder = function () {
         return redirect()->route('storefront.order.success', ['store' => currentStore()->slug, 'order' => $order->number]);
     } catch (\Exception $e) {
         DB::rollBack();
-        session()->flash('error', __('storefront.failed_to_place_order'));
+        $this->dispatch('swal', type: 'error', title: __('storefront.failed_to_place_order'));
     }
 };
 ?>
@@ -178,17 +177,6 @@ $submitOrder = function () {
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
         {{ __('Checkout') }}
     </h1>
-
-    @if(session('success'))
-        <div class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
-            {{ session('error') }}
-        </div>
-    @endif
 
     @php
         $states = $getStateOptions();

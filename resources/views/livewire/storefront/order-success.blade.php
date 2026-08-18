@@ -1,16 +1,18 @@
 <?php
 
-use App\Models\Orders\Order;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.storefront');
+
+state([
+    'orderNumber' => '',
+]);
 
 mount(function (string $order): void {
     $this->orderNumber = $order;
 });
-
-$props = ['orderNumber' => ''];
 ?>
 
 <div class="max-w-lg mx-auto text-center py-16">

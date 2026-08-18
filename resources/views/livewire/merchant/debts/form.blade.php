@@ -97,7 +97,7 @@ $save = function (): void {
 
     <div class="edz-card">
         <div class="edz-card__body">
-            <form wire:submit="save">
+            <form wire:submit="save" x-data="edzDirty()">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.type') }}</label>

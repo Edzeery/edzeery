@@ -49,9 +49,9 @@ enum StorePermissionEnum: string
     */
     case ORDER_VIEW     = 'order.view';
     case ORDER_MANAGE   = 'order.manage';
-    case ORDER_CONFIRM  = 'orders.confirm';
-    case ORDER_CANCEL   = 'orders.cancel';
-    case ORDER_DELETE   = 'orders.delete';
+    case ORDER_CONFIRM  = 'order.confirm';
+    case ORDER_CANCEL   = 'order.cancel';
+    case ORDER_DELETE   = 'order.delete';
 
         /*
     |--------------------------------------------------------------------------

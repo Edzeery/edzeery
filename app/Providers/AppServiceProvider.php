@@ -41,7 +41,7 @@ class AppServiceProvider extends ServiceProvider
             $view->with('user', user());
             $store = currentStore();
             $view->with('store', $store);
-            $view->with('currency', $store ? ($store->settings->currency ?? 'DZD') : 'DZD');
+            $view->with('currency', $store?->settings?->currency ?? 'DZD');
             $view->with('theme', user_setting('theme') ?? 'light');
             $view->with('lang',  getCurrentLocale());
             $view->with('languages',  getLanguages() ?? []);
@@ -68,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         Product::observe(ProductObserver::class);
         Order::observe(OrderObserver::class);
         DebtPayment::observe(DebtPaymentObserver::class);
+        Subscription::observe(SubscriptionObserver::class);
 
         Paginator::useBootstrapFive();
 

@@ -10,7 +10,7 @@ if (! function_exists('canUseFeature')) {
         ?int $storeId = null
     ): bool {
 
-        $subscription = currentStore()->latestSubscription();
+        $subscription = user()?->latestSubscription();
 
 
         if (
@@ -52,7 +52,7 @@ if (! function_exists('canUseFeature')) {
         // number
         if ($feature->type === 'number') {
             $usage = app(FeatureUsageService::class)
-                ->usage(currentStore(), $featureSlug);
+                ->getConsumption($subscription, $feature->id);
 
             return $usage < (int) $value;
         }

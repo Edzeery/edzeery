@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\Products\Product;
 use App\Models\Products\ProductOption;
+use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Policies\ImportPolicy;
@@ -13,12 +15,11 @@ use Filament\Actions\Imports\Models\Import;
 class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
-
         Store::class => \App\Policies\StorePolicy::class,
         StoreMembership::class => \App\Policies\StoreMembershipPolicy::class,
-
+        Product::class => \App\Policies\ProductPolicy::class,
+        Order::class => \App\Policies\OrderPolicy::class,
         ProductOption::class => \App\Policies\ProductOptionPolicy::class,
-
         Import::class => ImportPolicy::class,
     ];
     protected $listen = [

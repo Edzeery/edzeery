@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function (): void {
             // panel.php removed — all pages migrated to merchant Volt routes
 
-            // Storefront routes (domain-based: {store}.edzeery.test)
+            // Storefront routes (domain-based: {store}.edzeery.com)
             require __DIR__ . '/../routes/storefront.php';
         },
     )

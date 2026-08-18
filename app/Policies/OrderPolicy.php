@@ -2,87 +2,67 @@
 
 namespace App\Policies;
 
+use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class OrderPolicy
 {
-
-
-
-
-    public function confirm(User $user, Order $order): bool
+    protected function hasPermission(User $user, string $permission): bool
     {
-        return $user->can('order.confirm');
+        $store = currentStore();
+        if (! $store) {
+            return false;
+        }
+
+        $membership = $store->membershipFor($user);
+        if (! $membership) {
+            return false;
+        }
+
+        return $membership->can(StorePermissionEnum::tryFrom($permission));
     }
 
-    public function cancel(User $user, Order $order): bool
-    {
-        return $user->can('order.cancel');
-    }
-
-    public function assignDelivery(User $user, Order $order): bool
-    {
-        return $user->can('order.assign_delivery');
-    }
-
-    public function complete(User $user, Order $order): bool
-    {
-        return $user->can('order.complete');
-    }
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return false;
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_VIEW->value);
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Order $order): bool
     {
-        return false;
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_VIEW->value);
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
         return false;
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Order $order): bool
     {
-        return false;
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_MANAGE->value);
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
-   public function delete(User $user): bool
+    public function delete(User $user, Order $order): bool
     {
-
-        return $user->can('order.delete');
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_DELETE->value);
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
+    public function confirm(User $user, Order $order): bool
+    {
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_CONFIRM->value);
+    }
+
+    public function cancel(User $user, Order $order): bool
+    {
+        return $this->hasPermission($user, StorePermissionEnum::ORDER_CANCEL->value);
+    }
+
     public function restore(User $user, Order $order): bool
     {
         return false;
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Order $order): bool
     {
         return false;

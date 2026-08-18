@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('debts', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('store_id')->nullable()->constrained('stores')->nullOnDelete();
+            $table->ulid('id')->primary();
+            $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUlid('store_id')->nullable()->constrained('stores')->nullOnDelete();
             $table->string('type', 50);
             $table->boolean('count_at_incurrence')->default(false);
             $table->string('counterparty_name')->nullable();

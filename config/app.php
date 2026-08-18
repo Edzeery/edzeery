@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://edzeery.test'),
+    'url' => env('APP_URL', 'http://edzeery.com'),
 
     /*
     |--------------------------------------------------------------------------
@@ -123,6 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'domain' => 'edzeery.test',
+    'domain' => env('APP_DOMAIN', 'edzeery.com'),
 
 ];

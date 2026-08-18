@@ -72,4 +72,11 @@ return [
     'added_to_cart'            => 'Added to cart',
     'order_notes'              => 'Order notes',
     'failed_to_place_order'    => 'Failed to place order. Please try again.',
+    'your_store_link'          => 'Your Store Link',
+    'visit_store'              => 'Visit Store',
+    'active'                   => 'Active',
+    'inactive'                 => 'Inactive',
+    'preview'                  => 'Preview',
+    'preview_template'         => 'Preview Template',
+    'open_in_new_tab'          => 'Open in new tab',
 ];

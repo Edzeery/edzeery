@@ -3,14 +3,17 @@
 use App\Models\Products\Product;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
+use function Livewire\Volt\state;
 
 layout('components.layouts.storefront');
+
+state([
+    'product' => null,
+]);
 
 mount(function (Product $product): void {
     $this->product = $product->load(['images', 'variants.optionValues.option', 'brand', 'categories']);
 });
-
-$props = ['product' => null];
 ?>
 
 <div>
