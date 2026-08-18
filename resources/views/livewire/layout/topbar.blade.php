@@ -10,9 +10,8 @@ with([
 ?>
 
 <header class="edz-topbar">
-    <button type="button" class="edz-topbar__trigger"
-            @click="$store.shell.toggle()"
-            aria-label="{{ __('buttons.toggle_navigation') }}">
+    <button type="button" class="edz-topbar__trigger" @click="$store.shell.toggle()"
+        aria-label="{{ __('buttons.toggle_navigation') }}">
         <x-edz.icon name="menu" class="w-5 h-5" />
     </button>
 
@@ -24,16 +23,15 @@ with([
 
     <div class="edz-topbar__actions">
         @if ($store)
-            <a href="{{ route('choose-store') }}" class="edz-topbar__store-link">
+            <a href="{{ route('merchant.choose-store') }}" class="edz-topbar__store-link">
                 <x-edz.icon name="grid" class="w-4 h-4" />
                 <span class="edz-topbar__store-name">{{ $store?->name }}</span>
             </a>
             <span class="edz-topbar__divider" aria-hidden="true"></span>
         @endif
 
-        <button type="button" class="edz-topbar__icon-btn"
-                @click="$store.theme.toggle()"
-                aria-label="{{ __('buttons.toggle_theme') }}">
+        <button type="button" class="edz-topbar__icon-btn" @click="$store.theme.toggle()"
+            aria-label="{{ __('buttons.toggle_theme') }}">
             <template x-if="$store.theme.theme === 'dark'">
                 <x-edz.icon name="sun" class="w-5 h-5" />
             </template>

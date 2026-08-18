@@ -35,7 +35,7 @@ mount(function (GetStoreCardsAction $action): void {
 
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
         @forelse ($stores as $store)
-            <form method="POST" action="{{ route('choose-store.select', $store['store_id']) }}" class="contents">
+            <form method="POST" action="{{ route('merchant.choose-store.select', $store['store_id']) }}" class="contents">
                 @csrf
                 <button type="submit"
                     class="group w-full text-left edz-card edz-card--padded transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">

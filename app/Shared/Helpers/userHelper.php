@@ -6,7 +6,7 @@ if (! function_exists('getCurrentPanel')) {
 
     function getCurrentPanel(): string
     {
-        return route('choose-store');
+        return route('merchant.choose-store');
     }
 }
 

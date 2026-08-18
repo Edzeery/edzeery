@@ -27,13 +27,13 @@ class EnsureMerchantAccess
         if (
             ! currentStore()
             && ! $request->routeIs('merchant.create-store')
-            && ! $request->routeIs('choose-store')
+            && ! $request->routeIs('merchant.choose-store')
             && ! $request->routeIs('logout')
         ) {
             $hasMemberships = $user->storeMemberships()->exists();
 
             if ($hasMemberships) {
-                return redirect()->route('choose-store');
+                return redirect()->route('merchant.choose-store');
             }
 
             return redirect()->route('merchant.create-store');

@@ -6,6 +6,7 @@ return [
     'apply' => 'تطبيق',
     'approve' => 'موافقة',
     'back' => 'رجوع',
+    'billing' => 'الفوترة',
     'browse' => 'تصفح',
     'cancel' => 'إلغاء',
     'change' => 'تغيير',

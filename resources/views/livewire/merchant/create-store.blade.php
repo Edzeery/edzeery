@@ -142,7 +142,7 @@ $createStore = function (): void {
                         class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition
                                {{ $step === $s ? 'bg-brand-600 text-white' : ($step > $s ? 'bg-success-100 text-success-700' : 'bg-surface-secondary text-ink-muted') }}">
                     @if ($step > $s)
-                        <x-heroicon-s-check class="h-3.5 w-3.5" />
+                        <x-edz.icon name="check" class="h-3.5 w-3.5" />
                     @else
                         {{ $s }}
                     @endif
@@ -301,7 +301,7 @@ $createStore = function (): void {
         </div>
 
         <p class="mt-4 text-center text-sm text-ink-muted">
-            <a href="{{ route('choose-store') }}" class="text-brand-600 hover:underline">{{ __('stores.back_to_selection') }}</a>
+            <a href="{{ route('merchant.choose-store') }}" class="text-brand-600 hover:underline">{{ __('stores.back_to_selection') }}</a>
         </p>
     </div>
 </div>

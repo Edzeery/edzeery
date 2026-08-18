@@ -77,9 +77,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/choose-store', [ChooseStoreController::class, 'index'])
-        ->name('choose-store');
+    Route::get('/merchant/choose-store', [ChooseStoreController::class, 'index'])
+        ->name('merchant.choose-store');
 
-    Route::post('/choose-store/{store:slug}', [ChooseStoreController::class, 'select'])
-        ->name('choose-store.select');
+    Route::post('/merchant/choose-store/{store:slug}', [ChooseStoreController::class, 'select'])
+        ->name('merchant.choose-store.select');
 });

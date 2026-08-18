@@ -9,17 +9,15 @@ $store = currentStore();
 with([
     'store' => $store,
     'user' => auth()->user(),
-    'productCount' => $store
-        ? Product::query()->where('store_id', currentStoreId())->count()
-        : 0,
-    'canViewProducts'    => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
-    'canViewBrands'      => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
-    'canViewCategories'  => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
-    'canViewOptions'     => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
-    'canViewVariants'    => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'productCount' => $store ? Product::query()->where('store_id', currentStoreId())->count() : 0,
+    'canViewProducts' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewBrands' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewCategories' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewOptions' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
+    'canViewVariants' => canStore(StorePermissionEnum::PRODUCT_VIEW->value),
     'canViewInventories' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
     'canViewStockAlerts' => canStore(StorePermissionEnum::INVENTORY_VIEW->value),
-    'canViewDebts'       => canStore(StorePermissionEnum::FINANCE_DEBT_VIEW->value),
+    'canViewDebts' => canStore(StorePermissionEnum::FINANCE_DEBT_VIEW->value),
 ]);
 ?>
 
@@ -53,7 +51,17 @@ with([
                     $href = route('merchant.dashboard', $store);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="grid" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('titles.dashboard') }}</span>
+                </a>
+
+                @php
+                    $active = request()->routeIs('merchant.dashboard');
+                    $href = route('merchant.dashboard', $store);
+                @endphp
+                <a href="{{ $href }}" wire:navigate
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="grid" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('titles.dashboard') }}</span>
                 </a>
@@ -64,7 +72,7 @@ with([
                         $href = route('merchant.products.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="package" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.products') }}</span>
                         <span class="edz-sidebar__badge">{{ $productCount }}</span>
@@ -77,7 +85,7 @@ with([
                         $href = route('merchant.brands.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="grid" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.brands') }}</span>
                     </a>
@@ -89,7 +97,7 @@ with([
                         $href = route('merchant.categories.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="menu" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.categories') }}</span>
                     </a>
@@ -101,7 +109,7 @@ with([
                         $href = route('merchant.options.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="search" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.options') }}</span>
                     </a>
@@ -113,7 +121,7 @@ with([
                         $href = route('merchant.variants.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="package" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.variants') }}</span>
                     </a>
@@ -125,7 +133,7 @@ with([
                         $href = route('merchant.inventories.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="cart" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.inventories') }}</span>
                     </a>
@@ -135,7 +143,7 @@ with([
                         $href = route('merchant.inventory-movements.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="refresh" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('titles.inventory_movements') }}</span>
                     </a>
@@ -147,7 +155,7 @@ with([
                         $href = route('merchant.stock-alerts.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="bell" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.stock_alerts') }}</span>
                     </a>
@@ -158,7 +166,7 @@ with([
                     $href = route('merchant.orders.index', $store);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="cart" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
                 </a>
@@ -169,7 +177,7 @@ with([
                         $href = route('merchant.debts.index', $store);
                     @endphp
                     <a href="{{ $href }}" wire:navigate
-                       class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                        class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                         <x-edz.icon name="credit-card" class="edz-sidebar__icon" />
                         <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>
                     </a>
@@ -180,7 +188,7 @@ with([
                     $href = route('merchant.store-settings', $store);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="settings" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.settings') }}</span>
                 </a>
@@ -190,7 +198,7 @@ with([
                     $href = route('merchant.storefront-settings', $store);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="storefront" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.storefront') }}</span>
                 </a>
@@ -204,7 +212,7 @@ with([
                     $href = route('merchant.teams.index', $store);
                 @endphp
                 <a href="{{ $href }}" wire:navigate
-                   class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
+                    class="edz-sidebar__link @if ($active) edz-sidebar__link--active @endif">
                     <x-edz.icon name="users" class="edz-sidebar__icon" />
                     <span class="edz-sidebar__label">{{ __('merchant_panel.my_teams') }}</span>
                 </a>

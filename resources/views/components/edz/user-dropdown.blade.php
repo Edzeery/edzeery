@@ -6,14 +6,9 @@
             'path' => route('account.profile'),
         ],
         [
-            'text' => __('buttons.settings'),
-            'icon' => 'settings',
-            'path' => route('merchant.stores.index'),
-        ],
-        [
-            'text' => __('buttons.support'),
-            'icon' => 'help-circle',
-            'path' => '#',
+            'text' => __('buttons.billing'),
+            'icon' => 'credit-card',
+            'path' => route('account.billing'),
         ],
     ];
 @endphp

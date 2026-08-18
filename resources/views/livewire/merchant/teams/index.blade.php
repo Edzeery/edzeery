@@ -225,7 +225,7 @@ $allPermissions = computed(function () {
         </div>
         @if ($this->canCreate())
             <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">
-                <x-heroicon-o-plus class="h-5 w-5" /> {{ __('teams.add_member') }}
+                <x-edz.icon name="plus" class="h-5 w-5" /> {{ __('teams.add_member') }}
             </button>
         @endif
     </div>

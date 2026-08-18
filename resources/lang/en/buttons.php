@@ -6,6 +6,7 @@ return [
     'apply' => 'Apply',
     'approve' => 'Approve',
     'back' => 'Back',
+    'billing' => 'Billing',
     'browse' => 'Browse',
     'cancel' => 'Cancel',
     'change' => 'Change',

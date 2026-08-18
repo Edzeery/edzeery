@@ -2,7 +2,7 @@
 
 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
     @foreach ($stores as $store)
-        <form method="POST" action="{{ route('choose-store.select', $store['store_id']) }}">
+        <form method="POST" action="{{ route('merchant.choose-store.select', $store['store_id']) }}">
             @csrf
 
             <button type="submit"

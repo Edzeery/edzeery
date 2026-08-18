@@ -57,7 +57,7 @@
             <div class="space-y-3">
 
                 @foreach ($stores as $item)
-                    <form method="POST" action="{{ route('choose-store.select', $item->store) }}">
+                    <form method="POST" action="{{ route('merchant.choose-store.select', $item->store) }}">
                         @csrf
 
                         <button type="submit"

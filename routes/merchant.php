@@ -14,7 +14,7 @@ use Livewire\Volt\Volt;
 |--------------------------------------------------------------------------
 | Layer 1: Account — user-level pages, independent of any store
 */
-Route::prefix('account')
+Route::prefix('merchant/account')
     ->middleware(['auth', 'verified'])
     ->name('account.')
     ->group(function () {

@@ -38,7 +38,7 @@ class LoginRedirectService
 
         // Multiple stores → choose
         if ($activeMemberships->count() > 1) {
-            return route('choose-store');
+            return route('merchant.choose-store');
         }
 
         // No stores → create one
