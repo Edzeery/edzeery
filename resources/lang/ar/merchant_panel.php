@@ -132,4 +132,6 @@ return [
     'show_out_of_stock_desc' => 'عرض المنتجات التي نفد مخزونها',
     'languages' => 'اللغات',
     'phone' => 'الهاتف',
+    'hero_title_placeholder' => 'عنوان متجرك',
+    'hero_description_placeholder' => 'وصف قصير لمتجرك',
 ];

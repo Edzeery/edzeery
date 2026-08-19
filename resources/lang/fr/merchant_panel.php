@@ -130,4 +130,6 @@ return [
     'show_out_of_stock_desc' => 'Afficher les produits en rupture de stock',
     'languages' => 'Langues',
     'phone' => 'Téléphone',
+    'hero_title_placeholder' => 'Titre de votre boutique',
+    'hero_description_placeholder' => 'Une courte description de votre boutique',
 ];

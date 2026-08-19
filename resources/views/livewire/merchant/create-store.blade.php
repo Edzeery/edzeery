@@ -8,12 +8,12 @@ use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Livewire\Features\SupportFileUploads\WithFileUploads;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
+use function Livewire\Volt\usesFileUploads;
 
-uses([WithFileUploads::class]);
+usesFileUploads();
 
 layout('components.layouts.guest');
 
@@ -142,8 +142,8 @@ $createStore = function (): void {
             'is_active' => true,
         ]);
 
-        if (! $user->hasRole(StoreRoleEnum::OWNER)) {
-            $user->assignRole(StoreRoleEnum::OWNER);
+        if (! $user->hasRole(StoreRoleEnum::OWNER->value)) {
+            $user->assignRole(StoreRoleEnum::OWNER->value);
         }
     });
 

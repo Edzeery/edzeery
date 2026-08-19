@@ -138,7 +138,7 @@
                 @if (count($supportedLangs) > 1)
                     <div x-data="{ open: false }" class="relative">
                         <button x-on:click="open = !open" x-on:click.outside="open = false"
-                            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1 text-sm">
+                            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1 text-sm min-h-[44px]">
                             <ion-icon name="language-outline" class="text-lg"></ion-icon>
                             <span class="hidden sm:inline uppercase">{{ $currentLocale }}</span>
                             <ion-icon name="chevron-down-outline" class="text-xs"></ion-icon>
@@ -239,7 +239,42 @@
         </div>
     </footer>
 
+    {{-- Cart Toast --}}
+    <div x-data="cartToast()" x-on:cart-updated.window="show()" x-cloak
+         class="fixed bottom-6 right-6 z-[70] pointer-events-none">
+        <div x-show="visible"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+             class="pointer-events-auto flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-4 py-3 min-w-[240px]">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <ion-icon name="checkmark-outline" class="text-green-600 dark:text-green-400 text-lg"></ion-icon>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('storefront.added_to_cart') }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.review_cart') }}</p>
+            </div>
+        </div>
+    </div>
+
     @livewireScripts
+
+    <script>
+        function cartToast() {
+            return {
+                visible: false,
+                timeout: null,
+                show() {
+                    clearTimeout(this.timeout);
+                    this.visible = true;
+                    this.timeout = setTimeout(() => this.visible = false, 2500);
+                }
+            }
+        }
+    </script>
 
     @if (session('swal.type'))
         <div data-sw="{{ session('swal.type') }}" data-sw-title="{{ session('swal.title', '') }}"

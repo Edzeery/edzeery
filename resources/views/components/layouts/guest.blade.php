@@ -31,29 +31,33 @@
               text-ink
              transition-colors duration-300 antialiased">
 
+    {{-- Subtle background decoration --}}
+    <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-accent-500/5 blur-3xl"></div>
+    </div>
+
     {{-- Top Controls: Language + Dark Mode --}}
     <div class="absolute top-4
     {{ $algin }}-4 flex items-center gap-2 z-50">
         {{-- Language Switcher --}}
         <x-lang-switcher />
 
-        {{-- Dark Mode Toggle (Desktop only) --}}
-
+        {{-- Dark Mode Toggle --}}
         <x-dark-toggle />
-
-
     </div>
-    <main class="w-full max-w-lg px-4">
+
+    <main class="w-full max-w-lg px-4 animate-fade-up">
 
         {{-- Brand --}}
         <div class="text-center my-6">
             <a href="{{ route('landing') }}" class="flex items-center justify-center gap-3">
                 <x-application-logo class="w-16 h-16 text-primary-600 dark:text-primary-400" />
-                <span class="font-bold text-2xl text-ink">
+                <span class="font-bold text-2xl tracking-tight text-ink">
                     {{ config('app.name', 'Edzeery') }}
                 </span>
             </a>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <p class="text-sm text-ink-muted mt-2">
                 {{ __('auth.platform_subtitle') }}
             </p>
         </div>

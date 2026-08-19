@@ -130,4 +130,6 @@ return [
     'show_out_of_stock_desc' => 'Mostrar productos que están agotados',
     'languages' => 'Idiomas',
     'phone' => 'Teléfono',
+    'hero_title_placeholder' => 'Título de tu tienda',
+    'hero_description_placeholder' => 'Una breve descripción de tu tienda',
 ];

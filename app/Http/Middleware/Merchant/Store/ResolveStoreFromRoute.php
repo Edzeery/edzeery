@@ -3,6 +3,7 @@
 namespace App\Http\Middleware\Merchant\Store;
 
 use App\Models\Stores\Store;
+use App\Support\StoreContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +23,7 @@ class ResolveStoreFromRoute
 
         if ($store instanceof Store) {
             session(['current_store_id' => $store->id]);
+            app(StoreContext::class)->set($store);
         }
 
         abort_unless(currentStore(), 404, __('stores.store_not_found'));

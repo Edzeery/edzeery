@@ -41,7 +41,7 @@ $addToCart = function (string $variantId) {
 
         $query = Product::where('store_id', $store->id)
             ->where('is_active', true)
-            ->with(['images', 'brand', 'categories']);
+            ->with(['images', 'brand', 'categories', 'variants']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {

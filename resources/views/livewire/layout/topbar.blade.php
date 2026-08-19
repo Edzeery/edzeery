@@ -15,9 +15,9 @@ with([
         <x-edz.icon name="menu" class="w-5 h-5" />
     </button>
 
-    <div class="edz-topbar__search">
+    <div class="edz-topbar__search" wire:click="$dispatch('command-palette-toggle')">
         <x-edz.icon name="search" class="w-4 h-4" />
-        <input type="search" placeholder="{{ __('buttons.search') }}…" aria-label="{{ __('buttons.search') }}">
+        <span class="text-sm text-ink-muted pointer-events-none">{{ __('buttons.search') }}…</span>
         <kbd class="edz-topbar__kbd">⌘K</kbd>
     </div>
 

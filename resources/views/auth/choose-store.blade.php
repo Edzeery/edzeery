@@ -26,7 +26,7 @@
                             <p class="mt-0.5 text-xs text-ink-muted">{{ __('plans.max_stores') }}: {{ $subscription->plan->name }}</p>
                         </div>
                         @if (! $canCreate)
-                            <a href="#" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('stores.upgrade_plan') }}</a>
+                            <a href="{{ route('merchant.billing') }}" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('stores.upgrade_plan') }}</a>
                         @endif
                     </div>
                     @if (! $isUnlimited && $maxStores > 0)

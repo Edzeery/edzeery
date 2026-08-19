@@ -23,6 +23,8 @@
   --edz-font-mono: #{v.$edz-font-mono};
   --edz-font-base: #{v.$edz-font-base};
   --edz-line-height-base: #{v.$edz-line-height-base};
+  --edz-letter-tight: #{v.$edz-letter-tight};
+  --edz-letter-tighter: #{v.$edz-letter-tighter};
 
   // --- Brand & semantic scales ---
   @include edz-emit-scale('brand', (50: v.$edz-brand-50, 100: v.$edz-brand-100, 200: v.$edz-brand-200, 300: v.$edz-brand-300, 400: v.$edz-brand-400, 500: v.$edz-brand-500, 600: v.$edz-brand-600, 700: v.$edz-brand-700, 800: v.$edz-brand-800, 900: v.$edz-brand-900, 950: v.$edz-brand-950));
@@ -51,14 +53,32 @@
   --edz-radius-lg: #{v.$edz-radius-lg};
   --edz-radius-xl: #{v.$edz-radius-xl};
   --edz-radius-2xl: #{v.$edz-radius-2xl};
+  --edz-radius-3xl: #{v.$edz-radius-3xl};
   --edz-radius-full: #{v.$edz-radius-full};
 
   // --- Elevation ---
+  --edz-shadow-xs: #{v.$edz-shadow-xs};
   --edz-shadow-sm: #{v.$edz-shadow-sm};
   --edz-shadow-card: #{v.$edz-shadow-card};
+  --edz-shadow-elevated: #{v.$edz-shadow-elevated};
   --edz-shadow-lg: #{v.$edz-shadow-lg};
   --edz-shadow-xl: #{v.$edz-shadow-xl};
+  --edz-shadow-floating: #{v.$edz-shadow-floating};
   --edz-shadow-focus: #{v.$edz-shadow-focus};
+
+  // --- Glassmorphism ---
+  --edz-blur-sm: #{v.$edz-blur-sm};
+  --edz-blur-md: #{v.$edz-blur-md};
+  --edz-blur-lg: #{v.$edz-blur-lg};
+  --edz-glass-bg: #{v.$edz-glass-bg-light};
+  --edz-glass-border: #{v.$edz-glass-border-light};
+
+  // --- Motion ---
+  --edz-ease-out-expo: #{v.$edz-ease-out-expo};
+  --edz-ease-spring: #{v.$edz-ease-spring};
+  --edz-duration-fast: #{v.$edz-duration-fast};
+  --edz-duration-normal: #{v.$edz-duration-normal};
+  --edz-duration-slow: #{v.$edz-duration-slow};
 
   // --- Spacing (4px grid) ---
   // Dots are not valid inside CSS identifiers, so `0.5` → `0_5`.
@@ -95,8 +115,16 @@
   --edz-color-text-muted: #{f.edz-rgb-channels(v.$edz-dark-text-muted)};
   --edz-color-inverse: #{f.edz-rgb-channels(v.$edz-dark-bg)};
 
-  --edz-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
-  --edz-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  // Dark shadows are heavier for contrast
+  --edz-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --edz-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --edz-shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.4), 0 4px 16px -4px rgb(0 0 0 / 0.3);
+  --edz-shadow-elevated: 0 8px 24px -4px rgb(0 0 0 / 0.5), 0 2px 8px -2px rgb(0 0 0 / 0.4);
   --edz-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-  --edz-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+  --edz-shadow-xl: 0 16px 48px -8px rgb(0 0 0 / 0.5), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+  --edz-shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.6);
+
+  // Dark glassmorphism
+  --edz-glass-bg: #{v.$edz-glass-bg-dark};
+  --edz-glass-border: #{v.$edz-glass-border-dark};
 }

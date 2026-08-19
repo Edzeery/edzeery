@@ -1,0 +1,44 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / SKELETON
+//  Reusable loading skeleton with shimmer animation.
+// ============================================================
+
+.edz-skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--edz-color-secondary)) 25%,
+    rgb(var(--edz-color-tertiary)) 37%,
+    rgb(var(--edz-color-secondary)) 63%
+  );
+  background-size: 200% 100%;
+  animation: edz-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--edz-radius-md);
+}
+
+@keyframes edz-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// --- Staggered entrance animation utility ---
+.edz-stagger > * {
+  animation: edz-fade-up 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @for $i from 1 through 20 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 50}ms;
+    }
+  }
+}
+
+@keyframes edz-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

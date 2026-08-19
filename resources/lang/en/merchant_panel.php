@@ -132,4 +132,6 @@ return [
     'show_out_of_stock_desc' => 'Display products that are out of stock',
     'languages' => 'Languages',
     'phone' => 'Phone',
+    'hero_title_placeholder' => 'Your store headline',
+    'hero_description_placeholder' => 'A short description for your store',
 ];

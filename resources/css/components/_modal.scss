@@ -1,5 +1,6 @@
 // ============================================================
 //  EDZEERY — COMPONENTS / MODAL
+//  Apple-style: centered on desktop, bottom sheet on mobile.
 // ============================================================
 
 .edz-modal {
@@ -7,10 +8,16 @@
   inset: 0;
   z-index: var(--edz-z-modal);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 1.25rem;
+  padding: 0;
   overflow-y: auto;
+
+  // Desktop: centered with padding
+  @media (min-width: 640px) {
+    align-items: center;
+    padding: 1.25rem;
+  }
 }
 
 // --- Backdrop ---
@@ -19,19 +26,46 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  background-color: rgb(107 114 128 / 0.5);
-  backdrop-filter: blur(2px);
-  transition: opacity 0.2s ease;
+  background-color: rgb(3 7 18 / 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 // --- Panel ---
 .edz-modal__panel {
   position: relative;
   width: 100%;
-  border-radius: var(--edz-radius-2xl);
+  max-height: 90vh;
+  overflow-y: auto;
   background-color: rgb(var(--edz-color-surface));
-  box-shadow: var(--edz-shadow-xl);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--edz-shadow-floating);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  // Mobile: bottom sheet style
+  border-radius: var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;
+  margin: 0;
+
+  // Desktop: centered card
+  @media (min-width: 640px) {
+    border-radius: var(--edz-radius-2xl);
+    max-height: calc(100vh - 2.5rem);
+  }
+}
+
+// --- Drag handle (mobile bottom sheet indicator) ---
+.edz-modal__handle {
+  display: block;
+  width: 2rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background-color: rgb(var(--edz-color-border-strong));
+  margin: 0.75rem auto 0;
+
+  @media (min-width: 640px) {
+    display: none;
+  }
 }
 
 // --- Close button ---
@@ -48,22 +82,27 @@
   border-radius: var(--edz-radius-full);
   background-color: rgb(var(--edz-color-secondary));
   color: rgb(var(--edz-color-text-muted));
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.15s var(--edz-ease-out-expo);
 
   @media (min-width: 640px) {
-    top: 1.5rem;
-    right: 1.5rem;
-    width: 2.75rem;
-    height: 2.75rem;
+    top: 1rem;
+    right: 1rem;
+    width: 2rem;
+    height: 2rem;
   }
 
   &:hover {
     background-color: rgb(var(--edz-color-tertiary));
     color: rgb(var(--edz-color-text));
+    transform: scale(1.08);
+  }
+
+  &:active {
+    transform: scale(0.95);
   }
 }
 
-// --- Size modifiers ---
+// --- Size modifiers (desktop only) ---
 .edz-modal__panel--sm {
   max-width: 24rem;
 }
@@ -82,24 +121,40 @@
 
 // --- Transitions ---
 .edz-modal-enter {
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .edz-modal-enter-start {
   opacity: 0;
-  transform: scale(0.95);
+  transform: translateY(16px);
 }
 .edz-modal-enter-end {
   opacity: 1;
-  transform: scale(1);
+  transform: translateY(0);
 }
 .edz-modal-leave {
   transition: opacity 0.15s ease-in, transform 0.15s ease-in;
 }
 .edz-modal-leave-start {
   opacity: 1;
-  transform: scale(1);
+  transform: translateY(0);
 }
 .edz-modal-leave-end {
   opacity: 0;
-  transform: scale(0.95);
+  transform: translateY(16px);
+}
+
+// Desktop transitions use scale instead of slide
+@media (min-width: 640px) {
+  .edz-modal-enter-start {
+    opacity: 0;
+    transform: scale(0.96) translateY(0);
+  }
+  .edz-modal-enter-end {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  .edz-modal-leave-end {
+    opacity: 0;
+    transform: scale(0.96) translateY(0);
+  }
 }

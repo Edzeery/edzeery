@@ -70,6 +70,7 @@ return [
     'options'                  => 'Options',
     'powered_by'               => 'Powered by',
     'added_to_cart'            => 'Added to cart',
+    'review_cart'              => 'View your cart',
     'order_notes'              => 'Order notes',
     'failed_to_place_order'    => 'Failed to place order. Please try again.',
     'your_store_link'          => 'Your Store Link',

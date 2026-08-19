@@ -1,5 +1,7 @@
 // ============================================================
 //  EDZEERY — LAYOUTS / TOPBAR
+//  Apple-inspired glass surface with backdrop blur,
+//  refined transitions, and micro-interactions.
 // ============================================================
 @use '../abstracts/variables' as *;
 
@@ -12,10 +14,12 @@
   gap: 1rem;
   height: var(--edz-topbar-height);
   padding-inline: 1.5rem;
-  background-color: rgb(var(--edz-color-surface) / 0.85);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgb(var(--edz-color-border));
+  background-color: var(--edz-glass-bg);
+  backdrop-filter: blur(var(--edz-blur-md));
+  -webkit-backdrop-filter: blur(var(--edz-blur-md));
+  border-bottom: 1px solid var(--edz-glass-border);
   flex: none;
+  transition: background-color 0.25s var(--edz-ease-out-expo);
 }
 
 .edz-topbar__trigger {
@@ -26,10 +30,16 @@
   height: 2.25rem;
   border-radius: var(--edz-radius-md);
   color: rgb(var(--edz-color-text-soft));
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
 
   &:hover {
     background-color: rgb(var(--edz-color-secondary));
     color: rgb(var(--edz-color-text));
+    transform: scale(1.04);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 }
 
@@ -43,11 +53,17 @@
   border: 1px solid transparent;
   border-radius: var(--edz-radius-md);
   color: rgb(var(--edz-color-text-muted));
+  transition: all var(--edz-duration-normal) var(--edz-ease-out-expo);
+
+  &:hover {
+    background-color: rgb(var(--edz-color-tertiary));
+    border-color: rgb(var(--edz-color-border));
+  }
 
   &:focus-within {
     border-color: rgb(var(--edz-color-brand-600));
     background-color: rgb(var(--edz-color-surface));
-    box-shadow: 0 0 0 3px rgb(var(--edz-color-brand-600) / 0.15);
+    box-shadow: var(--edz-shadow-focus);
   }
 
   input {
@@ -81,10 +97,16 @@
   height: 2.25rem;
   border-radius: var(--edz-radius-md);
   color: rgb(var(--edz-color-text-soft));
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
 
   &:hover {
     background-color: rgb(var(--edz-color-secondary));
     color: rgb(var(--edz-color-text));
+    transform: scale(1.04);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 }
 
@@ -97,12 +119,19 @@
   border-radius: 9999px;
   background-color: rgb(var(--edz-color-danger-500));
   border: 2px solid rgb(var(--edz-color-surface));
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .edz-topbar__divider {
   width: 1px;
   height: 1.5rem;
   background-color: rgb(var(--edz-color-border));
+  opacity: 0.6;
 }
 
 // --- Store link (merchant context) ---
@@ -116,7 +145,7 @@
   font-weight: 500;
   color: rgb(var(--edz-color-text));
   text-decoration: none;
-  transition: background-color 0.15s ease;
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
 
   @media (min-width: 640px) {
     display: inline-flex;
@@ -124,6 +153,11 @@
 
   &:hover {
     background-color: rgb(var(--edz-color-secondary));
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
@@ -148,4 +182,5 @@
   color: rgb(var(--edz-color-text-muted));
   line-height: 1;
   white-space: nowrap;
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
 }

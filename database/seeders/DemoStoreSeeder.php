@@ -33,7 +33,7 @@ class DemoStoreSeeder extends Seeder
         }
 
         $store = Store::firstOrCreate(
-            ['slug' => 'default-store'],
+            ['slug' => 'demo'],
             [
                 'user_id'          => $user->id,
                 'name'             => 'Edzeery Demo Store',

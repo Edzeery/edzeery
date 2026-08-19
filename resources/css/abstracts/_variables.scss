@@ -4,11 +4,15 @@
 //  The generated design-system/_tokens.scss (CSS custom
 //  properties) and tailwind.config.js both read from here.
 //  Change a value ONCE in this file to propagate everywhere.
+//
+//  Design language: Apple HIG-inspired — clean, refined,
+//  with subtle depth and elegant motion.
 // ============================================================
 
 // --- Typography -------------------------------------------------
-$edz-font-sans: 'Figtree', 'Tajawal', 'Noto Kufi Arabic', ui-sans-serif, system-ui,
-  -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$edz-font-sans: 'Inter', 'IBM Plex Sans Arabic', 'Tajawal', -apple-system,
+  BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui,
+  sans-serif;
 $edz-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
   'Liberation Mono', monospace;
 
@@ -27,6 +31,10 @@ $edz-font-weight-normal: 400;
 $edz-font-weight-medium: 500;
 $edz-font-weight-semibold: 600;
 $edz-font-weight-bold: 700;
+
+// Letter spacing for headings (Apple-style negative tracking)
+$edz-letter-tight: -0.015em;
+$edz-letter-tighter: -0.025em;
 
 // --- Brand (primary action) — blue scale ------------------------
 $edz-brand-50:  #eff6ff;
@@ -138,23 +146,43 @@ $edz-dark-text:      $edz-gray-50;
 $edz-dark-text-soft: #94a3b8;
 $edz-dark-text-muted: $edz-gray-500;
 
-// --- Radii --------------------------------------------------------
+// --- Radii (Apple-inspired progressive rounding) ----------------
 $edz-radius-none: 0;
-$edz-radius-sm: 0.375rem;   // 6px
-$edz-radius-md: 0.5rem;     // 8px
-$edz-radius-lg: 0.75rem;    // 12px
-$edz-radius-xl: 1rem;       // 16px
-$edz-radius-2xl: 1.25rem;   // 20px
+$edz-radius-sm: 0.375rem;   // 6px — small elements
+$edz-radius-md: 0.5rem;     // 8px — buttons, inputs
+$edz-radius-lg: 0.75rem;    // 12px — cards, dropdowns
+$edz-radius-xl: 1rem;       // 16px — large cards, modals
+$edz-radius-2xl: 1.5rem;    // 24px — hero cards, feature sections
+$edz-radius-3xl: 2rem;      // 32px — large modals, page sections
 $edz-radius-full: 9999px;
 
-// --- Elevation (shadows) ------------------------------------------
-$edz-shadow-sm: 0 1px 2px 0 rgb(16 24 40 / 0.05);
-$edz-shadow-card: 0 1px 3px 0 rgb(16 24 40 / 0.10), 0 1px 2px -1px rgb(16 24 40 / 0.10);
-$edz-shadow-lg: 0 10px 15px -3px rgb(16 24 40 / 0.10), 0 4px 6px -4px rgb(16 24 40 / 0.10);
-$edz-shadow-xl: 0 20px 25px -5px rgb(16 24 40 / 0.10), 0 8px 10px -6px rgb(16 24 40 / 0.10);
+// --- Elevation (refined shadows — softer, more diffused) --------
+$edz-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+$edz-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+$edz-shadow-card: 0 2px 8px -2px rgb(0 0 0 / 0.06), 0 4px 16px -4px rgb(0 0 0 / 0.04);
+$edz-shadow-elevated: 0 8px 24px -4px rgb(0 0 0 / 0.10), 0 2px 8px -2px rgb(0 0 0 / 0.06);
+$edz-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+$edz-shadow-xl: 0 16px 48px -8px rgb(0 0 0 / 0.12), 0 4px 12px -4px rgb(0 0 0 / 0.06);
+$edz-shadow-floating: 0 24px 64px -12px rgb(0 0 0 / 0.18);
 $edz-shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.20);
 
-// --- Spacing scale (4px grid) -------------------------------------
+// --- Glassmorphism -----------------------------------------------
+$edz-blur-sm: 8px;
+$edz-blur-md: 16px;
+$edz-blur-lg: 24px;
+$edz-glass-bg-light: rgba(255, 255, 255, 0.72);
+$edz-glass-bg-dark: rgba(17, 17, 20, 0.72);
+$edz-glass-border-light: rgba(255, 255, 255, 0.18);
+$edz-glass-border-dark: rgba(255, 255, 255, 0.08);
+
+// --- Motion (Apple-style timing functions) -----------------------
+$edz-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+$edz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+$edz-duration-fast: 150ms;
+$edz-duration-normal: 250ms;
+$edz-duration-slow: 400ms;
+
+// --- Spacing scale (4px grid) ------------------------------------
 $edz-spacing: (
   0: 0,
   0.5: 0.125rem,

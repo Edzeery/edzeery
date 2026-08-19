@@ -1,11 +1,10 @@
 @props([
-    'align' => 'right',
     'width' => '260px',
     'trigger' => null,
 ])
 
 @php
-    $alignClass = $align === 'left' ? 'left-0' : 'right-0';
+    $alignClass = $alignment;
 @endphp
 
 <div class="edz-dropdown" x-data="{

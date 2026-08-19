@@ -15,7 +15,15 @@
 
 .edz-shell__content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1rem;
+
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding: 2rem;
+  }
 }
 
 .edz-shell__inner {
@@ -36,6 +44,11 @@
 .edz-page-head__title {
   font-size: 1.375rem;
   font-weight: 700;
+  letter-spacing: -0.015em;
+
+  @media (min-width: 640px) {
+    font-size: 1.5rem;
+  }
 }
 
 .edz-page-head__subtitle {
@@ -67,11 +80,12 @@
   position: fixed;
   inset: 0;
   z-index: var(--edz-z-overlay);
-  background-color: rgb(3 7 18 / 0.55);
-  backdrop-filter: blur(2px);
+  background-color: rgb(3 7 18 / 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.25s var(--edz-ease-out-expo), visibility 0.25s;
 }
 
 .edz-shell--open .edz-overlay {

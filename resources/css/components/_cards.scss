@@ -6,6 +6,12 @@
   border: 1px solid rgb(var(--edz-color-border));
   border-radius: var(--edz-radius-xl);
   box-shadow: var(--edz-shadow-card);
+  transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover {
+    box-shadow: var(--edz-shadow-elevated);
+  }
 
   &__header {
     display: flex;
@@ -19,6 +25,7 @@
   &__title {
     font-size: 1rem;
     font-weight: 600;
+    letter-spacing: -0.005em;
   }
 
   &__body {

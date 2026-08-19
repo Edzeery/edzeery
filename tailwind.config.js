@@ -33,8 +33,18 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ["Figtree", "Tajawal", ...defaultTheme.fontFamily.sans],
+                sans: [
+                    "Inter",
+                    "IBM Plex Sans Arabic",
+                    "Tajawal",
+                    ...defaultTheme.fontFamily.sans,
+                ],
                 mono: ["JetBrains Mono", ...defaultTheme.fontFamily.mono],
+            },
+            letterSpacing: {
+                tighter: "-0.025em",
+                tight: "-0.015em",
+                snug: "-0.005em",
             },
             colors: {
                 brand: {
@@ -149,14 +159,67 @@ export default {
                 lg: "var(--edz-radius-lg)",
                 xl: "var(--edz-radius-xl)",
                 "2xl": "var(--edz-radius-2xl)",
+                "3xl": "var(--edz-radius-3xl)",
                 full: "var(--edz-radius-full)",
             },
             boxShadow: {
+                xs: "var(--edz-shadow-xs)",
                 sm: "var(--edz-shadow-sm)",
                 card: "var(--edz-shadow-card)",
+                elevated: "var(--edz-shadow-elevated)",
                 lg: "var(--edz-shadow-lg)",
                 xl: "var(--edz-shadow-xl)",
+                floating: "var(--edz-shadow-floating)",
                 focus: "var(--edz-shadow-focus)",
+            },
+            backdropBlur: {
+                xs: "var(--edz-blur-sm)",
+                sm: "var(--edz-blur-sm)",
+                md: "var(--edz-blur-md)",
+                lg: "var(--edz-blur-lg)",
+            },
+            transitionTimingFunction: {
+                "apple-out": "cubic-bezier(0.16, 1, 0.3, 1)",
+                "apple-spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+            },
+            transitionDuration: {
+                150: "150ms",
+                250: "250ms",
+                350: "350ms",
+                400: "400ms",
+            },
+            keyframes: {
+                "fade-up": {
+                    "0%": { opacity: "0", transform: "translateY(8px)" },
+                    "100%": { opacity: "1", transform: "translateY(0)" },
+                },
+                "fade-in": {
+                    "0%": { opacity: "0" },
+                    "100%": { opacity: "1" },
+                },
+                "scale-in": {
+                    "0%": { opacity: "0", transform: "scale(0.96)" },
+                    "100%": { opacity: "1", transform: "scale(1)" },
+                },
+                "slide-in-right": {
+                    "0%": { opacity: "0", transform: "translateX(-12px)" },
+                    "100%": { opacity: "1", transform: "translateX(0)" },
+                },
+                shimmer: {
+                    "0%": { backgroundPosition: "-200% 0" },
+                    "100%": { backgroundPosition: "200% 0" },
+                },
+            },
+            animation: {
+                "fade-up":
+                    "fade-up 400ms cubic-bezier(0.16,1,0.3,1) both",
+                "fade-in":
+                    "fade-in 350ms cubic-bezier(0.16,1,0.3,1) both",
+                "scale-in":
+                    "scale-in 250ms cubic-bezier(0.16,1,0.3,1) both",
+                "slide-in-right":
+                    "slide-in-right 400ms cubic-bezier(0.16,1,0.3,1) both",
+                shimmer: "shimmer 2s linear infinite",
             },
             zIndex: {
                 sidebar: "var(--edz-z-sidebar)",

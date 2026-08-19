@@ -175,8 +175,27 @@ $deactivateSelected = function (): void {
             </div>
         @endif
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+        <div class="relative">
+            <div wire:loading class="absolute inset-0 z-10 bg-surface/80 backdrop-blur-sm p-4 space-y-3 overflow-hidden" wire:target="search,brand_id,is_active,is_featured,created_at">
+                @for ($i = 0; $i < 5; $i++)
+                    <div class="flex items-center gap-3 py-2">
+                        <x-edz.skeleton width="2.5rem" height="2.5rem" rounded="lg" />
+                        <div class="flex-1 space-y-1.5">
+                            <x-edz.skeleton width="{{ 40 + ($i * 8) }}%" />
+                            <x-edz.skeleton width="5rem" height="0.75rem" />
+                        </div>
+                        <x-edz.skeleton width="4rem" />
+                        <x-edz.skeleton width="3rem" />
+                        <x-edz.skeleton width="4rem" />
+                        <x-edz.skeleton width="2.5rem" height="1.5rem" rounded="full" />
+                        <x-edz.skeleton width="4rem" height="0.75rem" />
+                        <x-edz.skeleton width="5rem" />
+                    </div>
+                @endfor
+            </div>
+
+            <div class="overflow-x-auto" wire:loading.class="opacity-40 pointer-events-none" wire:target="search,brand_id,is_active,is_featured,created_at">
+                <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                         <th class="w-10 px-4 py-3">
@@ -266,5 +285,6 @@ $deactivateSelected = function (): void {
                 {{ $this->products->links() }}
             </div>
         @endif
+        </div>
     </div>
 </div>

@@ -6,28 +6,28 @@ use App\Models\Stores\StoreSetting;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\Features\SupportFileUploads\WithFileUploads;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
+use function Livewire\Volt\usesFileUploads;
 
-uses([WithFileUploads::class]);
+usesFileUploads();
 
 layout('components.layouts.store');
 
 state([
-    'name'                => '',
-    'description'         => '',
-    'phone'               => '',
-    'logo'                => null,
-    'cover'               => null,
-    'currency'            => 'DZD',
-    'language'            => 'ar',
+    'name' => '',
+    'description' => '',
+    'phone' => '',
+    'logo' => null,
+    'cover' => null,
+    'currency' => 'DZD',
+    'language' => 'ar',
     'supported_languages' => [],
-    'guest_checkout'      => true,
-    'inventory_tracking'  => true,
-    'show_out_of_stock'   => false,
-    'allow_backorder'     => false,
+    'guest_checkout' => true,
+    'inventory_tracking' => true,
+    'show_out_of_stock' => false,
+    'allow_backorder' => false,
 ]);
 
 mount(function (): void {
@@ -43,20 +43,28 @@ mount(function (): void {
     $this->description = $store->description ?? '';
     $this->currency = $settings->currency ?? 'DZD';
     $this->language = $settings->language ?? 'ar';
-    $this->supported_languages = $hasNewCols ? ($settings->supported_languages ?? [$settings->language ?? 'ar']) : [$settings->language ?? 'ar'];
-    $this->phone = $hasNewCols ? ($settings->phone ?? '') : '';
+    $this->supported_languages = $hasNewCols ? $settings->supported_languages ?? [$settings->language ?? 'ar'] : [$settings->language ?? 'ar'];
+    $this->phone = $hasNewCols ? $settings->phone ?? '' : '';
     $this->guest_checkout = $settings->guest_checkout ?? true;
     $this->inventory_tracking = $settings->inventory_tracking ?? true;
     $this->show_out_of_stock = $settings->show_out_of_stock ?? false;
     $this->allow_backorder = $settings->allow_backorder ?? false;
 });
 
+$refreshLogo = function (): void {
+    $this->resetValidation('logo');
+};
+
+$refreshCover = function (): void {
+    $this->resetValidation('cover');
+};
+
 $save = function (): void {
     $store = currentStore();
     abort_unless($store, 404);
 
     $data = [
-        'name'        => $this->name,
+        'name' => $this->name,
         'description' => $this->description,
     ];
 
@@ -71,12 +79,12 @@ $save = function (): void {
     $store->update($data);
 
     $settingsData = [
-        'currency'            => $this->currency,
-        'language'            => $this->language,
-        'guest_checkout'      => $this->guest_checkout,
-        'inventory_tracking'  => $this->inventory_tracking,
-        'show_out_of_stock'   => $this->show_out_of_stock,
-        'allow_backorder'     => $this->allow_backorder,
+        'currency' => $this->currency,
+        'language' => $this->language,
+        'guest_checkout' => $this->guest_checkout,
+        'inventory_tracking' => $this->inventory_tracking,
+        'show_out_of_stock' => $this->show_out_of_stock,
+        'allow_backorder' => $this->allow_backorder,
     ];
 
     if (Schema::hasColumn('store_settings', 'supported_languages')) {
@@ -93,8 +101,7 @@ $save = function (): void {
 ?>
 
 <div>
-    <x-edz.page-header
-        title="{{ __('merchant_panel.store_settings') }}"
+    <x-edz.page-header title="{{ __('merchant_panel.store_settings') }}"
         description="{{ __('merchant_panel.store_settings_desc') }}">
     </x-edz.page-header>
 
@@ -111,16 +118,22 @@ $save = function (): void {
                 <div>
                     <label class="edz-label">{{ __('stores.logo') }}</label>
                     <div class="flex items-center gap-4">
-                        <div class="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
-                            @if($store?->logo)
-                                <img src="{{ asset('storage/' . $store->logo) }}" class="w-full h-full object-cover" />
+                        <div
+                            class="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
+                            @if ($logo)
+                                <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-cover" />
+                            @elseif(currentStore()?->logo)
+                                <img src="{{ asset('storage/' . currentStore()->logo) }}"
+                                    class="w-full h-full object-cover" />
                             @else
                                 <ion-icon name="image-outline" class="text-2xl text-gray-400"></ion-icon>
                             @endif
                         </div>
                         <div class="flex-1">
                             <input type="file" wire:model="logo" accept="image/*" class="edz-input text-sm" />
-                            @error('logo') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            @error('logo')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -129,16 +142,22 @@ $save = function (): void {
                 <div>
                     <label class="edz-label">{{ __('stores.cover') }}</label>
                     <div class="flex items-center gap-4">
-                        <div class="w-32 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
-                            @if($store?->cover)
-                                <img src="{{ asset('storage/' . $store->cover) }}" class="w-full h-full object-cover" />
+                        <div
+                            class="w-32 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
+                            @if ($cover)
+                                <img src="{{ $cover->temporaryUrl() }}" class="w-full h-full object-cover" />
+                            @elseif(currentStore()?->cover)
+                                <img src="{{ asset('storage/' . currentStore()->cover) }}"
+                                    class="w-full h-full object-cover" />
                             @else
                                 <ion-icon name="image-outline" class="text-2xl text-gray-400"></ion-icon>
                             @endif
                         </div>
                         <div class="flex-1">
                             <input type="file" wire:model="cover" accept="image/*" class="edz-input text-sm" />
-                            @error('cover') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+                            @error('cover')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -191,7 +210,8 @@ $save = function (): void {
 
                 <div class="flex items-center gap-3 pt-6">
                     <input type="checkbox" id="guest_checkout" wire:model="guest_checkout" class="edz-checkbox" />
-                    <label for="guest_checkout" class="edz-label mb-0">{{ __('merchant_panel.guest_checkout') }}</label>
+                    <label for="guest_checkout"
+                        class="edz-label mb-0">{{ __('merchant_panel.guest_checkout') }}</label>
                 </div>
             </div>
         </div>
@@ -204,27 +224,33 @@ $save = function (): void {
             </h3>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <label class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                <label
+                    class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                     {{ $inventory_tracking ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
-                    <input type="checkbox" wire:model="inventory_tracking" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                    <input type="checkbox" wire:model="inventory_tracking"
+                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.inventory_tracking') }}</p>
                         <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.inventory_tracking_desc') }}</p>
                     </div>
                 </label>
 
-                <label class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                <label
+                    class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                     {{ $allow_backorder ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
-                    <input type="checkbox" wire:model="allow_backorder" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                    <input type="checkbox" wire:model="allow_backorder"
+                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.allow_backorder') }}</p>
                         <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.allow_backorder_desc') }}</p>
                     </div>
                 </label>
 
-                <label class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
+                <label
+                    class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                     {{ $show_out_of_stock ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
-                    <input type="checkbox" wire:model="show_out_of_stock" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                    <input type="checkbox" wire:model="show_out_of_stock"
+                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.show_out_of_stock') }}</p>
                         <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.show_out_of_stock_desc') }}</p>
@@ -253,12 +279,16 @@ $save = function (): void {
 
                 <div>
                     <label class="edz-label">{{ __('merchant_panel.supported_languages') }}</label>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                        @foreach(['ar' => __('merchant_panel.arabic'), 'fr' => __('merchant_panel.french'), 'en' => __('merchant_panel.english'), 'es' => __('merchant_panel.spanish')] as $code => $label)
-                            <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition
-                                {{ in_array($code, $supported_languages) ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10 text-accent-700 dark:text-accent-300' : 'border-gray-200 dark:border-gray-700 text-ink-400 hover:border-gray-300' }}">
-                                <input type="checkbox" value="{{ $code }}" wire:model.live="supported_languages" class="sr-only" />
-                                <span class="w-2 h-2 rounded-full {{ in_array($code, $supported_languages) ? 'bg-accent-500' : 'bg-gray-300 dark:bg-gray-600' }}"></span>
+                    <div class="flex flex-wrap gap-2 mt-2" x-data>
+                        @foreach (['ar' => __('merchant_panel.arabic'), 'fr' => __('merchant_panel.french'), 'en' => __('merchant_panel.english'), 'es' => __('merchant_panel.spanish')] as $code => $label)
+                            <label
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition"
+                                :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10 text-accent-700 dark:text-accent-400' : 'border-gray-200 dark:border-gray-700 text-ink-400 hover:border-gray-200'">
+                                <input type="checkbox" value="{{ $code }}"
+                                    wire:model.live="supported_languages" class="sr-only" />
+                                <span
+                                    class="w-2 h-2 rounded-full"
+                                    :class="$wire.supported_languages.includes('{{ $code }}') ? 'bg-accent-500' : 'bg-gray-300 dark:bg-gray-600'"></span>
                                 {{ $label }}
                             </label>
                         @endforeach

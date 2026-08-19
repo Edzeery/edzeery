@@ -27,6 +27,10 @@
 
     <title>{{ $title ? $title . ' · ' . config('app.name') : config('app.name') }}</title>
 
+    <script>
+        (function(){var t=localStorage.getItem('edz-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()
+    </script>
+
     @vite(['resources/css/app.scss', 'resources/js/panel.js'])
     @livewireStyles
 </head>
@@ -54,7 +58,7 @@
             <livewire:layout.topbar />
 
             <main class="edz-shell__content">
-                <div class="edz-shell__inner">
+                <div class="edz-shell__inner animate-fade-up">
                     @if ($context === 'store' && user() && ! app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription())
                         <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
                             <div class="flex items-center gap-3">
@@ -92,6 +96,8 @@
     </div>
 
     @livewireScripts
+
+    <livewire:layout.command-palette />
 
     @if (session('swal.type'))
         <div data-sw="{{ session('swal.type') }}"
