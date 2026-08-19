@@ -129,13 +129,6 @@ const EdzSwal = {
 };
 
 function initSwal() {
-    if (typeof window.Livewire !== "undefined") {
-        window.Livewire.on("swal", (data) => {
-            const payload = Array.isArray(data) ? data[0] : data;
-            EdzSwal.fire(payload);
-        });
-    }
-
     document.addEventListener("livewire:initialized", () => {
         if (typeof window.Livewire !== "undefined") {
             window.Livewire.on("swal", (data) => {

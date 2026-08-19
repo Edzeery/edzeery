@@ -1,4 +1,4 @@
- 
+
 <!DOCTYPE html>
 <html lang="{{ $lang ?? app()->getLocale() }}" dir="{{ $dir ?? 'ltr' }}" class="h-full scroll-smooth">
 
@@ -147,7 +147,7 @@
                             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                             x-transition:leave="transition ease-in duration-75"
                             x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                            class="absolute {{ $alignment }} mt-2 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                            class="absolute end-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
                             @foreach ($supportedLangs as $lang)
                                 <a href="{{ route('storefront.lang', ['store' => $store->slug, 'locale' => $lang]) }}"
                                     class="flex items-center gap-2 px-4 py-2 text-sm transition

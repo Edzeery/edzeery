@@ -17,8 +17,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $count;
 
-    public $alignment;
-
     public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());

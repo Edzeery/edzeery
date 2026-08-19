@@ -1,14 +1,17 @@
 <?php
 
 return [
+    'accept_terms' => "J'accepte les :terms et la :privacy.",
+    'terms_link' => 'Conditions',
+    'privacy_link' => 'Politique de confidentialité',
     'account_inactive' => 'Le compte n’est pas encore activé ⚠️',
-    'admin_login' => 'Connexion à l’administration de la plateforme',
-    'admin_only' => 'Cette page est réservée au personnel de la plateforme uniquement 🔒',
-    'admin_subtitle' => 'Connectez-vous au panneau d’administration de la plateforme',
     'account_suspended' => 'Le compte a été suspendu 🚫',
     'account_verification_body' => 'Bonjour :name, merci de vous être inscrit sur :app_name. Veuillez confirmer votre compte en cliquant sur le bouton ci-dessous.',
     'account_verification_button' => 'Vérifier le compte',
     'account_verification_subject' => 'Vérifiez votre compte :app_name',
+    'admin_login' => 'Connexion à l’administration de la plateforme',
+    'admin_only' => 'Cette page est réservée au personnel de la plateforme uniquement 🔒',
+    'admin_subtitle' => 'Connectez-vous au panneau d’administration de la plateforme',
     'confirm_password' => 'Confirmer le mot de passe',
     'confirm_password_subtitle' => 'Ceci est une zone sécurisée. Veuillez confirmer votre mot de passe pour continuer.',
     'email' => 'Adresse e-mail',
@@ -28,6 +31,7 @@ return [
     'payment_success_subject' => 'Paiement réussi',
     'register_button' => 'S\'inscrire',
     'register_success' => 'Compte créé avec succès 🎉',
+    'resend_verification' => 'Renvoyer l\'e-mail de vérification',
     'role' => 'Rôle',
     'roles' => [
         'customer' => 'Client',
@@ -37,10 +41,9 @@ return [
     'security_alert_subject' => 'Alerte de sécurité concernant votre compte',
     'thanks' => 'Merci d’utiliser :app_name',
     'throttle' => 'Trop de tentatives de connexion. Veuillez réessayer après :seconds secondes.',
+    'verification_link_sent' => 'Un nouveau lien de vérification a été envoyé à votre adresse e-mail.',
     'verify_email_notice' => 'Veuillez vérifier votre adresse e-mail avant de continuer.',
     'verify_email_title' => 'Vérifiez votre e-mail',
-    'verification_link_sent' => 'Un nouveau lien de vérification a été envoyé à votre adresse e-mail.',
-    'resend_verification' => 'Renvoyer l\'e-mail de vérification',
     'withdrawal_request_body' => 'Une demande de retrait de :amount DZD a été soumise depuis votre compte. Vous serez notifié une fois traitée.',
     'withdrawal_request_subject' => 'Nouvelle demande de retrait',
 ];

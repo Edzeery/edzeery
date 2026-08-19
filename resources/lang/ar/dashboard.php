@@ -1,11 +1,12 @@
 <?php
 
 return [
+    'aov' => 'متوسط قيمة الطلب',
     'clients' => 'العملاء',
     'confirmation_rate' => 'معدل التأكيد',
     'confirmed_of_total' => 'مؤكد من إجمالي الطلبات',
-    'delivery_breakdown' => 'توزيع طرق التوصيل',
     'delivered_orders' => 'الطلبات المُسلّمة هذا الشهر',
+    'delivery_breakdown' => 'توزيع طرق التوصيل',
     'home' => 'الرئيسية',
     'income' => 'الإيرادات',
     'no_data' => 'لا توجد بيانات لعرضها حالياً',
@@ -15,8 +16,8 @@ return [
     'orders_by_status' => 'الطلبات حسب الحالة',
     'overview' => 'نظرة عامة',
     'payment_links' => 'روابط الدفع',
-    'performance' => 'الأداء',
     'pending_confirmation' => 'بانتظار التأكيد',
+    'performance' => 'الأداء',
     'recent_payments' => 'آخر المدفوعات',
     'return_of_processed' => 'مرتجع من المعالج',
     'return_rate' => 'معدل الإرجاع',
@@ -32,5 +33,4 @@ return [
     'transactions' => 'المعاملات',
     'welcome' => 'مرحباً بك في لوحة التحكم',
     'welcome_back' => 'مرحبًا بعودتك',
-    'aov' => 'متوسط قيمة الطلب',
 ];

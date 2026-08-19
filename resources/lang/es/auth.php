@@ -1,14 +1,17 @@
 <?php
 
 return [
+    'accept_terms' => 'Acepto los :terms y la :privacy.',
+    'terms_link' => 'Términos',
+    'privacy_link' => 'Política de Privacidad',
     'account_inactive' => 'La cuenta aún no está activada ⚠️',
-    'admin_login' => 'Inicio de sesión de administración de la plataforma',
-    'admin_only' => 'Esta página está reservada solo para el personal de la plataforma 🔒',
-    'admin_subtitle' => 'Inicia sesión en el panel de administración de la plataforma',
     'account_suspended' => 'La cuenta ha sido suspendida 🚫',
     'account_verification_body' => 'Hola :name, gracias por registrarte en :app_name. Para completar tu registro, verifica tu cuenta haciendo clic en el botón de abajo.',
     'account_verification_button' => 'Verificar Cuenta',
     'account_verification_subject' => 'Verifica tu cuenta en :app_name',
+    'admin_login' => 'Inicio de sesión de administración de la plataforma',
+    'admin_only' => 'Esta página está reservada solo para el personal de la plataforma 🔒',
+    'admin_subtitle' => 'Inicia sesión en el panel de administración de la plataforma',
     'confirm_password' => 'Confirmar Contraseña',
     'confirm_password_subtitle' => 'Esta es un área segura. Por favor, confirma tu contraseña antes de continuar.',
     'email' => 'Correo Electrónico',
@@ -28,6 +31,7 @@ return [
     'payment_success_subject' => 'Pago Completado con Éxito',
     'register_button' => 'Registrarse',
     'register_success' => 'Cuenta creada con éxito 🎉',
+    'resend_verification' => 'Reenviar correo de verificación',
     'role' => 'Rol',
     'roles' => [
         'customer' => 'Cliente',
@@ -37,10 +41,9 @@ return [
     'security_alert_subject' => 'Alerta de Seguridad Sobre tu Cuenta',
     'thanks' => 'Gracias por usar :app_name',
     'throttle' => 'Demasiados intentos de inicio de sesión. Por favor inténtalo de nuevo después de :seconds segundos.',
+    'verification_link_sent' => 'Se ha enviado un nuevo enlace de verificación a tu correo electrónico.',
     'verify_email_notice' => 'Por favor, verifica tu correo electrónico antes de continuar.',
     'verify_email_title' => 'Verifica tu correo electrónico',
-    'verification_link_sent' => 'Se ha enviado un nuevo enlace de verificación a tu correo electrónico.',
-    'resend_verification' => 'Reenviar correo de verificación',
     'withdrawal_request_body' => 'Se ha enviado una solicitud de retiro de :amount DZD desde tu cuenta. Serás notificado cuando la operación sea confirmada.',
     'withdrawal_request_subject' => 'Nueva Solicitud de Retiro Enviada',
 ];

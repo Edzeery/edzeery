@@ -13,7 +13,7 @@ state([
 ]);
 
 mount(function (Product $product): void {
-    $this->product = $product->load(['images', 'variants.optionValues.option', 'brand', 'categories']);
+    $this->product = $product->load(['images', 'variants.optionValues.option', 'brand', 'categories', 'store']);
 });
 
 $addToCart = function (string $variantId = null) {
@@ -129,7 +129,7 @@ $addToCart = function (string $variantId = null) {
                 @else
                     <button
                         type="button"
-                        wire:click="addToCart('{{ $product->variants->first()?->id }}')"
+                        wire:click="addToCart(null)"
                         class="w-full sm:w-auto store-btn-primary text-white font-bold py-3.5 px-10 rounded-lg transition text-base flex items-center justify-center gap-2"
                         wire:loading.attr="disabled"
                         wire:loading.class="opacity-50"

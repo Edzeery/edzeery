@@ -6,8 +6,8 @@
     <div class="relative" id="lang-dropdown-{{ $lang }}">
         {{-- Trigger --}}
         <button onclick="document.getElementById('lang-dropdown-menu-{{ $lang }}').classList.toggle('hidden'); event.stopPropagation();"
-                class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-gray-200 dark:border-gray-700
-                       bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
+                class="flex items-center justify-center w-10 h-10 rounded-full border-2 border-neutral-border dark:border-dark-border
+                       bg-neutral-surface dark:bg-dark-surface shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
             <img src="{{ asset('images/icons/' . $lang . '.png') }}" alt="{{ __('general.language') }}"
                  class="w-6 h-6 rounded-full object-cover">
         </button>
@@ -15,8 +15,8 @@
         {{-- Dropdown Menu --}}
         <div id="lang-dropdown-menu-{{ $lang }}"
              class="hidden absolute {{ $algin === 'left' ? 'left-0' : 'right-0' }} mt-2 w-44 rounded-xl
-                    bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-                    shadow-lg dark:shadow-gray-900/50 py-1 z-50
+                    bg-neutral-surface dark:bg-dark-surface border border-neutral-border dark:border-dark-border
+                    shadow-lg py-1 z-50
                     origin-top-{{ $algin === 'left' ? 'left' : 'right' }}
                     animate-[scale-in_0.15s_ease-out]">
             @foreach ($languages as $language)
@@ -25,7 +25,7 @@
                            transition-colors duration-150
                            {{ $lang === $language->code
                               ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 font-semibold'
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50' }}"
+                               : 'text-ink hover:bg-neutral-secondary dark:hover:bg-dark-secondary/50' }}"
                     onclick="event.stopPropagation();
                         fetch('{{ route('lang.switch', $language->code) }}', {
                             method: 'POST',
@@ -36,7 +36,7 @@
                         }).then(() => location.reload())">
                     <img src="{{ asset('images/icons/' . $language->code . '.png') }}"
                          alt="{{ __('general.' . $language->name) }}"
-                         class="w-5 h-5 rounded-full object-cover border border-gray-200 dark:border-gray-600">
+                         class="w-5 h-5 rounded-full object-cover border border-neutral-border dark:border-dark-border">
                     <span>{{ __('general.' . Str::lower($language->name)) }}</span>
                     @if ($lang === $language->code)
                         <ion-icon name="checkmark-outline" class="text-brand-500 text-sm ms-auto"></ion-icon>

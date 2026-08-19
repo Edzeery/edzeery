@@ -51,14 +51,6 @@ mount(function (): void {
     $this->allow_backorder = $settings->allow_backorder ?? false;
 });
 
-$refreshLogo = function (): void {
-    $this->resetValidation('logo');
-};
-
-$refreshCover = function (): void {
-    $this->resetValidation('cover');
-};
-
 $save = function (): void {
     $store = currentStore();
     abort_unless($store, 404);
@@ -119,14 +111,14 @@ $save = function (): void {
                     <label class="edz-label">{{ __('stores.logo') }}</label>
                     <div class="flex items-center gap-4">
                         <div
-                            class="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
+                            class="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border overflow-hidden flex items-center justify-center bg-neutral-secondary dark:bg-dark-secondary shrink-0">
                             @if ($logo)
                                 <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-cover" />
                             @elseif(currentStore()?->logo)
                                 <img src="{{ asset('storage/' . currentStore()->logo) }}"
                                     class="w-full h-full object-cover" />
                             @else
-                                <ion-icon name="image-outline" class="text-2xl text-gray-400"></ion-icon>
+                                <ion-icon name="image-outline" class="text-2xl text-ink-muted"></ion-icon>
                             @endif
                         </div>
                         <div class="flex-1">
@@ -143,14 +135,14 @@ $save = function (): void {
                     <label class="edz-label">{{ __('stores.cover') }}</label>
                     <div class="flex items-center gap-4">
                         <div
-                            class="w-32 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-800 shrink-0">
+                            class="w-32 h-20 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border overflow-hidden flex items-center justify-center bg-neutral-secondary dark:bg-dark-secondary shrink-0">
                             @if ($cover)
                                 <img src="{{ $cover->temporaryUrl() }}" class="w-full h-full object-cover" />
                             @elseif(currentStore()?->cover)
                                 <img src="{{ asset('storage/' . currentStore()->cover) }}"
                                     class="w-full h-full object-cover" />
                             @else
-                                <ion-icon name="image-outline" class="text-2xl text-gray-400"></ion-icon>
+                                <ion-icon name="image-outline" class="text-2xl text-ink-muted"></ion-icon>
                             @endif
                         </div>
                         <div class="flex-1">
@@ -226,34 +218,34 @@ $save = function (): void {
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <label
                     class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                    {{ $inventory_tracking ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
+                    {{ $inventory_tracking ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
                     <input type="checkbox" wire:model="inventory_tracking"
-                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                        class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.inventory_tracking') }}</p>
-                        <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.inventory_tracking_desc') }}</p>
+                        <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.inventory_tracking_desc') }}</p>
                     </div>
                 </label>
 
                 <label
                     class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                    {{ $allow_backorder ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
+                    {{ $allow_backorder ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
                     <input type="checkbox" wire:model="allow_backorder"
-                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                        class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.allow_backorder') }}</p>
-                        <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.allow_backorder_desc') }}</p>
+                        <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.allow_backorder_desc') }}</p>
                     </div>
                 </label>
 
                 <label
                     class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                    {{ $show_out_of_stock ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700' }}">
+                    {{ $show_out_of_stock ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
                     <input type="checkbox" wire:model="show_out_of_stock"
-                        class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
+                        class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                     <div>
                         <p class="text-sm font-medium text-ink">{{ __('merchant_panel.show_out_of_stock') }}</p>
-                        <p class="text-xs text-ink-400 mt-0.5">{{ __('merchant_panel.show_out_of_stock_desc') }}</p>
+                        <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.show_out_of_stock_desc') }}</p>
                     </div>
                 </label>
             </div>
@@ -283,17 +275,17 @@ $save = function (): void {
                         @foreach (['ar' => __('merchant_panel.arabic'), 'fr' => __('merchant_panel.french'), 'en' => __('merchant_panel.english'), 'es' => __('merchant_panel.spanish')] as $code => $label)
                             <label
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition"
-                                :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10 text-accent-700 dark:text-accent-400' : 'border-gray-200 dark:border-gray-700 text-ink-400 hover:border-gray-200'">
+                                :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10 text-accent-700 dark:text-accent-400' : 'border-neutral-border dark:border-dark-border text-ink-muted hover:border-neutral-border'">
                                 <input type="checkbox" value="{{ $code }}"
                                     wire:model.live="supported_languages" class="sr-only" />
                                 <span
                                     class="w-2 h-2 rounded-full"
-                                    :class="$wire.supported_languages.includes('{{ $code }}') ? 'bg-accent-500' : 'bg-gray-300 dark:bg-gray-600'"></span>
+                                    :class="$wire.supported_languages.includes('{{ $code }}') ? 'bg-accent-500' : 'bg-neutral-border dark:bg-dark-border'"></span>
                                 {{ $label }}
                             </label>
                         @endforeach
                     </div>
-                    <p class="text-xs text-ink-400 mt-2">{{ __('merchant_panel.supported_languages_desc') }}</p>
+                    <p class="text-xs text-ink-muted mt-2">{{ __('merchant_panel.supported_languages_desc') }}</p>
                 </div>
             </div>
         </div>

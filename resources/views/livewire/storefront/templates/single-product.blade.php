@@ -119,7 +119,7 @@ $addToCart = function (string $variantId = null) {
                     @else
                         <button
                             type="button"
-                            wire:click="addToCart('{{ $product->variants->first()?->id }}')"
+                            wire:click="addToCart(null)"
                             class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg"
                             wire:loading.attr="disabled"
                         >

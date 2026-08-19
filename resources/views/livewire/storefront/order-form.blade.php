@@ -99,7 +99,7 @@ $submitOrder = function () {
             'user_id'      => auth()->id(),
             'customer_id'  => $customer->id,
             'status_id'    => $status?->id,
-            'number'       => (new Order)->nextOrderNumber(),
+            'number'       => (new Order(['store_id' => $storeId]))->nextOrderNumber(),
             'total_amount' => $subtotal + $shippingCost,
             'state_id'     => $this->state_id,
             'city_id'      => $this->city_id,

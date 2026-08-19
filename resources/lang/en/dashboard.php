@@ -1,11 +1,12 @@
 <?php
 
 return [
+    'aov' => 'Average Order Value',
     'clients' => 'Clients',
     'confirmation_rate' => 'Confirmation Rate',
     'confirmed_of_total' => 'confirmed of total orders',
-    'delivery_breakdown' => 'Delivery Breakdown',
     'delivered_orders' => 'Delivered orders this month',
+    'delivery_breakdown' => 'Delivery Breakdown',
     'home' => 'Home',
     'income' => 'Income',
     'no_data' => 'No data available',
@@ -15,8 +16,8 @@ return [
     'orders_by_status' => 'Orders by Status',
     'overview' => 'Overview',
     'payment_links' => 'Payment Links',
-    'performance' => 'Performance',
     'pending_confirmation' => 'Pending Confirmation',
+    'performance' => 'Performance',
     'recent_payments' => 'Recent Payments',
     'return_of_processed' => 'returned of processed',
     'return_rate' => 'Return Rate',
@@ -25,12 +26,11 @@ return [
     'settings' => 'Settings',
     'statistics' => 'Statistics',
     'this_month' => 'This month',
-    'today_summary' => "Today's Summary",
+    'today_summary' => 'Today\'s Summary',
     'top_products' => 'Top Selling Products',
     'total_memberships' => 'Total memberships',
     'total_orders' => 'Total Orders',
     'transactions' => 'Transactions',
     'welcome' => 'Welcome to the dashboard',
     'welcome_back' => 'Welcome Back',
-    'aov' => 'Average Order Value',
 ];

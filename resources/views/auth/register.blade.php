@@ -49,8 +49,8 @@
                 </div>
                 <span class="text-sm text-ink-muted group-hover:text-ink transition">
                     {!! __('auth.accept_terms', [
-                        'terms' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Terms</a>',
-                        'privacy' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Privacy Policy</a>',
+                        'terms' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">' . __('auth.terms_link') . '</a>',
+                        'privacy' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">' . __('auth.privacy_link') . '</a>',
                     ]) !!}
                 </span>
             </label>

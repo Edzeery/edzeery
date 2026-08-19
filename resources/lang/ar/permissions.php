@@ -1,52 +1,107 @@
 <?php
 
 return [
-    'accounting.confirm.team' => 'تأكيد فريق المحاسبة',
-    'crm.inventory.manage' => 'إدارة المخزون',
-    'crm.inventory.track' => 'متابعة المخزون',
-    'crm.orders.confirm' => 'تأكيد الطلبات في CRM',
-    'crm.orders.track' => 'متابعة الطلبات',
-    'delivery.pricing.manage' => 'إدارة أسعار التوصيل',
-    'inventory.update' => 'تعديل المخزون',
-    'inventory.view' => 'عرض المخزون',
-    'order.manage' => 'إدارة الطلبات',
-    'order.view' => 'عرض الطلب',
-    'order.confirm' => 'تأكيد الطلب',
-    'order.cancel' => 'إلغاء الطلب',
-    'order.delete' => 'حذف الطلب',
-    'products.create' => 'إنشاء منتج',
-    'products.delete' => 'حذف المنتج',
-    'products.update' => 'تعديل المنتج',
-    'products.view' => 'عرض المنتج',
-    'returns.process' => 'معالجة المرتجعات',
-    'returns.verify.barcode' => 'التحقق من باركود المرتجعات',
-    'stats.confirmation' => 'إحصائيات تأكيد الطلب',
-    'stats.delivery' => 'إحصائيات التوصيل',
-    'stats.team.view' => 'عرض إحصائيات الفريق',
-    'stats.top.kpis' => 'أفضل مؤشرات الأداء',
-    'store.billing.manage' => 'إدارة الفواتير',
-    'store.delete.final' => 'حذف المتجر (نهائي)',
-    'store.settings.sensitive' => 'إدارة الإعدادات الحساسة',
-    'store.team.manage' => 'إدارة فريق المتجر',
-    'store.transfer.ownership' => 'نقل ملكية المتجر',
-    'store.update' => 'تعديل المتجر',
-    'store.view' => 'عرض المتجر',
-    'stores.approve' => 'الموافقة على المتاجر',
-    'stores.create' => 'إنشاء متجر',
-    'stores.delete' => 'حذف المتاجر',
-    'stores.update' => 'تعديل المتاجر',
-    'stores.view' => 'عرض المتاجر',
-    'team.invite' => 'دعوة أعضاء الفريق',
-    'team.manage.own' => 'إدارة الفريق الخاص',
-    'team.remove' => 'إزالة أعضاء الفريق',
-    'team.view' => 'عرض الفريق',
-    'team.view.own' => 'عرض الفريق الخاص',
-    'finance.debt.view' => 'عرض الديون',
-    'finance.debt.create' => 'إنشاء دين',
-    'finance.debt.update' => 'تعديل الدين',
-    'finance.debt.delete' => 'حذف الدين',
-    'users.create' => 'إنشاء مستخدمين',
-    'users.delete' => 'حذف المستخدمين',
-    'users.update' => 'تعديل المستخدمين',
-    'users.view' => 'عرض المستخدمين',
+    'accounting' => [
+        'confirm' => [
+            'team' => 'تأكيد فريق المحاسبة',
+        ],
+    ],
+    'crm' => [
+        'inventory' => [
+            'manage' => 'إدارة المخزون',
+            'track' => 'متابعة المخزون',
+        ],
+        'orders' => [
+            'confirm' => 'تأكيد الطلبات في CRM',
+            'track' => 'متابعة الطلبات',
+        ],
+    ],
+    'delivery' => [
+        'pricing' => [
+            'manage' => 'إدارة أسعار التوصيل',
+        ],
+    ],
+    'finance' => [
+        'debt' => [
+            'create' => 'إنشاء دين',
+            'delete' => 'حذف الدين',
+            'update' => 'تعديل الدين',
+            'view' => 'عرض الديون',
+        ],
+    ],
+    'inventory' => [
+        'update' => 'تعديل المخزون',
+        'view' => 'عرض المخزون',
+    ],
+    'order' => [
+        'cancel' => 'إلغاء الطلب',
+        'confirm' => 'تأكيد الطلب',
+        'delete' => 'حذف الطلب',
+        'manage' => 'إدارة الطلبات',
+        'view' => 'عرض الطلب',
+    ],
+    'products' => [
+        'create' => 'إنشاء منتج',
+        'delete' => 'حذف المنتج',
+        'update' => 'تعديل المنتج',
+        'view' => 'عرض المنتج',
+    ],
+    'returns' => [
+        'process' => 'معالجة المرتجعات',
+        'verify' => [
+            'barcode' => 'التحقق من باركود المرتجعات',
+        ],
+    ],
+    'stats' => [
+        'confirmation' => 'إحصائيات تأكيد الطلب',
+        'delivery' => 'إحصائيات التوصيل',
+        'team' => [
+            'view' => 'عرض إحصائيات الفريق',
+        ],
+        'top' => [
+            'kpis' => 'أفضل مؤشرات الأداء',
+        ],
+    ],
+    'store' => [
+        'billing' => [
+            'manage' => 'إدارة الفواتير',
+        ],
+        'delete' => [
+            'final' => 'حذف المتجر (نهائي)',
+        ],
+        'settings' => [
+            'sensitive' => 'إدارة الإعدادات الحساسة',
+        ],
+        'team' => [
+            'manage' => 'إدارة فريق المتجر',
+        ],
+        'transfer' => [
+            'ownership' => 'نقل ملكية المتجر',
+        ],
+        'update' => 'تعديل المتجر',
+        'view' => 'عرض المتجر',
+    ],
+    'stores' => [
+        'approve' => 'الموافقة على المتاجر',
+        'create' => 'إنشاء متجر',
+        'delete' => 'حذف المتاجر',
+        'update' => 'تعديل المتاجر',
+        'view' => 'عرض المتاجر',
+    ],
+    'team' => [
+        'invite' => 'دعوة أعضاء الفريق',
+        'manage' => [
+            'own' => 'إدارة الفريق الخاص',
+        ],
+        'remove' => 'إزالة أعضاء الفريق',
+        'view' => [
+            'own' => 'عرض الفريق الخاص',
+        ],
+    ],
+    'users' => [
+        'create' => 'إنشاء مستخدمين',
+        'delete' => 'حذف المستخدمين',
+        'update' => 'تعديل المستخدمين',
+        'view' => 'عرض المستخدمين',
+    ],
 ];

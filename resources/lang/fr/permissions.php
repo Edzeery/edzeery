@@ -1,52 +1,107 @@
 <?php
 
 return [
-    'accounting.confirm.team' => "Confirmer l'équipe comptable",
-    'crm.inventory.manage' => "Gérer l'inventaire",
-    'crm.inventory.track' => "Suivi de l'inventaire",
-    'crm.orders.confirm' => 'Confirmer les commandes CRM',
-    'crm.orders.track' => 'Suivi des commandes',
-    'delivery.pricing.manage' => 'Gérer les tarifs de livraison',
-    'inventory.update' => "Mettre à jour l'inventaire",
-    'inventory.view' => "Voir l'inventaire",
-    'order.manage' => 'Gérer les commandes',
-    'order.view' => 'Voir la commande',
-    'order.confirm' => 'Confirmer la commande',
-    'order.cancel' => 'Annuler la commande',
-    'order.delete' => 'Supprimer la commande',
-    'products.create' => 'Créer un produit',
-    'products.delete' => 'Supprimer le produit',
-    'products.update' => 'Modifier le produit',
-    'products.view' => 'Voir le produit',
-    'returns.process' => 'Traiter les retours',
-    'returns.verify.barcode' => 'Vérifier le code-barres des retours',
-    'stats.confirmation' => 'Statistiques de confirmation des commandes',
-    'stats.delivery' => 'Statistiques de livraison',
-    'stats.team.view' => "Voir les statistiques de l'équipe",
-    'stats.top.kpis' => 'Meilleurs KPI',
-    'store.billing.manage' => 'Gérer la facturation',
-    'store.delete.final' => 'Supprimer le magasin (final)',
-    'store.settings.sensitive' => 'Gérer les paramètres sensibles',
-    'store.team.manage' => "Gérer l'équipe du magasin",
-    'store.transfer.ownership' => 'Transférer la propriété du magasin',
-    'store.update' => 'Modifier le magasin',
-    'store.view' => 'Voir le magasin',
-    'stores.approve' => 'Approuver les magasins',
-    'stores.create' => 'Créer un magasin',
-    'stores.delete' => 'Supprimer les magasins',
-    'stores.update' => 'Modifier les magasins',
-    'stores.view' => 'Voir les magasins',
-    'team.invite' => 'Inviter des membres',
-    'team.manage.own' => 'Gérer sa propre équipe',
-    'team.remove' => 'Retirer des membres',
-    'team.view' => "Voir l'équipe",
-    'team.view.own' => 'Voir sa propre équipe',
-    'finance.debt.view' => 'Voir les dettes',
-    'finance.debt.create' => 'Créer une dette',
-    'finance.debt.update' => 'Modifier la dette',
-    'finance.debt.delete' => 'Supprimer la dette',
-    'users.create' => 'Créer des utilisateurs',
-    'users.delete' => 'Supprimer les utilisateurs',
-    'users.update' => 'Modifier les utilisateurs',
-    'users.view' => 'Voir les utilisateurs',
+    'accounting' => [
+        'confirm' => [
+            'team' => 'Confirmer l\'équipe comptable',
+        ],
+    ],
+    'crm' => [
+        'inventory' => [
+            'manage' => 'Gérer l\'inventaire',
+            'track' => 'Suivi de l\'inventaire',
+        ],
+        'orders' => [
+            'confirm' => 'Confirmer les commandes CRM',
+            'track' => 'Suivi des commandes',
+        ],
+    ],
+    'delivery' => [
+        'pricing' => [
+            'manage' => 'Gérer les tarifs de livraison',
+        ],
+    ],
+    'finance' => [
+        'debt' => [
+            'create' => 'Créer une dette',
+            'delete' => 'Supprimer la dette',
+            'update' => 'Modifier la dette',
+            'view' => 'Voir les dettes',
+        ],
+    ],
+    'inventory' => [
+        'update' => 'Mettre à jour l\'inventaire',
+        'view' => 'Voir l\'inventaire',
+    ],
+    'order' => [
+        'cancel' => 'Annuler la commande',
+        'confirm' => 'Confirmer la commande',
+        'delete' => 'Supprimer la commande',
+        'manage' => 'Gérer les commandes',
+        'view' => 'Voir la commande',
+    ],
+    'products' => [
+        'create' => 'Créer un produit',
+        'delete' => 'Supprimer le produit',
+        'update' => 'Modifier le produit',
+        'view' => 'Voir le produit',
+    ],
+    'returns' => [
+        'process' => 'Traiter les retours',
+        'verify' => [
+            'barcode' => 'Vérifier le code-barres des retours',
+        ],
+    ],
+    'stats' => [
+        'confirmation' => 'Statistiques de confirmation des commandes',
+        'delivery' => 'Statistiques de livraison',
+        'team' => [
+            'view' => 'Voir les statistiques de l\'équipe',
+        ],
+        'top' => [
+            'kpis' => 'Meilleurs KPI',
+        ],
+    ],
+    'store' => [
+        'billing' => [
+            'manage' => 'Gérer la facturation',
+        ],
+        'delete' => [
+            'final' => 'Supprimer le magasin (final)',
+        ],
+        'settings' => [
+            'sensitive' => 'Gérer les paramètres sensibles',
+        ],
+        'team' => [
+            'manage' => 'Gérer l\'équipe du magasin',
+        ],
+        'transfer' => [
+            'ownership' => 'Transférer la propriété du magasin',
+        ],
+        'update' => 'Modifier le magasin',
+        'view' => 'Voir le magasin',
+    ],
+    'stores' => [
+        'approve' => 'Approuver les magasins',
+        'create' => 'Créer un magasin',
+        'delete' => 'Supprimer les magasins',
+        'update' => 'Modifier les magasins',
+        'view' => 'Voir les magasins',
+    ],
+    'team' => [
+        'invite' => 'Inviter des membres',
+        'manage' => [
+            'own' => 'Gérer sa propre équipe',
+        ],
+        'remove' => 'Retirer des membres',
+        'view' => [
+            'own' => 'Voir sa propre équipe',
+        ],
+    ],
+    'users' => [
+        'create' => 'Créer des utilisateurs',
+        'delete' => 'Supprimer les utilisateurs',
+        'update' => 'Modifier les utilisateurs',
+        'view' => 'Voir les utilisateurs',
+    ],
 ];

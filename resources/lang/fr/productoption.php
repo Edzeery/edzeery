@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'select' => 'Menu déroulant',
-    'radio' => 'Boutons radio',
     'checkbox' => 'Case à cocher',
+    'radio' => 'Boutons radio',
+    'select' => 'Menu déroulant',
     'text' => 'Champ de texte',
 ];

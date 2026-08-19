@@ -152,7 +152,7 @@ $addToCart = function (string $variantId) {
                     @foreach ($products as $product)
                         <div
                             class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition group">
-                            <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product]) }}"
+                            <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                 class="block">
                                 <div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
                                     @if ($product->images->count())
@@ -169,7 +169,7 @@ $addToCart = function (string $variantId) {
 
                             <div class="p-4">
                                 <a
-                                    href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product]) }}">
+                                    href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}">
                                     <h3 class="font-semibold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2">
                                         {{ $product->name }}</h3>
                                 </a>
@@ -195,7 +195,7 @@ $addToCart = function (string $variantId) {
                                             <ion-icon name="cart-outline"></ion-icon>
                                         </button>
                                     @elseif ($product->variants->count() > 1)
-                                        <a href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $product->slug]) }}"
+                                        <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
                                             <ion-icon name="options-outline"></ion-icon>
                                             {{ __('storefront.view_options') }}

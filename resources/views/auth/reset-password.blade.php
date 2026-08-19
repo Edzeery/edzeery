@@ -1,7 +1,7 @@
 <x-layouts.guest title="{{ __('titles.reset_password') }}">
 
     {{-- Auth Card --}}
-    <x-auth.card title="{{ __('titles.reset_password') }}" subtitle="{{ __('messages.reset_password_msg') }}">
+    <x-auth.card title="{{ __('titles.reset_password') }}" subtitle="{{ __('messages.forgot_password_msg') }}">
 
         <form method="POST" action="{{ route('password.store') }}" class="space-y-5">
             @csrf

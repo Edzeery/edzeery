@@ -107,8 +107,8 @@ $createStore = function (): void {
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description ?: null,
-            'logo' => $this->logo ? uploadPath($this->logo) : null,
-            'cover' => $this->cover ? uploadPath($this->cover) : null,
+            'logo' => $this->logo?->store('stores', 'public'),
+            'cover' => $this->cover?->store('stores', 'public'),
             'status' => StoreStatusEnum::ACTIVE,
             'landing_template' => $this->landing_template,
         ]);

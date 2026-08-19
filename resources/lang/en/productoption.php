@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'select' => 'Select dropdown',
-    'radio' => 'Radio buttons',
     'checkbox' => 'Checkbox',
+    'radio' => 'Radio buttons',
+    'select' => 'Select dropdown',
     'text' => 'Text input',
 ];

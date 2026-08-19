@@ -5,6 +5,7 @@ return [
     'basic' => 'أساسي',
     'enterprise' => 'مَشرُوع',
     'future_integrations' => 'تكاملات مستقبلية',
+    'max_stores' => 'أقصى عدد من المتاجر',
     'nbr_daily_orders' => 'عدد الطلبات اليومية',
     'nbr_delivery_agents' => 'عدد مندوبي التوصيل',
     'nbr_delivery_companies' => 'عدد شركات التوصيل',

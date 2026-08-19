@@ -1,4 +1,4 @@
-<x-layouts.guest title="{{ __('auth.verify_email_notice') }}">
+<x-layouts.guest title="{{ __('auth.verify_email_title') }}">
     <x-auth.card title="{{ __('auth.verify_email_title') }}" subtitle="{{ __('auth.verify_email_notice') }}">
 
         @if (session('status') == 'verification-link-sent')
