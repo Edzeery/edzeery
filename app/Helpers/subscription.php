@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Plans\PlanFeature;
-use App\Services\Subscriptions\FeatureUsageService;
+use App\Domains\Plan\Services\FeatureUsageService;
 
 if (! function_exists('canUseFeature')) {
 

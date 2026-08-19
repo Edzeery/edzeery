@@ -3,19 +3,22 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 
 class LoginRedirectService
 {
     public function handle(User $user): string
     {
-        if ($user->isMerchant() || isStoreMember() || $user->isUser()) {
+        if ($user->isSuperAdmin() || $user->isAdmin()) {
+            return route('filament.admin.pages.dashboard');
+        }
+
+        if ($user->isMerchant() || isStoreMember($user)) {
             if ($redirect = $this->autoSelectStore($user)) {
                 return $redirect;
             }
         }
 
-        return route('login');
+        return route('merchant.choose-store');
     }
 
     protected function autoSelectStore(User $user): ?string
@@ -28,7 +31,6 @@ class LoginRedirectService
             )
             ->get();
 
-        // Single store → direct login
         if ($activeMemberships->count() === 1) {
             $membership = $activeMemberships->first();
             session(['current_store_id' => $membership->store_id]);
@@ -36,12 +38,10 @@ class LoginRedirectService
             return route('merchant.dashboard', ['store' => $membership->store->slug]);
         }
 
-        // Multiple stores → choose
         if ($activeMemberships->count() > 1) {
             return route('merchant.choose-store');
         }
 
-        // No stores → create one
-        return route('merchant.create-store');
+        return route('merchant.choose-store');
     }
 }

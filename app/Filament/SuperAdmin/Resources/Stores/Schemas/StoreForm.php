@@ -128,12 +128,6 @@ class StoreForm
                     Step::make('Design')
                         ->description('Choose how your store looks')
                         ->schema([
-                            Select::make('theme')
-                                ->options([
-                                    'default' => 'Default',
-                                ])
-                                ->default('default'),
-
                             ColorPicker::make('primary_color')
                                 ->default('#000000'),
 

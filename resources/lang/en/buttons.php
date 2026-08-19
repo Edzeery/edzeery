@@ -54,6 +54,7 @@ return [
     'search' => 'Search',
     'select' => 'Select',
     'select_all' => 'Select all',
+    'selected' => 'Selected',
     'send' => 'Send',
     'settings' => 'Settings',
     'show' => 'Show',

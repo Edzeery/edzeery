@@ -38,4 +38,5 @@ return [
     'select_city' => 'Select city…',
     'password_hint' => 'leave blank to keep current',
     'min_8_chars' => 'Minimum 8 characters',
+    'staff_limit_reached' => 'You have reached the staff limit for your current plan. Please upgrade to add more members.',
 ];

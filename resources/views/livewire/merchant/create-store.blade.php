@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Plan\Services\FeatureUsageService;
+use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Enums\Store\StoreStatusEnum;
 use App\Models\Stores\Store;
@@ -9,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 
 uses([WithFileUploads::class]);
@@ -30,11 +32,34 @@ state([
     'meta_title' => '',
     'meta_description' => '',
     'meta_keywords' => '',
-    'theme' => 'default',
     'primary_color' => '#000000',
     'secondary_color' => '#ffffff',
     'font_family' => 'Cairo',
+    'landing_template' => 'single_product',
 ]);
+
+mount(function (): void {
+    $user = auth()->user();
+
+    $hasOwnerRole = $user->hasAnyRoleForGuard(
+        [StoreRoleEnum::OWNER->value],
+        'merchant'
+    );
+
+    $hasOnlyStaffRoles = ! $hasOwnerRole && $user->hasAnyRoleForGuard(
+        [StoreRoleEnum::STAFF->value, StoreRoleEnum::MANAGER->value],
+        'merchant'
+    );
+
+    if ($hasOnlyStaffRoles) {
+        abort(403, __('stores.membership_Forbidden_403'));
+    }
+
+    $subscription = $user->latestSubscription();
+    if (! $subscription) {
+        abort(403, __('stores.subscription_required'));
+    }
+});
 
 $updatedName = function (string $value): void {
     $this->slug = Str::slug($value);
@@ -47,7 +72,7 @@ $nextStep = function (): void {
             'slug' => ['required', 'string', 'max:255', Rule::unique('stores')->whereNull('deleted_at')],
         ]);
     }
-    $this->step = min($this->step + 1, 4);
+    $this->step = min($this->step + 1, 5);
 };
 
 $prevStep = function (): void {
@@ -59,20 +84,24 @@ $createStore = function (): void {
         'name' => ['required', 'string', 'max:255'],
         'slug' => ['required', 'string', 'max:255', Rule::unique('stores')->whereNull('deleted_at')],
         'currency' => ['required', 'string', 'max:10'],
+        'landing_template' => ['required', 'string'],
     ]);
 
     $user = auth()->user();
     $subscription = $user->latestSubscription();
 
-    if ($subscription) {
-        $featureService = app(FeatureUsageService::class);
-        if (! $featureService->canUse($subscription, 'stores_max')) {
-            $this->dispatch('swal', type: 'error', title: __('stores.limit_reached'));
-            return;
-        }
+    if (! $subscription) {
+        $this->dispatch('swal', type: 'error', title: __('stores.subscription_required'));
+        return;
     }
 
-    \Illuminate\Support\Facades\DB::transaction(function () use ($user, $subscription) {
+    $featureService = app(FeatureUsageService::class);
+    if (! $featureService->canUse($subscription, 'stores_max')) {
+        $this->dispatch('swal', type: 'error', title: __('stores.limit_reached'));
+        return;
+    }
+
+    \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
         $store = Store::create([
             'user_id' => $user->id,
             'name' => $this->name,
@@ -81,6 +110,7 @@ $createStore = function (): void {
             'logo' => $this->logo ? uploadPath($this->logo) : null,
             'cover' => $this->cover ? uploadPath($this->cover) : null,
             'status' => StoreStatusEnum::ACTIVE,
+            'landing_template' => $this->landing_template,
         ]);
 
         $store->settings()->create([
@@ -98,7 +128,6 @@ $createStore = function (): void {
         ]);
 
         $store->theme()->create([
-            'theme' => $this->theme,
             'primary_color' => $this->primary_color,
             'secondary_color' => $this->secondary_color,
             'font_family' => $this->font_family,
@@ -118,9 +147,8 @@ $createStore = function (): void {
         }
     });
 
-    if ($subscription) {
-        app(FeatureUsageService::class)->consume($subscription, 'stores_max');
-    }
+    $subscription = $user->latestSubscription();
+    app(FeatureUsageService::class)->consume($subscription, 'stores_max');
 
     session(['current_store_id' => $store->id]);
 
@@ -137,7 +165,7 @@ $createStore = function (): void {
 
         {{-- Steps indicator --}}
         <div class="mb-8 flex items-center justify-center gap-2">
-            @foreach ([1 => __('stores.step_info'), 2 => __('stores.step_settings'), 3 => __('stores.step_seo'), 4 => __('stores.step_design')] as $s => $label)
+            @foreach ([1 => __('stores.step_info'), 2 => __('stores.step_settings'), 3 => __('stores.step_seo'), 4 => __('stores.step_design'), 5 => __('stores.step_template')] as $s => $label)
                 <button type="button" wire:click="$set('step', {{ $s }})"
                         class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition
                                {{ $step === $s ? 'bg-brand-600 text-white' : ($step > $s ? 'bg-success-100 text-success-700' : 'bg-surface-secondary text-ink-muted') }}">
@@ -152,7 +180,7 @@ $createStore = function (): void {
         </div>
 
         <div class="edz-card p-6">
-            <form wire:submit="{{ $step === 4 ? 'createStore' : 'nextStep' }}" x-data="edzDirty()">
+            <form wire:submit="{{ $step === 5 ? 'createStore' : 'nextStep' }}" x-data="edzDirty()">
                 {{-- Step 1: Store Info --}}
                 @if ($step === 1)
                     <div class="space-y-4">
@@ -252,13 +280,7 @@ $createStore = function (): void {
                 @if ($step === 4)
                     <div class="space-y-4">
                         <h2 class="text-lg font-semibold text-ink">{{ __('stores.design') }}</h2>
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <div>
-                                <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.theme') }}</label>
-                                <select class="edz-select" wire:model="theme">
-                                    <option value="default">{{ __('stores.default') }}</option>
-                                </select>
-                            </div>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label class="mb-1 block text-sm font-medium text-ink">{{ __('stores.primary_color') }}</label>
                                 <input type="color" class="h-10 w-full rounded border border-surface-border" wire:model="primary_color">
@@ -278,6 +300,33 @@ $createStore = function (): void {
                     </div>
                 @endif
 
+                {{-- Step 5: Landing Template --}}
+                @if ($step === 5)
+                    <div class="space-y-4">
+                        <h2 class="text-lg font-semibold text-ink">{{ __('stores.step_template') }}</h2>
+                        <p class="text-sm text-ink-muted">{{ __('stores.template_description') }}</p>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            @foreach ([
+                                'single_product' => __('merchant_panel.template_single'),
+                                'catalog'        => __('merchant_panel.template_catalog'),
+                                'brand'          => __('merchant_panel.template_brand'),
+                            ] as $tplKey => $tplLabel)
+                                <label class="edz-card edz-card--padded cursor-pointer border-2 transition-all duration-200 text-center
+                                    {{ $landing_template === $tplKey ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600' }}">
+                                    <input type="radio" name="landing_template" value="{{ $tplKey }}"
+                                           wire:model.live="landing_template" class="sr-only" />
+                                    <div class="py-3">
+                                        <p class="font-semibold text-ink">{{ $tplLabel }}</p>
+                                        @if ($landing_template === $tplKey)
+                                            <span class="mt-1 inline-block text-xs text-accent-600 font-medium">{{ __('buttons.selected') }}</span>
+                                        @endif
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Navigation --}}
                 <div class="mt-6 flex items-center justify-between">
                     <div>
@@ -286,7 +335,7 @@ $createStore = function (): void {
                         @endif
                     </div>
                     <div>
-                        @if ($step < 4)
+                        @if ($step < 5)
                             <button type="submit" class="edz-btn edz-btn--primary">{{ __('buttons.next') }}</button>
                         @else
                             <button type="submit" class="edz-btn edz-btn--primary edz-btn--lg">{{ __('stores.launch_my_store') }}</button>

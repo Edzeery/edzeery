@@ -38,4 +38,5 @@ return [
     'select_city' => 'Sélectionner une ville…',
     'password_hint' => 'laisser vide pour conserver',
     'min_8_chars' => '8 caractères minimum',
+    'staff_limit_reached' => 'Vous avez atteint la limite de membres pour votre forfait actuel. Veuillez mettre à niveau pour ajouter plus de membres.',
 ];

@@ -38,4 +38,5 @@ return [
     'select_city' => 'Seleccionar ciudad…',
     'password_hint' => 'dejar vacío para mantener',
     'min_8_chars' => 'Mínimo 8 caracteres',
+    'staff_limit_reached' => 'Ha alcanzado el límite de miembros de su plan actual. Actualice para agregar más miembros.',
 ];

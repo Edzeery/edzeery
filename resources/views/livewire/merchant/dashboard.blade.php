@@ -1,134 +1,147 @@
 <?php
 
+use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\User\Services\SubscriptionGuardService;
-use App\Models\Products\Product;
-use App\Models\Products\ProductVariant;
-use App\Models\Stores\Team\StoreMembership;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
 layout('components.layouts.store');
 
+$analytics = app(StoreDashboardAnalyticsService::class);
 $subscriptionGuard = app(SubscriptionGuardService::class);
 
 with([
-    'userName' => user()?->name ?? __('merchant_panel.guest'),
-    'totalProducts' => Product::query()->where('store_id', currentStoreId())->count(),
-    'activeProducts' => Product::query()->where('store_id', currentStoreId())->where('is_active', true)->count(),
-    'totalMembers' => StoreMembership::query()
-        ->where('store_id', currentStoreId())
-        ->where('user_id', '!=', user()->id)
-        ->where('is_active', true)
-        ->distinct()
-        ->count('user_id') + 1,
-    'lowStockCount' => ProductVariant::query()
-        ->where('store_id', currentStoreId())
-        ->where('stock', '>', 0)
-        ->whereColumn('stock', '<=', 'low_stock_threshold')
-        ->count(),
-    'recentProducts' => Product::query()
-        ->where('store_id', currentStoreId())
-        ->latest()
-        ->take(5)
-        ->get(),
-    'lowStockVariants' => ProductVariant::query()
-        ->where('store_id', currentStoreId())
-        ->where('stock', '>', 0)
-        ->whereColumn('stock', '<=', 'low_stock_threshold')
-        ->orderBy('stock')
-        ->take(5)
-        ->get(),
-    'subscription' => $subscriptionGuard->getSubscription(),
+    'summary'               => $analytics->summary(),
+    'salesByDay'            => $analytics->salesByDay(),
+    'ordersByStatus'        => $analytics->ordersByStatus(),
+    'ordersByState'         => $analytics->ordersByState(),
+    'deliveryTypeBreakdown' => $analytics->deliveryTypeBreakdown(),
+    'pendingOrders'         => $analytics->pendingConfirmationOrders(),
+    'topProducts'           => $analytics->topSellingProducts(),
+    'lowStockVariants'      => $analytics->lowStockVariants(),
+    'subscription'          => $subscriptionGuard->getSubscription(),
     'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
-    'subscriptionStatus' => $subscriptionGuard->statusLabel(),
-    'daysRemaining' => $subscriptionGuard->daysRemaining(),
+    'subscriptionStatus'    => $subscriptionGuard->statusLabel(),
+    'daysRemaining'         => $subscriptionGuard->daysRemaining(),
 ]);
 ?>
 
-<div>
-    <x-edz.page-header
-        title="{{ __('titles.dashboard') }}"
-        description="{{ __('dashboard.welcome_back') }}, {{ $userName }}.">
-    </x-edz.page-header>
+<div x-data="{
+    chartDays: {{ json_encode($salesByDay->pluck('date')->values()) }},
+    chartRevenue: {{ json_encode($salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
+    chartOrders: {{ json_encode($salesByDay->pluck('total')->values()->map(fn($v) => (int) $v)) }},
+    statusLabels: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
+    statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
+    statusColors: {{ json_encode($ordersByStatus->pluck('color')->values()) }},
+    stateLabels: {{ json_encode($ordersByState->pluck('name')->values()) }},
+    stateCounts: {{ json_encode($ordersByState->pluck('count')->values()->map(fn($v) => (int) $v)) }},
+    stateRevenues: {{ json_encode($ordersByState->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
+    deliveryLabels: {{ json_encode($deliveryTypeBreakdown->pluck('delivery_type')->values()) }},
+    deliveryCounts: {{ json_encode($deliveryTypeBreakdown->pluck('count')->values()->map(fn($v) => (int) $v)) }},
+    renderCharts() {
+        this.$nextTick(() => {
+            if (typeof window.renderDashboardCharts === 'function') {
+                window.renderDashboardCharts(this);
+            }
+        });
+    }
+}" x-init="renderCharts()">
 
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+    {{-- KPI Cards --}}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+        {{-- Total Orders --}}
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-ink-400">{{ __('titles.products') }}</p>
-                <span class="edz-badge edz-badge--success edz-badge--dot">
-                    {{ $activeProducts }}
+                <p class="text-sm font-medium text-ink-400">{{ __('dashboard.total_orders') }}</p>
+                @if ($summary['total_orders_change'] != 0)
+                    <span class="text-xs font-medium {{ $summary['total_orders_change'] > 0 ? 'text-success-600' : 'text-danger-600' }}">
+                        {{ $summary['total_orders_change'] > 0 ? '+' : '' }}{{ $summary['total_orders_change'] }}%
+                    </span>
+                @endif
+            </div>
+            <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ $summary['total_orders'] }}</p>
+            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.this_month') }}</p>
+        </div>
+
+        {{-- Revenue --}}
+        <div class="edz-card edz-card--padded">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-ink-400">{{ __('dashboard.revenue') }}</p>
+            </div>
+            <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ number_format($summary['revenue'], 0) }} {{ __('stores.currency_symbol') }}</p>
+            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.delivered_orders') }}</p>
+        </div>
+
+        {{-- Confirmation Rate --}}
+        <div class="edz-card edz-card--padded">
+            <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-ink-400">{{ __('dashboard.confirmation_rate') }}</p>
+                <span class="edz-badge {{ $summary['confirmation_rate'] >= 70 ? 'edz-badge--success' : 'edz-badge--warning' }}">
+                    {{ $summary['confirmation_rate'] }}%
                 </span>
             </div>
-            <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ $totalProducts }}</p>
-            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.overview') }}</p>
+            <div class="mt-3 w-full bg-surface-100 dark:bg-ink-800 rounded-full h-2">
+                <div class="h-2 rounded-full {{ $summary['confirmation_rate'] >= 70 ? 'bg-success-500' : 'bg-warning-500' }}"
+                     style="width: {{ $summary['confirmation_rate'] }}%"></div>
+            </div>
+            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.confirmed_of_total') }}</p>
         </div>
 
+        {{-- Return Rate --}}
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-ink-400">{{ __('titles.team') }}</p>
+                <p class="text-sm font-medium text-ink-400">{{ __('dashboard.return_rate') }}</p>
+                <span class="edz-badge {{ $summary['return_rate'] <= 10 ? 'edz-badge--success' : 'edz-badge--danger' }}">
+                    {{ $summary['return_rate'] }}%
+                </span>
             </div>
-            <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ $totalMembers }}</p>
-            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.total_memberships') }}</p>
+            <div class="mt-3 w-full bg-surface-100 dark:bg-ink-800 rounded-full h-2">
+                <div class="h-2 rounded-full {{ $summary['return_rate'] <= 10 ? 'bg-success-500' : 'bg-danger-500' }}"
+                     style="width: {{ $summary['return_rate'] }}%"></div>
+            </div>
+            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.return_of_processed') }}</p>
         </div>
+    </div>
 
+    {{-- Secondary KPIs --}}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
         <div class="edz-card edz-card--padded">
-            <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-ink-400">{{ __('titles.stock_alerts') }}</p>
-                @if ($lowStockCount > 0)
-                    <span class="edz-badge edz-badge--warning edz-badge--dot">
-                        {{ $lowStockCount }}
-                    </span>
-                @endif
-            </div>
-            <p class="mt-3 text-2xl font-bold tracking-tight text-ink">{{ $lowStockCount }}</p>
-            <p class="mt-1 text-xs text-ink-400">{{ __('dashboard.today_summary') }}</p>
+            <p class="text-sm font-medium text-ink-400">{{ __('dashboard.aov') }}</p>
+            <p class="mt-2 text-xl font-bold text-ink">{{ number_format($summary['aov'], 0) }} {{ __('stores.currency_symbol') }}</p>
         </div>
-
         <div class="edz-card edz-card--padded">
-            <div class="flex items-center justify-between">
-                <p class="text-sm font-medium text-ink-400">{{ __('titles.store') }}</p>
-            </div>
-            <p class="mt-3 text-lg font-bold tracking-tight text-ink truncate">{{ currentStore()?->name ?? '-' }}</p>
-            <p class="mt-1 text-xs text-ink-400">
-                <x-merchant.status domain="stores" :status="currentStore()?->status?->value" />
-            </p>
+            <p class="text-sm font-medium text-ink-400">{{ __('titles.products') }}</p>
+            <p class="mt-2 text-xl font-bold text-ink">{{ $summary['active_products'] }} <span class="text-sm font-normal text-ink-400">/ {{ $summary['total_products'] }}</span></p>
         </div>
+        <div class="edz-card edz-card--padded">
+            <p class="text-sm font-medium text-ink-400">{{ __('titles.team') }}</p>
+            <p class="mt-2 text-xl font-bold text-ink">{{ $summary['total_members'] }}</p>
+        </div>
+    </div>
 
-        <div class="edz-card edz-card--padded col-span-full sm:col-span-2 xl:col-span-4">
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-sm font-medium text-ink-400">{{ __('storefront.your_store_link') }}</p>
-                @if (currentStore()?->isPubliclyActive())
-                    <span class="edz-badge edz-badge--success edz-badge--dot">
-                        {{ __('storefront.active') }}
-                    </span>
-                @else
-                    <span class="edz-badge edz-badge--warning edz-badge--dot">
-                        {{ __('storefront.inactive') }}
-                    </span>
-                @endif
-            </div>
+    {{-- Store Link --}}
+    <div class="edz-card edz-card--padded mb-6">
+        <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="flex-1 min-w-0 p-3 bg-surface-50 dark:bg-ink-800 rounded-lg border border-surface-200 dark:border-ink-700">
-                    <p class="text-sm font-mono text-ink truncate" id="store-url">
-                        {{ currentStore()?->public_url ?? '-' }}
-                    </p>
+                <div class="flex-shrink-0 w-10 h-10 rounded-lg {{ currentStore()?->isPubliclyActive() ? 'bg-success-50 dark:bg-success-900/20 text-success-600' : 'bg-warning-50 dark:bg-warning-900/20 text-warning-600' }} flex items-center justify-center">
+                    <x-edz.icon name="external-link" class="w-5 h-5" />
                 </div>
-                <button
-                    type="button"
+                <div>
+                    <p class="text-sm font-semibold text-ink">{{ __('storefront.your_store_link') }}</p>
+                    <p class="text-xs font-mono text-ink-400">{{ currentStore()?->public_url ?? '-' }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button"
                     x-data="{ copied: false }"
-                    x-on:click="
-                        navigator.clipboard.writeText(document.getElementById('store-url').textContent.trim());
-                        copied = true;
-                        setTimeout(() => copied = false, 2000);
-                    "
-                    class="edz-btn edz-btn--primary edz-btn--sm flex-shrink-0"
-                >
+                    x-on:click="navigator.clipboard.writeText('{{ currentStore()?->public_url }}'); copied = true; setTimeout(() => copied = false, 2000);"
+                    class="edz-btn edz-btn--secondary edz-btn--sm">
                     <x-edz.icon name="copy" class="w-4 h-4 me-1" />
                     <span x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
                 </button>
                 @if (currentStore()?->isPubliclyActive())
                     <a href="{{ currentStore()?->public_url }}" target="_blank" rel="noopener noreferrer"
-                       class="edz-btn edz-btn--secondary edz-btn--sm flex-shrink-0">
+                       class="edz-btn edz-btn--primary edz-btn--sm">
                         <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
                         {{ __('storefront.visit_store') }}
                     </a>
@@ -137,156 +150,247 @@ with([
         </div>
     </div>
 
-    <div class="edz-card edz-card--padded mb-6">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg {{ $hasActiveSubscription ? 'bg-success-50 dark:bg-success-900/20 text-success-600 dark:text-success-400' : 'bg-warning-50 dark:bg-warning-900/20 text-warning-600 dark:text-warning-400' }} flex items-center justify-center">
-                    <x-edz.icon name="credit-card" class="w-5 h-5" />
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.subscription') }}</p>
-                    <p class="text-xs text-ink-400">
-                        @if ($subscription)
-                            {{ $subscription->plan?->name ?? '-' }}
-                            @if ($hasActiveSubscription)
-                                ·
-                                @if ($subscription->onTrial())
-                                    {{ __('merchant_panel.trial') }}
-                                    @if ($daysRemaining !== null)
-                                        ({{ $daysRemaining }} {{ __('merchant_panel.days_remaining') }})
-                                    @endif
-                                @else
-                                    {{ __('merchant_panel.active') }}
-                                    @if ($subscription->ends_at)
-                                        · {{ __('merchant_panel.expires') }} {{ $subscription->ends_at->format('Y-m-d') }}
-                                    @endif
-                                @endif
-                            @else
-                                · {{ __('merchant_panel.expired') }}
-                            @endif
-                        @else
-                            {{ __('merchant_panel.no_subscription') }}
-                        @endif
-                    </p>
-                </div>
+    {{-- Charts Row --}}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
+        {{-- Sales Trend --}}
+        <div class="lg:col-span-2 edz-card edz-card--padded">
+            <h3 class="text-sm font-semibold text-ink mb-4">{{ __('dashboard.sales_trend') }}</h3>
+            <div class="h-64">
+                <canvas id="salesChart"></canvas>
             </div>
-            <div class="flex items-center gap-2">
-                <x-merchant.status domain="stores" :status="$hasActiveSubscription ? 'active' : 'suspended'" />
-                <a href="{{ route('account.billing') }}" wire:navigate
-                   class="edz-btn edz-btn--secondary edz-btn--sm">
-                    {{ $hasActiveSubscription ? __('merchant_panel.manage_plan') : __('messages.go_to_billing') }}
-                </a>
-            </div>
+        </div>
+
+        {{-- Orders by Status --}}
+        <div class="edz-card edz-card--padded">
+            <h3 class="text-sm font-semibold text-ink mb-4">{{ __('dashboard.orders_by_status') }}</h3>
+            @if ($ordersByStatus->isNotEmpty())
+                <div class="h-64">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            @else
+                <div class="h-64 flex items-center justify-center">
+                    <p class="text-sm text-ink-400">{{ __('dashboard.no_data') }}</p>
+                </div>
+            @endif
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
-        <div class="lg:col-span-1 edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold text-ink mb-4">{{ __('dashboard.statistics') }}</h3>
-            <div class="space-y-3">
-                <a href="{{ route('merchant.products.create', currentStore()) }}"
-                   class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-success-50 dark:bg-success-900/20 flex items-center justify-center text-success-600 dark:text-success-400">
-                        <x-edz.icon name="plus" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-ink">{{ __('buttons.create') }} {{ __('titles.product') }}</p>
-                        <p class="text-xs text-ink-400">{{ __('dashboard.today_summary') }}</p>
-                    </div>
-                </a>
-                <a href="{{ route('merchant.products.index', currentStore()) }}"
-                   class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-accent-50 dark:bg-accent-900/20 flex items-center justify-center text-accent-600 dark:text-accent-400">
-                        <x-edz.icon name="eye" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-ink">{{ __('titles.products') }}</p>
-                        <p class="text-xs text-ink-400">{{ __('dashboard.overview') }}</p>
-                    </div>
-                </a>
-                <a href="{{ route('merchant.teams.index', currentStore()) }}"
-                   class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center text-warning-600 dark:text-warning-400">
-                        <x-edz.icon name="users" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-ink">{{ __('titles.teams') }}</p>
-                        <p class="text-xs text-ink-400">{{ __('dashboard.total_memberships') }}</p>
-                    </div>
-                </a>
-                <a href="{{ route('merchant.stock-alerts.index', currentStore()) }}"
-                   class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-50 dark:hover:bg-ink-800 transition-colors">
-                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-danger-50 dark:bg-danger-900/20 flex items-center justify-center text-danger-600 dark:text-danger-400">
-                        <x-edz.icon name="bell" class="w-5 h-5" />
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium text-ink">{{ __('titles.stock_alerts') }}</p>
-                        <p class="text-xs text-ink-400">{{ $lowStockCount }} {{ __('dashboard.today_summary') }}</p>
-                    </div>
-                </a>
-            </div>
-        </div>
-
-        <div class="lg:col-span-1 edz-card edz-card--padded">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-ink">{{ __('titles.recent_activities') }}</h3>
-            </div>
-            @forelse ($recentProducts as $product)
-                <div class="flex items-center gap-3 {{ !$loop->last ? 'pb-3 mb-3 border-b border-surface-100 dark:border-ink-800' : '' }}">
-                    <div class="flex-shrink-0 w-8 h-8 rounded bg-surface-100 dark:bg-ink-800 flex items-center justify-center">
-                        @if ($product->primaryImage)
-                            <img src="{{ asset('storage/' . $product->primaryImage->path) }}"
-                                 alt="{{ $product->name }}"
-                                 class="w-8 h-8 rounded object-cover" />
-                        @else
-                            <x-edz.icon name="image" class="w-4 h-4 text-ink-400" />
-                        @endif
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium text-ink truncate">{{ $product->name }}</p>
-                        <p class="text-xs text-ink-400">{{ $product->created_at->diffForHumans() }}</p>
-                    </div>
-                    <span class="edz-badge {{ $product->is_active ? 'edz-badge--success' : 'edz-badge--danger' }}">
-                        {{ $product->is_active ? __('merchant_panel.active') : __('merchant_panel.inactive') }}
-                    </span>
+    {{-- Second Charts Row --}}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+        {{-- Geographic Distribution --}}
+        <div class="edz-card edz-card--padded">
+            <h3 class="text-sm font-semibold text-ink mb-4">{{ __('dashboard.orders_by_state') }}</h3>
+            @if ($ordersByState->isNotEmpty())
+                <div class="space-y-3">
+                    @php($maxState = $ordersByState->max('count'))
+                    @foreach ($ordersByState as $state)
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-medium text-ink w-24 truncate" title="{{ $state->name }}">{{ $state->name }}</span>
+                            <div class="flex-1 bg-surface-100 dark:bg-ink-800 rounded-full h-4 overflow-hidden">
+                                <div class="h-4 rounded-full bg-accent-500 transition-all"
+                                     style="width: {{ $maxState > 0 ? ($state->count / $maxState * 100) : 0 }}%"></div>
+                            </div>
+                            <span class="text-xs font-medium text-ink w-8 text-right">{{ $state->count }}</span>
+                        </div>
+                    @endforeach
                 </div>
-            @empty
-                <div class="text-center py-6">
+            @else
+                <div class="h-32 flex items-center justify-center">
                     <p class="text-sm text-ink-400">{{ __('dashboard.no_data') }}</p>
                 </div>
-            @endforelse
+            @endif
         </div>
 
-        <div class="lg:col-span-1 edz-card edz-card--padded">
+        {{-- Delivery Type --}}
+        <div class="edz-card edz-card--padded">
+            <h3 class="text-sm font-semibold text-ink mb-4">{{ __('dashboard.delivery_breakdown') }}</h3>
+            @if ($deliveryTypeBreakdown->isNotEmpty())
+                <div class="space-y-4 mt-6">
+                    @foreach ($deliveryTypeBreakdown as $dt)
+                        @php($total = $deliveryTypeBreakdown->sum('count'))
+                        @php($pct = $total > 0 ? round(($dt->count / $total) * 100) : 0)
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-medium text-ink">{{ $dt->delivery_type === 'home' ? __('orders.delivery_home') : __('orders.delivery_stopdesk') }}</span>
+                                <span class="text-sm font-semibold text-ink">{{ $pct }}%</span>
+                            </div>
+                            <div class="w-full bg-surface-100 dark:bg-ink-800 rounded-full h-3">
+                                <div class="h-3 rounded-full {{ $dt->delivery_type === 'home' ? 'bg-accent-500' : 'bg-success-500' }}"
+                                     style="width: {{ $pct }}%"></div>
+                            </div>
+                            <p class="mt-1 text-xs text-ink-400">{{ $dt->count }} {{ __('orders.orders') }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="h-32 flex items-center justify-center">
+                    <p class="text-sm text-ink-400">{{ __('dashboard.no_data') }}</p>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Tables Row --}}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+        {{-- Pending Orders --}}
+        <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-ink">{{ __('titles.stock_alerts') }}</h3>
-                @if ($lowStockCount > 0)
-                    <a href="{{ route('merchant.stock-alerts.index', currentStore()) }}"
-                       class="text-xs font-medium text-danger-600 hover:text-danger-500">
+                <h3 class="text-sm font-semibold text-ink">{{ __('dashboard.pending_confirmation') }}</h3>
+                @if ($pendingOrders->count() > 0)
+                    <a href="{{ route('merchant.orders.index', currentStore()) }}" wire:navigate
+                       class="text-xs font-medium text-accent-600 hover:text-accent-500">
                         {{ __('buttons.view_all') }}
                     </a>
                 @endif
             </div>
-            @forelse ($lowStockVariants as $variant)
-                <div class="flex items-center gap-3 {{ !$loop->last ? 'pb-3 mb-3 border-b border-surface-100 dark:border-ink-800' : '' }}">
-                    <div class="flex-shrink-0 w-8 h-8 rounded bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
-                        <x-edz.icon name="bell" class="w-4 h-4 text-warning-600 dark:text-warning-400" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium text-ink truncate">{{ $variant->product->name }}</p>
-                        <p class="text-xs text-ink-400">
-                            {{ $variant->optionValues->pluck('value')->implode(' / ') ?: __('titles.variants') }}
-                        </p>
-                    </div>
-                    <span class="edz-badge edz-badge--warning">
-                        {{ $variant->stock }}
-                    </span>
+            @if ($pendingOrders->isNotEmpty())
+                <div class="divide-y divide-surface-100 dark:divide-ink-800">
+                    @foreach ($pendingOrders as $order)
+                        <div class="flex items-center justify-between py-3 {{ $loop->last ? 'border-b-0' : '' }}">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-ink">#{{ $order->number }}</p>
+                                <p class="text-xs text-ink-400">{{ $order->customer_name ?? '-' }} · {{ $order->customer_phone ?? '-' }}</p>
+                            </div>
+                            <div class="text-end">
+                                <p class="text-sm font-semibold text-ink">{{ number_format($order->total_amount, 0) }} {{ __('stores.currency_symbol') }}</p>
+                                <p class="text-xs text-ink-400">{{ \Carbon\Carbon::parse($order->created_at)->diffForHumans() }}</p>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
-            @empty
+            @else
+                <div class="text-center py-6">
+                    <p class="text-sm text-ink-400">{{ __('dashboard.no_pending_orders') }}</p>
+                </div>
+            @endif
+        </div>
+
+        {{-- Top Selling Products --}}
+        <div class="edz-card edz-card--padded">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-ink">{{ __('dashboard.top_products') }}</h3>
+                <a href="{{ route('merchant.products.index', currentStore()) }}" wire:navigate
+                   class="text-xs font-medium text-accent-600 hover:text-accent-500">
+                    {{ __('buttons.view_all') }}
+                </a>
+            </div>
+            @if ($topProducts->isNotEmpty())
+                <div class="divide-y divide-surface-100 dark:divide-ink-800">
+                    @foreach ($topProducts as $product)
+                        <div class="flex items-center justify-between py-3 {{ $loop->last ? 'border-b-0' : '' }}">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-medium text-ink truncate">{{ $product->name }}</p>
+                                <p class="text-xs text-ink-400">{{ $product->total_qty }} {{ __('orders.units_sold') }}</p>
+                            </div>
+                            <span class="text-sm font-semibold text-ink">{{ number_format($product->total_revenue, 0) }} {{ __('stores.currency_symbol') }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
                 <div class="text-center py-6">
                     <p class="text-sm text-ink-400">{{ __('dashboard.no_data') }}</p>
                 </div>
-            @endforelse
+            @endif
         </div>
     </div>
+
+    {{-- Stock Alerts --}}
+    @if ($lowStockVariants->isNotEmpty())
+        <div class="edz-card edz-card--padded mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-ink">{{ __('titles.stock_alerts') }}</h3>
+                <a href="{{ route('merchant.stock-alerts.index', currentStore()) }}"
+                   class="text-xs font-medium text-danger-600 hover:text-danger-500">
+                    {{ __('buttons.view_all') }}
+                </a>
+            </div>
+            <div class="divide-y divide-surface-100 dark:divide-ink-800">
+                @foreach ($lowStockVariants as $variant)
+                    <div class="flex items-center justify-between py-3 {{ $loop->last ? 'border-b-0' : '' }}">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-medium text-ink truncate">{{ $variant->product->name }}</p>
+                            <p class="text-xs text-ink-400">
+                                {{ $variant->optionValues->pluck('value')->implode(' / ') ?: $variant->name }}
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <span class="edz-badge edz-badge--warning">{{ $variant->stock }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- Chart.js rendering --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <script>
+        window.renderDashboardCharts = function(data) {
+            const fontColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-text-secondary') || '#6b7280';
+            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-border') || '#e5e7eb';
+
+            Chart.defaults.color = fontColor;
+
+            if (data.chartDays.length > 0) {
+                new Chart(document.getElementById('salesChart'), {
+                    type: 'line',
+                    data: {
+                        labels: data.chartDays.map(d => { const dt = new Date(d); return dt.toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' }); }),
+                        datasets: [{
+                            label: '{{ __("dashboard.revenue") }}',
+                            data: data.chartRevenue,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y',
+                        }, {
+                            label: '{{ __("dashboard.total_orders") }}',
+                            data: data.chartOrders,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: false,
+                            tension: 0.4,
+                            yAxisID: 'y1',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            x: { grid: { color: gridColor } },
+                            y: { position: 'left', grid: { color: gridColor }, title: { display: true, text: '{{ __("stores.currency_symbol") }}' } },
+                            y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '{{ __("dashboard.orders") }}' } },
+                        }
+                    }
+                });
+            }
+
+            if (data.statusLabels.length > 0) {
+                const colorMap = {
+                    'pending': '#f59e0b', 'confirmed': '#3b82f6', 'preparing': '#8b5cf6',
+                    'shipped': '#6366f1', 'in_transit': '#06b6d4', 'out_for_delivery': '#14b8a6',
+                    'delivered': '#22c55e', 'completed': '#22c55e', 'cancelled': '#ef4444',
+                    'canceled': '#ef4444', 'returned': '#f97316', 'refunded': '#ec4899',
+                    'on_hold': '#64748b', 'paid': '#3b82f6', 'draft': '#9ca3af',
+                };
+                const colors = data.statusLabels.map((k, i) => data.statusColors[i] || colorMap[k] || '#6b7280');
+
+                new Chart(document.getElementById('statusChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.statusLabels,
+                        datasets: [{ data: data.statusCounts, backgroundColor: colors, borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8 } } },
+                        cutout: '65%',
+                    }
+                });
+            }
+        };
+    </script>
 </div>

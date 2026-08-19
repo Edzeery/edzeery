@@ -53,6 +53,7 @@ return [
     'search' => 'Buscar',
     'select' => 'Seleccionar',
     'select_all' => 'Seleccionar todo',
+    'selected' => 'Seleccionado',
     'send' => 'Enviar',
     'settings' => 'Ajustes',
     'show' => 'Espectáculo',

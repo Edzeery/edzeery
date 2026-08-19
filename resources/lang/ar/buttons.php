@@ -54,6 +54,7 @@ return [
     'search' => 'بحث',
     'select' => 'اختيار',
     'select_all' => 'تحديد الكل',
+    'selected' => 'محدد',
     'send' => 'إرسال',
     'settings' => 'الإعدادات',
     'show' => 'عرض',

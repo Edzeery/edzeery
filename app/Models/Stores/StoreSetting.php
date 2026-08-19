@@ -23,7 +23,9 @@ class StoreSetting extends Model
         'currency',
         'currency_symbol',
         'language',
+        'supported_languages',
         'timezone',
+        'phone',
         'guest_checkout',
         'inventory_tracking',
         'show_out_of_stock',
@@ -37,6 +39,7 @@ class StoreSetting extends Model
         'show_out_of_stock' => 'boolean',
         'allow_backorder' => 'boolean',
         'contact_info' => 'array',
+        'supported_languages' => 'array',
     ];
 
     /* ================= Relations ================= */

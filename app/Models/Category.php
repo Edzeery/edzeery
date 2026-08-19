@@ -7,7 +7,7 @@ use App\Models\Stores\Store;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Category extends Model
@@ -32,9 +32,11 @@ class Category extends Model
     }
 
     // المنتجات المرتبطة بهذه الفئة
-    public function products(): HasMany
+    public function products(): BelongsToMany
     {
-        return $this->hasMany(Product::class);
+        return $this->belongsToMany(Product::class)
+            ->using(CategoryProduct::class)
+            ->withPivot('store_id');
     }
 
     // الفئة الأب (إذا كانت موجودة)

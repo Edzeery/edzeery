@@ -11,6 +11,27 @@ mount(function (): void {
     $store = currentStore();
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'social_proof', 'faq', 'cta'];
+    $this->section_content = $theme?->section_content ?? [
+        'hero' => ['title' => '', 'description' => '', 'button_text' => ''],
+        'social_proof' => [
+            'title' => __('storefront.why_customers_love_us'),
+            'items' => [
+                ['title' => __('storefront.secure_payment'), 'description' => __('storefront.pay_on_delivery'), 'icon' => 'shield-checkmark-outline'],
+                ['title' => __('storefront.fast_delivery'), 'description' => __('storefront.across_the_country'), 'icon' => 'car-outline'],
+                ['title' => __('storefront.easy_returns'), 'description' => __('storefront.hassle_free_policy'), 'icon' => 'refresh-outline'],
+            ],
+        ],
+        'faq' => [
+            'title' => __('storefront.faq'),
+            'items' => [
+                ['question' => __('storefront.faq_delivery_q'), 'answer' => __('storefront.faq_delivery_a')],
+                ['question' => __('storefront.faq_payment_q'), 'answer' => __('storefront.faq_payment_a')],
+                ['question' => __('storefront.faq_return_q'), 'answer' => __('storefront.faq_return_a')],
+            ],
+        ],
+        'cta' => ['title' => __('storefront.ready_to_order'), 'description' => __('storefront.get_yours_now'), 'button_text' => __('storefront.order_now')],
+        'description' => ['title' => __('storefront.product_details')],
+    ];
 
     $this->product = Product::where('store_id', $store->id)
         ->where('is_active', true)
@@ -33,14 +54,14 @@ $addToCart = function (string $variantId = null) {
     }
 
     $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
+    $this->dispatch('cart-updated');
 };
-
-$selectedVariant = null;
 
 state([
     'product' => null,
     'selectedVariant' => null,
     'sections' => [],
+    'section_content' => [],
 ]);
 ?>
 
@@ -117,8 +138,8 @@ state([
                             class="rounded-2xl shadow-2xl w-full object-cover aspect-square"
                         >
                     @else
-                        <div class="rounded-2xl shadow-2xl bg-gray-200 dark:bg-gray-700 w-full aspect-square flex items-center justify-center">
-                            <ion-icon name="image-outline" class="text-6xl text-gray-400"></ion-icon>
+                        <div class="rounded-2xl shadow-2xl bg-gray-200 dark:bg-gray-700 w-full aspect-square flex items-center justify-center overflow-hidden">
+                            <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-8 opacity-60">
                         </div>
                     @endif
                 </div>
@@ -131,7 +152,7 @@ state([
     @if($product->description && in_array('description', $sections))
     <section class="py-16 bg-white dark:bg-gray-800">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">{{ __('storefront.product_details') }}</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">{{ $section_content['description']['title'] ?? __('storefront.product_details') }}</h2>
             <div class="prose prose-lg dark:prose-invert max-w-none text-gray-600 dark:text-gray-300 leading-relaxed">
                 {!! nl2br(e($product->description)) !!}
             </div>
@@ -141,31 +162,20 @@ state([
 
     {{-- Social Proof --}}
     @if(in_array('social_proof', $sections))
+    @php $sp = $section_content['social_proof'] ?? []; @endphp
     <section class="py-16 bg-gray-50 dark:bg-gray-900">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">{{ __('storefront.why_customers_love_us') }}</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">{{ $sp['title'] ?? __('storefront.why_customers_love_us') }}</h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <div class="flex flex-col items-center">
-                    <div class="w-12 h-12 store-bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                        <ion-icon name="shield-checkmark-outline" class="text-2xl store-text-primary"></ion-icon>
+                @foreach(($sp['items'] ?? []) as $item)
+                    <div class="flex flex-col items-center">
+                        <div class="w-12 h-12 store-bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                            <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
                     </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ __('storefront.secure_payment') }}</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ __('storefront.pay_on_delivery') }}</p>
-                </div>
-                <div class="flex flex-col items-center">
-                    <div class="w-12 h-12 store-bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                        <ion-icon name="car-outline" class="text-2xl store-text-primary"></ion-icon>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ __('storefront.fast_delivery') }}</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ __('storefront.across_the_country') }}</p>
-                </div>
-                <div class="flex flex-col items-center">
-                    <div class="w-12 h-12 store-bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                        <ion-icon name="refresh-outline" class="text-2xl store-text-primary"></ion-icon>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ __('storefront.easy_returns') }}</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ __('storefront.hassle_free_policy') }}</p>
-                </div>
+                @endforeach
             </div>
         </div>
     </section>
@@ -173,25 +183,22 @@ state([
 
     {{-- FAQ --}}
     @if(in_array('faq', $sections))
+    @php $faq = $section_content['faq'] ?? []; @endphp
     <section class="py-16 bg-white dark:bg-gray-800" x-data="{ openFaq: null }">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">{{ __('storefront.faq') }}</h2>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">{{ $faq['title'] ?? __('storefront.faq') }}</h2>
             <div class="space-y-4">
-                @foreach([
-                    ['q' => __('storefront.faq_delivery_q'), 'a' => __('storefront.faq_delivery_a')],
-                    ['q' => __('storefront.faq_payment_q'), 'a' => __('storefront.faq_payment_a')],
-                    ['q' => __('storefront.faq_return_q'), 'a' => __('storefront.faq_return_a')],
-                ] as $faq)
+                @foreach(($faq['items'] ?? []) as $faqItem)
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
                         <button
                             x-on:click="openFaq = openFaq === {{ $loop->index }} ? null : {{ $loop->index }}"
                             class="w-full px-6 py-4 text-left flex items-center justify-between"
                         >
-                            <span class="font-medium text-gray-900 dark:text-white">{{ $faq['q'] }}</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ $faqItem['question'] ?? '' }}</span>
                             <ion-icon :name="openFaq === {{ $loop->index }} ? 'chevron-up-outline' : 'chevron-down-outline'" class="text-gray-500"></ion-icon>
                         </button>
                         <div x-show="openFaq === {{ $loop->index }}" x-transition class="px-6 pb-4">
-                            <p class="text-gray-600 dark:text-gray-300">{{ $faq['a'] }}</p>
+                            <p class="text-gray-600 dark:text-gray-300">{{ $faqItem['answer'] ?? '' }}</p>
                         </div>
                     </div>
                 @endforeach
@@ -202,17 +209,18 @@ state([
 
     {{-- Final CTA --}}
     @if(in_array('cta', $sections))
+    @php $cta = $section_content['cta'] ?? []; @endphp
     <section class="py-16 store-gradient">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="text-3xl font-bold text-white mb-4">{{ __('storefront.ready_to_order') }}</h2>
-            <p class="text-white/80 mb-8 text-lg">{{ __('storefront.get_yours_now') }}</p>
+            <h2 class="text-3xl font-bold text-white mb-4">{{ $cta['title'] ?? __('storefront.ready_to_order') }}</h2>
+            <p class="text-white/80 mb-8 text-lg">{{ $cta['description'] ?? __('storefront.get_yours_now') }}</p>
             <a
                 href="#"
                 x-on:click.prevent="window.scrollTo({ top: 0, behavior: 'smooth' })"
                 class="inline-flex items-center gap-2 bg-white font-bold py-3 px-8 rounded-lg hover:bg-white/90 transition text-lg store-text-primary"
             >
                 <ion-icon name="cart-outline"></ion-icon>
-                {{ __('storefront.order_now') }}
+                {{ $cta['button_text'] ?? __('storefront.order_now') }}
             </a>
         </div>
     </section>

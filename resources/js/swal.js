@@ -10,24 +10,26 @@ const icons = {
 
 const EdzSwal = {
     fire(options) {
-        const type = options.type || "success";
+        const { type, ...rest } = options;
+        const t = type || "success";
         return Swal.fire({
-            icon: icons[type] || "info",
-            title: options.title || "",
-            text: options.text || "",
-            html: options.html || undefined,
-            timer: options.timer ?? (type === "success" ? 3000 : undefined),
-            timerProgressBar: type === "success",
-            showConfirmButton: type !== "success",
-            confirmButtonText: options.confirmButtonText || "OK",
-            confirmButtonColor: options.confirmButtonColor || "#6366f1",
-            cancelButtonText: options.cancelButtonText || "Cancel",
-            showCancelButton: options.showCancelButton ?? (type === "question" || type === "warning"),
+            ...rest,
+            icon: icons[t] || "info",
+            title: rest.title || "",
+            text: rest.text || "",
+            html: rest.html || undefined,
+            timer: rest.timer ?? (t === "success" ? 3000 : undefined),
+            timerProgressBar: t === "success",
+            showConfirmButton: t !== "success",
+            confirmButtonText: rest.confirmButtonText || "OK",
+            confirmButtonColor: rest.confirmButtonColor || "#6366f1",
+            cancelButtonText: rest.cancelButtonText || "Cancel",
+            showCancelButton: rest.showCancelButton ?? (t === "question" || t === "warning"),
             reverseButtons: true,
-            toast: options.toast ?? (type === "success"),
-            position: options.position || (type === "success" ? "top-end" : "center"),
+            toast: rest.toast ?? (t === "success"),
+            position: rest.position || (t === "success" ? "top-end" : "center"),
             customClass: {
-                popup: `edz-swal edz-swal--${type}`,
+                popup: `edz-swal edz-swal--${t}`,
                 title: "edz-swal__title",
                 htmlContainer: "edz-swal__text",
                 confirmButton: "edz-btn edz-btn--primary edz-btn--sm",
@@ -36,8 +38,6 @@ const EdzSwal = {
             },
             showClass: { popup: "edz-swal-show" },
             hideClass: { popup: "edz-swal-hide" },
-            ...options,
-            icon: icons[type] || "info",
         });
     },
 

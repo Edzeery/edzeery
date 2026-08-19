@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Cart\Services\CartService;
+use App\Domains\Plan\Services\FeatureUsageService;
 use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\ShippingCostCalculator;
 use App\Models\Customer;
@@ -36,61 +37,22 @@ mount(function (): void {
     $this->email = auth()->user()?->email ?? '';
 });
 
-$rules = [
-    'name'          => 'required|string|max:255',
-    'phone'         => 'required|string|max:20',
-    'email'         => 'nullable|email|max:255',
-    'state_id'      => 'required|exists:states,id',
-    'city_id'       => 'nullable|exists:cities,id',
-    'address'       => 'nullable|string|max:1000',
-    'delivery_type' => 'required|in:home,stopdesk',
-    'payment_method' => 'required|in:cod',
-    'notes'         => 'nullable|string|max:500',
-    'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|string',
-];
-
-$getStateOptions = function () {
-    return State::active()->orderBy('name')->get();
-};
-
-$getCityOptions = function () {
-    if (! $this->state_id) {
-        return collect();
-    }
-    return City::where('state_id', $this->state_id)->active()->orderBy('name')->get();
-};
-
-$getStopdeskPoints = function () {
-    if (! $this->state_id || $this->delivery_type !== 'stopdesk') {
-        return collect();
-    }
-
-    return StopdeskPoint::where('store_id', currentStoreId())
-        ->where('state_id', $this->state_id)
-        ->where('is_active', true)
-        ->get();
-};
-
-$getShippingInfo = function () {
-    $calculator = app(ShippingCostCalculator::class);
-    $cart = app(CartService::class);
-
-    $subtotal = $cart->getSubtotal(currentStoreId());
-    $result = $calculator->calculate(
-        currentStore(),
-        $this->state_id ?: null,
-        $this->city_id ?: null,
-        $subtotal
-    );
-
-    return $result;
-};
-
 $submitOrder = function () {
-    Validator::make($this->only([
+    $validated = Validator::make($this->only([
         'name', 'phone', 'email', 'state_id', 'city_id',
         'address', 'delivery_type', 'payment_method', 'notes', 'selectedStopdesk',
-    ]), $this->rules)->validate();
+    ]), [
+        'name'          => 'required|string|max:255',
+        'phone'         => 'required|string|max:20',
+        'email'         => 'nullable|email|max:255',
+        'state_id'      => 'required|exists:states,id',
+        'city_id'       => 'nullable|exists:cities,id',
+        'address'       => 'nullable|string|max:1000',
+        'delivery_type' => 'required|in:home,stopdesk',
+        'payment_method' => 'required|in:cod',
+        'notes'         => 'nullable|string|max:500',
+        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|string',
+    ])->validate();
 
     $cartService = app(CartService::class);
     $storeId = currentStoreId();
@@ -162,6 +124,12 @@ $submitOrder = function () {
 
         DB::commit();
 
+        $store = currentStore();
+        $subscription = $store->user->latestSubscription();
+        if ($subscription && $subscription->plan) {
+            app(FeatureUsageService::class)->consume($subscription, 'daily_orders_limit');
+        }
+
         $cartService->clear($storeId);
 
         session()->flash('success', __('storefront.order_placed') . ' #' . $order->number);
@@ -173,63 +141,116 @@ $submitOrder = function () {
 };
 ?>
 
-<div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-        {{ __('storefront.checkout') }}
-    </h1>
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+    <div class="mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            {{ __('storefront.checkout') }}
+        </h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ __('storefront.complete_your_order') }}
+        </p>
+    </div>
 
     @php
-        $states = $getStateOptions();
-        $cities = $getCityOptions();
-        $stopdesks = $getStopdeskPoints();
-        $shipping = $getShippingInfo();
-        $cartItems = app(\App\Domains\Cart\Services\CartService::class)->getItems(currentStoreId());
-        $subtotal = app(\App\Domains\Cart\Services\CartService::class)->getSubtotal(currentStoreId());
+        $cartService = app(CartService::class);
+        $cartItems = $cartService->getItems(currentStoreId());
+        $cartCount = $cartService->getCount(currentStoreId());
+        $cartSubtotal = $cartService->getSubtotal(currentStoreId());
+        $states = State::active()->orderBy('name')->get();
+        $cities = $this->state_id ? City::where('state_id', $this->state_id)->active()->orderBy('name')->get() : collect();
+        $stopdesks = ($this->state_id && $this->delivery_type === 'stopdesk')
+            ? StopdeskPoint::where('store_id', currentStoreId())->where('state_id', $this->state_id)->where('is_active', true)->get()
+            : collect();
+        $calculator = app(ShippingCostCalculator::class);
+        $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
     @endphp
+
+    {{-- Progress Steps --}}
+    <div class="mb-8 flex items-center justify-between max-w-md">
+        <div class="flex items-center">
+            <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">1</div>
+            <span class="ml-2 text-sm font-medium store-text-primary hidden sm:inline">{{ __('storefront.cart') }}</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 sm:mx-3 bg-gray-200 dark:bg-gray-700"></div>
+        <div class="flex items-center">
+            <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">2</div>
+            <span class="ml-2 text-sm font-medium store-text-primary hidden sm:inline">{{ __('storefront.delivery') }}</span>
+        </div>
+        <div class="flex-1 h-0.5 mx-2 sm:mx-3 bg-gray-200 dark:bg-gray-700"></div>
+        <div class="flex items-center">
+            <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 flex items-center justify-center text-sm font-bold">3</div>
+            <span class="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400 hidden sm:inline">{{ __('storefront.confirm') }}</span>
+        </div>
+    </div>
 
     <form wire:submit="submitOrder" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {{-- Left: Form --}}
+        {{-- Left Column --}}
         <div class="lg:col-span-2 space-y-6">
 
             {{-- Customer Info --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.customer_information') }}</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl store-bg-primary/10 flex items-center justify-center">
+                        <ion-icon name="person-outline" class="text-xl store-text-primary"></ion-icon>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.customer_information') }}</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.who_is_receiving') }}</p>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.name') }} *</label>
-                        <input type="text" wire:model="name" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        @error('name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.name') }} *</label>
+                        <input type="text" wire:model="name"
+                            placeholder="{{ __('storefront.full_name') }}"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
+                        @error('name') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.phone') }} *</label>
-                        <input type="text" wire:model="phone" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        @error('phone') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.phone') }} *</label>
+                        <input type="text" wire:model="phone"
+                            placeholder="0XXX XX XX XX"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
+                        @error('phone') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.email') }}</label>
-                        <input type="email" wire:model="email" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.email') }}</label>
+                        <input type="email" wire:model="email"
+                            placeholder="{{ __('storefront.email_optional') }}"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
                     </div>
                 </div>
             </div>
 
             {{-- Delivery --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.delivery_information') }}</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl store-bg-primary/10 flex items-center justify-center">
+                        <ion-icon name="car-outline" class="text-xl store-text-primary"></ion-icon>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.delivery_information') }}</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.where_to_deliver') }}</p>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.state') }} *</label>
-                        <select wire:model.live="state_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.state') }} *</label>
+                        <select wire:model.live="state_id"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
                             <option value="">{{ __('storefront.select_state') }}</option>
                             @foreach($states as $state)
                                 <option value="{{ $state->id }}">{{ $state->name }}</option>
                             @endforeach
                         </select>
-                        @error('state_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                        @error('state_id') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.city') }}</label>
-                        <select wire:model.live="city_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
+                        <select wire:model.live="city_id"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
                             <option value="">{{ __('storefront.select_city') }}</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->id }}">{{ $city->name }}</option>
@@ -237,22 +258,21 @@ $submitOrder = function () {
                         </select>
                     </div>
 
-                    {{-- Delivery Type --}}
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.delivery_type') }}</label>
-                        <div class="flex gap-4">
-                            <label class="flex-1 cursor-pointer">
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="home" class="peer sr-only">
-                                <div class="border-2 rounded-lg p-3 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
-                                    <ion-icon name="home-outline" class="text-xl text-gray-600 dark:text-gray-300"></ion-icon>
-                                    <p class="text-sm mt-1 font-medium">{{ __('storefront.home_delivery') }}</p>
+                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
+                                    <ion-icon name="home-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                    <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.home_delivery') }}</p>
                                 </div>
                             </label>
-                            <label class="flex-1 cursor-pointer">
+                            <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="stopdesk" class="peer sr-only">
-                                <div class="border-2 rounded-lg p-3 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
-                                    <ion-icon name="location-outline" class="text-xl text-gray-600 dark:text-gray-300"></ion-icon>
-                                    <p class="text-sm mt-1 font-medium">{{ __('storefront.stop_desk') }}</p>
+                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
+                                    <ion-icon name="location-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                    <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.stop_desk') }}</p>
                                 </div>
                             </label>
                         </div>
@@ -260,64 +280,78 @@ $submitOrder = function () {
 
                     @if($delivery_type === 'stopdesk' && $stopdesks->count())
                         <div class="sm:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.select_stopdesk_point') }} *</label>
-                            <select wire:model="selectedStopdesk" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }} *</label>
+                            <select wire:model="selectedStopdesk"
+                                class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
                                 <option value="">{{ __('storefront.select_point') }}</option>
                                 @foreach($stopdesks as $point)
                                     <option value="{{ $point->id }}">{{ $point->name }} — {{ $point->address }}</option>
                                 @endforeach
                             </select>
-                            @error('selectedStopdesk') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                            @error('selectedStopdesk') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                         </div>
                     @endif
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.address') }}</label>
-                        <textarea wire:model="address" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.address') }}</label>
+                        <textarea wire:model="address" rows="2"
+                            placeholder="{{ __('storefront.address_placeholder') }}"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition"></textarea>
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.notes') }}</label>
-                        <textarea wire:model="notes" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="{{ __('storefront.order_notes_optional') }}"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.notes') }}</label>
+                        <textarea wire:model="notes" rows="2"
+                            placeholder="{{ __('storefront.order_notes_optional') }}"
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition"></textarea>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Right: Order Summary --}}
+        {{-- Right Column: Order Summary --}}
         <div class="lg:col-span-1">
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sticky top-24">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm sticky top-24">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.order_summary') }}</h2>
 
-                <div class="space-y-3 mb-4">
+                <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
                     @forelse($cartItems as $item)
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600 dark:text-gray-300">
-                                {{ $item['product_name'] }}
-                                @if($item['variant_name']) <span class="text-gray-400">({{ $item['variant_name'] }})</span> @endif
-                                × {{ $item['quantity'] }}
-                            </span>
-                            <span class="font-medium text-gray-900 dark:text-white">
-                                {{ currency($item['price'] * $item['quantity']) }}
-                            </span>
+                        <div class="flex items-center gap-3">
+                            @if($item['image'] ?? null)
+                                <img src="{{ asset('storage/' . $item['image']) }}" alt="" class="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700">
+                            @else
+                                <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    <ion-icon name="bag-outline" class="text-gray-400"></ion-icon>
+                                </div>
+                            @endif
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $item['product_name'] }}</p>
+                                @if($item['variant_name'])
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $item['variant_name'] }}</p>
+                                @endif
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ currency($item['price'] * $item['quantity']) }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">x {{ $item['quantity'] }}</p>
+                            </div>
                         </div>
                     @empty
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">{{ __('storefront.cart_is_empty') }}</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">{{ __('storefront.cart_is_empty') }}</p>
                     @endforelse
                 </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-300">{{ __('storefront.subtotal') }}</span>
-                        <span class="font-medium">{{ currency($subtotal) }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.subtotal') }} ({{ $cartCount }} {{ __('storefront.items') }})</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ currency($cartSubtotal) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-300">{{ __('storefront.shipping') }}</span>
-                        <span class="font-medium">
-                            @if($shipping['is_free'] ?? false)
-                                {{ __('storefront.free') }}
-                            @elseif(($shipping['available'] ?? true))
-                                {{ currency($shipping['cost'] ?? 0) }}
+                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.shipping') }}</span>
+                        <span class="font-medium text-gray-900 dark:text-white">
+                            @if($shippingInfo['is_free'] ?? false)
+                                <span class="text-emerald-600">{{ __('storefront.free') }}</span>
+                            @elseif(($shippingInfo['available'] ?? true))
+                                {{ currency($shippingInfo['cost'] ?? 0) }}
                             @else
                                 <span class="text-red-500">{{ __('storefront.not_available') }}</span>
                             @endif
@@ -325,30 +359,34 @@ $submitOrder = function () {
                     </div>
                 </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
+                <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
                     <div class="flex justify-between">
                         <span class="text-base font-semibold text-gray-900 dark:text-white">{{ __('storefront.total') }}</span>
-                        <span class="text-base font-bold text-gray-900 dark:text-white">
-                            {{ currency($subtotal + ($shipping['cost'] ?? 0)) }}
+                        <span class="text-xl font-bold store-text-primary">
+                            {{ currency($cartSubtotal + ($shippingInfo['cost'] ?? 0)) }}
                         </span>
                     </div>
                 </div>
 
                 <button
                     type="submit"
-                    class="mt-6 w-full store-btn-primary text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
+                    class="mt-6 w-full store-btn-primary text-white font-semibold py-3.5 px-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                     wire:loading.attr="disabled"
                 >
-                    <span wire:loading.remove wire:target="submitOrder">{{ __('storefront.place_order') }}</span>
+                    <span wire:loading.remove wire:target="submitOrder" class="flex items-center gap-2">
+                        <ion-icon name="lock-closed-outline" class="text-lg"></ion-icon>
+                        {{ __('storefront.place_order') }}
+                    </span>
                     <span wire:loading wire:target="submitOrder" class="flex items-center justify-center gap-2">
                         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         {{ __('storefront.placing') }}
                     </span>
                 </button>
 
-                <p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">
-                    {{ __('storefront.payment_on_delivery') }}
-                </p>
+                <div class="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                    <ion-icon name="shield-checkmark-outline" class="text-base"></ion-icon>
+                    <span>{{ __('storefront.secure_checkout') }}</span>
+                </div>
             </div>
         </div>
     </form>

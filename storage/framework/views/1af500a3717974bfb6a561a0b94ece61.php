@@ -19,6 +19,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $sections;
 
+    public $section_content;
+
     public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());

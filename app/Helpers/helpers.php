@@ -366,7 +366,6 @@ if (!function_exists('system_setting')) {
 
 
 require __DIR__ . '/IconHelper.php';
-
 require __DIR__ . '/Language_Translation.php';
 require __DIR__ . '/subscription.php';
-require __DIR__ . '/../Shared/Helpers/userHelper.php';
+require __DIR__ . '/userHelper.php';

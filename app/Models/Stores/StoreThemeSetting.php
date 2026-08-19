@@ -17,15 +17,16 @@ class StoreThemeSetting extends Model
     
     protected $fillable = [
         'store_id',
-        'theme',
         'primary_color',
         'secondary_color',
         'font_family',
         'homepage_sections',
+        'section_content',
     ];
 
     protected $casts = [
         'homepage_sections' => 'array',
+        'section_content'   => 'array',
     ];
 
     /* ================= Relations ================= */

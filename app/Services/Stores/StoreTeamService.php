@@ -2,6 +2,7 @@
 
 namespace App\Services\Stores;
 
+use App\Domains\Plan\Services\FeatureUsageService;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
@@ -17,6 +18,7 @@ class StoreTeamService
         return DB::transaction(function () use ($store, $data) {
 
             $this->ensureUserIsNotPlatformStaff($data['email']);
+            $this->ensureStaffLimitNotExceeded($store);
 
             $member_user = User::firstOrCreate(
                 ['email' => $data['email']],
@@ -57,6 +59,8 @@ class StoreTeamService
 
             $permissions = $data['permissions'] ?? \App\Support\StoreRoles::permissions($role);
             $member_user->syncPermissions($permissions);
+
+            $this->consumeStaffQuota($store);
 
             return $member;
         });
@@ -116,5 +120,31 @@ class StoreTeamService
         if ($user->hasAnyRole(['super_admin', 'admin', 'tech_support', 'support_agent'])) {
             throw new \Exception(__('teams.cannot_add_platform_staff'));
         }
+    }
+
+    protected function ensureStaffLimitNotExceeded(Store $store): void
+    {
+        $subscription = $store->user->latestSubscription();
+
+        if (! $subscription || ! $subscription->plan) {
+            return;
+        }
+
+        $usageService = app(FeatureUsageService::class);
+
+        if (! $usageService->canUse($subscription, 'staff_limit')) {
+            throw new \Exception(__('teams.staff_limit_reached'));
+        }
+    }
+
+    protected function consumeStaffQuota(Store $store): void
+    {
+        $subscription = $store->user->latestSubscription();
+
+        if (! $subscription || ! $subscription->plan) {
+            return;
+        }
+
+        app(FeatureUsageService::class)->consume($subscription, 'staff_limit');
     }
 }

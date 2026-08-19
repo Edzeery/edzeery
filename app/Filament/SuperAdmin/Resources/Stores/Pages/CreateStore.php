@@ -47,7 +47,6 @@ class CreateStore extends CreateRecord
             ]);
 
             $store->theme()->create([
-                'theme' => $this->data['theme'] ?? 'default',
                 'primary_color' => $this->data['primary_color'] ?? '#000000',
                 'secondary_color' => $this->data['secondary_color'] ?? '#ffffff',
                 'font_family' => $this->data['font_family'] ?? 'Cairo',

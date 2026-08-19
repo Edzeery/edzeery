@@ -13,18 +13,21 @@ state([
     'brand_id' => '',
     'sortBy'   => 'newest',
     'sections' => [],
+    'section_content' => [],
 ]);
 
 mount(function (): void {
     $store = currentStore();
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'brands', 'social_proof'];
+    $this->section_content = $theme?->section_content ?? [];
 });
 
 $addToCart = function (string $variantId) {
     app(\App\Domains\Cart\Services\CartService::class)
         ->addItem(currentStoreId(), $variantId, 1);
     $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
+    $this->dispatch('cart-updated');
 };
 ?>
 
@@ -63,6 +66,7 @@ $addToCart = function (string $variantId) {
 
     {{-- Hero / Brand Header --}}
     @if(in_array('hero', $sections))
+    @php $hero = $section_content['hero'] ?? []; @endphp
     <section class="relative overflow-hidden text-white">
         <div class="absolute inset-0 store-gradient opacity-90"></div>
         @if($store->cover)
@@ -72,9 +76,9 @@ $addToCart = function (string $variantId) {
             @if($store->logo)
                 <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}" class="w-20 h-20 rounded-full mx-auto mb-6 object-cover border-4 border-white/20">
             @endif
-            <h1 class="text-4xl lg:text-5xl font-bold mb-4">{{ $store->name }}</h1>
-            @if($store->description)
-                <p class="text-lg text-white/80 max-w-2xl mx-auto">{{ $store->description }}</p>
+            <h1 class="text-4xl lg:text-5xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
+            @if($hero['description'] ?: $store->description)
+                <p class="text-lg text-white/80 max-w-2xl mx-auto">{{ $hero['description'] ?: $store->description }}</p>
             @endif
 
             {{-- Search --}}
@@ -95,9 +99,10 @@ $addToCart = function (string $variantId) {
 
     {{-- Brand Filter --}}
     @if(in_array('brands', $sections) && $brands->count())
+    @php $brandsContent = $section_content['brands'] ?? []; @endphp
     <section class="py-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{{ __('storefront.collections') }}</h2>
+            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{{ $brandsContent['title'] ?? __('storefront.collections') }}</h2>
             <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 <button
                     wire:click="$set('brand_id', '')"
@@ -152,9 +157,9 @@ $addToCart = function (string $variantId) {
                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                         >
                                     @else
-                                        <div class="w-full h-full flex items-center justify-center">
-                                            <ion-icon name="image-outline" class="text-4xl text-gray-400"></ion-icon>
-                                        </div>
+                                        <img src="{{ asset('img/icons/noimg.png') }}"
+                                            alt="{{ $product->name }}"
+                                            class="w-full h-full object-contain p-4 opacity-60">
                                     @endif
                                 </div>
                             </a>
@@ -170,7 +175,7 @@ $addToCart = function (string $variantId) {
                                     <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
                                     @if($product->variants->count() === 1)
                                         <button
-                                            wire:click="$wire.addToCart('{{ $product->variants->first()->id }}')"
+                                            wire:click="addToCart('{{ $product->variants->first()->id }}')"
                                             class="store-btn-primary text-white p-2 rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}"
                                         >

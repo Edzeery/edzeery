@@ -50,7 +50,9 @@ $updateQty = function (string $variantId, int $qty) {
             </span>
         @endif
     </button>
-
+    @php
+       $alignment = setRTL() ? 'left-0' : 'left';
+    @endphp
     {{-- Slide-over --}}
     <div
         x-show="open"
@@ -61,7 +63,7 @@ $updateQty = function (string $variantId, int $qty) {
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 translate-y-2"
-        class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50"
+        class="absolute {{ $alignment }} mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-50"
     >
         <div class="p-4">
             <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center justify-between">
@@ -86,7 +88,7 @@ $updateQty = function (string $variantId, int $qty) {
                                 @endif
                                 <div class="flex items-center gap-2 mt-1">
                                     <button
-                                        wire:click="$wire.updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] - 1 }})"
+                                        wire:click="updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] - 1 }})"
                                         class="w-6 h-6 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                                     >-</button>
                                     <span class="text-gray-700 dark:text-gray-200">{{ $item['quantity'] }}</span>

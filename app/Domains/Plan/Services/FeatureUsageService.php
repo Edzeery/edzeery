@@ -4,6 +4,7 @@ namespace App\Domains\Plan\Services;
 
 use App\Models\billing\Subscription;
 use App\Models\Plans\PlanFeature;
+use App\Models\Stores\Store;
 use Illuminate\Support\Facades\DB;
 
 class FeatureUsageService
@@ -37,6 +38,34 @@ class FeatureUsageService
         }
 
         return true;
+    }
+
+    /* ================= USAGE (for dashboard display) ================= */
+
+    public function usage(Store $store, string $featureSlug): int
+    {
+        return match ($featureSlug) {
+            'products_limit' =>
+                $store->products()->count(),
+
+            'staff_limit' =>
+                $store->memberships()
+                    ->where('user_id', '!=', $store->user_id)
+                    ->count(),
+
+            'daily_orders_limit' =>
+                $store->orders()
+                    ->whereDate('created_at', today())
+                    ->count(),
+
+            'delivery_agents_limit' =>
+                $store->memberships()
+                    ->whereHas('role', fn ($q) =>
+                        $q->where('key', 'delivery_agent')
+                    )->count(),
+
+            default => 0,
+        };
     }
 
     /* ================= CONSUME ================= */
@@ -98,6 +127,17 @@ class FeatureUsageService
     {
         $subscription->featureConsumptions()
             ->where('plan_feature_id', $feature->id)
+            ->update([
+                'consumption' => 0,
+                'expired_at' => now(),
+            ]);
+    }
+
+    /* ================= RESET ALL ================= */
+
+    public function resetAll(Subscription $subscription): void
+    {
+        $subscription->featureConsumptions()
             ->update([
                 'consumption' => 0,
                 'expired_at' => now(),

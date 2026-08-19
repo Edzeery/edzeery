@@ -27,6 +27,7 @@ $addToCart = function (string $variantId = null) {
     }
 
     $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
+    $this->dispatch('cart-updated');
 };
 ?>
 
@@ -72,8 +73,8 @@ $addToCart = function (string $variantId = null) {
                         </div>
                     @endif
                 @else
-                    <div class="aspect-square rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                        <ion-icon name="image-outline" class="text-6xl text-gray-300 dark:text-gray-600"></ion-icon>
+                    <div class="aspect-square rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                        <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-8 opacity-60">
                     </div>
                 @endif
             </div>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Account\SecurityController;
 use App\Http\Controllers\Account\SettingsController;
+use App\Http\Middleware\Merchant\Store\EnsureCanCreateStore;
 use App\Http\Middleware\Merchant\Store\EnsureHasStoreRole;
 use App\Http\Middleware\Merchant\Store\EnsureStoreIsActive;
 use App\Http\Middleware\Merchant\Store\EnsureStoreMembership;
@@ -33,7 +34,7 @@ Route::prefix('merchant/account')
 | Layer 2: Merchant — store-selection pages, no {store:slug}
 */
 Route::prefix('merchant')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', EnsureCanCreateStore::class])
     ->name('merchant.')
     ->group(function (): void {
         Volt::route('/create-store', 'merchant.create-store')->name('create-store');
