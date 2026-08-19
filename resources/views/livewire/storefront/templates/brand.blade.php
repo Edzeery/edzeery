@@ -76,7 +76,7 @@ $addToCart = function (string $variantId) {
                     <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}"
                         class="w-20 h-20 rounded-full mx-auto mb-6 object-cover border-4 border-white/20">
                 @endif
-                <h1 class="text-4xl lg:text-5xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
+                                    <h1 class="text-2xl sm:text-3xl lg:text-5xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
                 @if ($hero['description'] ?: $store->description)
                     <p class="text-lg text-white/80 max-w-2xl mx-auto">{{ $hero['description'] ?: $store->description }}
                     </p>
@@ -95,13 +95,22 @@ $addToCart = function (string $variantId) {
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
                         <ion-icon name="search-outline"
-                            class="absolute {{ $iconPosition }} top-\[70\%\] -translate-y-1/2
+                            class="absolute {{ $iconPosition }} top-1/2 -translate-y-1/2
                                 text-white/70 text-xl pointer-events-none"></ion-icon>
                     </div>
                 </div>
             </div>
         </section>
     @endif
+
+    {{-- Breadcrumb --}}
+    <nav class="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+            <li><a href="{{ route('storefront.home', ['store' => $store->slug]) }}" class="hover:text-gray-700 dark:hover:text-gray-200 transition">{{ $store->name }}</a></li>
+            <li class="text-gray-300 dark:text-gray-600">/</li>
+            <li class="text-gray-900 dark:text-white font-medium">{{ __('storefront.collections') }}</li>
+        </ol>
+    </nav>
 
     {{-- Brand Filter --}}
     @if (in_array('brands', $sections) && $brands->count())
@@ -179,14 +188,28 @@ $addToCart = function (string $variantId) {
                                     </p>
                                 @endif
                                 <div class="flex items-center justify-between mt-3">
-                                    <span
-                                        class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
+                                        @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
+                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
+                                            <span class="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                                -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if ($product->variants->count() === 1)
                                         <button wire:click="addToCart('{{ $product->variants->first()->id }}')"
-                                            class="store-btn-primary text-white p-2 rounded-lg transition text-sm"
+                                            wire:loading.attr="disabled" wire:loading.class="opacity-50"
+                                            class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}">
                                             <ion-icon name="cart-outline"></ion-icon>
                                         </button>
+                                    @elseif ($product->variants->count() > 1)
+                                        <a href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $product->slug]) }}"
+                                            class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
+                                            <ion-icon name="options-outline"></ion-icon>
+                                            {{ __('storefront.view_options') }}
+                                        </a>
                                     @endif
                                 </div>
                             </div>

@@ -2,8 +2,6 @@ import "./bootstrap";
 import "./swal.js";
 import "@iconify/iconify";
 
-import Alpine from "alpinejs";
-
 import ApexCharts from "apexcharts";
 
 // flatpickr
@@ -12,13 +10,12 @@ import "flatpickr/dist/flatpickr.min.css";
 // FullCalendar
 import { Calendar } from "@fullcalendar/core";
 
-window.Alpine = Alpine;
 window.ApexCharts = ApexCharts;
 window.flatpickr = flatpickr;
 window.FullCalendar = Calendar;
 
 document.addEventListener("alpine:init", () => {
-    Alpine.data("edzDirty", () => ({
+    window.Alpine.data("edzDirty", () => ({
         dirty: false,
         _snapshot: "",
         _formEl: null,
@@ -83,8 +80,6 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 });
-
-Alpine.start();
 
 import AOS from "aos";
 import "aos/dist/aos.css";

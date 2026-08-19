@@ -1,4 +1,4 @@
-<x-layouts.app :title="__('messages.select_store')">
+<x-layouts.guest :title="__('messages.select_store')">
 
     <div class="min-h-[70vh] flex items-center justify-center px-4">
 
@@ -19,19 +19,23 @@
             @endphp
 
             @if ($subscription && $maxStores)
-                <div class="mb-6 rounded-lg border border-surface-border bg-surface-secondary/50 p-4">
+                <div class="mb-6 rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-secondary dark:bg-dark-secondary p-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-ink">{{ __('stores.stores_used', ['used' => $effectiveUsage, 'max' => $isUnlimited ? '∞' : $maxStores]) }}</p>
+                            <p class="text-sm font-semibold text-ink">{{ __('stores.stores_used', ['used' => $effectiveUsage, 'max' => $isUnlimited ? '∞' : $maxStores]) }}</p>
                             <p class="mt-0.5 text-xs text-ink-muted">{{ __('plans.max_stores') }}: {{ $subscription->plan->name }}</p>
                         </div>
                         @if (! $canCreate)
-                            <a href="{{ route('merchant.billing') }}" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('stores.upgrade_plan') }}</a>
+                            <a href="{{ route('account.billing') }}"
+                               class="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 text-white text-xs font-semibold rounded-xl hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
+                                {{ __('stores.upgrade_plan') }}
+                            </a>
                         @endif
                     </div>
                     @if (! $isUnlimited && $maxStores > 0)
-                        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-border">
-                            <div class="h-full rounded-full bg-brand-600 transition-all" style="width: {{ min(100, ($effectiveUsage / (int) $maxStores) * 100) }}%"></div>
+                        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-border dark:bg-dark-border">
+                            <div class="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out"
+                                 style="width: {{ min(100, ($effectiveUsage / (int) $maxStores) * 100) }}%"></div>
                         </div>
                     @endif
                 </div>
@@ -40,16 +44,13 @@
             {{-- Create Store --}}
             @if ($canCreate)
                 <div class="mb-6 text-center">
-                    <x-nav-link href="{{ route('merchant.create-store') }}"
-                        class="inline-flex items-center gap-2 text-success hover:underline">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0
-                                  9 9 0 0 1 18 0Z" />
-                        </svg>
-
+                    <a href="{{ route('merchant.create-store') }}"
+                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-success-50 dark:bg-success-900/20 text-success-700 dark:text-success-300
+                              text-sm font-semibold rounded-xl border border-success-200 dark:border-success-800
+                              hover:bg-success-100 dark:hover:bg-success-900/30 transition-all duration-200">
+                        <ion-icon name="add-circle-outline" class="text-lg"></ion-icon>
                         {{ __('buttons.create') }} {{ __('buttons.new') }}
-                    </x-nav-link>
+                    </a>
                 </div>
             @endif
 
@@ -61,26 +62,21 @@
                         @csrf
 
                         <button type="submit"
-                            class="
-                                w-full flex items-center justify-between
-                                p-4 rounded-xl
-                                border border-neutral-border dark:border-dark-border
-                                bg-neutral-secondary dark:bg-dark-secondary
-                                hover:bg-brand-soft dark:hover:bg-accent-strong
-                                transition shadow-soft
-                            ">
+                            class="w-full flex items-center justify-between p-4 rounded-xl
+                                   border border-neutral-border dark:border-dark-border
+                                   bg-neutral-secondary dark:bg-dark-secondary
+                                   hover:border-brand-300 dark:hover:border-brand-600
+                                   hover:shadow-sm transition-all duration-200 group">
+
                             {{-- Store Info --}}
                             <div class="text-left space-y-1">
-                                <div class="font-semibold text-ink">
+                                <div class="font-semibold text-ink group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
                                     {{ $item->store->name }}
                                 </div>
-
                                 <div class="text-xs">
                                     <x-role-badge :role="$item->role" />
                                 </div>
-
                                 <x-status-badge domain="general" :status="$item->store->currentStatus()->getLabel()" />
-
                             </div>
 
                             {{-- Subscription --}}
@@ -88,21 +84,18 @@
                                 <div class="font-semibold text-ink">
                                     {{ $item->subscription?->plan?->name ?? '—' }}
                                 </div>
-
                                 @php
                                     $subStatus = $item->subscription?->status
                                         ?? App\Enums\SubscriptionPayment\StatusSubscriptionEnum::PENDING;
                                 @endphp
-
                                 <div class="text-xs">
                                     <x-status-badge domain="general" :status="$subStatus->getLabel()" />
                                 </div>
                             </div>
 
                             {{-- Arrow --}}
-                            <span class="text-brand font-bold text-lg">
-                                →
-                            </span>
+                            <ion-icon name="chevron-forward-outline"
+                                      class="text-lg text-brand-500 group-hover:translate-x-1 transition-transform duration-200"></ion-icon>
                         </button>
                     </form>
                 @endforeach
@@ -113,9 +106,12 @@
             <div class="mt-6 text-center">
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <x-danger-button class="text-sm">
+                    <button type="submit"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-ink-muted
+                                    hover:text-error-600 dark:hover:text-error-400 rounded-xl hover:bg-error-50 dark:hover:bg-error-900/10 transition-all duration-200">
+                        <ion-icon name="log-out-outline" class="text-base"></ion-icon>
                         {{ __('buttons.logout') }}
-                    </x-danger-button>
+                    </button>
                 </form>
             </div>
 
@@ -123,4 +119,4 @@
 
     </div>
 
-</x-layouts.app>
+</x-layouts.guest>

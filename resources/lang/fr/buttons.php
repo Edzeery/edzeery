@@ -44,6 +44,7 @@ return [
     'proceed' => 'Continuer',
     'processing' => 'Traitement...',
     'refresh' => 'Rafraîchir',
+    'register' => 'S\'inscrire',
     'reject' => 'Rejeter',
     'remove' => 'Retirer',
     'reset' => 'Réinitialiser',

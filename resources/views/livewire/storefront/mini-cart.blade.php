@@ -11,6 +11,7 @@ state([
     'items' => [],
     'subtotal' => 0,
     'count' => 0,
+    'alignment' => 'right-0',
 ]);
 
 mount(function (): void {
@@ -67,7 +68,7 @@ $updateQty = function (string $variantId, int $qty) {
             x-transition:leave="transition ease-in duration-150"
             x-transition:leave-start="translate-y-0 sm:opacity-100"
             x-transition:leave-end="translate-y-full sm:opacity-0"
-            class="fixed bottom-0 inset-x-0 sm:absolute sm:{{ $alignment }} sm:mt-2 sm:w-80 max-h-[85vh] bg-white dark:bg-gray-800 sm:rounded-xl rounded-t-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            class="fixed bottom-0 inset-x-0 sm:absolute sm:top-full sm:{{ $alignment }} sm:mt-2 sm:w-80 max-h-[85vh] bg-white dark:bg-gray-800 sm:rounded-xl rounded-t-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
             {{-- Drag handle (mobile only) --}}
             <div class="sm:hidden flex justify-center pt-3 pb-1">
                 <div class="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></div>

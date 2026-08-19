@@ -71,6 +71,8 @@ return [
     'powered_by'               => '.powered by',
     'added_to_cart'            => 'تمت الإضافة إلى السلة',
     'review_cart'              => 'عرض السلة',
+    'view_options'             => 'الخيارات',
+    'all_products'             => 'جميع المنتجات',
     'order_notes'              => 'ملاحظات الطلب',
     'failed_to_place_order'    => 'فشل في تثبيت الطلب. يرجى المحاولة مرة أخرى.',
     'your_store_link'          => 'رابط متجرك',

@@ -205,21 +205,21 @@ $submitOrder = function () {
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.name') }} *</label>
                         <input type="text" wire:model="name"
                             placeholder="{{ __('storefront.full_name') }}"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition" />
                         @error('name') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.phone') }} *</label>
                         <input type="text" wire:model="phone"
                             placeholder="0XXX XX XX XX"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition" />
                         @error('phone') <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.email') }}</label>
                         <input type="email" wire:model="email"
                             placeholder="{{ __('storefront.email_optional') }}"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition" />
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition" />
                     </div>
                 </div>
             </div>
@@ -239,7 +239,7 @@ $submitOrder = function () {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.state') }} *</label>
                         <select wire:model.live="state_id"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition">
                             <option value="">{{ __('storefront.select_state') }}</option>
                             @foreach($states as $state)
                                 <option value="{{ $state->id }}">{{ $state->name }}</option>
@@ -250,7 +250,7 @@ $submitOrder = function () {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
                         <select wire:model.live="city_id"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition">
                             <option value="">{{ __('storefront.select_city') }}</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->id }}">{{ $city->name }}</option>
@@ -263,14 +263,14 @@ $submitOrder = function () {
                         <div class="grid grid-cols-2 gap-3">
                             <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="home" class="peer sr-only">
-                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
+                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
                                     <ion-icon name="home-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
                                     <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.home_delivery') }}</p>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="stopdesk" class="peer sr-only">
-                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
+                                <div class="border-2 rounded-xl p-4 text-center peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
                                     <ion-icon name="location-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
                                     <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.stop_desk') }}</p>
                                 </div>
@@ -282,7 +282,7 @@ $submitOrder = function () {
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }} *</label>
                             <select wire:model="selectedStopdesk"
-                                class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition">
+                                class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition">
                                 <option value="">{{ __('storefront.select_point') }}</option>
                                 @foreach($stopdesks as $point)
                                     <option value="{{ $point->id }}">{{ $point->name }} — {{ $point->address }}</option>
@@ -296,14 +296,14 @@ $submitOrder = function () {
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.address') }}</label>
                         <textarea wire:model="address" rows="2"
                             placeholder="{{ __('storefront.address_placeholder') }}"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition"></textarea>
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition"></textarea>
                     </div>
 
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.notes') }}</label>
                         <textarea wire:model="notes" rows="2"
                             placeholder="{{ __('storefront.order_notes_optional') }}"
-                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition"></textarea>
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white shadow-sm focus:border-[var(--store-primary)] focus:ring-[var(--store-primary)] transition"></textarea>
                     </div>
                 </div>
             </div>

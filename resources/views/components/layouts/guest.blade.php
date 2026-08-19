@@ -28,38 +28,32 @@
 <body
     class="min-h-screen flex flex-col items-center justify-center
             bg-surface-bg
-              text-ink
-             transition-colors duration-300 antialiased">
+            text-ink
+            transition-colors duration-300 antialiased">
 
-    {{-- Subtle background decoration --}}
+    {{-- Background decorations --}}
     <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl"></div>
-        <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-accent-500/5 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-brand-400/5 blur-3xl"></div>
+        <div class="absolute top-1/3 left-1/4 w-64 h-64 rounded-full bg-brand-300/3 blur-2xl"></div>
     </div>
 
-    {{-- Top Controls: Language + Dark Mode --}}
-    <div class="absolute top-4
-    {{ $algin }}-4 flex items-center gap-2 z-50">
-        {{-- Language Switcher --}}
+    {{-- Top Controls --}}
+    <div class="absolute top-4 {{ $algin }}-4 flex items-center gap-2 z-50">
         <x-lang-switcher />
-
-        {{-- Dark Mode Toggle --}}
         <x-dark-toggle />
     </div>
 
-    <main class="w-full max-w-lg px-4 animate-fade-up">
+    <main class="w-full max-w-lg px-4 py-8 animate-fade-up">
 
         {{-- Brand --}}
-        <div class="text-center my-6">
-            <a href="{{ route('landing') }}" class="flex items-center justify-center gap-3">
-                <x-application-logo class="w-16 h-16 text-primary-600 dark:text-primary-400" />
-                <span class="font-bold text-2xl tracking-tight text-ink">
+        <div class="text-center mb-8">
+            <a href="{{ route('landing') }}" class="inline-flex items-center justify-center gap-3 group">
+                <x-application-logo class="w-12 h-12 text-brand-600 dark:text-brand-400 transition-transform duration-300 group-hover:scale-110" />
+                <span class="font-bold text-xl tracking-tight text-ink">
                     {{ config('app.name', 'Edzeery') }}
                 </span>
             </a>
-            <p class="text-sm text-ink-muted mt-2">
-                {{ __('auth.platform_subtitle') }}
-            </p>
         </div>
 
         {{-- Slot Content --}}

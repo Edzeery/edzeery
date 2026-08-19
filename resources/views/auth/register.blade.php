@@ -2,10 +2,9 @@
 
     <x-auth.card title="{{ __('messages.register_free') }}" subtitle="{{ __('auth.register_subtitle') }}">
 
-        {{-- Switcher (مثلاً للتسجيل كتاجر أو مستخدم) --}}
         <x-auth.switcher />
 
-        <form method="POST" action="{{ route('register') }}" class="space-y-6">
+        <form method="POST" action="{{ route('register') }}" class="space-y-5">
             @csrf
 
             {{-- Name --}}
@@ -40,30 +39,34 @@
             </div>
 
             {{-- Terms & Conditions --}}
-            <div class="flex items-start gap-2 text-sm">
-                <input id="terms" type="checkbox" name="terms" required
-                    class="mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900
-                           text-primary-600 shadow-sm focus:ring-primary-500 dark:focus:ring-offset-gray-800">
-                <label for="terms" class="text-gray-600 dark:text-gray-400">
+            <label class="flex items-start gap-2.5 cursor-pointer group">
+                <div class="relative mt-0.5">
+                    <input id="terms" type="checkbox" name="terms" required class="sr-only peer">
+                    <div class="w-5 h-5 rounded-md border-2 border-neutral-border dark:border-dark-border
+                                bg-neutral-surface dark:bg-dark-surface peer-checked:bg-brand-600 peer-checked:border-brand-600 transition-all duration-200"></div>
+                    <ion-icon name="checkmark-outline"
+                              class="absolute inset-0 m-auto w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></ion-icon>
+                </div>
+                <span class="text-sm text-ink-muted group-hover:text-ink transition">
                     {!! __('auth.accept_terms', [
-                        'terms' => '<a href="#" class="underline text-primary-600 dark:text-primary-400">Terms</a>',
-                        'privacy' => '<a href="#" class="underline text-primary-600 dark:text-primary-400">Privacy Policy</a>',
+                        'terms' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Terms</a>',
+                        'privacy' => '<a href="#" class="text-brand-600 dark:text-brand-400 hover:underline font-medium">Privacy Policy</a>',
                     ]) !!}
-                </label>
-            </div>
+                </span>
+            </label>
 
             {{-- Submit Button --}}
-
-            <div class="flex items-center justify-end mt-4">
-                <x-primary-button>
-                    {{ __('buttons.save') }}
+            <div class="pt-2">
+                <x-primary-button class="w-full justify-center">
+                    <ion-icon name="person-add-outline" class="text-lg"></ion-icon>
+                    {{ __('buttons.register') }}
                 </x-primary-button>
             </div>
 
-            {{-- Optional: Already have account --}}
-            <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+            {{-- Already have account --}}
+            <p class="text-center text-sm text-ink-muted mt-4">
                 {{ __('auth.have_account') }}
-                <a href="{{ route('login') }}" class="text-primary-600 dark:text-primary-400 underline">
+                <a href="{{ route('login') }}" class="text-brand-600 dark:text-brand-400 hover:text-brand-700 font-medium transition">
                     {{ __('buttons.login') }}
                 </a>
             </p>

@@ -7,6 +7,13 @@ use function Livewire\Volt\state;
 
 layout('components.layouts.storefront');
 
+state([
+    'product' => null,
+    'selectedVariant' => null,
+    'sections' => [],
+    'section_content' => [],
+]);
+
 mount(function (): void {
     $store = currentStore();
     $theme = $store->theme;
@@ -56,13 +63,6 @@ $addToCart = function (string $variantId = null) {
     $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
     $this->dispatch('cart-updated');
 };
-
-state([
-    'product' => null,
-    'selectedVariant' => null,
-    'sections' => [],
-    'section_content' => [],
-]);
 ?>
 
 <div>
@@ -77,7 +77,7 @@ state([
                     @if($product->brand)
                         <span class="inline-block text-sm font-semibold store-text-primary mb-3 uppercase tracking-wider">{{ $product->brand->name }}</span>
                     @endif
-                    <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
+                    <h1 class="text-2xl sm:text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
                         {{ $product->name }}
                     </h1>
                     @if($product->short_description ?? $product->description)
@@ -87,7 +87,7 @@ state([
                     @endif
 
                     <div class="flex items-baseline gap-3 mb-8">
-                        <span class="text-4xl font-bold store-text-primary">{{ currency($product->price) }}</span>
+                        <span class="text-2xl sm:text-3xl lg:text-4xl font-bold store-text-primary">{{ currency($product->price) }}</span>
                     </div>
 
                     {{-- Variant selector --}}

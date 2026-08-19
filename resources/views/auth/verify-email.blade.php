@@ -1,31 +1,32 @@
 <x-layouts.guest title="{{ __('auth.verify_email_notice') }}">
-    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
-    </div>
+    <x-auth.card title="{{ __('auth.verify_email_title') }}" subtitle="{{ __('auth.verify_email_notice') }}">
 
-    @if (session('status') == 'verification-link-sent')
-        <div class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
-            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
-        </div>
-    @endif
-
-    <div class="mt-4 flex items-center justify-between">
-        <form method="POST" action="{{ route('verification.send') }}">
-            @csrf
-
-            <div>
-                <x-primary-button>
-                    {{ __('Resend Verification Email') }}
-                </x-primary-button>
+        @if (session('status') == 'verification-link-sent')
+            <div class="mb-5 p-4 rounded-xl bg-success-50 dark:bg-success-900/20 text-sm font-medium text-success-700 dark:text-success-300
+                        flex items-center gap-2 border border-success-200 dark:border-success-800 animate-scale-in">
+                <ion-icon name="checkmark-circle-outline" class="text-xl flex-shrink-0"></ion-icon>
+                {{ __('auth.verification_link_sent') }}
             </div>
-        </form>
+        @endif
 
-        <form method="POST" action="{{ route('logout') }}">
+        <form method="POST" action="{{ route('verification.send') }}" class="space-y-4">
             @csrf
-
-            <button type="submit" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                {{ __('Log Out') }}
-            </button>
+            <x-primary-button class="w-full justify-center">
+                <ion-icon name="mail-outline" class="text-lg"></ion-icon>
+                {{ __('auth.resend_verification') }}
+            </x-primary-button>
         </form>
-    </div>
+
+        <div class="mt-5 pt-5 border-t border-neutral-border/50 dark:border-dark-border/50 text-center">
+            <form method="POST" action="{{ route('logout') }}" class="inline">
+                @csrf
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition font-medium">
+                    <ion-icon name="log-out-outline" class="text-base"></ion-icon>
+                    {{ __('buttons.logout') }}
+                </button>
+            </form>
+        </div>
+
+    </x-auth.card>
 </x-layouts.guest>

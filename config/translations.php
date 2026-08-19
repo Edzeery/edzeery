@@ -61,7 +61,7 @@ return [
     | translations from the files.
     |
     */
-    'source_language' => env('TRANSLATIONS_SOURCE_LANGUAGE', 'ar'),
+    'source_language' => env('TRANSLATIONS_SOURCE_LANGUAGE', 'en'),
 
     /*
     |--------------------------------------------------------------------------

@@ -8,7 +8,7 @@
         <x-nav-link
             :href="route($route)"
             :active="request()->routeIs($route)"
-            class="text-center py-2 rounded-lg text-sm font-semibold transition">
+            class="text-center py-2.5 rounded-lg text-sm font-semibold transition-all duration-200">
             {{ $label }}
         </x-nav-link>
 

@@ -36,7 +36,17 @@ $loadOrders = function () {
         });
     }
 
-    $this->orders = $query->orderByDesc('created_at')->paginate(15, ['*'], 'page', $this->page)->toArray();
+    $paginated = $query->orderByDesc('created_at')->paginate(15, ['*'], 'page', $this->page);
+
+    $service = app(\App\Domains\Order\Services\OrderService::class);
+    $ordersData = $paginated->toArray();
+    $ordersData['data'] = $paginated->getCollection()->map(function ($order) use ($service) {
+        $arr = $order->toArray();
+        $arr['transitions'] = $service->availableTransitions($order);
+        return $arr;
+    })->toArray();
+
+    $this->orders = $ordersData;
 };
 
 $setPage = function (int $page) {
@@ -161,8 +171,7 @@ $refreshOrders = function () {
                     <tbody class="divide-y divide-surface-100 dark:divide-ink-800">
                         @foreach($orders['data'] as $order)
                             @php
-                                $service = app(\App\Domains\Order\Services\OrderService::class);
-                                $transitions = $service->availableTransitions(Order::findOrFail($order['id']));
+                                $transitions = $order['transitions'] ?? [];
                             @endphp
                             <tr class="hover:bg-surface-50 dark:hover:bg-ink-800/50">
                                 <td class="px-4 py-3 font-mono font-semibold text-ink">

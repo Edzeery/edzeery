@@ -3,7 +3,7 @@
 
         {{-- Logo --}}
         <a href="{{ route('landing') }}" class="flex items-center gap-3">
-            <x-application-logo class="w-8 h-8 text-primary-600 dark:text-primary-400" />
+            <x-application-logo class="w-8 h-8 text-brand-600 dark:text-brand-400" />
             <span class="font-bold text-lg text-ink">
                 {{ config('app.name', 'Edzeery') }}
             </span>
@@ -40,7 +40,7 @@
                     </x-nav-link>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="text-red-500 hover:text-red-400 transition px-3 py-1">
+                        <button type="submit" class="text-error-500 hover:text-error-400 transition px-3 py-1">
                             {{ __('buttons.logout') }}
                         </button>
                     </form>
@@ -49,7 +49,7 @@
 
             {{-- Mobile Menu Button --}}
             <button @click="open = !open"
-                class="md:hidden p-2 rounded-md hover:bg-neutral-secondary-soft dark:hover:bg-dark-secondary transition">
+                class="md:hidden p-2 rounded-md hover:bg-neutral-secondary dark:hover:bg-dark-secondary transition">
                 <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -71,7 +71,7 @@
                 </x-nav-link>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="text-red-500 hover:text-red-400 transition px-3 py-1">
+                    <button type="submit" class="text-error-500 hover:text-error-400 transition px-3 py-1">
                         {{ __('buttons.logout') }}
                     </button>
                 </form>

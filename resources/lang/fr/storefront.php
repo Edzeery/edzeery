@@ -71,6 +71,8 @@ return [
     'powered_by'               => 'Propulsé par',
     'added_to_cart'            => 'Ajouté au panier',
     'review_cart'              => 'Voir votre panier',
+    'view_options'             => 'Options',
+    'all_products'             => 'Tous les produits',
     'order_notes'              => 'Notes de commande',
     'failed_to_place_order'    => 'Échec de la commande. Veuillez réessayer.',
     'your_store_link'          => 'Lien de votre boutique',

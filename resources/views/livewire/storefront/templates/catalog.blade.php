@@ -70,7 +70,7 @@ $addToCart = function (string $variantId) {
         @php $hero = $section_content['hero'] ?? []; @endphp
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h1 class="text-4xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
+                                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
                 <p class="text-lg text-white/80 mb-8">
                     {{ $hero['description'] ?: $store->description ?? __('storefront.browse_our_full_catalog') }}</p>
 
@@ -97,6 +97,15 @@ $addToCart = function (string $variantId) {
 
     {{-- Categories --}}
     @if (in_array('categories', $sections))
+
+        {{-- Breadcrumb --}}
+        <nav class="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                <li><a href="{{ route('storefront.home', ['store' => $store->slug]) }}" class="hover:text-gray-700 dark:hover:text-gray-200 transition">{{ $store->name }}</a></li>
+                <li class="text-gray-300 dark:text-gray-600">/</li>
+                <li class="text-gray-900 dark:text-white font-medium">{{ __('storefront.all_products') }}</li>
+            </ol>
+        </nav>
 
         @if ($categories->count())
             <section class="py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -169,14 +178,28 @@ $addToCart = function (string $variantId) {
                                         {{ $product->brand->name }}</p>
                                 @endif
                                 <div class="flex items-center justify-between mt-3">
-                                    <span
-                                        class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
+                                        @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
+                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
+                                            <span class="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                                -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if ($product->variants->count() === 1)
                                         <button wire:click="addToCart('{{ $product->variants->first()->id }}')"
-                                            class="store-btn-primary text-white p-2 rounded-lg transition text-sm"
+                                            wire:loading.attr="disabled" wire:loading.class="opacity-50"
+                                            class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}">
                                             <ion-icon name="cart-outline"></ion-icon>
                                         </button>
+                                    @elseif ($product->variants->count() > 1)
+                                        <a href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $product->slug]) }}"
+                                            class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
+                                            <ion-icon name="options-outline"></ion-icon>
+                                            {{ __('storefront.view_options') }}
+                                        </a>
                                     @endif
                                 </div>
                             </div>
