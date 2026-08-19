@@ -33,7 +33,7 @@
         x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100"
         x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute right-0 mt-[17px]
+        class="absolute {{ $alignment  }} mt-[17px]
         flex w-[260px] flex-col
         rounded-2xl
          border border-neutral-border dark:border-dark-border

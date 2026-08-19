@@ -27,7 +27,7 @@
         <!-- Notification Badge -->
         <span
             x-show="notifying"
-            class="absolute right-0 top-0.5 z-1 h-2 w-2 rounded-full bg-orange-400"
+            class="absolute   {{ $alignment  }} top-0.5 z-1 h-2 w-2 rounded-full bg-orange-400"
         >
             <span
                 class="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 -z-1 animate-ping"
@@ -61,7 +61,7 @@
         x-transition:leave="transition ease-in duration-75"
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
-        class="absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-[361px] lg:right-0"
+        class="absolute -right-[240px] mt-[17px] flex h-[480px] w-[350px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:w-[361px] lg:{{ $alignment  }}"
         style="display: none;"
     >
         <!-- Dropdown Header -->
@@ -183,7 +183,7 @@
                         <span class="relative block w-full h-10 rounded-full z-1 max-w-10">
                             <img src="{{ $notification['userImage'] }}" alt="User" class="overflow-hidden rounded-full" />
                             <span
-                                class="absolute bottom-0 right-0 z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white dark:border-gray-900 {{ $notification['status'] === 'online' ? 'bg-success-500' : 'bg-error-500' }}"
+                                class="absolute bottom-0 {{ $alignment  }} z-10 h-2.5 w-full max-w-2.5 rounded-full border-[1.5px] border-white dark:border-gray-900 {{ $notification['status'] === 'online' ? 'bg-success-500' : 'bg-error-500' }}"
                             ></span>
                         </span>
 

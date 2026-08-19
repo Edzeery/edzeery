@@ -56,6 +56,7 @@ $addToCart = function (string $variantId = null) {
                                 src="{{ asset('storage/' . $img->path) }}"
                                 alt="{{ $product->name }}"
                                 class="w-full h-full object-cover"
+                                onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
                             >
                         @endforeach
                     </div>
@@ -67,7 +68,7 @@ $addToCart = function (string $variantId = null) {
                                     :class="active === {{ $i }} ? 'ring-2 ring-offset-2 store-border-primary' : 'ring-1 ring-gray-200 dark:ring-gray-700'"
                                     class="shrink-0 w-20 h-20 rounded-lg overflow-hidden ring-offset-white dark:ring-offset-gray-900"
                                 >
-                                    <img src="{{ asset('storage/' . $img->path) }}" alt="" class="w-full h-full object-cover">
+                                    <img src="{{ asset('storage/' . $img->path) }}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'">
                                 </button>
                             @endforeach
                         </div>

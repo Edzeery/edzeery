@@ -316,7 +316,7 @@ class DemoStoreSeeder extends Seeder
 
             if (! $product->images()->exists()) {
                 $product->images()->create([
-                    'path'       => "demo/{$product->slug}.jpg",
+                    'path'       => 'img/icons/noimg.png',
                     'store_id'   => $store->id,
                     'sort_order' => 0,
                     'is_primary' => true,

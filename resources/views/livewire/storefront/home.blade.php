@@ -15,10 +15,12 @@ mount(function (): void {
     $store = currentStore();
     $this->template = $store->landing_template?->value ?? LandingTemplateEnum::SINGLE_PRODUCT->value;
 });
+
+
 ?>
 
 <div>
-    @if($template === 'single_product')
+    @if ($template === 'single_product')
         @livewire('storefront.templates.single-product')
     @elseif($template === 'catalog')
         @livewire('storefront.templates.catalog')

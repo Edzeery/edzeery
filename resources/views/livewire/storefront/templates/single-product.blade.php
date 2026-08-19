@@ -136,6 +136,7 @@ state([
                             src="{{ asset('storage/' . $product->images->first()->path) }}"
                             alt="{{ $product->name }}"
                             class="rounded-2xl shadow-2xl w-full object-cover aspect-square"
+                            onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
                         >
                     @else
                         <div class="rounded-2xl shadow-2xl bg-gray-200 dark:bg-gray-700 w-full aspect-square flex items-center justify-center overflow-hidden">

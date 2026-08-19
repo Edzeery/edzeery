@@ -42,6 +42,10 @@ class LoginRedirectService
             return route('merchant.choose-store');
         }
 
+        if ($user->isMerchant() && $user->hasRole('merchant')) {
+            return route('merchant.create-store');
+        }
+
         return route('merchant.choose-store');
     }
 }

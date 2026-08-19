@@ -46,9 +46,12 @@ class AppServiceProvider extends ServiceProvider
             $view->with('lang',  getCurrentLocale());
             $view->with('languages',  getLanguages() ?? []);
             $view->with('isRtl',  isRtl());
+            $view->with('alignment',  isRTL() ? 'left-0' : 'right-0');
+            $view->with('iconPosition', isRTL() ? 'left-4' : 'right-4');
             $view->with('dir',  setRTL());
             $view->with('algin',  algin());
         });
+
 
         // 🔤 إعداد اللغات
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {
@@ -63,7 +66,7 @@ class AppServiceProvider extends ServiceProvider
 
             ;
         });
- 
+
         Store::observe(StoreObserver::class);
         Product::observe(ProductObserver::class);
         Order::observe(OrderObserver::class);
@@ -71,6 +74,5 @@ class AppServiceProvider extends ServiceProvider
         Subscription::observe(SubscriptionObserver::class);
 
         Paginator::useBootstrapFive();
-
     }
 }

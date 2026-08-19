@@ -39,8 +39,7 @@ class SetLocale
         setcookie('lang', $locale, time() + (365 * 24 * 60 * 60), '/');
 
         App::setLocale($locale);
-        //   dd( membershipRole());
-        // dd(app()->getLocale());
+        
         return $next($request);
     }
 }

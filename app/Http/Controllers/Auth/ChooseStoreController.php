@@ -27,7 +27,9 @@ class ChooseStoreController extends Controller
         // 3) Merge + deduplicate
         $storeIds = $ownedStoreIds->merge($memberStoreIds)->unique();
 
-        abort_if($storeIds->isEmpty(), 403);
+        if ($storeIds->isEmpty()) {
+            return redirect()->route('merchant.create-store');
+        }
 
         // 4) Build a clean collection: store + role + membership
         $stores = Store::whereIn('id', $storeIds)

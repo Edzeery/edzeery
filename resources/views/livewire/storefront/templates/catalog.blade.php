@@ -71,16 +71,24 @@ $addToCart = function (string $variantId) {
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                 <h1 class="text-4xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
-                <p class="text-lg text-white/80 mb-8">{{ $hero['description'] ?: ($store->description ?? __('storefront.browse_our_full_catalog')) }}</p>
+                <p class="text-lg text-white/80 mb-8">
+                    {{ $hero['description'] ?: $store->description ?? __('storefront.browse_our_full_catalog') }}</p>
 
                 {{-- Search --}}
                 <div class="max-w-xl mx-auto">
-                    <div class="relative">
+                    <div class="relative w-full">
                         <input type="text" wire:model.live.debounce.300ms="search"
                             placeholder="{{ __('storefront.search_products') }}"
-                            class="w-full px-5 py-3 pl-12 rounded-full bg-white/20 backdrop-blur-sm text-white placeholder-white/60 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50">
+                            class="w-full px-5 py-3
+                                 {{ isRTL() ? 'pr-12 pl-5' : 'pl-12 pr-5' }}
+                                 rounded-full bg-white/20 backdrop-blur-sm
+                                 text-white placeholder-white/60
+                                 border border-white/30
+                                 focus:outline-none focus:ring-2 focus:ring-white/50">
+
                         <ion-icon name="search-outline"
-                            class="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 text-xl"></ion-icon>
+                                             class="absolute {{ $iconPosition }} top-1/2 -translate-y-1/2
+                                text-white/70 text-xl pointer-events-none"></ion-icon>
                     </div>
                 </div>
             </div>
@@ -141,10 +149,10 @@ $addToCart = function (string $variantId) {
                                     @if ($product->images->count())
                                         <img src="{{ asset('storage/' . $product->images->first()->path) }}"
                                             alt="{{ $product->name }}"
-                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                            onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'">
                                     @else
-                                        <img src="{{ asset('img/icons/noimg.png') }}"
-                                            alt="{{ $product->name }}"
+                                        <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}"
                                             class="w-full h-full object-contain p-4 opacity-60">
                                     @endif
                                 </div>
