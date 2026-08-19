@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\User\Services\SubscriptionGuardService;
 use App\Enums\Store\ProductOptionInputType;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Brand;
@@ -47,6 +48,62 @@ use Livewire\Features\SupportFileUploads\WithFileUploads;
 <?php $component = $__componentOriginale221d74fa526b0c5591d586097923f1d; ?>
 <?php unset($__componentOriginale221d74fa526b0c5591d586097923f1d); ?>
 <?php endif; ?>
+
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $this->hasActiveSubscription): ?>
+        <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-4 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
+            <div class="flex items-start gap-3">
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'exclamation-triangle','class' => 'mt-0.5 h-5 w-5 flex-shrink-0 text-warning-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'exclamation-triangle','class' => 'mt-0.5 h-5 w-5 flex-shrink-0 text-warning-500']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                <div>
+                    <p class="font-semibold"><?php echo e(__('messages.subscription_required')); ?></p>
+                    <p class="mt-1"><?php echo e(__('messages.subscription_expired_text')); ?></p>
+                    <a href="<?php echo e(route('account.billing')); ?>" wire:navigate
+                       class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-warning-700 underline hover:text-warning-900 dark:text-warning-400 dark:hover:text-warning-200">
+                        <?php echo e(__('messages.go_to_billing')); ?>
+
+                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-right','class' => 'h-4 w-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'arrow-right','class' => 'h-4 w-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                    </a>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($errors->any()): ?>
         <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
@@ -761,7 +818,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         x-show="step < 5"
                         @click="$wire.nextStep()"
                         wire:loading.attr="disabled"
-                        class="edz-btn edz-btn--primary">
+                        :disabled="! $wire.hasActiveSubscription"
+                        class="edz-btn edz-btn--primary"
+                        :class="{ 'opacity-50 cursor-not-allowed': ! $wire.hasActiveSubscription }">
                     <span wire:loading.remove><?php echo e(__('buttons.next')); ?></span>
                     <span wire:loading class="inline-flex items-center gap-1">
                         <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg>
@@ -793,14 +852,15 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <button type="submit"
                         x-show="step === 5"
                         wire:loading.attr="disabled"
-                        class="edz-btn edz-btn--primary">
+                        :disabled="! $wire.hasActiveSubscription"
+                        class="edz-btn edz-btn--primary"
+                        :class="{ 'opacity-50 cursor-not-allowed': ! $wire.hasActiveSubscription }">
                     <span wire:loading.remove><?php echo e(__('products.save_product')); ?></span>
                     <span wire:loading class="inline-flex items-center gap-1">
                         <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" class="opacity-75"></path></svg>
                         <?php echo e(__('buttons.processing')); ?>
 
                     </span>
-                </button>
                 </button>
             </div>
         </div>

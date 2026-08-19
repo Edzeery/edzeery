@@ -77,4 +77,13 @@ return [
     'cannot_delete_variant_value' => 'Cette valeur est utilisée dans les variantes et ne peut pas être supprimée.',
     'cannot_delete_option' => 'Cette option est utilisée dans les variantes du produit et ne peut pas être supprimée.',
     'cannot_delete_options' => 'Certaines options sont utilisées dans les variantes du produit et ne peuvent pas être supprimées.',
+    'subscription' => 'Abonnement',
+    'trial' => 'Essai',
+    'active' => 'Actif',
+    'inactive' => 'Inactif',
+    'expired' => 'Expiré',
+    'no_subscription' => 'Pas d\'abonnement actif',
+    'days_remaining' => 'jours restants',
+    'expires' => 'Expire',
+    'manage_plan' => 'Gérer le forfait',
 ];

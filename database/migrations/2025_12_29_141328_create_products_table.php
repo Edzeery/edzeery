@@ -187,13 +187,14 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->morphs('imageable'); // Product | ProductVariant
+            $table->string('imageable_type');
+            $table->ulid('imageable_id');
+            $table->index(['imageable_type', 'imageable_id']);
 
             $table->string('path');
             $table->boolean('is_primary')->default(false);
             $table->integer('sort_order')->default(0);
 
-            $table->index(['store_id', 'imageable_type', 'imageable_id']);
             $table->timestamps();
         });
 

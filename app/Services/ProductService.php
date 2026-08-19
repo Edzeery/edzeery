@@ -17,14 +17,14 @@ class ProductService
         $subscription = auth()->user()->latestSubscription();
 
         if (!$subscription) {
-            throw new \DomainException('No active subscription.');
+            throw new \DomainException(__('messages.subscription_required'));
         }
 
         $featureService = app(\App\Domains\Plan\Services\FeatureUsageService::class);
 
         // ✅ تحقق قبل أي عملية
         if (!$featureService->canUse($subscription, 'products_limit')) {
-            throw new \DomainException('You have reached your product limit.');
+            throw new \DomainException(__('messages.product_limit_reached'));
         }
 
         return DB::transaction(function () use ($data, $store, $featureService, $subscription) {

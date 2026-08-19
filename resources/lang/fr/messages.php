@@ -166,6 +166,7 @@ return [
     'stay' => 'Rester',
     'confirm_order_action' => 'Êtes-vous sûr de vouloir :action cette commande ?',
     'subscription_required' => 'Abonnement actif requis',
-    'subscription_expired_text' => 'Vous avez besoin d\'un abonnement actif pour créer ou modifier des produits. Veuillez renouveler votre forgun pour continuer.',
+    'subscription_expired_text' => 'Vous avez besoin d\'un abonnement actif pour créer ou modifier des produits. Veuillez renouveler votre forfait pour continuer.',
     'go_to_billing' => 'Aller à la facturation',
+    'product_limit_reached' => 'Vous avez atteint la limite de produits. Veuillez mettre à niveau votre forfait.',
 ];

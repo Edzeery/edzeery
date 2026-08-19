@@ -11,13 +11,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-    public $items;
+    public $product;
 
-    public $subtotal;
+    public $selectedVariant;
 
-    public $count;
-
-    public $isOpen;
+    public $sections;
 
     public function mount(): void
     {
@@ -26,25 +24,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
     }
 
-    public function refreshCart()
+    public function addToCart(?string $variantId = NULL)
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('refreshCart'))->execute(...$arguments);
-    }
-
-    public function removeItem(string $variantId)
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('removeItem'))->execute(...$arguments);
-    }
-
-    public function updateQty(string $variantId, int $qty)
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('updateQty'))->execute(...$arguments);
+        return (new Actions\CallMethod('addToCart'))->execute(...$arguments);
     }
 
 };

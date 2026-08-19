@@ -189,4 +189,5 @@ Unlock advanced features, boost productivity, and grow with confidence.',
     'subscription_required' => 'Active Subscription Required',
     'subscription_expired_text' => 'You need an active subscription to create or edit products. Please renew your plan to continue.',
     'go_to_billing' => 'Go to Billing',
+    'product_limit_reached' => 'You have reached your product limit. Please upgrade your plan.',
 ];

@@ -11,32 +11,26 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-    public $name;
+    public $search;
 
-    public $email;
+    public $category_id;
 
-    public $phone;
+    public $sortBy;
 
-    public $address;
+    public $sections;
 
-    public $birthdate;
-
-    public $country;
-
-    public $countries;
-
-    public function mount(\App\Domains\Account\Actions\Profile\GetProfileAction $action): void
+    public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
 
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
     }
 
-    public function updateProfile(\App\Http\Requests\Account\Profile\UpdateProfileRequest $request, \App\Domains\Account\Services\AccountService $service): void
+    public function addToCart(string $variantId)
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        (new Actions\CallMethod('updateProfile'))->execute(...$arguments);
+        return (new Actions\CallMethod('addToCart'))->execute(...$arguments);
     }
 
 };

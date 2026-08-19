@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             InvoiceSeeder::class,
             InvoiceTemplateSeeder::class,
             ContributorSeeder::class,
+            DemoStoreSeeder::class,
         ]);
     }
 }

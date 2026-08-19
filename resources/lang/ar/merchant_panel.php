@@ -79,4 +79,13 @@ return [
     'cannot_delete_variant_value' => 'هذه القيمة مستخدمة في المتغيرات ولا يمكن حذفها.',
     'cannot_delete_option' => 'هذا الخيار مستخدم في متغيرات المنتج ولا يمكن حذفه.',
     'cannot_delete_options' => 'بعض الخيارات مستخدمة في متغيرات المنتج ولا يمكن حذفها.',
+    'subscription' => 'الاشتراك',
+    'trial' => 'فترة تجريبية',
+    'active' => 'نشط',
+    'inactive' => 'غير نشط',
+    'expired' => 'منتهي',
+    'no_subscription' => 'لا يوجد اشتراك نشط',
+    'days_remaining' => 'يوم متبقي',
+    'expires' => 'ينتهي',
+    'manage_plan' => 'إدارة الخطط',
 ];

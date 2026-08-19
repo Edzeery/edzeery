@@ -77,4 +77,13 @@ return [
     'cannot_delete_variant_value' => 'Este valor se usa en variantes y no se puede eliminar.',
     'cannot_delete_option' => 'Esta opción se usa en variantes de productos y no se puede eliminar.',
     'cannot_delete_options' => 'Algunas opciones se usan en variantes de productos y no se pueden eliminar.',
+    'subscription' => 'Suscripción',
+    'trial' => 'Prueba',
+    'active' => 'Activa',
+    'inactive' => 'Inactiva',
+    'expired' => 'Expirada',
+    'no_subscription' => 'Sin suscripción activa',
+    'days_remaining' => 'días restantes',
+    'expires' => 'Expira',
+    'manage_plan' => 'Gestionar Plan',
 ];

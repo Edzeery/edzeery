@@ -14,27 +14,27 @@ class EnsureStoreIsActive
 
         $latestStatusHistory = $store->latestStatus();
 
-        if (
-            $latestStatusHistory
-            && in_array($latestStatusHistory->status, [
-                StoreStatusEnum::PENDING,
-                StoreStatusEnum::CLOSED,
-                StoreStatusEnum::SUSPENDED,
-            ], true)
-        ) {
-            if (! $request->routeIs('account.billing')) {
-                return redirect()->route('account.billing');
-            }
-        }
+        // if (
+        //     $latestStatusHistory
+        //     && in_array($latestStatusHistory->status, [
+        //         StoreStatusEnum::PENDING,
+        //         StoreStatusEnum::CLOSED,
+        //         StoreStatusEnum::SUSPENDED,
+        //     ], true)
+        // ) {
+        //     if (! $request->routeIs('account.billing')) {
+        //         return redirect()->route('account.billing');
+        //     }
+        // }
 
         $subscription = user()?->latestSubscription();
 
-        if (! $subscription || ! $subscription->isActive()) {
-            if (! $request->routeIs('account.billing')) {
-                return redirect()->route('account.billing')
-                    ->with('subscription_warning', true);
-            }
-        }
+        // if (! $subscription || (! $subscription->isActive() && ! $subscription->onTrial())) {
+        //     if (! $request->routeIs('account.billing')) {
+        //         return redirect()->route('account.billing')
+        //             ->with('subscription_warning', true);
+        //     }
+        // }
 
         return $next($request);
     }

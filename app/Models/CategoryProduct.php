@@ -13,7 +13,9 @@ class CategoryProduct extends Pivot
     protected static function booted()
     {
         static::creating(function ($model) {
-            $model->store_id = currentStore()->id;
+            if (! $model->store_id && currentStore()) {
+                $model->store_id = currentStore()->id;
+            }
         });
     }
 }

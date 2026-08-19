@@ -8,10 +8,9 @@ use function Livewire\Volt\state;
 layout('components.layouts.storefront');
 
 state([
-    'items'     => [],
-    'subtotal'  => 0,
-    'count'     => 0,
-    'isOpen'    => false,
+    'items'    => [],
+    'subtotal' => 0,
+    'count'    => 0,
 ]);
 
 mount(function (): void {
@@ -38,7 +37,7 @@ $updateQty = function (string $variantId, int $qty) {
 };
 ?>
 
-<div x-data="{ open: @entangle('isOpen') }" class="relative">
+<div x-data="{ open: false }" class="relative">
     {{-- Trigger --}}
     <button
         x-on:click="open = !open"
@@ -66,12 +65,16 @@ $updateQty = function (string $variantId, int $qty) {
     >
         <div class="p-4">
             <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center justify-between">
-                <span>{{ __('Cart') }}</span>
-                <span class="text-sm font-normal text-gray-500">{{ $count }} {{ __('items') }}</span>
+                <span>{{ __('storefront.cart') }}</span>
+                <span class="text-sm font-normal text-gray-500">{{ $count }} {{ __('storefront.items') }}</span>
             </h3>
 
             @if($count === 0)
-                <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">{{ __('Your cart is empty') }}</p>
+                <div class="py-8 text-center">
+                    <ion-icon name="bag-outline" class="text-5xl text-gray-300 dark:text-gray-600 mb-3"></ion-icon>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('storefront.your_cart_is_empty') }}</p>
+                    <button x-on:click="open = false" class="mt-3 text-sm font-medium store-text-primary hover:underline">{{ __('storefront.back_to_store') }}</button>
+                </div>
             @else
                 <div class="space-y-3 max-h-60 overflow-y-auto">
                     @foreach($items as $item)
@@ -97,9 +100,9 @@ $updateQty = function (string $variantId, int $qty) {
                                 <p class="font-semibold text-gray-900 dark:text-white">{{ currency($item['price'] * $item['quantity']) }}</p>
                                 <button
                                     x-data
-                                    @click.prevent="if (await EdzSwal.confirmAction('{{ __('Remove') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.removeItem('{{ $item['variant_id'] }}')"
+                                    @click.prevent="if (await EdzSwal.confirmAction('{{ __('storefront.remove') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.removeItem('{{ $item['variant_id'] }}')"
                                     class="text-xs text-red-500 hover:text-red-700 mt-1"
-                                >{{ __('Remove') }}</button>
+                                >{{ __('storefront.remove') }}</button>
                             </div>
                         </div>
                     @endforeach
@@ -107,14 +110,14 @@ $updateQty = function (string $variantId, int $qty) {
 
                 <div class="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
                     <div class="flex justify-between font-semibold text-gray-900 dark:text-white">
-                        <span>{{ __('Subtotal') }}</span>
+                        <span>{{ __('storefront.subtotal') }}</span>
                         <span>{{ currency($subtotal) }}</span>
                     </div>
                     <a
                         href="{{ route('storefront.checkout', ['store' => currentStore()->slug]) }}"
-                        class="mt-3 block w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition"
+                        class="mt-3 block w-full text-center store-btn-primary text-white font-semibold py-2.5 px-4 rounded-lg transition"
                     >
-                        {{ __('Checkout') }}
+                        {{ __('storefront.checkout') }}
                     </a>
                 </div>
             @endif

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\User\Services\SubscriptionGuardService;
 use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Stores\Team\StoreMembership;
@@ -7,6 +8,8 @@ use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
 layout('components.layouts.store');
+
+$subscriptionGuard = app(SubscriptionGuardService::class);
 
 with([
     'userName' => user()?->name ?? __('merchant_panel.guest'),
@@ -35,6 +38,10 @@ with([
         ->orderBy('stock')
         ->take(5)
         ->get(),
+    'subscription' => $subscriptionGuard->getSubscription(),
+    'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
+    'subscriptionStatus' => $subscriptionGuard->statusLabel(),
+    'daysRemaining' => $subscriptionGuard->daysRemaining(),
 ]);
 ?>
 
@@ -126,6 +133,49 @@ with([
                         {{ __('storefront.visit_store') }}
                     </a>
                 @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="edz-card edz-card--padded mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="flex-shrink-0 w-10 h-10 rounded-lg {{ $hasActiveSubscription ? 'bg-success-50 dark:bg-success-900/20 text-success-600 dark:text-success-400' : 'bg-warning-50 dark:bg-warning-900/20 text-warning-600 dark:text-warning-400' }} flex items-center justify-center">
+                    <x-edz.icon name="credit-card" class="w-5 h-5" />
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.subscription') }}</p>
+                    <p class="text-xs text-ink-400">
+                        @if ($subscription)
+                            {{ $subscription->plan?->name ?? '-' }}
+                            @if ($hasActiveSubscription)
+                                ·
+                                @if ($subscription->onTrial())
+                                    {{ __('merchant_panel.trial') }}
+                                    @if ($daysRemaining !== null)
+                                        ({{ $daysRemaining }} {{ __('merchant_panel.days_remaining') }})
+                                    @endif
+                                @else
+                                    {{ __('merchant_panel.active') }}
+                                    @if ($subscription->ends_at)
+                                        · {{ __('merchant_panel.expires') }} {{ $subscription->ends_at->format('Y-m-d') }}
+                                    @endif
+                                @endif
+                            @else
+                                · {{ __('merchant_panel.expired') }}
+                            @endif
+                        @else
+                            {{ __('merchant_panel.no_subscription') }}
+                        @endif
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <x-merchant.status domain="stores" :status="$hasActiveSubscription ? 'active' : 'suspended'" />
+                <a href="{{ route('account.billing') }}" wire:navigate
+                   class="edz-btn edz-btn--secondary edz-btn--sm">
+                    {{ $hasActiveSubscription ? __('merchant_panel.manage_plan') : __('messages.go_to_billing') }}
+                </a>
             </div>
         </div>
     </div>

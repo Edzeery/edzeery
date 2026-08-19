@@ -168,4 +168,5 @@ return [
     'subscription_required' => 'Se requiere suscripción activa',
     'subscription_expired_text' => 'Necesitas una suscripción activa para crear o editar productos. Por favor renueva tu plan para continuar.',
     'go_to_billing' => 'Ir a facturación',
+    'product_limit_reached' => 'Has alcanzado el límite de productos. Por favor actualiza tu plan.',
 ];

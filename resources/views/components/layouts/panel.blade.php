@@ -53,6 +53,19 @@
 
             <main class="edz-shell__content">
                 <div class="edz-shell__inner">
+                    @if ($context === 'store' && user() && ! app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription())
+                        <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
+                            <div class="flex items-center gap-3">
+                                <x-edz.icon name="exclamation-triangle" class="h-5 w-5 flex-shrink-0 text-warning-500" />
+                                <span class="flex-1">{{ __('messages.subscription_expired_text') }}</span>
+                                <a href="{{ route('account.billing') }}" wire:navigate
+                                   class="edz-btn edz-btn--warning edz-btn--sm flex-shrink-0">
+                                    {{ __('messages.go_to_billing') }}
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
                     @isset($header)
                         {{ $header }}
                     @else

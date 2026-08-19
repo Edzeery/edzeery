@@ -11,11 +11,7 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-    public $stores;
-
-    public $canCreate;
-
-    public function mount(\App\Domains\Merchant\Actions\GetStoreCardsAction $action): void
+    public function mount()
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
 

@@ -175,7 +175,7 @@ $submitOrder = function () {
 
 <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
-        {{ __('Checkout') }}
+        {{ __('storefront.checkout') }}
     </h1>
 
     @php
@@ -194,20 +194,20 @@ $submitOrder = function () {
 
             {{-- Customer Info --}}
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('Customer Information') }}</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.customer_information') }}</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Name') }} *</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.name') }} *</label>
                         <input type="text" wire:model="name" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                         @error('name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Phone') }} *</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.phone') }} *</label>
                         <input type="text" wire:model="phone" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                         @error('phone') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Email') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.email') }}</label>
                         <input type="email" wire:model="email" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                     </div>
                 </div>
@@ -215,12 +215,12 @@ $submitOrder = function () {
 
             {{-- Delivery --}}
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('Delivery Information') }}</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.delivery_information') }}</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('State') }} *</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.state') }} *</label>
                         <select wire:model.live="state_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">{{ __('Select State') }}</option>
+                            <option value="">{{ __('storefront.select_state') }}</option>
                             @foreach($states as $state)
                                 <option value="{{ $state->id }}">{{ $state->name }}</option>
                             @endforeach
@@ -228,9 +228,9 @@ $submitOrder = function () {
                         @error('state_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('City') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.city') }}</label>
                         <select wire:model.live="city_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">{{ __('Select City') }}</option>
+                            <option value="">{{ __('storefront.select_city') }}</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->id }}">{{ $city->name }}</option>
                             @endforeach
@@ -239,20 +239,20 @@ $submitOrder = function () {
 
                     {{-- Delivery Type --}}
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('Delivery Type') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.delivery_type') }}</label>
                         <div class="flex gap-4">
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="home" class="peer sr-only">
                                 <div class="border-2 rounded-lg p-3 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
                                     <ion-icon name="home-outline" class="text-xl text-gray-600 dark:text-gray-300"></ion-icon>
-                                    <p class="text-sm mt-1 font-medium">{{ __('Home Delivery') }}</p>
+                                    <p class="text-sm mt-1 font-medium">{{ __('storefront.home_delivery') }}</p>
                                 </div>
                             </label>
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="stopdesk" class="peer sr-only">
                                 <div class="border-2 rounded-lg p-3 text-center peer-checked:border-indigo-500 peer-checked:bg-indigo-50 dark:peer-checked:bg-indigo-900/30 border-gray-200 dark:border-gray-600 transition">
                                     <ion-icon name="location-outline" class="text-xl text-gray-600 dark:text-gray-300"></ion-icon>
-                                    <p class="text-sm mt-1 font-medium">{{ __('Stop Desk') }}</p>
+                                    <p class="text-sm mt-1 font-medium">{{ __('storefront.stop_desk') }}</p>
                                 </div>
                             </label>
                         </div>
@@ -260,9 +260,9 @@ $submitOrder = function () {
 
                     @if($delivery_type === 'stopdesk' && $stopdesks->count())
                         <div class="sm:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Select Stopdesk Point') }} *</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.select_stopdesk_point') }} *</label>
                             <select wire:model="selectedStopdesk" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="">{{ __('Select Point') }}</option>
+                                <option value="">{{ __('storefront.select_point') }}</option>
                                 @foreach($stopdesks as $point)
                                     <option value="{{ $point->id }}">{{ $point->name }} — {{ $point->address }}</option>
                                 @endforeach
@@ -272,13 +272,13 @@ $submitOrder = function () {
                     @endif
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Address') }}</label>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.address') }}</label>
                         <textarea wire:model="address" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('Notes') }}</label>
-                        <textarea wire:model="notes" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="{{ __('Order notes (optional)') }}"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ __('storefront.notes') }}</label>
+                        <textarea wire:model="notes" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="{{ __('storefront.order_notes_optional') }}"></textarea>
                     </div>
                 </div>
             </div>
@@ -287,7 +287,7 @@ $submitOrder = function () {
         {{-- Right: Order Summary --}}
         <div class="lg:col-span-1">
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 sticky top-24">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('Order Summary') }}</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.order_summary') }}</h2>
 
                 <div class="space-y-3 mb-4">
                     @forelse($cartItems as $item)
@@ -302,24 +302,24 @@ $submitOrder = function () {
                             </span>
                         </div>
                     @empty
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">{{ __('Cart is empty') }}</p>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">{{ __('storefront.cart_is_empty') }}</p>
                     @endforelse
                 </div>
 
                 <div class="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-300">{{ __('Subtotal') }}</span>
+                        <span class="text-gray-600 dark:text-gray-300">{{ __('storefront.subtotal') }}</span>
                         <span class="font-medium">{{ currency($subtotal) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-300">{{ __('Shipping') }}</span>
+                        <span class="text-gray-600 dark:text-gray-300">{{ __('storefront.shipping') }}</span>
                         <span class="font-medium">
                             @if($shipping['is_free'] ?? false)
-                                {{ __('Free') }}
+                                {{ __('storefront.free') }}
                             @elseif(($shipping['available'] ?? true))
                                 {{ currency($shipping['cost'] ?? 0) }}
                             @else
-                                <span class="text-red-500">{{ __('Not available') }}</span>
+                                <span class="text-red-500">{{ __('storefront.not_available') }}</span>
                             @endif
                         </span>
                     </div>
@@ -327,7 +327,7 @@ $submitOrder = function () {
 
                 <div class="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
                     <div class="flex justify-between">
-                        <span class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Total') }}</span>
+                        <span class="text-base font-semibold text-gray-900 dark:text-white">{{ __('storefront.total') }}</span>
                         <span class="text-base font-bold text-gray-900 dark:text-white">
                             {{ currency($subtotal + ($shipping['cost'] ?? 0)) }}
                         </span>
@@ -336,18 +336,18 @@ $submitOrder = function () {
 
                 <button
                     type="submit"
-                    class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
+                    class="mt-6 w-full store-btn-primary text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
                     wire:loading.attr="disabled"
                 >
-                    <span wire:loading.remove wire:target="submitOrder">{{ __('Place Order') }}</span>
+                    <span wire:loading.remove wire:target="submitOrder">{{ __('storefront.place_order') }}</span>
                     <span wire:loading wire:target="submitOrder" class="flex items-center justify-center gap-2">
                         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                        {{ __('Placing...') }}
+                        {{ __('storefront.placing') }}
                     </span>
                 </button>
 
                 <p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">
-                    {{ __('Payment on delivery (COD)') }}
+                    {{ __('storefront.payment_on_delivery') }}
                 </p>
             </div>
         </div>

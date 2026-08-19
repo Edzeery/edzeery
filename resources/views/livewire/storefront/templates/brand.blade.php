@@ -83,7 +83,7 @@ $addToCart = function (string $variantId) {
                     <input
                         type="text"
                         wire:model.live.debounce.300ms="search"
-                        placeholder="{{ __('Search products...') }}"
+                        placeholder="{{ __('storefront.search_products') }}"
                         class="w-full px-5 py-3 pl-12 rounded-full bg-white/10 backdrop-blur-sm text-white placeholder-white/60 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/40"
                     >
                     <ion-icon name="search-outline" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 text-xl"></ion-icon>
@@ -97,14 +97,14 @@ $addToCart = function (string $variantId) {
     @if(in_array('brands', $sections) && $brands->count())
     <section class="py-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{{ __('Collections') }}</h2>
+            <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">{{ __('storefront.collections') }}</h2>
             <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 <button
                     wire:click="$set('brand_id', '')"
                     class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
                         {{ empty($brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:store-border-primary' }}"
                 >
-                    {{ __('All Collections') }}
+                    {{ __('storefront.all_collections') }}
                 </button>
                 @foreach($brands as $brand)
                     <button
@@ -126,12 +126,12 @@ $addToCart = function (string $variantId) {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <p class="text-sm text-gray-500 dark:text-gray-400">
 
-                {{ $products->total() ?? 0 }} {{ __('templates.products') }}
+                {{ $products->total() ?? 0 }} {{ __('storefront.products') }}
             </p>
             <select wire:model.live="sortBy" class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
-                <option value="newest">{{ __('Newest') }}</option>
-                <option value="price_asc">{{ __('Price: Low to High') }}</option>
-                <option value="price_desc">{{ __('Price: High to Low') }}</option>
+                <option value="newest">{{ __('storefront.newest') }}</option>
+                <option value="price_asc">{{ __('storefront.price_low_high') }}</option>
+                <option value="price_desc">{{ __('storefront.price_high_low') }}</option>
             </select>
         </div>
     </section>
@@ -172,7 +172,7 @@ $addToCart = function (string $variantId) {
                                         <button
                                             wire:click="$wire.addToCart('{{ $product->variants->first()->id }}')"
                                             class="store-btn-primary text-white p-2 rounded-lg transition text-sm"
-                                            title="{{ __('Add to cart') }}"
+                                            title="{{ __('storefront.add_to_cart') }}"
                                         >
                                             <ion-icon name="cart-outline"></ion-icon>
                                         </button>
@@ -189,7 +189,7 @@ $addToCart = function (string $variantId) {
             @else
                 <div class="text-center py-20">
                     <ion-icon name="bag-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
-                    <p class="text-gray-500 dark:text-gray-400">{{ __('No products found') }}</p>
+                    <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
                 </div>
             @endif
         </div>

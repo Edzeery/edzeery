@@ -76,7 +76,7 @@ $addToCart = function (string $variantId) {
                     <input
                         type="text"
                         wire:model.live.debounce.300ms="search"
-                        placeholder="{{ __('Search products...') }}"
+                        placeholder="{{ __('storefront.search_products') }}"
                         class="w-full px-5 py-3 pl-12 rounded-full bg-white/20 backdrop-blur-sm text-white placeholder-white/60 border border-white/30 focus:outline-none focus:ring-2 focus:ring-white/50"
                     >
                     <ion-icon name="search-outline" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 text-xl"></ion-icon>
@@ -98,7 +98,7 @@ $addToCart = function (string $variantId) {
                     class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
                         {{ empty($category_id) ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}"
                 >
-                    {{ __('All') }}
+                    {{ __('storefront.all') }}
                 </button>
                 @foreach($categories as $cat)
                     <button
@@ -119,12 +119,12 @@ $addToCart = function (string $variantId) {
     <section class="py-4">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ $products->total() }} {{ __('products') }}
+                {{ $products->total() }} {{ __('storefront.products') }}
             </p>
             <select wire:model.live="sortBy" class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
-                <option value="newest">{{ __('Newest') }}</option>
-                <option value="price_asc">{{ __('Price: Low to High') }}</option>
-                <option value="price_desc">{{ __('Price: High to Low') }}</option>
+                <option value="newest">{{ __('storefront.newest') }}</option>
+                <option value="price_asc">{{ __('storefront.price_low_high') }}</option>
+                <option value="price_desc">{{ __('storefront.price_high_low') }}</option>
             </select>
         </div>
     </section>
@@ -165,7 +165,7 @@ $addToCart = function (string $variantId) {
                                         <button
                                             wire:click="$wire.addToCart('{{ $product->variants->first()->id }}')"
                                             class="store-btn-primary text-white p-2 rounded-lg transition text-sm"
-                                            title="{{ __('Add to cart') }}"
+                                            title="{{ __('storefront.add_to_cart') }}"
                                         >
                                             <ion-icon name="cart-outline"></ion-icon>
                                         </button>
@@ -182,7 +182,7 @@ $addToCart = function (string $variantId) {
             @else
                 <div class="text-center py-20">
                     <ion-icon name="bag-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
-                    <p class="text-gray-500 dark:text-gray-400">{{ __('No products found') }}</p>
+                    <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
                 </div>
             @endif
         </div>

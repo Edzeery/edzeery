@@ -72,4 +72,11 @@ return [
     'added_to_cart'            => 'Agregado al carrito',
     'order_notes'              => 'Notas del pedido',
     'failed_to_place_order'    => 'Error al realizar el pedido. Por favor, inténtalo de nuevo.',
+    'your_store_link'          => 'Enlace de tu tienda',
+    'visit_store'              => 'Visitar tienda',
+    'active'                   => 'Activo',
+    'inactive'                 => 'Inactivo',
+    'preview'                  => 'Vista previa',
+    'preview_template'         => 'Vista previa de la plantilla',
+    'open_in_new_tab'          => 'Abrir en nueva pestaña',
 ];
