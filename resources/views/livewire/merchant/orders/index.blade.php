@@ -57,7 +57,7 @@ $setPage = function (int $page) {
 $confirm = function (string $orderId) {
     abort_unless(canStore(StorePermissionEnum::ORDER_CONFIRM->value), 403);
 
-    $order = Order::findOrFail($orderId);
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     app(\App\Domains\Order\Services\OrderService::class)->confirm($order);
 
     $this->page = 1;
@@ -68,7 +68,7 @@ $confirm = function (string $orderId) {
 $prepare = function (string $orderId) {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
 
-    $order = Order::findOrFail($orderId);
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     app(\App\Domains\Order\Services\OrderService::class)->startPreparing($order);
 
     $this->page = 1;
@@ -78,7 +78,7 @@ $prepare = function (string $orderId) {
 $ship = function (string $orderId) {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
 
-    $order = Order::findOrFail($orderId);
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     app(\App\Domains\Order\Services\OrderService::class)->ship($order);
 
     $this->page = 1;
@@ -88,7 +88,7 @@ $ship = function (string $orderId) {
 $deliver = function (string $orderId) {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
 
-    $order = Order::findOrFail($orderId);
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     app(\App\Domains\Order\Services\OrderService::class)->deliver($order);
 
     $this->page = 1;
@@ -98,7 +98,7 @@ $deliver = function (string $orderId) {
 $cancel = function (string $orderId) {
     abort_unless(canStore(StorePermissionEnum::ORDER_CANCEL->value), 403);
 
-    $order = Order::findOrFail($orderId);
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     app(\App\Domains\Order\Services\OrderService::class)->cancel($order, 'Cancelled by merchant');
 
     $this->page = 1;

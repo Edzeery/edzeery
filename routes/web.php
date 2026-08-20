@@ -9,4 +9,4 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/merchant.php';
 require __DIR__ . '/admin.php';
 require __DIR__ . '/user.php';
-require __DIR__ . '/storefront.php';
+// storefront.php removed from here — already loaded via bootstrap/app.php then: callback

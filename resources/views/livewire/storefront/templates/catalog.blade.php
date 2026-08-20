@@ -18,15 +18,17 @@ state([
 
 mount(function (): void {
     $store = currentStore();
+    if (!$store) { return; }
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'categories', 'social_proof'];
     $this->section_content = $theme?->section_content ?? [];
 });
 
 $addToCart = function (string $variantId) {
+    $storeId = currentStoreId();
+    if (!$storeId) { return; }
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
-    $cartService->addItem(currentStoreId(), $variantId, 1);
-    $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
+    $cartService->addItem($storeId, $variantId, 1);
     $this->dispatch('cart-updated');
 };
 ?>
@@ -34,6 +36,7 @@ $addToCart = function (string $variantId) {
 <div>
     @php
         $store = currentStore();
+        if (!$store) { return; }
 
         $categories = Category::where('store_id', $store->id)
             ->where('is_active', true)
@@ -87,7 +90,7 @@ $addToCart = function (string $variantId) {
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
                         <ion-icon name="search-outline"
-                                             class="absolute {{ $iconPosition }} top-1/2 -translate-y-1/2
+                                             class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
                                 text-white/70 text-xl pointer-events-none"></ion-icon>
                     </div>
                 </div>
@@ -136,7 +139,7 @@ $addToCart = function (string $variantId) {
                 {{ $products->total() ?? 0 }} {{ __('storefront.products') }}
             </p>
             <select wire:model.live="sortBy"
-                class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                class="text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--store-primary)_35%,transparent)] focus:border-[var(--store-primary)]">
                 <option value="newest">{{ __('storefront.newest') }}</option>
                 <option value="price_asc">{{ __('storefront.price_low_high') }}</option>
                 <option value="price_desc">{{ __('storefront.price_high_low') }}</option>
@@ -182,7 +185,7 @@ $addToCart = function (string $variantId) {
                                         <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
                                         @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
                                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
-                                            <span class="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                            <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
                                                 -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
                                             </span>
                                         @endif

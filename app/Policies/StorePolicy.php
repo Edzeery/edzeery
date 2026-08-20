@@ -18,11 +18,17 @@ class StorePolicy
             ->where('is_active', true)
             ->first();
 
-        if (! $membership || ! $membership->role) {
+        if (! $membership) {
             return false;
         }
 
-        return $membership->can(StorePermissionEnum::tryFrom($permission));
+        $perm = StorePermissionEnum::tryFrom($permission);
+
+        if (! $perm) {
+            return false;
+        }
+
+        return $user->hasPermissionTo($perm->value, 'merchant');
     }
 
     public function viewAny(User $user): bool

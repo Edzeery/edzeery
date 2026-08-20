@@ -3,6 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function() {
+            var t = localStorage.getItem('edz-theme');
+            if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -18,15 +26,15 @@
     <meta name="twitter:card" content="summary_large_image">
 
     <title>{{ isset($title) ? config('app.name') . ' | ' . $title : config('app.name') }}</title>
-
+    <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 
 </head>
 
-<body class="bg-surface-bg
-text-ink
+<body class="bg-surface-bg dark:bg-dark-surface
+text-ink dark:text-gray-100
 antialiased">
 
     {{-- Navbar --}}
@@ -41,9 +49,8 @@ antialiased">
     <x-layouts.footer />
 
     @if (session('swal.type'))
-        <div data-sw="{{ session('swal.type') }}"
-             data-sw-title="{{ session('swal.title', '') }}"
-             data-sw-message="{{ session('swal.message', '') }}" hidden></div>
+        <div data-sw="{{ session('swal.type') }}" data-sw-title="{{ session('swal.title', '') }}"
+            data-sw-message="{{ session('swal.message', '') }}" hidden></div>
     @elseif (session('success'))
         <div data-sw="success" data-sw-message="{{ session('success') }}" hidden></div>
     @elseif (session('error'))

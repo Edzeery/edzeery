@@ -28,13 +28,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'merchant.access' => EnsureStoreMembership::class,
             'store.context' => \App\Http\Middleware\Api\EnsureStoreContext::class,
             'resolve.store' => \App\Http\Middleware\ResolveStoreFromSubdomain::class,
+            'store.locale' => \App\Http\Middleware\Store\SetStoreLocale::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
         ]);
-        $middleware->api(append: [
-            \App\Http\Middleware\SetLocale::class,
-        ]);
+        // SetLocale removed from api group — sessions are not started on API routes
 
         // لكل بوابة تسجيل دخول مستقلة:
         // - /super-admin → صفحة دخول موظفي المنصة

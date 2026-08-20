@@ -31,4 +31,9 @@ class LandingPageController extends Controller
             'userCount',
         ));
     }
+
+    public function contact()
+    {
+        return view('landing.contact');
+    }
 }

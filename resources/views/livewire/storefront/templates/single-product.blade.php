@@ -16,6 +16,7 @@ state([
 
 mount(function (): void {
     $store = currentStore();
+    if (!$store) { return; }
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'social_proof', 'faq', 'cta'];
     $this->section_content = $theme?->section_content ?? [
@@ -51,16 +52,19 @@ mount(function (): void {
 });
 
 $addToCart = function (string $variantId = null) {
-    $cartService = app(\App\Domains\Cart\Services\CartService::class);
     $storeId = currentStoreId();
+    if (!$storeId) { return; }
+    $cartService = app(\App\Domains\Cart\Services\CartService::class);
 
     if ($variantId) {
         $cartService->addItem($storeId, $variantId, 1);
     } elseif ($this->product->variants->count() === 1) {
         $cartService->addItem($storeId, $this->product->variants->first()->id, 1);
+    } else {
+        $this->dispatch('swal', type: 'error', title: __('storefront.please_select_variant'));
+        return;
     }
 
-    $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
     $this->dispatch('cart-updated');
 };
 ?>
@@ -99,7 +103,7 @@ $addToCart = function (string $variantId = null) {
                                     <button
                                         type="button"
                                         x-on:click="selected = '{{ $variant->id }}'"
-                                        :class="selected === '{{ $variant->id }}' ? 'store-border-primary store-bg-primary/10 store-text-primary' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'"
+                                        :class="selected === '{{ $variant->id }}' ? 'store-border-primary store-bg-primary-soft store-text-primary' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'"
                                         class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer"
                                     >
                                         {{ $variant->name }}
@@ -170,7 +174,7 @@ $addToCart = function (string $variantId = null) {
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 @foreach(($sp['items'] ?? []) as $item)
                     <div class="flex flex-col items-center">
-                        <div class="w-12 h-12 store-bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                        <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
                             <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
                         </div>
                         <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
@@ -193,10 +197,11 @@ $addToCart = function (string $variantId = null) {
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
                         <button
                             x-on:click="openFaq = openFaq === {{ $loop->index }} ? null : {{ $loop->index }}"
-                            class="w-full px-6 py-4 text-left flex items-center justify-between"
+                            :aria-expanded="openFaq === {{ $loop->index }}"
+                            class="w-full px-6 py-4 text-start flex items-center justify-between"
                         >
                             <span class="font-medium text-gray-900 dark:text-white">{{ $faqItem['question'] ?? '' }}</span>
-                            <ion-icon :name="openFaq === {{ $loop->index }} ? 'chevron-up-outline' : 'chevron-down-outline'" class="text-gray-500"></ion-icon>
+                            <ion-icon :name="openFaq === {{ $loop->index }} ? 'chevron-up-outline' : 'chevron-down-outline'" class="text-gray-500 dark:text-gray-400"></ion-icon>
                         </button>
                         <div x-show="openFaq === {{ $loop->index }}" x-transition class="px-6 pb-4">
                             <p class="text-gray-600 dark:text-gray-300">{{ $faqItem['answer'] ?? '' }}</p>
@@ -218,7 +223,7 @@ $addToCart = function (string $variantId = null) {
             <a
                 href="#"
                 x-on:click.prevent="window.scrollTo({ top: 0, behavior: 'smooth' })"
-                class="inline-flex items-center gap-2 bg-white font-bold py-3 px-8 rounded-lg hover:bg-white/90 transition text-lg store-text-primary"
+                class="inline-flex items-center gap-2 bg-white dark:bg-gray-100 font-bold py-3 px-8 rounded-lg hover:bg-white/90 dark:hover:bg-white transition text-lg store-text-primary"
             >
                 <ion-icon name="cart-outline"></ion-icon>
                 {{ $cta['button_text'] ?? __('storefront.order_now') }}

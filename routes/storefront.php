@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::domain('{store:slug}.' . config('app.domain'))
-    ->middleware(['web', 'resolve.store'])
+    ->middleware(['web', 'resolve.store', 'store.locale'])
     ->group(function () {
 
         // Storefront Home
@@ -25,14 +25,22 @@ Route::domain('{store:slug}.' . config('app.domain'))
         // Product detail
         Volt::route('/product/{product:slug}', 'storefront.product-detail')->name('storefront.product');
 
-        // Language switcher
+        // Language switch — store-scoped, validates against supported_languages
         Route::get('/lang/{locale}', function (string $locale) {
-            $allowed = ['ar', 'fr', 'en', 'es'];
-            if (in_array($locale, $allowed)) {
-                session(['locale' => $locale]);
-                setcookie('lang', $locale, time() + (365 * 24 * 60 * 60), '/');
+            $storeContext = app(\App\Support\StoreContext::class);
+            $store =  $storeContext->get();
+
+            $settings = $store?->settings ?? null;
+            $supported = $settings?->supported_languages ?? [];
+            $supported = array_values(array_filter($supported));
+            $allowed = !empty($supported) ? $supported : ['ar', 'fr', 'en', 'es'];
+
+            if (in_array($locale, $allowed, true)) {
+                session(['storeLocale' => $locale]);
+                \Illuminate\Support\Facades\Cookie::queue('storeLocale', $locale, 60 * 24 * 365);
                 app()->setLocale($locale);
             }
+
             return redirect()->back();
         })->name('storefront.lang');
     });

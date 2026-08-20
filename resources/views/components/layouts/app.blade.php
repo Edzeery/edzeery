@@ -19,7 +19,7 @@ $watch('dark', val => {
     <title>
         {{ isset($title) ? config('app.name', 'Edzeery') . ' | ' . $title : config('app.name', 'Edzeery') }}
     </title>
-
+  <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>

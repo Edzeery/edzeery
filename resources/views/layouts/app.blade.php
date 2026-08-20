@@ -8,7 +8,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ $title ?? 'Dashboard' }} | {{ config('app.name') }}</title>
-
+    <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     <!-- Legacy TailAdmin -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 

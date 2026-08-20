@@ -4,21 +4,22 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Cookie;
 
 class LanguageController extends Controller
 {
     public function switch(Request $request, $locale)
     {
-        // تحقق أن اللغة مدعومة
         if (!in_array($locale, ['ar', 'en', 'fr', 'es'])) {
-            $locale = config('app.locale');
+            $locale = config('app.locale', 'en');
         }
 
-        session(['locale' => $locale]);
-        setcookie('lang', $locale, time() + (365 * 24 * 60 * 60), '/');
-        \Illuminate\Support\Facades\App::setLocale($locale);
+        $request->session()->put('locale', $locale);
+        Cookie::queue('lang', $locale, 60 * 24 * 365);
+        App::setLocale($locale);
 
-        return response()->json(['status' => 'ok']);
+        return response()->json(['status' => 'ok', 'locale' => $locale]);
     }
+
+
 }

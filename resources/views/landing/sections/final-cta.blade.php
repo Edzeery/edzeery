@@ -23,7 +23,7 @@
                 </a>
 
                 <a
-                    href="{{ route('landing') }}#contact"
+                    href="{{ route('contact') }}"
                     class="inline-flex items-center gap-2 rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
                     {{ __('landing.contact_us') }}

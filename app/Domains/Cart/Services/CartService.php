@@ -33,6 +33,10 @@ class CartService
             $newQty = $variant->stock;
         }
 
+        if ($newQty <= 0) {
+            return $cart;
+        }
+
         $cart['items'][$variantId] = [
             'variant_id'   => $variantId,
             'product_name' => $variant->product->name,

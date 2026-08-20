@@ -19,20 +19,18 @@ class GetProfileAction
             'city',
             'merchantRole'
         ]);
-        $membership_Role = in_array(
-            $user?->merchantRole->first()->name,
-            UserRoleEnum::values(),
-        )
-            ?  UserRoleEnum::from(
-                $user?->merchantRole->first()->name,
-            )
-            :  StoreRoleEnum::from(
-                $user?->merchantRole->first()->name,
-            );
+
+        $roleName = $user->merchantRole->first()?->name;
+        $membershipRole = null;
+
+        if ($roleName) {
+            $membershipRole = UserRoleEnum::tryFrom($roleName)
+                ?? StoreRoleEnum::tryFrom($roleName);
+        }
 
 
         return new AccountProfileData(
-            membershipRole: $membership_Role,
+            membershipRole: $membershipRole,
             name: $user->name,
             fullName: $user->profile?->full_name,
             email: $user->email,

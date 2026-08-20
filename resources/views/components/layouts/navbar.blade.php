@@ -13,7 +13,7 @@
         <nav class="hidden md:flex gap-4 text-sm font-medium">
             <x-nav-link href="#services">{{ __('landing.services') }}</x-nav-link>
             <x-nav-link href="#pricing">{{ __('landing.pricing') }}</x-nav-link>
-            <x-nav-link href="#contact">{{ __('landing.contact') }}</x-nav-link>
+            <x-nav-link href="{{ route('contact') }}">{{ __('landing.contact_us') }}</x-nav-link>
         </nav>
 
         {{-- Actions: Language, Dark Mode, Auth --}}
@@ -40,7 +40,7 @@
                     </x-nav-link>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="text-error-500 hover:text-error-400 transition px-3 py-1">
+                        <button type="submit" class="text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
                             {{ __('buttons.logout') }}
                         </button>
                     </form>
@@ -48,7 +48,7 @@
             @endguest
 
             {{-- Mobile Menu Button --}}
-            <button @click="open = !open"
+            <button @click="open = !open" :aria-expanded="open" aria-label="Toggle menu"
                 class="md:hidden p-2 rounded-md hover:bg-neutral-secondary dark:hover:bg-dark-secondary transition">
                 <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
@@ -71,7 +71,7 @@
                 </x-nav-link>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="text-error-500 hover:text-error-400 transition px-3 py-1">
+                    <button type="submit" class="text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
                         {{ __('buttons.logout') }}
                     </button>
                 </form>
@@ -79,7 +79,7 @@
 
             <x-nav-link href="#services">{{ __('landing.services') }}</x-nav-link>
             <x-nav-link href="#pricing">{{ __('landing.pricing') }}</x-nav-link>
-            <x-nav-link href="#contact">{{ __('landing.contact') }}</x-nav-link>
+            <x-nav-link href="{{ route('contact') }}">{{ __('landing.contact_us') }}</x-nav-link>
 
         </nav>
     </div>

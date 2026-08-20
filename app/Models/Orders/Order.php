@@ -118,12 +118,18 @@ class Order extends Model
         return $this->status?->key === $key;
     }
 
+    public function createdByMembership()
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'created_by_membership_id');
+    }
+
     public function nextOrderNumber(): string
     {
-        $lastNumber = self::where('store_id', $this->store_id)
+        $lastNumber = self::withTrashed()
+            ->where('store_id', $this->store_id)
             ->max('number');
 
-        $nextNumber = $lastNumber ? intval($lastNumber) + 1 : 1;
+        $nextNumber = $lastNumber ? (int) $lastNumber + 1 : 1;
 
         return str_pad((string) $nextNumber, 5, '0', STR_PAD_LEFT);
     }

@@ -38,6 +38,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('removeItem'))->execute(...$arguments);
     }
 
+    public function clearCart()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('clearCart'))->execute(...$arguments);
+    }
+
     public function updateQty(string $variantId, int $qty)
     {
         $arguments = [static::$__context, $this, func_get_args()];

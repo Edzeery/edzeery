@@ -34,10 +34,6 @@ class InventoryMovement extends Model
 
     /* ================== Relations ================== */
 
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(Store::class, 'store_id');
-    }
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);

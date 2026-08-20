@@ -1,11 +1,27 @@
-
 <!DOCTYPE html>
 <html lang="{{ $lang ?? app()->getLocale() }}" dir="{{ $dir ?? 'ltr' }}" class="h-full scroll-smooth">
 
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function() {
+            var t = localStorage.getItem('edz-theme');
+            if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="swal-i18n" content="{{ json_encode([
+        'confirm_delete_title' => __('messages.action_confirm'),
+        'confirm_delete' => __('messages.action_confirm_delete'),
+        'confirm_delete_named' => __('messages.action_confirm_delete') . ' "{name}"?',
+        'confirm_bulk_delete' => __('messages.ask_delete'),
+        'delete' => __('buttons.delete'),
+        'confirm' => __('buttons.confirm'),
+        'cancel' => __('buttons.cancel'),
+    ]) }}">
 
     @php
         $theme = $store->theme ?? null;
@@ -25,7 +41,7 @@
                     ->exists());
         $showPreviewBanner = $isPreview && $isOwner;
     @endphp
-
+    <link rel="icon" href="{{ asset('img/icons/store/favicon.ico') }}" type="image/x-icon" />
     <title>{{ $pageTitle }}</title>
     @if ($pageDesc)
         <meta name="description" content="{{ Str::limit(strip_tags($pageDesc), 160) }}">
@@ -33,9 +49,14 @@
 
     <style>
         :root {
-            --store-primary: {{ $primaryColor }};
-            --store-secondary: {{ $secondaryColor }};
-            --store-font: '{{ $fontFamily }}', sans-serif;
+            --store-primary: {{ preg_replace('/[^a-fA-F0-9#]/', '', $primaryColor) }};
+            --store-secondary: {{ preg_replace('/[^a-fA-F0-9#]/', '', $secondaryColor) }};
+            --store-font: '{{ preg_replace("/[^a-zA-Z0-9_\\- ]/", "", $fontFamily) }}', sans-serif;
+            color-scheme: light;
+        }
+
+        .dark {
+            color-scheme: dark;
         }
 
         body {
@@ -50,18 +71,35 @@
 
         .store-btn-primary {
             background-color: var(--store-primary);
+            color: var(--store-btn-text, #ffffff) !important;
         }
 
         .store-btn-primary:hover {
             filter: brightness(0.9);
         }
 
+        .dark .store-btn-primary:hover {
+            filter: brightness(1.2);
+        }
+
         .store-text-primary {
             color: var(--store-primary);
         }
 
+        .dark .store-text-primary {
+            color: color-mix(in srgb, var(--store-primary) 55%, white);
+        }
+
         .store-bg-primary {
             background-color: var(--store-primary);
+        }
+
+        .store-bg-primary-soft {
+            background-color: color-mix(in srgb, var(--store-primary) 10%, transparent);
+        }
+
+        .dark .store-bg-primary-soft {
+            background-color: color-mix(in srgb, var(--store-primary) 20%, transparent);
         }
 
         .store-border-primary {
@@ -76,6 +114,10 @@
             filter: brightness(0.9);
         }
 
+        .dark .store-btn-secondary:hover {
+            filter: brightness(1.2);
+        }
+
         .store-text-secondary {
             color: var(--store-secondary);
         }
@@ -83,7 +125,26 @@
         .store-gradient {
             background: linear-gradient(135deg, var(--store-primary), var(--store-secondary));
         }
+
+        .dark input:focus, .dark select:focus, .dark textarea:focus {
+            --tw-ring-color: color-mix(in srgb, var(--store-primary) 35%, transparent) !important;
+        }
     </style>
+
+    <script>
+        (function() {
+            var c = getComputedStyle(document.documentElement).getPropertyValue('--store-primary').trim();
+            if (!c) return;
+            var m = c.replace('#', '').match(/.{2}/g);
+            if (!m) return;
+            var r = parseInt(m[0], 16) / 255,
+                g = parseInt(m[1], 16) / 255,
+                b = parseInt(m[2], 16) / 255;
+            var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            var text = lum > 0.55 ? '#000000' : '#ffffff';
+            document.documentElement.style.setProperty('--store-btn-text', text);
+        })();
+    </script>
 
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/storefront.js'])
@@ -113,7 +174,7 @@
             <a href="{{ route('storefront.home', ['store' => $store->slug]) }}" class="flex items-center gap-3 group">
                 @if ($store->logo ?? null)
                     <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}"
-                        class="h-9 w-9 rounded-full object-cover group-hover:ring-2 group-hover:ring-offset-2 store-border-primary transition">
+                        class="h-9 w-9 rounded-full object-cover group-hover:ring-2 group-hover:ring-offset-2 ring-offset-white dark:ring-offset-gray-800 store-border-primary transition">
                 @else
                     <div
                         class="h-9 w-9 rounded-full store-bg-primary flex items-center justify-center text-white font-bold text-sm">
@@ -124,42 +185,7 @@
             </a>
 
             <div class="flex items-center gap-1">
-                @php
-                    $storeSettings = $store->settings ?? null;
-                    $hasSupportedLangs = \Illuminate\Support\Facades\Schema::hasColumn(
-                        'store_settings',
-                        'supported_languages',
-                    );
-                    $supportedLangs = $hasSupportedLangs ? $storeSettings?->supported_languages ?? [] : [];
-                    $supportedLangs = array_filter($supportedLangs);
-                    $currentLocale = app()->getLocale();
-                @endphp
-
-                @if (count($supportedLangs) > 1)
-                    <div x-data="{ open: false }" class="relative">
-                        <button x-on:click="open = !open" x-on:click.outside="open = false"
-                            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-2.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-1 text-sm min-h-[44px]">
-                            <ion-icon name="language-outline" class="text-lg"></ion-icon>
-                            <span class="hidden sm:inline uppercase">{{ $currentLocale }}</span>
-                            <ion-icon name="chevron-down-outline" class="text-xs"></ion-icon>
-                        </button>
-                        <div x-show="open" x-transition:enter="transition ease-out duration-100"
-                            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-75"
-                            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                            class="absolute end-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-                            @foreach ($supportedLangs as $lang)
-                                <a href="{{ route('storefront.lang', ['store' => $store->slug, 'locale' => $lang]) }}"
-                                    class="flex items-center gap-2 px-4 py-2 text-sm transition
-                                        {{ $currentLocale === $lang ? 'store-text-primary font-semibold bg-gray-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                                    <span
-                                        class="w-5 text-center">{{ match ($lang) {'ar' => '🇸🇦','fr' => '🇫🇷','en' => '🇬🇧','es' => '🇪🇸',default => '🌐'} }}</span>
-                                    {{ __('storefront.lang_' . $lang) }}
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
+                <x-storefront-lang-switcher />
 
                 @if ($store->phone ?? null)
                     <a href="tel:{{ $store->phone }}"
@@ -168,6 +194,29 @@
                         <ion-icon name="call-outline" class="text-lg"></ion-icon>
                     </a>
                 @endif
+
+                <button
+                    onclick="var html=document.documentElement;var isDark=html.classList.contains('dark');if(isDark){html.classList.remove('dark');localStorage.setItem('edz-theme','light');}else{html.classList.add('dark');localStorage.setItem('edz-theme','dark');}"
+                    class="p-2.5 sm:p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Toggle dark mode">
+                    <svg class="hidden dark:block" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="dark:hidden" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
                 @livewire('storefront.mini-cart')
             </div>
         </div>
@@ -182,8 +231,10 @@
                     <ion-icon name="checkmark-circle-outline" class="text-lg"></ion-icon>
                     {{ session('success') }}
                 </p>
-                <button x-on:click="show = false" class="text-emerald-500 hover:text-emerald-700"><ion-icon
-                        name="close-outline" class="text-lg"></ion-icon></button>
+                <button x-on:click="show = false"
+                    class="text-emerald-500 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+                    aria-label="{{ __('general.close') }}"><ion-icon name="close-outline"
+                        class="text-lg"></ion-icon></button>
             </div>
         </div>
     @endif
@@ -196,7 +247,9 @@
                     <ion-icon name="alert-circle-outline" class="text-lg"></ion-icon>
                     {{ session('error') }}
                 </p>
-                <button x-on:click="show = false" class="text-red-500 hover:text-red-700"><ion-icon name="close-outline"
+                <button x-on:click="show = false"
+                    class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                    aria-label="{{ __('general.close') }}"><ion-icon name="close-outline"
                         class="text-lg"></ion-icon></button>
             </div>
         </div>
@@ -241,20 +294,21 @@
 
     {{-- Cart Toast --}}
     <div x-data="cartToast()" x-on:cart-updated.window="show()" x-cloak
-         class="fixed bottom-6 right-6 z-[70] pointer-events-none">
-        <div x-show="visible"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 scale-95"
-             class="pointer-events-auto flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-4 py-3 min-w-[240px]">
-            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+        class="fixed bottom-6 {{ isRTL() ? 'start-6' : 'end-6' }} z-[70] pointer-events-none">
+        <div x-show="visible" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+            class="pointer-events-auto flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-4 py-3 min-w-[240px]">
+            <div
+                class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <ion-icon name="checkmark-outline" class="text-green-600 dark:text-green-400 text-lg"></ion-icon>
             </div>
             <div class="min-w-0">
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('storefront.added_to_cart') }}</p>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('storefront.added_to_cart') }}
+                </p>
                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.review_cart') }}</p>
             </div>
         </div>
@@ -271,6 +325,56 @@
                     clearTimeout(this.timeout);
                     this.visible = true;
                     this.timeout = setTimeout(() => this.visible = false, 2500);
+                }
+            }
+        }
+
+        function productGallery() {
+            return {
+                active: 0,
+                lightbox: false,
+                total: 0,
+                init() {
+                    this.total = this.$el.querySelectorAll('[x-show^="active ==="]').length;
+                    let startX = 0;
+                    this.$el.addEventListener('touchstart', e => {
+                        startX = e.touches[0].clientX;
+                    }, {
+                        passive: true
+                    });
+                    this.$el.addEventListener('touchend', e => {
+                        const diff = startX - e.changedTouches[0].clientX;
+                        if (Math.abs(diff) > 50) {
+                            diff > 0 ? this.next() : this.prev();
+                        }
+                    }, {
+                        passive: true
+                    });
+                },
+                next() {
+                    this.active = (this.active + 1) % this.total;
+                    this.scrollThumb();
+                },
+                prev() {
+                    this.active = (this.active - 1 + this.total) % this.total;
+                    this.scrollThumb();
+                },
+                goTo(i) {
+                    this.active = i;
+                    this.scrollThumb();
+                },
+                scrollThumb() {
+                    const thumbs = this.$refs.thumbs;
+                    if (!thumbs) return;
+                    const btn = thumbs.children[this.active];
+                    if (btn) btn.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center'
+                    });
+                },
+                openLightbox() {
+                    if (this.total > 0) this.lightbox = true;
                 }
             }
         }

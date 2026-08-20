@@ -9,11 +9,18 @@ layout('components.layouts.storefront');
 
 state([
     'template' => LandingTemplateEnum::SINGLE_PRODUCT->value,
+    'isPreview' => false,
 ]);
 
 mount(function (): void {
     $store = currentStore();
     $this->template = $store->landing_template?->value ?? LandingTemplateEnum::SINGLE_PRODUCT->value;
+
+    $previewTemplate = request('preview_template');
+    if ($previewTemplate && in_array($previewTemplate, array_column(LandingTemplateEnum::cases(), 'value'))) {
+        $this->template = $previewTemplate;
+        $this->isPreview = true;
+    }
 });
 
 

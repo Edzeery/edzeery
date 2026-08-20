@@ -26,7 +26,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
-use phpDocumentor\Reflection\PseudoTypes\LowercaseString;
 use Spatie\Permission\Traits\HasRoles;
 
 
@@ -79,22 +78,24 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     protected static function booted()
     {
 
-        static::created(function (user $user) {
+        static::created(function (User $user) {
 
             // إنشاء اشتراك trial افتراضي
             $defaultPlan = Plan::where('is_default', true)->first();
             if ($defaultPlan) {
                 $defaultPlanPrice = $defaultPlan->prices()->where('billing_period', 'monthly')->first();
-                $user->subscriptions()->create([
+                if ($defaultPlanPrice) {
+                    $user->subscriptions()->create([
 
-                    'user_id' => $user->id,
-                    'plan_id' => $defaultPlan->id,
-                    'plan_price_id' => $defaultPlanPrice->id,
-                    'starts_at' => now(),
-                    'ends_at' => now()->addDays($defaultPlan->trial_days),
-                    'trial_ends_at' => now()->addDays($defaultPlan->trial_days),
-                    'is_trial' => true,
-                ]);
+                        'user_id' => $user->id,
+                        'plan_id' => $defaultPlan->id,
+                        'plan_price_id' => $defaultPlanPrice->id,
+                        'starts_at' => now(),
+                        'ends_at' => now()->addDays($defaultPlan->trial_days),
+                        'trial_ends_at' => now()->addDays($defaultPlan->trial_days),
+                        'is_trial' => true,
+                    ]);
+                }
             }
         });
     }
@@ -168,7 +169,11 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        if ($panel->getId() === 'super-admin' || $panel->getId() === 'admin') {
+            return $this->hasAnyRole(['super_admin', 'admin']);
+        }
+
+        return $this->stores()->exists();
     }
 
     /* ================= Roles ================= */

@@ -3,10 +3,14 @@
 namespace App\Models\Traits;
 trait HasStoreDefaults
 {
-    public function initializeStoreDefaults()
+    public function initializeHasStoreDefaults(): void
     {
-        $this->settings()->create();
-        $this->seo()->create();
-        $this->theme()->create();
+        if (! $this->exists) {
+            $this->saving(function ($model) {
+                if ($model->relationLoaded('settings') && ! $model->relationLoaded('settings')) {
+                    $model->settings()->create();
+                }
+            });
+        }
     }
 }

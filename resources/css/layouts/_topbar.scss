@@ -41,6 +41,11 @@
   &:active {
     transform: scale(0.96);
   }
+
+  // Hidden on desktop — sidebar is always visible
+  @media (min-width: 1024px) {
+    display: none;
+  }
 }
 
 .edz-topbar__search {

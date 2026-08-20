@@ -44,11 +44,18 @@ class ProductVariant extends Model
     ];
 
     protected $casts = [
+        'price' => 'decimal:2',
+        'compare_price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'stock' => 'integer',
         'low_stock_threshold' => 'integer',
         'last_low_stock_notified_at' => 'datetime',
         'is_active' => 'boolean',
         'is_default' => 'boolean',
         'weight' => 'decimal:3',
+        'length' => 'decimal:2',
+        'width' => 'decimal:2',
+        'height' => 'decimal:2',
     ];
 
     /* ================== Relations ================== */
@@ -68,9 +75,9 @@ class ProductVariant extends Model
         return $this->product()->with('brand');
     }
 
-    public function category()
+    public function categories()
     {
-        return $this->product()->with('category');
+        return $this->product()->with('categories');
     }
 
     public function store()
@@ -122,11 +129,6 @@ class ProductVariant extends Model
     {
         return $this->morphOne(ProductImage::class, 'imageable')
             ->where('is_primary', true);
-    }
-
-    public function primaryCategory(): BelongsTo
-    {
-        return $this->belongsTo(Category::class, 'primary_category_id');
     }
 
     public function shouldNotifyLowStock(): bool

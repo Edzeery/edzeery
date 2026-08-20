@@ -2,8 +2,6 @@
 
 return [
     'accept_terms' => 'Acepto los :terms y la :privacy.',
-    'terms_link' => 'Términos',
-    'privacy_link' => 'Política de Privacidad',
     'account_inactive' => 'La cuenta aún no está activada ⚠️',
     'account_suspended' => 'La cuenta ha sido suspendida 🚫',
     'account_verification_body' => 'Hola :name, gracias por registrarte en :app_name. Para completar tu registro, verifica tu cuenta haciendo clic en el botón de abajo.',
@@ -29,6 +27,7 @@ return [
     'password_reset_subject' => 'Restablece tu Contraseña',
     'payment_success_body' => 'Hola :name, un monto de :amount DZD ha sido pagado exitosamente por la transacción #:transaction_id. ¡Gracias por usar :app_name!',
     'payment_success_subject' => 'Pago Completado con Éxito',
+    'privacy_link' => 'Política de Privacidad',
     'register_button' => 'Registrarse',
     'register_success' => 'Cuenta creada con éxito 🎉',
     'resend_verification' => 'Reenviar correo de verificación',
@@ -39,6 +38,7 @@ return [
     ],
     'security_alert_body' => 'Se detectó un nuevo inicio de sesión en tu cuenta desde un dispositivo o ubicación inusual a las :time. Si no fuiste tú, cambia tu contraseña inmediatamente.',
     'security_alert_subject' => 'Alerta de Seguridad Sobre tu Cuenta',
+    'terms_link' => 'Términos',
     'thanks' => 'Gracias por usar :app_name',
     'throttle' => 'Demasiados intentos de inicio de sesión. Por favor inténtalo de nuevo después de :seconds segundos.',
     'verification_link_sent' => 'Se ha enviado un nuevo enlace de verificación a tu correo electrónico.',

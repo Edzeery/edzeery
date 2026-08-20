@@ -24,17 +24,24 @@ class StoreTeamService
                 ['email' => $data['email']],
                 [
                     'name'     => $data['name'],
-                    'password' => Hash::make($data['password']),
+                    'password' => Hash::make(Str::random(16)),
                 ]
             );
 
-            $member_user->update([
+            $updateData = [
                 'name'       => $data['name'],
                 'country_id' => $data['country_id'] ?? $member_user->country_id,
                 'state_id'   => $data['state_id'] ?? $member_user->state_id,
                 'city_id'    => $data['city_id'] ?? $member_user->city_id,
-                ...(! empty($data['password']) ? ['password' => Hash::make($data['password'])] : []),
-            ]);
+            ];
+
+            if (! empty($data['password']) && ! $member_user->wasRecentlyCreated) {
+                $updateData['password'] = Hash::make($data['password']);
+            } elseif (! empty($data['password']) && $member_user->wasRecentlyCreated) {
+                $updateData['password'] = Hash::make($data['password']);
+            }
+
+            $member_user->update($updateData);
 
             if (
                 StoreMembership::where('store_id', $store->id)
@@ -54,8 +61,10 @@ class StoreTeamService
             $role = StoreRoleEnum::from($data['store_role']);
 
             $member_user->guard_name = 'merchant';
-            $member_user->syncRoles([]);
-            $member_user->assignRole($role->value);
+            $existingRoles = $member_user->getRoleNames('merchant');
+            if ($existingRoles->isEmpty()) {
+                $member_user->assignRole($role->value);
+            }
 
             $permissions = $data['permissions'] ?? \App\Support\StoreRoles::permissions($role);
             $member_user->syncPermissions($permissions);
@@ -94,8 +103,10 @@ class StoreTeamService
                 $role = StoreRoleEnum::from($data['store_role']);
 
                 $user->guard_name = 'merchant';
-                $user->syncRoles([]);
-                $user->assignRole($role->value);
+                $existingRoles = $user->getRoleNames('merchant');
+                if ($existingRoles->isEmpty()) {
+                    $user->assignRole($role->value);
+                }
             }
 
             if (isset($data['permissions']) && is_array($data['permissions'])) {

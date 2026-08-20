@@ -17,7 +17,7 @@
     color: rgb(var(--edz-color-success-700));
 
     .dark & {
-      background-color: rgb(var(--edz-color-success-950) / 0.3);
+      background-color: rgb(var(--edz-color-success-950), 0.3);
       border-color: rgb(var(--edz-color-success-800));
       color: rgb(var(--edz-color-success-300));
     }
@@ -29,7 +29,7 @@
     color: rgb(var(--edz-color-warning-700));
 
     .dark & {
-      background-color: rgb(var(--edz-color-warning-950) / 0.3);
+      background-color: rgb(var(--edz-color-warning-950), 0.3);
       border-color: rgb(var(--edz-color-warning-800));
       color: rgb(var(--edz-color-warning-300));
     }
@@ -41,7 +41,7 @@
     color: rgb(var(--edz-color-danger-700));
 
     .dark & {
-      background-color: rgb(var(--edz-color-danger-950) / 0.3);
+      background-color: rgb(var(--edz-color-danger-950), 0.3);
       border-color: rgb(var(--edz-color-danger-800));
       color: rgb(var(--edz-color-danger-300));
     }
@@ -53,7 +53,7 @@
     color: rgb(var(--edz-color-info-700));
 
     .dark & {
-      background-color: rgb(var(--edz-color-info-950) / 0.3);
+      background-color: rgb(var(--edz-color-info-950), 0.3);
       border-color: rgb(var(--edz-color-info-800));
       color: rgb(var(--edz-color-info-300));
     }

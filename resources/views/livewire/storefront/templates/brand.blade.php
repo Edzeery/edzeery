@@ -18,14 +18,16 @@ state([
 
 mount(function (): void {
     $store = currentStore();
+    if (!$store) { return; }
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'brands', 'social_proof'];
     $this->section_content = $theme?->section_content ?? [];
 });
 
 $addToCart = function (string $variantId) {
-    app(\App\Domains\Cart\Services\CartService::class)->addItem(currentStoreId(), $variantId, 1);
-    $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
+    $storeId = currentStoreId();
+    if (!$storeId) { return; }
+    app(\App\Domains\Cart\Services\CartService::class)->addItem($storeId, $variantId, 1);
     $this->dispatch('cart-updated');
 };
 ?>
@@ -33,6 +35,7 @@ $addToCart = function (string $variantId) {
 <div>
     @php
         $store = currentStore();
+        if (!$store) { return; }
         $brands = Brand::where('store_id', $store->id)
             ->where('is_active', true)
             ->withCount('products')
@@ -68,7 +71,7 @@ $addToCart = function (string $variantId) {
         <section class="relative overflow-hidden text-white">
             <div class="absolute inset-0 store-gradient opacity-90"></div>
             @if ($store->cover)
-                <img src="{{ asset('storage/' . $store->cover) }}" alt=""
+                <img src="{{ asset('storage/' . $store->cover) }}" alt="" role="presentation"
                     class="absolute inset-0 w-full h-full object-cover opacity-30">
             @endif
             <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
@@ -95,7 +98,7 @@ $addToCart = function (string $variantId) {
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
                         <ion-icon name="search-outline"
-                            class="absolute {{ $iconPosition }} top-1/2 -translate-y-1/2
+                            class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
                                 text-white/70 text-xl pointer-events-none"></ion-icon>
                     </div>
                 </div>
@@ -122,13 +125,13 @@ $addToCart = function (string $variantId) {
                 <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     <button wire:click="$set('brand_id', '')"
                         class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                        {{ empty($brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:store-border-primary' }}">
+                        {{ empty($brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                         {{ __('storefront.all_collections') }}
                     </button>
                     @foreach ($brands as $brand)
                         <button wire:click="$set('brand_id', '{{ $brand->id }}')"
                             class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                            {{ $brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:store-border-primary' }}">
+                            {{ $brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                             {{ $brand->name }}
                             <span class="ml-1 text-xs opacity-70">({{ $brand->products_count }})</span>
                         </button>
@@ -146,7 +149,7 @@ $addToCart = function (string $variantId) {
                 {{ $products->total() ?? 0 }} {{ __('storefront.products') }}
             </p>
             <select wire:model.live="sortBy"
-                class="text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg">
+                class="text-sm border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--store-primary)_35%,transparent)] focus:border-[var(--store-primary)]">
                 <option value="newest">{{ __('storefront.newest') }}</option>
                 <option value="price_asc">{{ __('storefront.price_low_high') }}</option>
                 <option value="price_desc">{{ __('storefront.price_high_low') }}</option>
@@ -192,7 +195,7 @@ $addToCart = function (string $variantId) {
                                         <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
                                         @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
                                             <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
-                                            <span class="text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                            <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
                                                 -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
                                             </span>
                                         @endif

@@ -18,7 +18,7 @@
     <meta name="twitter:card" content="summary_large_image">
 
     <title>{{ isset($title) ? config('app.name') . ' | ' . $title : config('app.name') }}</title>
-
+  <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
@@ -33,7 +33,7 @@
             transition-colors duration-300 antialiased">
 
     {{-- Background decorations --}}
-    <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+    <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10" aria-hidden="true">
         <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl"></div>
         <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-brand-400/5 blur-3xl"></div>
         <div class="absolute top-1/3 left-1/4 w-64 h-64 rounded-full bg-brand-300/3 blur-2xl"></div>

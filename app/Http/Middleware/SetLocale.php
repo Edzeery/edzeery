@@ -2,44 +2,50 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\Store\StoreStatusEnum;
 use Closure;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 
 class SetLocale
 {
     public function handle($request, Closure $next)
     {
-        $locale= null;
-        // 🔹 1. أولوية للغة القادمة من GET أو POST (تبديل يدوي)
-        if ($locale) {
-            if ($locale && Auth::check()) {
+        $host = $request->getHost();
+        $domain = config('app.domain', 'edzeery.com');
+        $isStorefront = $host !== $domain && str_ends_with($host, '.' . $domain);
 
-                // set_user_setting('language', $locale);
-            }
+        $sessionKey = $isStorefront ? 'storeLocale' : 'locale';
+        $cookieKey  = $isStorefront ? 'storeLocale' : 'lang';
+
+        $locale = null;
+
+        if ($request->has('lang')) {
+            $locale = $request->query('lang');
         }
 
-        if (!$locale && Auth::check()) {
-            // $userLocale = user_setting('language');
-            // if ($userLocale) {
-            //     $locale = $userLocale;
-            // }
+        if (!$locale && $request->session()->has($sessionKey)) {
+            $locale = $request->session()->get($sessionKey);
         }
 
-        if (!$locale && session()->has('locale')) {
-            $locale = session('locale');
+        if (!$locale && Cookie::has($cookieKey)) {
+            $locale = Cookie::get($cookieKey);
         }
 
-        if (!$locale && isset($_COOKIE['lang'])) {
-            $locale = $_COOKIE['lang'];
+        if (!$locale) {
+            $locale = $request->getPreferredLanguage(['ar', 'fr', 'en', 'es']);
         }
-        $locale = $locale ?: config('app.locale');
-        session(['locale' => $locale]);
-        setcookie('lang', $locale, time() + (365 * 24 * 60 * 60), '/');
+
+        $locale = $locale ?: config('app.locale', 'en');
+
+        if (!in_array($locale, ['ar', 'fr', 'en', 'es'], true)) {
+            $locale = config('app.locale', 'en');
+        }
+
+        $request->session()->put($sessionKey, $locale);
+        Cookie::queue($cookieKey, $locale, 60 * 24 * 365);
 
         App::setLocale($locale);
-        
+
         return $next($request);
     }
 }

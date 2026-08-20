@@ -2,8 +2,6 @@
 
 return [
     'accept_terms' => 'أوافق على :terms و :privacy.',
-    'terms_link' => 'الشروط',
-    'privacy_link' => 'سياسة الخصوصية',
     'account_inactive' => 'الحساب غير مفعل بعد ⚠️',
     'account_suspended' => 'تم تعليق الحساب 🚫',
     'account_verification_body' => 'مرحبًا :name، شكراً لتسجيلك في :app_name. لإكمال عملية التسجيل، يرجى تأكيد حسابك بالنقر على الزر أدناه.',
@@ -32,6 +30,7 @@ return [
     'payment_success_body' => 'مرحبًا :name، تم بنجاح دفع مبلغ :amount دج مقابل العملية رقم :transaction_id. شكراً لاستخدامك :app_name!',
     'payment_success_subject' => 'تمت عملية الدفع بنجاح',
     'platform_subtitle' => 'Be smart',
+    'privacy_link' => 'سياسة الخصوصية',
     'register' => 'اشتراك',
     'register_button' => 'تسجيل',
     'register_subtitle' => 'أنشئ حسابك وابدأ البيع فوراً',
@@ -44,6 +43,7 @@ return [
     ],
     'security_alert_body' => 'تم اكتشاف تسجيل دخول جديد إلى حسابك من جهاز أو موقع غير معتاد في :time. إذا لم تكن أنت، يرجى تغيير كلمة المرور فورًا.',
     'security_alert_subject' => 'تنبيه أمني بخصوص حسابك',
+    'terms_link' => 'الشروط',
     'thanks' => 'شكرًا لاستخدامك :app_name',
     'throttle' => 'محاولات تسجيل الدخول كثيرة جدًا. يُرجى المحاولة مرة أخرى بعد :seconds ثوانٍ.',
     'verification_link_sent' => 'تم إرسال رابط التأكيد الجديد إلى بريدك الإلكتروني.',

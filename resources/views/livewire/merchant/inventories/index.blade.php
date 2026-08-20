@@ -79,6 +79,10 @@ $movementsUrl = function (ProductVariant $variant): string {
 $adjust = function (ProductVariant $variant): void {
     abort_unless($this->canAdjust(), 403);
 
+    if ($variant->store_id !== currentStoreId()) {
+        abort(403);
+    }
+
     $validated = $this->validate([
         'adjust_quantity' => ['required', 'integer', 'min:1'],
         'adjust_reason' => ['nullable', 'string', 'max:255'],

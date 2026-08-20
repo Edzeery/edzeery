@@ -1,0 +1,337 @@
+// ============================================================
+//  EDZEERY — SWEETALERT2 DESIGN SYSTEM OVERRIDES
+//  Consistent with cartToast() and EDZ design tokens.
+//  Shared by both panel (app.scss) and storefront (app.css).
+// ============================================================
+
+// -- Animations --
+@keyframes edz-swal-in {
+  from { opacity: 0; transform: scale(0.9) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes edz-swal-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.9) translateY(8px); }
+}
+
+.edz-swal-show { animation: edz-swal-in .25s cubic-bezier(.4,0,.2,1) both; }
+.edz-swal-hide { animation: edz-swal-out .15s cubic-bezier(.4,0,.2,1) both; }
+
+// -- Base popup --
+.swal2-popup.edz-swal {
+  border-radius: 1rem;
+  padding: 1.5rem;
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, .15),
+              0 0 0 1px rgba(0, 0, 0, .03);
+  background: #ffffff;
+  color: var(--color-ink, #101828);
+  border: 1px solid var(--color-neutral-border, #e4e7ec);
+  backdrop-filter: blur(12px);
+  width: 24rem;
+  max-width: calc(100vw - 2rem);
+}
+
+.dark .swal2-popup.edz-swal {
+  background: #1d2939;
+  border-color: var(--color-dark-border, #344054);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, .5),
+              0 0 0 1px rgba(255, 255, 255, .05);
+  color: #f2f4f7;
+}
+
+// -- Toast (compact pill style like cartToast) --
+.swal2-popup.edz-swal.swal2-toast {
+  border-radius: 0.875rem;
+  padding: 0;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, .12),
+              0 0 0 1px rgba(0, 0, 0, .03);
+  min-height: 0;
+  width: auto;
+  max-width: 360px;
+  align-items: center;
+}
+
+.dark .swal2-popup.edz-swal.swal2-toast {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, .5),
+              0 0 0 1px rgba(255, 255, 255, .05);
+}
+
+// -- Icon container --
+.swal2-popup.edz-swal .swal2-icon {
+  margin: 0 !important;
+  padding: 0.625rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.625rem;
+  position: relative;
+  top: auto;
+  left: auto;
+}
+
+.swal2-popup.edz-swal .swal2-icon.swal2-success [class^=swal2-success-line] {
+  height: 2px;
+  width: 1rem;
+}
+
+// -- Icon colors (light) --
+.swal2-popup.edz-swal .swal2-icon.swal2-success {
+  border: 2px solid #dcfce7;
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.swal2-popup.edz-swal .swal2-icon.swal2-error {
+  border: 2px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.swal2-popup.edz-swal .swal2-icon.swal2-warning {
+  border: 2px solid #fef3c7;
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.swal2-popup.edz-swal .swal2-icon.swal2-info {
+  border: 2px solid #dbeafe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.swal2-popup.edz-swal .swal2-icon.swal2-question {
+  border: 2px solid #e0e7ff;
+  background: #eef2ff;
+  color: #6366f1;
+}
+
+// -- Icon colors (dark) --
+.dark .swal2-popup.edz-swal .swal2-icon.swal2-success {
+  border-color: rgba(22, 163, 74, .3);
+  background: rgba(22, 163, 74, .1);
+  color: #4ade80;
+}
+.dark .swal2-popup.edz-swal .swal2-icon.swal2-error {
+  border-color: rgba(220, 38, 38, .3);
+  background: rgba(220, 38, 38, .1);
+  color: #f87171;
+}
+.dark .swal2-popup.edz-swal .swal2-icon.swal2-warning {
+  border-color: rgba(217, 119, 6, .3);
+  background: rgba(217, 119, 6, .1);
+  color: #fbbf24;
+}
+.dark .swal2-popup.edz-swal .swal2-icon.swal2-info {
+  border-color: rgba(37, 99, 235, .3);
+  background: rgba(37, 99, 235, .1);
+  color: #60a5fa;
+}
+.dark .swal2-popup.edz-swal .swal2-icon.swal2-question {
+  border-color: rgba(99, 102, 241, .3);
+  background: rgba(99, 102, 241, .1);
+  color: #818cf8;
+}
+
+// -- Toast layout: horizontal pill --
+.swal2-popup.edz-swal.swal2-toast .swal2-icon {
+  margin: 0 !important;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  border-width: 1.5px;
+}
+
+.swal2-popup.edz-swal.swal2-toast .swal2-html-container {
+  margin: 0 !important;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-ink, #101828);
+}
+
+.dark .swal2-popup.edz-swal.swal2-toast .swal2-html-container {
+  color: #f2f4f7;
+}
+
+// -- Toast auto-close timer --
+.swal2-popup.edz-swal.swal2-timerprogress-bar {
+  position: relative;
+}
+
+.swal2-popup.edz-swal .swal2-timer-progress-bar {
+  background: var(--color-brand, #465fff);
+  height: 3px;
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  border-radius: 0 0 1rem 1rem;
+}
+
+// -- Title --
+.edz-swal__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-ink, #101828);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.dark .edz-swal__title {
+  color: #f2f4f7;
+}
+
+// -- Text --
+.edz-swal__text {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted, #667085);
+  margin: 0.375rem 0 0;
+  line-height: 1.5;
+}
+
+.dark .edz-swal__text {
+  color: #98a2b3;
+}
+
+// -- Actions --
+.edz-swal__actions {
+  margin-top: 1.25rem !important;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-neutral-border, #e4e7ec);
+  gap: 0.5rem;
+}
+
+.dark .edz-swal__actions {
+  border-top-color: var(--color-dark-border, #344054);
+}
+
+.swal2-popup.edz-swal.swal2-toast .edz-swal__actions {
+  display: none;
+}
+
+// -- Default SweetAlert2 buttons --
+.swal2-popup.edz-swal .swal2-actions {
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.swal2-popup.edz-swal.swal2-toast .swal2-actions {
+  display: none;
+}
+
+// -- Built-in btn overrides --
+.swal2-popup.edz-swal .swal2-styled {
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: 0.5rem 1.25rem;
+  min-height: 36px;
+  box-shadow: none;
+  font-family: var(--font-inter, 'Inter', sans-serif);
+}
+
+.swal2-popup.edz-swal .swal2-styled:focus {
+  box-shadow: 0 0 0 4px rgba(70, 95, 255, .12);
+}
+
+// Confirm button
+.swal2-popup.edz-swal .swal2-styled.swal2-confirm {
+  background: var(--color-brand, #465fff);
+  color: #fff;
+}
+
+.swal2-popup.edz-swal .swal2-styled.swal2-confirm:hover {
+  filter: brightness(1.08);
+}
+
+// Cancel button
+.swal2-popup.edz-swal .swal2-styled.swal2-cancel {
+  background: var(--color-neutral-secondary, #f3f4f6);
+  color: var(--color-ink, #101828);
+  border: 1px solid var(--color-neutral-border, #e4e7ec);
+}
+
+.swal2-popup.edz-swal .swal2-styled.swal2-cancel:hover {
+  background: var(--color-neutral-border, #e4e7ec);
+}
+
+.dark .swal2-popup.edz-swal .swal2-styled.swal2-cancel {
+  background: #374151;
+  color: #f2f4f7;
+  border-color: #4b5563;
+}
+
+.dark .swal2-popup.edz-swal .swal2-styled.swal2-cancel:hover {
+  background: #4b5563;
+}
+
+// Deny button (danger)
+.swal2-popup.edz-swal .swal2-styled.swal2-deny {
+  background: #dc2626;
+  color: #fff;
+}
+
+.swal2-popup.edz-swal .swal2-styled.swal2-deny:hover {
+  filter: brightness(1.08);
+}
+
+// -- Close button --
+.swal2-popup.edz-swal .swal2-close {
+  color: var(--color-ink-muted, #667085);
+  font-size: 1.5rem;
+  font-weight: 400;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+
+.swal2-popup.edz-swal .swal2-close:hover {
+  color: var(--color-ink, #101828);
+}
+
+.dark .swal2-popup.edz-swal .swal2-close {
+  color: #98a2b3;
+}
+
+.dark .swal2-popup.edz-swal .swal2-close:hover {
+  color: #f2f4f7;
+}
+
+// -- HTML container --
+.swal2-popup.edz-swal .swal2-html-container {
+  color: var(--color-ink-muted, #667085);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0.5rem 0 0;
+}
+
+.dark .swal2-popup.edz-swal .swal2-html-container {
+  color: #98a2b3;
+}
+
+// -- Spacing helpers --
+.swal2-popup.edz-swal .swal2-icon + .swal2-title {
+  margin-top: 0.75rem;
+}
+
+.swal2-popup.edz-swal .swal2-icon + .swal2-html-container {
+  margin-top: 0.25rem;
+}
+
+// ========================================================
+//  RTL Support for SweetAlert
+// ========================================================
+
+[dir="rtl"] .swal2-popup.edz-swal .swal2-close {
+  right: auto;
+  left: 0.75rem;
+}
+
+[dir="rtl"] .swal2-popup.edz-swal .swal2-styled {
+  font-family: 'IBM Plex Sans Arabic', var(--font-inter, 'Inter', sans-serif);
+}
+
+[dir="rtl"] .swal2-popup.edz-swal .swal2-html-container,
+[dir="rtl"] .swal2-popup.edz-swal .swal2-title {
+  text-align: right;
+}

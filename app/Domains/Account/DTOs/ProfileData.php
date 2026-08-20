@@ -2,6 +2,8 @@
 
 namespace App\Domains\Account\DTOs;
 
+use Illuminate\Http\UploadedFile;
+
 class ProfileData
 {
     public function __construct(
@@ -9,7 +11,7 @@ class ProfileData
         public readonly ?string $phone,
         public readonly ?string $address,
         public readonly ?string $birthdate,
-        public readonly ?string $profile_picture,
+        public readonly UploadedFile|string|null $profile_picture,
         public readonly ?string $country_id,
         public readonly ?string $state_id,
         public readonly ?string $city_id,

@@ -10,13 +10,14 @@
 </script>
 <button
     class="relative flex items-center justify-center
-           text-ink-muted transition-colors
-           bg-neutral-surface border border-neutral-border rounded-full
-           hover:text-ink h-10 w-10
-           hover:bg-neutral-secondary hover:text-ink
-           dark:border-dark-border dark:bg-dark-surface
-           dark:text-ink-muted dark:hover:bg-dark-secondary
+           text-gray-500 transition-colors
+           bg-white border border-gray-200 rounded-full
+           hover:text-gray-900 h-10 w-10
+           hover:bg-gray-100 hover:text-gray-900
+           dark:border-gray-700 dark:bg-gray-800
+           dark:text-gray-400 dark:hover:bg-gray-700
            dark:hover:text-white"
+    aria-label="Toggle dark mode"
     onclick="
         var html = document.documentElement;
         var isDark = html.classList.contains('dark');

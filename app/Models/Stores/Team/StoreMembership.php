@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use phpDocumentor\Reflection\Types\String_;
 
 class StoreMembership extends Model
 {
@@ -53,7 +52,7 @@ class StoreMembership extends Model
 
     public function membershipRole()
     {
-        return $this->user->merchantRole->first();
+        return $this->user?->merchantRole()->first();
     }
 
     public function isOwner(): bool

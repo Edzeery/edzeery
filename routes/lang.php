@@ -35,4 +35,3 @@ Route::get('/js/lang/{locale}.js', function ($locale) {
 // });
 
 Route::post('/lang/{locale}', [LanguageController::class, 'switch'])->name('lang.switch');
-

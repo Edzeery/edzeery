@@ -60,9 +60,9 @@ class FeatureUsageService
 
             'delivery_agents_limit' =>
                 $store->memberships()
-                    ->whereHas('role', fn ($q) =>
-                        $q->where('key', 'delivery_agent')
-                    )->count(),
+                    ->where('user_id', '!=', $store->user_id)
+                    ->where('is_active', true)
+                    ->count(),
 
             default => 0,
         };

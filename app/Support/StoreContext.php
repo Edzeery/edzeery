@@ -18,7 +18,7 @@ class StoreContext
         return $this->store;
     }
 
-    public function id(): ?int
+    public function id(): ?string
     {
         return $this->store?->id;
     }

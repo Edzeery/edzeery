@@ -36,7 +36,7 @@
             <h4 class="font-semibold mb-4 text-ink">{{ __('landing.company') }}</h4>
             <ul class="space-y-2.5">
                 <li><a href="#" class="text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition">{{ __('landing.about_us') }}</a></li>
-                <li><a href="#contact" class="text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition">{{ __('landing.contact_us') }}</a></li>
+                <li><a href="{{ route('contact') }}" class="text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition">{{ __('landing.contact_us') }}</a></li>
             </ul>
         </div>
 

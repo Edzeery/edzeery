@@ -74,7 +74,7 @@ class Subscription extends Model
     // تحقق إذا الاشتراك نشط
     public function isActive(): bool
     {
-        return $this->status === 'active'
+        return $this->status === StatusSubscriptionEnum::ACTIVE
             && (!$this->ends_at || $this->ends_at->isFuture());
     }
 
@@ -85,10 +85,11 @@ class Subscription extends Model
             && now()->lte($this->trial_ends_at);
     }
 
-    public function activeSubscription(): ?Subscription
+    public function activeSubscription(): ?self
     {
-        return $this->where('status', 'active')
-            ->latest('updated_at');
+        return $this->where('status', StatusSubscriptionEnum::ACTIVE)
+            ->latest('updated_at')
+            ->first();
     }
 
 

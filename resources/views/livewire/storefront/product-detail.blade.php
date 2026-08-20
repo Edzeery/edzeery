@@ -47,28 +47,58 @@ $addToCart = function (string $variantId = null) {
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {{-- Images --}}
-            <div x-data="{ active: 0 }" class="space-y-4">
+            <div x-data="productGallery()" class="space-y-4" dir="ltr">
                 @if($product->images->count())
-                    <div class="aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                    {{-- Main Image --}}
+                    <div class="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group cursor-zoom-in"
+                         @click="openLightbox()" role="region" aria-label="{{ __('storefront.product_images') ?? 'Product images' }}">
                         @foreach($product->images as $i => $img)
                             <img
                                 x-show="active === {{ $i }}"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 scale-105"
+                                x-transition:enter-end="opacity-100 scale-100"
                                 src="{{ asset('storage/' . $img->path) }}"
-                                alt="{{ $product->name }}"
-                                class="w-full h-full object-cover"
+                                alt="{{ $product->name }} — {{ $i + 1 }}"
+                                class="w-full h-full object-cover absolute inset-0"
                                 onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
+                                draggable="false"
                             >
                         @endforeach
+
+                        {{-- Counter --}}
+                        <div class="absolute top-4 right-4 bg-black/50 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full z-10">
+                            <span x-text="active + 1"></span>/<span>{{ $product->images->count() }}</span>
+                        </div>
+
+                        {{-- Navigation Arrows --}}
+                        @if($product->images->count() > 1)
+                            <button type="button" x-on:click.stop="prev()"
+                                class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-700 dark:text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center hover:bg-white dark:hover:bg-gray-900 z-10"
+                                aria-label="Previous image">
+                                <ion-icon name="chevron-back" class="text-xl"></ion-icon>
+                            </button>
+                            <button type="button" x-on:click.stop="next()"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-700 dark:text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center hover:bg-white dark:hover:bg-gray-900 z-10"
+                                aria-label="Next image">
+                                <ion-icon name="chevron-forward" class="text-xl"></ion-icon>
+                            </button>
+                        @endif
                     </div>
+
+                    {{-- Thumbnails --}}
                     @if($product->images->count() > 1)
-                        <div class="flex gap-3 overflow-x-auto pb-2">
+                        <div class="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide" x-ref="thumbs">
                             @foreach($product->images as $i => $img)
                                 <button
-                                    x-on:click="active = {{ $i }}"
-                                    :class="active === {{ $i }} ? 'ring-2 ring-offset-2 store-border-primary' : 'ring-1 ring-gray-200 dark:ring-gray-700'"
-                                    class="shrink-0 w-20 h-20 rounded-lg overflow-hidden ring-offset-white dark:ring-offset-gray-900"
+                                    type="button"
+                                    x-on:click="goTo({{ $i }})"
+                                    :class="active === {{ $i }}
+                                        ? 'ring-2 ring-offset-2 store-border-primary ring-offset-white dark:ring-offset-gray-900 opacity-100'
+                                        : 'ring-1 ring-gray-200 dark:ring-gray-700 opacity-60 hover:opacity-90'"
+                                    class="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden transition-all duration-200"
                                 >
-                                    <img src="{{ asset('storage/' . $img->path) }}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'">
+                                    <img src="{{ asset('storage/' . $img->path) }}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'" draggable="false">
                                 </button>
                             @endforeach
                         </div>
@@ -78,6 +108,27 @@ $addToCart = function (string $variantId = null) {
                         <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}" class="w-full h-full object-contain p-8 opacity-60">
                     </div>
                 @endif
+
+                {{-- Lightbox --}}
+                <div x-show="lightbox" x-transition.opacity class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center" @click.self="lightbox = false" @keydown.escape.window="lightbox = false" @keydown.left.window="if(lightbox) prev()" @keydown.right.window="if(lightbox) next()" style="display:none">
+                    <button type="button" @click="lightbox = false" class="absolute top-4 right-4 text-white/70 hover:text-white transition" aria-label="Close">
+                        <ion-icon name="close" class="text-3xl"></ion-icon>
+                    </button>
+                    @if($product->images->count() > 1)
+                        <button type="button" x-on:click="prev()" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" aria-label="Previous">
+                            <ion-icon name="chevron-back" class="text-2xl"></ion-icon>
+                        </button>
+                        <button type="button" x-on:click="next()" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" aria-label="Next">
+                            <ion-icon name="chevron-forward" class="text-2xl"></ion-icon>
+                        </button>
+                    @endif
+                    @foreach($product->images as $i => $img)
+                        <img x-show="active === {{ $i }}" x-transition src="{{ asset('storage/' . $img->path) }}" alt="{{ $product->name }}" class="max-w-[90vw] max-h-[85vh] object-contain rounded-lg" onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'" draggable="false">
+                    @endforeach
+                    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full">
+                        <span x-text="active + 1"></span> / {{ $product->images->count() }}
+                    </div>
+                </div>
             </div>
 
             {{-- Info --}}
@@ -91,7 +142,7 @@ $addToCart = function (string $variantId = null) {
                 <div class="mb-6">
                     <span class="text-3xl font-bold store-text-primary">{{ currency($product->price) }}</span>
                     @if($product->variants->count() === 1 && $product->variants->first()->compare_price)
-                        <span class="text-lg text-gray-400 line-through ml-3">{{ currency($product->variants->first()->compare_price) }}</span>
+                        <span class="text-lg text-gray-400 dark:text-gray-500 line-through ml-3">{{ currency($product->variants->first()->compare_price) }}</span>
                     @endif
                 </div>
 
@@ -108,7 +159,7 @@ $addToCart = function (string $variantId = null) {
                                 <button
                                     type="button"
                                     x-on:click="selected = '{{ $variant->id }}'"
-                                    :class="selected === '{{ $variant->id }}' ? 'store-border-primary store-bg-primary/10 store-text-primary ring-1' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'"
+                                    :class="selected === '{{ $variant->id }}' ? 'store-border-primary store-bg-primary-soft store-text-primary ring-1' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500'"
                                     class="border-2 rounded-lg px-5 py-2.5 text-sm font-medium transition ring-transparent"
                                 >
                                     {{ $variant->name }}

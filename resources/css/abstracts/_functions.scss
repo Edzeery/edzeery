@@ -9,7 +9,7 @@
 @use 'variables' as *;
 
 // Convert an SCSS color to its "r, g, b" channel triplet so it can be
-// stored in a CSS custom property and consumed as `rgb(var(--x) / <alpha>)`.
+// stored in a CSS custom property and consumed as `rgb(var(--x), <alpha>)`.
 //   color.channel() requires Dart Sass >= 1.72 (project uses 1.102+).
 @function edz-rgb-channels($color) {
   @return #{color.channel($color, 'red', $space: rgb), color.channel($color, 'green', $space: rgb), color.channel($color, 'blue', $space: rgb)};

@@ -30,15 +30,9 @@ with([
             <span class="edz-topbar__divider" aria-hidden="true"></span>
         @endif
 
-        <button type="button" class="edz-topbar__icon-btn" @click="$store.theme.toggle()"
-            aria-label="{{ __('buttons.toggle_theme') }}">
-            <template x-if="$store.theme.theme === 'dark'">
-                <x-edz.icon name="sun" class="w-5 h-5" />
-            </template>
-            <template x-if="$store.theme.theme === 'light'">
-                <x-edz.icon name="moon" class="w-5 h-5" />
-            </template>
-        </button>
+        <x-lang-switcher />
+
+        <x-dark-toggle />
 
         <span class="edz-topbar__divider" aria-hidden="true"></span>
 
@@ -46,6 +40,6 @@ with([
 
         <span class="edz-topbar__divider" aria-hidden="true"></span>
 
-        <x-edz.user-dropdown />
+        <x-edz.user-dropdown class="bg-gray-200" />
     </div>
 </header>

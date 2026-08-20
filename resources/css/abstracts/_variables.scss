@@ -16,8 +16,8 @@ $edz-font-sans: 'Inter', 'IBM Plex Sans Arabic', 'Tajawal', -apple-system,
 $edz-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
   'Liberation Mono', monospace;
 
-$edz-font-base: 0.875rem;       // 14px
-$edz-font-sm: 0.75rem;          // 12px
+$edz-font-base: 0.975rem;       // 15.6px
+$edz-font-sm: 0.875rem;          // 14px
 $edz-font-lg: 1rem;             // 16px
 $edz-font-xl: 1.125rem;         // 18px
 $edz-font-2xl: 1.375rem;        // 22px
@@ -222,12 +222,12 @@ $edz-spacing: (
 
 // --- Z-index scale --------------------------------------------------
 $edz-z: (
-  'sidebar': 40,
+  'sidebar': 50,
   'topbar': 30,
   'sticky': 20,
   'dropdown': 40,
-  'modal': 50,
-  'overlay': 60,
+  'modal': 60,
+  'overlay': 45,
   'popover': 70,
   'toast': 80,
 );

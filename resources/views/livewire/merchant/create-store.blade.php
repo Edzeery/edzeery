@@ -84,7 +84,7 @@ $createStore = function (): void {
         'name' => ['required', 'string', 'max:255'],
         'slug' => ['required', 'string', 'max:255', Rule::unique('stores')->whereNull('deleted_at')],
         'currency' => ['required', 'string', 'max:10'],
-        'landing_template' => ['required', 'string'],
+        'landing_template' => ['required', 'string', Rule::in(\App\Enums\Store\LandingTemplateEnum::values())],
     ]);
 
     $user = auth()->user();

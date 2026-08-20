@@ -28,13 +28,18 @@ $refreshCart = function () {
 
     if (!empty($items)) {
         $variantIds = array_column($items, 'variant_id');
-        $variants = ProductVariant::with('product.images')->whereIn('id', $variantIds)->get()->keyBy('id');
+        $variants = ProductVariant::with('product.images')
+            ->whereIn('id', $variantIds)
+            ->get()
+            ->keyBy('id');
 
         foreach ($items as &$item) {
             $variant = $variants[$item['variant_id']] ?? null;
             $product = $variant?->product;
             $firstImage = $product?->images?->first()?->path;
-            $item['image'] = $firstImage ? asset('storage/' . $firstImage) : asset('img/icons/noimg.png');
+            $item['image'] = $firstImage
+                ? asset('storage/' . $firstImage)
+                : asset('img/icons/noimg.png');
             $item['slug'] = $product?->slug ?? '';
         }
         unset($item);
@@ -48,237 +53,251 @@ $removeItem = function (string $variantId) {
     $this->refreshCart();
 };
 
+$clearCart = function () {
+    app(CartService::class)->clear(currentStoreId());
+    $this->refreshCart();
+};
+
 $updateQty = function (string $variantId, int $qty) {
     app(CartService::class)->updateQuantity(currentStoreId(), $variantId, $qty);
     $this->refreshCart();
 };
-
 ?>
 
-<div
-    x-data="{
-        open: false,
-        init() {
-            this.$el.__alpineOpen = () => { this.open = true; }
-            setInterval(() => { if (this.$wire) this.$wire.refreshCart(); }, 30000);
-            window.addEventListener('cart-updated', () => { if (this.$wire) this.$wire.refreshCart(); });
-            window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
-        }
-    }"
-    class="relative"
->
-    {{-- Trigger --}}
-    <button
-        x-on:click="open = !open"
-        x-bind:aria-expanded="open.toString()"
-        aria-haspopup="true"
-        aria-label="{{ __('storefront.cart') }}"
-        class="relative p-2.5 sm:p-2
-               text-ink-muted hover:text-ink
-               rounded-lg hover:bg-neutral-secondary dark:hover:bg-dark-secondary
-               min-h-[44px] min-w-[44px]
-               flex items-center justify-center
-               transition-colors duration-150"
-    >
+<div x-data="{
+    open: false,
+    init() {
+        window.addEventListener('cart-updated', () => { this.$wire.refreshCart(); });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.open) { this.open = false; }
+        });
+        this._pollInterval = setInterval(() => {
+            if (document.visibilityState === 'visible') { this.$wire.refreshCart(); }
+        }, 30000);
+    },
+    destroy() { clearInterval(this._pollInterval); },
+    toggle() { this.open = !this.open; },
+    listen() { window.dispatchEvent(new Event('cart-updated')); }
+}" class="relative">
+
+    {{-- Trigger Button --}}
+    <button x-on:click="toggle()"
+        class="relative p-2.5 rounded-lg text-gray-600 dark:text-gray-300
+               hover:bg-gray-100 dark:hover:bg-gray-700
+               transition-colors duration-150 min-h-[44px] min-w-[44px]
+               flex items-center justify-center"
+        aria-label="{{ __('storefront.cart') }}">
         <ion-icon name="cart-outline" class="text-[22px] leading-none"></ion-icon>
         @if ($count > 0)
-            <span
-                class="absolute -top-0.5 -end-0.5
-                       store-bg-primary text-white
-                       text-[10px] font-bold leading-none
-                       min-w-[18px] h-[18px] px-1
-                       flex items-center justify-center
-                       rounded-full"
-            >{{ $count > 99 ? '99+' : $count }}</span>
+            <span class="absolute -top-0.5 -end-0.5 store-bg-primary text-white
+                         text-[10px] font-bold leading-none
+                         min-w-[18px] h-[18px] px-1
+                         flex items-center justify-center rounded-full
+                         ring-2 ring-white dark:ring-gray-800">
+                {{ $count > 99 ? '99+' : $count }}
+            </span>
         @endif
     </button>
 
-    {{-- Backdrop (mobile) --}}
-    <div
-        x-show="open"
+    {{-- Backdrop --}}
+    <div x-show="open"
         x-on:click="open = false"
-        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter="transition ease-out duration-300"
         x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave="transition ease-in duration-200"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
-        class="fixed inset-0 bg-black/40 z-50 sm:hidden"
-        style="display: none;"
-    ></div>
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
+        style="display: none;">
+    </div>
 
-    {{-- Panel --}}
-    <div
-        x-show="open"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 translate-y-2 sm:scale-95"
-        x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-        x-transition:leave-end="opacity-0 translate-y-2 sm:scale-95"
-        x-on:click.outside="open = false"
-        role="dialog"
-        aria-label="{{ __('storefront.cart') }}"
-        class="fixed bottom-0 inset-x-0 z-[60]
-               sm:absolute sm:top-full sm:end-0 sm:mt-2 sm:w-80
-               max-h-[85vh] sm:max-h-[480px]
-               bg-neutral-surface dark:bg-dark-surface
-               sm:rounded-xl rounded-t-2xl
-               border border-neutral-border dark:border-dark-border
-               shadow-elevated
-               flex flex-col "
-        style="display: none;"
-    >
-        {{-- Drag handle (mobile) --}}
-        <div class="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
-            <div class="w-10 h-1 rounded-full bg-neutral-border dark:bg-dark-border"></div>
-        </div>
+    {{-- Sidebar Panel --}}
+    <div x-show="open"
+        @if (app()->getLocale() === 'ar')
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="-translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="-translate-x-full"
+            class="fixed inset-y-0 left-0 z-[70] w-full sm:w-[420px] bg-white dark:bg-gray-900
+                   shadow-2xl shadow-black/20 flex flex-col"
+        @else
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full"
+            class="fixed inset-y-0 right-0 z-[70] w-full sm:w-[420px] bg-white dark:bg-gray-900
+                   shadow-2xl shadow-black/20 flex flex-col"
+        @endif
+        style="display: none;">
 
         {{-- Header --}}
-        <div class="px-4 pt-4 pb-3 shrink-0 border-b border-neutral-border/50 dark:border-dark-border/50">
-            <div class="flex items-center justify-between">
-                <h3 class="font-semibold text-ink flex items-center gap-2">
-                    <ion-icon name="cart-outline" class="text-lg store-text-primary"></ion-icon>
-                    <span>{{ __('storefront.cart') }}</span>
-                </h3>
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full store-bg-primary flex items-center justify-center">
+                    <ion-icon name="cart-outline" class="text-white text-lg"></ion-icon>
+                </div>
+                <div>
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('storefront.cart') }}</h2>
+                    @if ($count > 0)
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ $count }} {{ __('storefront.items') }}
+                        </p>
+                    @endif
+                </div>
+            </div>
+            <div class="flex items-center gap-1">
                 @if ($count > 0)
-                    <span class="text-xs font-medium text-ink-muted bg-neutral-secondary dark:bg-dark-secondary px-2 py-0.5 rounded-full">
-                        {{ $count }} {{ __('storefront.items') }}
-                    </span>
+                    <button x-data
+                            x-on:click.prevent="if (await EdzSwal.confirmAction(@js(__('storefront.clear_cart')), @js(__('storefront.clear_cart_confirm')))) $wire.clearCart()"
+                            class="w-9 h-9 rounded-full flex items-center justify-center
+                                   text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400
+                                   hover:bg-red-50 dark:hover:bg-red-900/20
+                                   transition-colors duration-150"
+                            aria-label="{{ __('storefront.clear_cart') }}">
+                        <ion-icon name="trash-outline" class="text-lg"></ion-icon>
+                    </button>
                 @endif
+                <button x-on:click="open = false"
+                    class="w-9 h-9 rounded-full flex items-center justify-center
+                           text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200
+                           hover:bg-gray-100 dark:hover:bg-gray-700
+                           transition-colors duration-150"
+                    aria-label="Close">
+                    <ion-icon name="close-outline" class="text-xl"></ion-icon>
+                </button>
             </div>
         </div>
 
+        {{-- Content --}}
         @if ($count === 0)
             {{-- Empty State --}}
-            <div class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
-                <div class="w-16 h-16 rounded-full bg-neutral-secondary dark:bg-dark-secondary flex items-center justify-center mb-4">
-                    <ion-icon name="bag-outline" class="text-3xl text-ink-soft"></ion-icon>
+            <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+                <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
+                    <ion-icon name="bag-outline" class="text-4xl text-gray-300 dark:text-gray-600"></ion-icon>
                 </div>
-                <p class="text-sm font-medium text-ink mb-1">{{ __('storefront.your_cart_is_empty') }}</p>
-                <p class="text-xs text-ink-muted mb-4">{{ __('storefront.review_cart') }}</p>
+                <p class="text-base font-medium text-gray-900 dark:text-white mb-1.5">
+                    {{ __('storefront.your_cart_is_empty') }}
+                </p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-[240px]">
+                    {{ __('storefront.review_cart') }}
+                </p>
                 <button x-on:click="open = false"
-                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium
-                           store-btn-primary text-white
-                           transition-colors duration-150">
+                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                           store-btn-primary text-white text-sm font-semibold
+                           transition-all duration-150 hover:shadow-lg">
                     <ion-icon name="bag-handle-outline" class="text-base"></ion-icon>
                     {{ __('storefront.back_to_store') }}
                 </button>
             </div>
         @else
-            {{-- Items --}}
-            <div class="  px-4 py-3">
-                @foreach ($items as $item)
-                    <div
-                        wire:key="cart-item-{{ $item['variant_id'] }}"
-                        class="flex items-start gap-3 py-3 first:pt-0 last:pb-0 border-b border-neutral-border/40 dark:border-dark-border/40 last:border-b-0"
-                    >
-                        {{-- Image --}}
-                        <a
-                            href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']]) }}"
-                            x-on:click="open = false"
-                            class="shrink-0 w-14 h-14 rounded-lg
-                                   bg-neutral-secondary dark:bg-dark-secondary
-                                   border border-neutral-border/50 dark:border-dark-border/50"
-                        >
-                            <img
-                                src="{{ $item['image'] }}"
-                                alt="{{ $item['product_name'] }}"
-                                class="w-full h-full object-cover"
-                                loading="lazy"
-                                onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
-                            >
-                        </a>
+            {{-- Items List --}}
+            <div class="flex-1 overflow-y-auto overscroll-contain">
+                <div class="px-5 py-3 divide-y divide-gray-100 dark:divide-gray-800">
+                    @foreach ($items as $item)
+                        <div wire:key="cart-item-{{ $item['variant_id'] }}"
+                             class="flex gap-3.5 py-4 first:pt-0 last:pb-0">
 
-                        {{-- Details --}}
-                        <div class="flex-1 min-w-0">
-                            <a
-                                href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']]) }}"
-                                x-on:click="open = false"
-                                class="block text-sm font-medium text-ink leading-snug line-clamp-2
-                                       hover:store-text-primary transition-colors duration-150"
-                            >{{ $item['product_name'] }}</a>
+                            {{-- Product Image --}}
+                            <a href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']]) }}"
+                               x-on:click="open = false"
+                               class="shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity">
+                                <img src="{{ $item['image'] }}"
+                                     alt="{{ $item['product_name'] }}"
+                                     class="w-full h-full object-cover"
+                                     loading="lazy"
+                                     onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'">
+                            </a>
 
-                            @if ($item['variant_name'])
-                                <p class="text-xs text-ink-muted mt-0.5">{{ $item['variant_name'] }}</p>
-                            @endif
-
-                            <div class="flex items-center justify-between mt-2">
-                                {{-- Qty --}}
-                                <div class="flex items-center rounded-lg border border-neutral-border dark:border-dark-border ">
-                                    <button
-                                        wire:click="updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] - 1 }})"
-                                        wire:loading.attr="disabled"
-                                        wire:loading.class="opacity-40"
-                                        :disabled="{{ $item['quantity'] <= 1 ? 'true' : 'false' }}"
-                                        aria-label="{{ __('buttons.decrease') }}"
-                                        class="w-7 h-7 flex items-center justify-center
-                                               bg-neutral-secondary dark:bg-dark-secondary
-                                               text-ink-muted hover:text-ink
-                                               transition-colors duration-150
-                                               disabled:opacity-30 disabled:cursor-not-allowed
-                                               text-xs font-medium select-none"
-                                    >&minus;</button>
-                                    <span class="w-7 text-center text-xs font-medium text-ink tabular-nums select-none">
-                                        {{ $item['quantity'] }}
-                                    </span>
-                                    <button
-                                        wire:click="updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] + 1 }})"
-                                        wire:loading.attr="disabled"
-                                        wire:loading.class="opacity-40"
-                                        :disabled="{{ $item['max_stock'] && $item['quantity'] >= $item['max_stock'] ? 'true' : 'false' }}"
-                                        aria-label="{{ __('buttons.increase') }}"
-                                        class="w-7 h-7 flex items-center justify-center
-                                               bg-neutral-secondary dark:bg-dark-secondary
-                                               text-ink-muted hover:text-ink
-                                               transition-colors duration-150
-                                               disabled:opacity-30 disabled:cursor-not-allowed
-                                               text-xs font-medium select-none"
-                                    >&plus;</button>
+                            {{-- Product Details --}}
+                            <div class="flex-1 min-w-0 flex flex-col">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <a href="{{ route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']]) }}"
+                                           x-on:click="open = false"
+                                           class="block text-sm font-medium text-gray-900 dark:text-white leading-snug line-clamp-2 hover:text-[var(--store-primary)] transition-colors">
+                                            {{ $item['product_name'] }}
+                                        </a>
+                                        @if ($item['variant_name'])
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                {{ $item['variant_name'] }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                    <button x-data
+                                            x-on:click.prevent="if (await EdzSwal.confirmAction(@js(__('storefront.remove')), @js(__('messages.action_confirm_delete')))) $wire.removeItem('{{ $item['variant_id'] }}')"
+                                            class="shrink-0 p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                            aria-label="{{ __('storefront.remove') }}">
+                                        <ion-icon name="trash-outline" class="text-base"></ion-icon>
+                                    </button>
                                 </div>
 
-                                {{-- Price --}}
-                                <span class="text-sm font-semibold text-ink tabular-nums">
-                                    {{ currency($item['price'] * $item['quantity']) }}
-                                </span>
+                                {{-- Price + Quantity --}}
+                                <div class="flex items-center justify-between mt-auto pt-2">
+                                    <div class="flex items-center rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+                                        <button wire:click="updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] - 1 }})"
+                                                wire:loading.attr="disabled"
+                                                wire:loading.class="opacity-40"
+                                                :disabled="{{ $item['quantity'] <= 1 ? 'true' : 'false' }}"
+                                                class="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800
+                                                       text-gray-600 dark:text-gray-400
+                                                       hover:bg-gray-100 dark:hover:bg-gray-700
+                                                       transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                                                       text-sm font-medium select-none">
+                                            &minus;
+                                        </button>
+                                        <span class="w-8 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums select-none">
+                                            {{ $item['quantity'] }}
+                                        </span>
+                                        <button wire:click="updateQty('{{ $item['variant_id'] }}', {{ $item['quantity'] + 1 }})"
+                                                wire:loading.attr="disabled"
+                                                wire:loading.class="opacity-40"
+                                                :disabled="{{ $item['max_stock'] && $item['quantity'] >= $item['max_stock'] ? 'true' : 'false' }}"
+                                                class="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800
+                                                       text-gray-600 dark:text-gray-400
+                                                       hover:bg-gray-100 dark:hover:bg-gray-700
+                                                       transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                                                       text-sm font-medium select-none">
+                                            &plus;
+                                        </button>
+                                    </div>
+                                    <span class="text-sm font-bold text-gray-900 dark:text-white tabular-nums">
+                                        {{ currency($item['price'] * $item['quantity']) }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-
-                        {{-- Remove --}}
-                        <button
-                            x-data
-                            x-on:click.prevent="if (await EdzSwal.confirmAction('{{ __('storefront.remove') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.removeItem('{{ $item['variant_id'] }}')"
-                            aria-label="{{ __('storefront.remove') }}"
-                            class="shrink-0 mt-0.5 p-1 rounded
-                                   text-ink-soft hover:text-error-500 hover:bg-error-50 dark:hover:bg-error-900/20
-                                   transition-colors duration-150"
-                        >
-                            <ion-icon name="close-outline" class="text-base"></ion-icon>
-                        </button>
-                    </div>
-                @endforeach
+                    @endforeach
+                </div>
             </div>
 
             {{-- Footer --}}
-            <div class="shrink-0 px-4 py-3 border-t border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-sm text-ink-muted">{{ __('storefront.subtotal') }}</span>
-                    <span class="text-base font-semibold text-ink tabular-nums">{{ currency($subtotal) }}</span>
+            <div class="shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-5 py-4">
+                {{-- Subtotal --}}
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ __('storefront.subtotal') }}</span>
+                    <span class="text-lg font-bold text-gray-900 dark:text-white tabular-nums">
+                        {{ currency($subtotal) }}
+                    </span>
                 </div>
-                <a
-                    href="{{ route('storefront.checkout', ['store' => currentStore()->slug]) }}"
-                    x-on:click="open = false"
-                    class="block w-full text-center py-2.5 px-4 rounded-lg
-                          store-btn-primary text-white
-                          font-semibold text-sm
-                          min-h-[44px]
-                          flex items-center justify-center
-                          transition-colors duration-150"
-                >
+
+                {{-- Checkout Button --}}
+                <a href="{{ route('storefront.checkout', ['store' => currentStore()->slug]) }}"
+                   x-on:click="open = false"
+                   class="block w-full text-center py-3 px-4 rounded-xl
+                          store-btn-primary text-white font-bold text-sm
+                          min-h-[48px] flex items-center justify-center gap-2
+                          transition-all duration-150 hover:shadow-lg hover:brightness-110">
+                    <ion-icon name="lock-closed-outline" class="text-base"></ion-icon>
                     {{ __('storefront.checkout') }}
                 </a>
-                <p class="text-center text-xs text-ink-soft mt-2">
-                    <ion-icon name="lock-closed-outline" class="align-text-bottom text-[11px]"></ion-icon>
+
+                <p class="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-2.5">
+                    <ion-icon name="shield-checkmark-outline" class="align-text-bottom text-xs"></ion-icon>
                     {{ __('storefront.secure_checkout') }}
                 </p>
             </div>

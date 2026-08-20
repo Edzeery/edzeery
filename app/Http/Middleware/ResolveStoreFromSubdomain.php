@@ -23,7 +23,10 @@ class ResolveStoreFromSubdomain
         }
 
         app(StoreContext::class)->set($store);
-        session(['current_store_id' => $store->id]);
+
+        if (auth()->check()) {
+            session(['current_store_id' => $store->id]);
+        }
 
         return $next($request);
     }

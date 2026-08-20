@@ -1,9 +1,7 @@
 <?php
 
 return [
-    'accept_terms' => "J'accepte les :terms et la :privacy.",
-    'terms_link' => 'Conditions',
-    'privacy_link' => 'Politique de confidentialité',
+    'accept_terms' => 'J\'accepte les :terms et la :privacy.',
     'account_inactive' => 'Le compte n’est pas encore activé ⚠️',
     'account_suspended' => 'Le compte a été suspendu 🚫',
     'account_verification_body' => 'Bonjour :name, merci de vous être inscrit sur :app_name. Veuillez confirmer votre compte en cliquant sur le bouton ci-dessous.',
@@ -29,6 +27,7 @@ return [
     'password_reset_subject' => 'Réinitialisez votre mot de passe',
     'payment_success_body' => 'Bonjour :name, votre paiement de :amount DZD pour la transaction n° :transaction_id a été effectué avec succès. Merci d’utiliser :app_name !',
     'payment_success_subject' => 'Paiement réussi',
+    'privacy_link' => 'Politique de confidentialité',
     'register_button' => 'S\'inscrire',
     'register_success' => 'Compte créé avec succès 🎉',
     'resend_verification' => 'Renvoyer l\'e-mail de vérification',
@@ -39,6 +38,7 @@ return [
     ],
     'security_alert_body' => 'Une nouvelle connexion à votre compte a été détectée depuis un appareil ou un emplacement inhabituel à :time. Si ce n’était pas vous, veuillez changer votre mot de passe immédiatement.',
     'security_alert_subject' => 'Alerte de sécurité concernant votre compte',
+    'terms_link' => 'Conditions',
     'thanks' => 'Merci d’utiliser :app_name',
     'throttle' => 'Trop de tentatives de connexion. Veuillez réessayer après :seconds secondes.',
     'verification_link_sent' => 'Un nouveau lien de vérification a été envoyé à votre adresse e-mail.',

@@ -1,4 +1,4 @@
-<section id="pricing" class="py-24 bg-gray-50 dark:bg-[#0f0f0f]" x-data="{ billing: 'monthly' }">
+<section id="pricing" class="py-24 bg-gray-50 dark:bg-dark-surface" x-data="{ billing: 'monthly' }">
     <div class="max-w-7xl mx-auto px-6">
 
         {{-- Title --}}

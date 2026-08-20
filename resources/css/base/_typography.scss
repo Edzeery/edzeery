@@ -62,6 +62,6 @@ b {
 }
 
 ::selection {
-    background-color: rgb(var(--edz-color-brand-600) / .85);
+    background-color: rgb(var(--edz-color-brand-600), .85);
     color: #1ebe41;
 }

@@ -30,7 +30,7 @@
     <script>
         (function(){var t=localStorage.getItem('edz-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()
     </script>
-
+  <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @vite(['resources/css/app.scss', 'resources/js/panel.js'])
     @livewireStyles
 </head>

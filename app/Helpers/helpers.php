@@ -279,8 +279,7 @@ if (!function_exists('states')) {
 if (!function_exists('state')) {
     function state($id)
     {
-
-        return State::where('')->findOrFail($id);
+        return State::findOrFail($id);
     }
 }
 
@@ -298,14 +297,14 @@ if (!function_exists('userRole')) {
         if (! $user) return null;
 
         // استخدام Spatie Roles
-        $role = $user->getRoleNames();
+        $roles = $user->getRoleNames();
 
         // توحيد الأدوار الإدارية
-        if (in_array($role, ['super_admin', 'admin'], true)) {
+        if ($roles->intersect(['super_admin', 'admin'])->isNotEmpty()) {
             return 'admin';
         }
 
-        return $role;
+        return $roles->first();
     }
 }
 

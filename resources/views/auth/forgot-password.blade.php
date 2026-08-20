@@ -29,7 +29,7 @@
             {{-- Back to Login --}}
             <p class="text-center text-sm text-ink-muted mt-4">
                 {{ __('messages.remembered_password') }}
-                <a href="{{ route('login') }}" class="text-brand-600 dark:text-brand-400 hover:text-brand-700 font-medium transition">
+                <a href="{{ route('login') }}" class="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-medium transition">
                     {{ __('buttons.login') }}
                 </a>
             </p>

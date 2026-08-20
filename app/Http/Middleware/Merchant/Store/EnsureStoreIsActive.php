@@ -12,29 +12,34 @@ class EnsureStoreIsActive
     {
         $store = currentStore();
 
+        if (! $store) {
+            abort(404);
+        }
+
         $latestStatusHistory = $store->latestStatus();
 
-        // if (
-        //     $latestStatusHistory
-        //     && in_array($latestStatusHistory->status, [
-        //         StoreStatusEnum::PENDING,
-        //         StoreStatusEnum::CLOSED,
-        //         StoreStatusEnum::SUSPENDED,
-        //     ], true)
-        // ) {
-        //     if (! $request->routeIs('account.billing')) {
-        //         return redirect()->route('account.billing');
-        //     }
-        // }
+        if (
+            $latestStatusHistory
+            && in_array($latestStatusHistory->status, [
+                StoreStatusEnum::PENDING,
+                StoreStatusEnum::CLOSED,
+                StoreStatusEnum::SUSPENDED,
+            ], true)
+        ) {
+            if (! $request->routeIs('merchant.billing.index')) {
+                return redirect()->route('merchant.billing.index')
+                    ->with('warning', __('Your store is not active. Please check your subscription.'));
+            }
+        }
 
         $subscription = user()?->latestSubscription();
 
-        // if (! $subscription || (! $subscription->isActive() && ! $subscription->onTrial())) {
-        //     if (! $request->routeIs('account.billing')) {
-        //         return redirect()->route('account.billing')
-        //             ->with('subscription_warning', true);
-        //     }
-        // }
+        if ($subscription && ! $subscription->isActive() && ! $subscription->onTrial()) {
+            if (! $request->routeIs('merchant.billing.index')) {
+                return redirect()->route('merchant.billing.index')
+                    ->with('warning', __('Your subscription has expired.'));
+            }
+        }
 
         return $next($request);
     }

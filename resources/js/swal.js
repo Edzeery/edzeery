@@ -1,20 +1,25 @@
 import Swal from "sweetalert2";
 
-const icons = {
-    success: "success",
-    error: "error",
-    warning: "warning",
-    info: "info",
-    question: "question",
-};
+function isDark() {
+    return document.documentElement.classList.contains("dark");
+}
+
+function isRTL() {
+    return document.documentElement.dir === "rtl";
+}
+
+function toastPosition() {
+    return isRTL() ? "top-start" : "top-end";
+}
 
 const EdzSwal = {
     fire(options) {
         const { type, ...rest } = options;
         const t = type || "success";
+
         return Swal.fire({
             ...rest,
-            icon: icons[t] || "info",
+            icon: t,
             title: rest.title || "",
             text: rest.text || "",
             html: rest.html || undefined,
@@ -22,22 +27,23 @@ const EdzSwal = {
             timerProgressBar: t === "success",
             showConfirmButton: t !== "success",
             confirmButtonText: rest.confirmButtonText || "OK",
-            confirmButtonColor: rest.confirmButtonColor || "#6366f1",
+            confirmButtonColor: rest.confirmButtonColor || undefined,
             cancelButtonText: rest.cancelButtonText || "Cancel",
             showCancelButton: rest.showCancelButton ?? (t === "question" || t === "warning"),
             reverseButtons: true,
             toast: rest.toast ?? (t === "success"),
-            position: rest.position || (t === "success" ? "top-end" : "center"),
+            position: rest.position || (t === "success" ? toastPosition() : "center"),
             customClass: {
                 popup: `edz-swal edz-swal--${t}`,
                 title: "edz-swal__title",
                 htmlContainer: "edz-swal__text",
-                confirmButton: "edz-btn edz-btn--primary edz-btn--sm",
-                cancelButton: "edz-btn edz-btn--ghost edz-btn--sm",
                 actions: "edz-swal__actions",
+                confirmButton: "swal2-styled",
+                cancelButton: "swal2-styled",
             },
             showClass: { popup: "edz-swal-show" },
             hideClass: { popup: "edz-swal-hide" },
+            iconHtml: undefined,
         });
     },
 
@@ -66,8 +72,16 @@ const EdzSwal = {
             showCancelButton: true,
             confirmButtonText: options.confirmText || "OK",
             cancelButtonText: options.cancelText || "Cancel",
-            confirmButtonColor: options.confirmColor || "#dc2626",
+            confirmButtonColor: options.confirmColor || undefined,
             ...options,
+            customClass: {
+                popup: "edz-swal edz-swal--question",
+                title: "edz-swal__title",
+                htmlContainer: "edz-swal__text",
+                confirmButton: "swal2-styled",
+                cancelButton: "swal2-styled",
+                actions: "edz-swal__actions",
+            },
         }).then((result) => !!result.isConfirmed);
     },
 
@@ -95,7 +109,7 @@ const EdzSwal = {
     confirmAction(title, text, options = {}) {
         return this.confirm(title, text, {
             confirmText: options.confirmText || "OK",
-            confirmColor: options.confirmColor || "#6366f1",
+            confirmColor: options.confirmColor || undefined,
             ...options,
         });
     },
@@ -117,8 +131,8 @@ const EdzSwal = {
                 popup: "edz-swal edz-swal--warning",
                 title: "edz-swal__title",
                 htmlContainer: "edz-swal__text",
-                confirmButton: "edz-btn edz-btn--danger edz-btn--sm",
-                cancelButton: "edz-btn edz-btn--primary edz-btn--sm",
+                confirmButton: "swal2-styled",
+                cancelButton: "swal2-styled",
                 actions: "edz-swal__actions",
             },
         }).then((result) => {
@@ -129,14 +143,19 @@ const EdzSwal = {
 };
 
 function initSwal() {
-    document.addEventListener("livewire:initialized", () => {
+    const bind = () => {
         if (typeof window.Livewire !== "undefined") {
             window.Livewire.on("swal", (data) => {
                 const payload = Array.isArray(data) ? data[0] : data;
                 EdzSwal.fire(payload);
             });
         }
-    });
+    };
+    if (typeof window.Livewire !== "undefined") {
+        bind();
+    } else {
+        document.addEventListener("livewire:initialized", bind, { once: true });
+    }
 }
 
 function checkSessionFlash() {
@@ -164,6 +183,11 @@ function registerI18n() {
 
 document.addEventListener("DOMContentLoaded", () => {
     registerI18n();
+    initSwal();
+    checkSessionFlash();
+});
+
+document.addEventListener("livewire:navigated", () => {
     initSwal();
     checkSessionFlash();
 });

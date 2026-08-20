@@ -64,20 +64,6 @@ class Product extends Model
         return $this->belongsTo(Brand::class);
     }
 
-    public function stores(): BelongsToMany
-    {
-        return $this->belongsToMany(Store::class);
-    }
-
-    // الفئة الرئيسية (Primary Category)
-    public function primaryCategory(): BelongsTo
-    {
-        return $this->belongsTo(Category::class, 'primary_category_id');
-    }
-
-    // جميع الفئات (إذا أردنا إضافات multi-categories لاحقًا)
-
-
     public function categories()
     {
         return $this->belongsToMany(Category::class)

@@ -1,4 +1,4 @@
-<section id="faq" class="py-24 bg-gray-50 dark:bg-[#0a0a0a]">
+<section id="faq" class="py-24 bg-gray-50 dark:bg-dark-secondary">
     <div class="max-w-3xl mx-auto px-6">
 
         <div class="text-center mb-14">
