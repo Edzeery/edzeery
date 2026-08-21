@@ -21,6 +21,7 @@ state([
     'phone' => '',
     'logo' => null,
     'cover' => null,
+    'favicon' => null,
     'currency' => 'DZD',
     'language' => 'ar',
     'supported_languages' => [],
@@ -55,6 +56,12 @@ $save = function (): void {
     $store = currentStore();
     abort_unless($store, 404);
 
+    $this->validate([
+        'logo' => 'nullable|image|max:2048',
+        'cover' => 'nullable|image|max:4096',
+        'favicon' => 'nullable|file|max:256|mimes:png,svg',
+    ]);
+
     $data = [
         'name' => $this->name,
         'description' => $this->description,
@@ -69,6 +76,11 @@ $save = function (): void {
     }
 
     $store->update($data);
+
+    if ($this->favicon instanceof TemporaryUploadedFile) {
+        $faviconPath = $this->favicon->store('stores', 'public');
+        $store->seo()->updateOrCreate([], ['favicon' => $faviconPath]);
+    }
 
     $settingsData = [
         'currency' => $this->currency,
@@ -148,6 +160,30 @@ $save = function (): void {
                         <div class="flex-1">
                             <input type="file" wire:model="cover" accept="image/*" class="edz-input text-sm" />
                             @error('cover')
+                                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Favicon --}}
+                <div>
+                    <label class="edz-label">{{ __('merchant_panel.favicon') }}</label>
+                    <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.favicon_help') }}</p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-neutral-border dark:border-dark-border overflow-hidden flex items-center justify-center bg-neutral-secondary dark:bg-dark-secondary shrink-0">
+                            @if ($favicon)
+                                <img src="{{ $favicon->temporaryUrl() }}" class="w-full h-full object-cover" />
+                            @elseif(currentStore()?->seo?->favicon)
+                                <img src="{{ asset('storage/' . currentStore()->seo->favicon) }}" class="w-full h-full object-cover" />
+                            @else
+                                <ion-icon name="globe-outline" class="text-xl text-ink-muted"></ion-icon>
+                            @endif
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" wire:model="favicon" accept="image/png,image/svg+xml" class="edz-input text-sm" />
+                            <p class="text-[11px] text-ink-muted mt-1">{{ __('merchant_panel.favicon_help') }}</p>
+                            @error('favicon')
                                 <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                             @enderror
                         </div>

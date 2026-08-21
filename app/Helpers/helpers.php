@@ -143,6 +143,12 @@ if (!function_exists('managesMember')) {
             return false;
         }
 
+        $currentStoreId = currentStoreId();
+
+        if (! $currentStoreId || $targetMembership->store_id !== $currentStoreId) {
+            return false;
+        }
+
         // OWNER & ADMIN يديرون الجميع
         if (isStoreOwner($actor) || isStoreAdmin($actor)) {
             return true;

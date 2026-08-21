@@ -71,6 +71,10 @@ class OrderObserver
             foreach ($order->items as $item) {
                 $variant = $item->variant;
 
+                if (! $variant) {
+                    continue;
+                }
+
                 InventoryService::apply(
                     variant: $variant,
                     quantity: $item->quantity,

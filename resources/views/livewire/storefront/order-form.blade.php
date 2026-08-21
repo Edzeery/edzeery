@@ -46,12 +46,12 @@ $submitOrder = function () {
         'phone'         => 'required|string|max:20',
         'email'         => 'nullable|email|max:255',
         'state_id'      => 'required|exists:states,id',
-        'city_id'       => 'nullable|exists:cities,id',
-        'address'       => 'nullable|string|max:1000',
+        'city_id'       => 'required_if:delivery_type,home|nullable|exists:cities,id',
+        'address'       => 'required_if:delivery_type,home|nullable|string|max:1000',
         'delivery_type' => 'required|in:home,stopdesk',
         'payment_method' => 'required|in:cod',
         'notes'         => 'nullable|string|max:500',
-        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|string',
+        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer',
     ])->validate();
 
     $cartService = app(CartService::class);
@@ -94,11 +94,17 @@ $submitOrder = function () {
             ->where('key', 'pending')
             ->first();
 
+        if (! $status) {
+            DB::rollBack();
+            $this->dispatch('swal', type: 'error', title: __('storefront.failed_to_place_order'));
+            return;
+        }
+
         $order = Order::create([
             'store_id'     => $storeId,
             'user_id'      => auth()->id(),
             'customer_id'  => $customer->id,
-            'status_id'    => $status?->id,
+            'status_id'    => $status->id,
             'number'       => (new Order(['store_id' => $storeId]))->nextOrderNumber(),
             'total_amount' => $subtotal + $shippingCost,
             'state_id'     => $this->state_id,
@@ -108,7 +114,8 @@ $submitOrder = function () {
             'payment_method' => $this->payment_method,
             'shipping_cost' => $shippingCost,
             'notes'        => $this->notes,
-            'phone_secondary' => $this->email,
+            'phone_secondary' => $this->phone,
+            'stopdesk_point_id' => $this->delivery_type === 'stopdesk' ? $this->selectedStopdesk : null,
         ]);
 
         foreach ($items as $item) {
@@ -120,22 +127,31 @@ $submitOrder = function () {
                 'price'               => $item['price'],
                 'subtotal'            => $item['price'] * $item['quantity'],
             ]);
+
+            if (class_exists(\App\Models\Products\ProductVariant::class)) {
+                \App\Models\Products\ProductVariant::where('id', $item['variant_id'])
+                    ->decrement('stock', $item['quantity']);
+            }
         }
 
-        DB::commit();
-
         $store = currentStore();
-        $subscription = $store->user->latestSubscription();
+        $subscription = $store?->user?->latestSubscription();
         if ($subscription && $subscription->plan) {
             app(FeatureUsageService::class)->consume($subscription, 'daily_orders_limit');
         }
 
+        DB::commit();
+
         $cartService->clear($storeId);
 
         session()->flash('success', __('storefront.order_placed') . ' #' . $order->number);
-        return redirect()->route('storefront.order.success', ['store' => currentStore()->slug, 'order' => $order->number]);
+        return redirect()->route('storefront.order.success', ['store' => currentStore()?->slug, 'order' => $order->number]);
     } catch (\Exception $e) {
         DB::rollBack();
+        \Illuminate\Support\Facades\Log::error('Order placement failed', [
+            'store_id' => $storeId,
+            'error' => $e->getMessage(),
+        ]);
         $this->dispatch('swal', type: 'error', title: __('storefront.failed_to_place_order'));
     }
 };
@@ -184,7 +200,7 @@ $submitOrder = function () {
 
     {{-- Back to Cart --}}
     <div class="mb-6">
-        <a href="{{ route('storefront.home', ['store' => currentStore()->slug]) }}"
+        <a href="{{ route('storefront.home', ['store' => currentStore()?->slug ?? '']) }}"
            class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
             <ion-icon name="arrow-back-outline" class="text-base"></ion-icon>
             {{ __('storefront.back_to_store') }}

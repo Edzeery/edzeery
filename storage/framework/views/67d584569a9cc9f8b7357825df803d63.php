@@ -102,6 +102,37 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         </div>
                     </div>
                 </div>
+
+                
+                <div>
+                    <label class="edz-label"><?php echo e(__('merchant_panel.favicon')); ?></label>
+                    <p class="text-xs text-ink-muted mb-2"><?php echo e(__('merchant_panel.favicon_help')); ?></p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-neutral-border dark:border-dark-border overflow-hidden flex items-center justify-center bg-neutral-secondary dark:bg-dark-secondary shrink-0">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($favicon): ?>
+                                <img src="<?php echo e($favicon->temporaryUrl()); ?>" class="w-full h-full object-cover" />
+                            <?php elseif(currentStore()?->seo?->favicon): ?>
+                                <img src="<?php echo e(asset('storage/' . currentStore()->seo->favicon)); ?>" class="w-full h-full object-cover" />
+                            <?php else: ?>
+                                <ion-icon name="globe-outline" class="text-xl text-ink-muted"></ion-icon>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" wire:model="favicon" accept="image/png,image/svg+xml" class="edz-input text-sm" />
+                            <p class="text-[11px] text-ink-muted mt-1"><?php echo e(__('merchant_panel.favicon_help')); ?></p>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['favicon'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                <p class="text-xs text-red-500 mt-1"><?php echo e($message); ?></p>
+                            <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

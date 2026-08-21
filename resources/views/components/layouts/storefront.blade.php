@@ -41,7 +41,7 @@
                     ->exists());
         $showPreviewBanner = $isPreview && $isOwner;
     @endphp
-    <link rel="icon" href="{{ asset('img/icons/store/favicon.ico') }}" type="image/x-icon" />
+    <link rel="icon" href="{{ ($store->seo?->favicon) ? asset('storage/' . $store->seo->favicon) : asset('img/icons/store/favicon.ico') }}" type="image/x-icon" />
     <title>{{ $pageTitle }}</title>
     @if ($pageDesc)
         <meta name="description" content="{{ Str::limit(strip_tags($pageDesc), 160) }}">

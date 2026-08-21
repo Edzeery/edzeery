@@ -6,7 +6,6 @@ use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
-use App\Models\Stores\Team\StoreRole;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -105,10 +104,9 @@ class UserForm
                         Placeholder::make('permissions')
                             ->label('Permissions')
                             ->content(fn(callable $get) => $get('store_role_id')
-                                ? StoreRole::find($get('store_role_id'))
-                                ?->permissions()
-                                ->pluck('key') // أو أي حقل يعبر عن الصلاحية
-                                ->join(', ')
+                                ? ($roleEnum = StoreRoleEnum::tryFrom($get('store_role_id')))
+                                    ? implode(', ', \App\Support\StoreRoles::permissions($roleEnum))
+                                    : 'No permissions'
                                 : 'No permissions'),
 
                         Toggle::make('is_active')

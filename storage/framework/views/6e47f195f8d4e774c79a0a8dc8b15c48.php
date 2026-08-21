@@ -41,7 +41,7 @@
                     ->exists());
         $showPreviewBanner = $isPreview && $isOwner;
     ?>
-    <link rel="icon" href="<?php echo e(asset('img/icons/store/favicon.ico')); ?>" type="image/x-icon" />
+    <link rel="icon" href="<?php echo e(($store->seo?->favicon) ? asset('storage/' . $store->seo->favicon) : asset('img/icons/store/favicon.ico')); ?>" type="image/x-icon" />
     <title><?php echo e($pageTitle); ?></title>
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pageDesc): ?>
         <meta name="description" content="<?php echo e(Str::limit(strip_tags($pageDesc), 160)); ?>">

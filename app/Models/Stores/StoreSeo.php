@@ -21,6 +21,7 @@ class StoreSeo extends Model
         'meta_description',
         'meta_keywords',
         'og_image',
+        'favicon',
     ];
 
     /* ================= Relations ================= */

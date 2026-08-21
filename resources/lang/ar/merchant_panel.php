@@ -35,6 +35,8 @@ return [
     'expired' => 'منتهي',
     'expires' => 'ينتهي',
     'faq_item' => 'سؤال شائع',
+    'favicon' => 'أيقونة الموقع',
+    'favicon_help' => 'الأيقونة المعروضة في تبويبات المتصفح (.png, .svg)',
     'french' => 'الفرنسية',
     'general_info' => 'المعلومات العامة',
     'guest' => 'ضيف',

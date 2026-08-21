@@ -149,7 +149,7 @@ use App\Models\Products\ProductVariant;
                              class="flex gap-3.5 py-4 first:pt-0 last:pb-0">
 
                             
-                            <a href="<?php echo e(route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']])); ?>"
+                                        <a href="<?php echo e(route('storefront.product', ['store' => currentStore()?->slug ?? '', 'product' => $item['slug']])); ?>"
                                x-on:click="open = false"
                                class="shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity">
                                 <img src="<?php echo e($item['image']); ?>"
@@ -163,7 +163,7 @@ use App\Models\Products\ProductVariant;
                             <div class="flex-1 min-w-0 flex flex-col">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0">
-                                        <a href="<?php echo e(route('storefront.product', ['store' => currentStore()->slug, 'product' => $item['slug']])); ?>"
+                            <a href="<?php echo e(route('storefront.product', ['store' => currentStore()?->slug ?? '', 'product' => $item['slug']])); ?>"
                                            x-on:click="open = false"
                                            class="block text-sm font-medium text-gray-900 dark:text-white leading-snug line-clamp-2 hover:text-[var(--store-primary)] transition-colors">
                                             <?php echo e($item['product_name']); ?>
@@ -237,7 +237,7 @@ use App\Models\Products\ProductVariant;
                 </div>
 
                 
-                <a href="<?php echo e(route('storefront.checkout', ['store' => currentStore()->slug])); ?>"
+                <a href="<?php echo e(route('storefront.checkout', ['store' => currentStore()?->slug ?? ''])); ?>"
                    x-on:click="open = false"
                    class="block w-full text-center py-3 px-4 rounded-xl
                           store-btn-primary text-white font-bold text-sm

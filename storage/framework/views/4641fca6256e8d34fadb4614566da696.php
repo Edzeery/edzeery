@@ -23,6 +23,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $cover;
 
+    public $favicon;
+
     public $currency;
 
     public $language;

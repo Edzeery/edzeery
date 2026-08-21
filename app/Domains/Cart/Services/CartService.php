@@ -22,7 +22,7 @@ class CartService
         $cart = $this->getStoreCart($storeId);
         $variant = ProductVariant::with('product')->findOrFail($variantId);
 
-        if (! $variant->product || $variant->product->store_id !== $storeId) {
+        if (! $variant->product || (string) $variant->product->store_id !== (string) $storeId) {
             abort(404);
         }
 
@@ -41,7 +41,7 @@ class CartService
             'variant_id'   => $variantId,
             'product_name' => $variant->product->name,
             'variant_name' => $variant->name,
-            'price'        => (float) ($variant->price ?? $variant->product->price),
+            'price'        => (float) ($variant->price ?? $variant->product->price ?? 0),
             'quantity'     => max(1, $newQty),
             'max_stock'    => $variant->stock,
         ];
@@ -64,7 +64,12 @@ class CartService
         }
 
         $variant = ProductVariant::find($variantId);
-        $max = $variant?->stock ?? $quantity;
+
+        if (! $variant) {
+            return $this->removeItem($storeId, $variantId);
+        }
+
+        $max = $variant->stock ?? $quantity;
         $cart['items'][$variantId]['quantity'] = min($quantity, $max);
 
         $this->persist($storeId, $cart);
@@ -75,8 +80,12 @@ class CartService
     public function removeItem(string $storeId, string $variantId): array
     {
         $cart = $this->getStoreCart($storeId);
-        unset($cart['items'][$variantId]);
 
+        if (! isset($cart['items'][$variantId])) {
+            return $cart;
+        }
+
+        unset($cart['items'][$variantId]);
         $this->persist($storeId, $cart);
 
         return $cart;

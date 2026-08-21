@@ -3,14 +3,13 @@
 namespace App\Domains\User\Actions;
 
 use App\Domains\User\Events\UserCreated;
-use App\Domains\User\Models\User;
-use App\Models\User as ModelsUser;
+use App\Models\User;
 
 class CreateUserAction
 {
-    public function execute(array $data): ModelsUser
+    public function execute(array $data): User
     {
-        $user = ModelsUser::create($data);
+        $user = User::create($data);
         event(new UserCreated($user));
         return $user;
     }

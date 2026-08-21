@@ -25,7 +25,7 @@ mount(function (string $order): void {
     </p>
     <p class="text-lg font-mono font-bold store-text-primary mb-6">#{{ $orderNumber }}</p>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-8">{{ __('storefront.we_will_contact_you') }}</p>
-    <a href="{{ route('storefront.home', ['store' => currentStore()->slug]) }}"
+    <a href="{{ route('storefront.home', ['store' => currentStore()?->slug ?? '']) }}"
        class="inline-flex items-center gap-2 store-btn-primary text-white font-semibold py-3 px-6 rounded-xl transition hover:shadow-lg">
         <ion-icon name="arrow-back-outline" class="text-lg"></ion-icon>
         {{ __('storefront.back_to_store') }}

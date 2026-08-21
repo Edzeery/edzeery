@@ -35,6 +35,8 @@ return [
     'expired' => 'Expiré',
     'expires' => 'Expire',
     'faq_item' => 'Question FAQ',
+    'favicon' => 'Favicon',
+    'favicon_help' => 'Icône du site affichée dans les onglets du navigateur (.png, .svg)',
     'french' => 'Français',
     'general_info' => 'Informations générales',
     'guest' => 'Invité',
