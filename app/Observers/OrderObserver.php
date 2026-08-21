@@ -6,37 +6,35 @@ use App\Models\Orders\Order;
 use App\Models\Orders\OrderStatusHistory;
 use App\Models\Status;
 use App\Services\InventoryService;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
 class OrderObserver
 {
     /**
-     * قبل إنشاء الطلب
+     * Before creating order
      */
     public function creating(Order $order): void
     {
-        // إذا لم يتم تحديد status يدويًا
         if (! $order->status_id) {
             $status = Status::system()
                 ->forType('order')
                 ->where('key', 'pending')
-                ->firstOrFail();
+                ->first();
 
-            $order->status_id = $status->id;
+            $order->status_id = $status?->id;
         }
 
-        // توليد رقم الطلب إن لم يوجد
         if (! $order->number) {
             $order->number = $this->generateOrderNumber($order);
         }
     }
 
     /**
-     * بعد تحديث الطلب
+     * After updating order
      */
     public function updated(Order $order): void
     {
-        // نهتم فقط بتغير الحالة
         if (! $order->wasChanged('status_id')) {
             return;
         }
@@ -44,23 +42,19 @@ class OrderObserver
         $this->handleStatusChange($order);
     }
 
-    /* =========================
-     | Logic
-     ========================= */
-
     protected function handleStatusChange(Order $order): void
     {
-        $status = $order->status; // eager loaded or fresh
+        $status = $order->status;
 
         if (! $status) {
             return;
         }
 
-        // Record status history
         OrderStatusHistory::create([
-            'order_id'  => $order->id,
-            'status_id' => $status->id,
-            'reason'    => null,
+            'order_id'                 => $order->id,
+            'status_id'                => $status->id,
+            'changed_by_membership_id' => $order->_changed_by_membership_id ?? null,
+            'reason'                   => $order->_status_reason ?? null,
         ]);
 
         if (! $status->affects_inventory) {
@@ -88,11 +82,12 @@ class OrderObserver
 
     protected function generateOrderNumber(Order $order): string
     {
-        return 'ORD-' . now()->format('Ymd') . '-' . str_pad(
-            (string) random_int(1, 9999),
-            4,
-            '0',
-            STR_PAD_LEFT
-        );
+        $lastNumber = Order::withTrashed()
+            ->where('store_id', $order->store_id)
+            ->max('number');
+
+        $nextNumber = $lastNumber ? (int) $lastNumber + 1 : 1;
+
+        return str_pad((string) $nextNumber, 5, '0', STR_PAD_LEFT);
     }
 }

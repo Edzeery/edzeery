@@ -270,6 +270,11 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->hasMany(Invoice::class);
     }
 
+    public function billingAddress()
+    {
+        return $this->hasOne(\App\Models\Billing\BillingAddress::class);
+    }
+
     // sub for merchant
 
     public function subscriptions(): HasMany

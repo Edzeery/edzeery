@@ -43,10 +43,6 @@ class DemoStoreSeeder extends Seeder
             ]
         );
 
-        if (! $store->settings) {
-            $store->initializeStoreDefaults();
-        }
-
         $store->theme()->updateOrCreate(
             ['store_id' => $store->id],
             [

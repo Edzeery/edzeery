@@ -143,6 +143,14 @@ class Store extends Model
         return $this->hasMany(Payment::class)->latest('created_at')->orderByDesc('id');
     }
 
+    /**
+     * اشتراك المالك الأحدث للمتجر (مرتبط عبر User).
+     */
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, 'user_id', 'user_id');
+    }
+
 
 
     public function latestPayment(): ?Payment
@@ -227,5 +235,13 @@ class Store extends Model
     public function isPubliclyActive(): bool
     {
         return $this->status === StoreStatusEnum::ACTIVE;
+    }
+
+    /**
+     * رقم الهاتف من الإعدادات.
+     */
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->settings?->phone;
     }
 }

@@ -77,6 +77,30 @@ beforeEach(function () {
         'is_system' => true,
     ]);
 
+    Status::create([
+        'type' => 'order',
+        'key' => 'completed',
+        'label' => 'Completed',
+        'color' => 'green',
+        'is_system' => true,
+    ]);
+
+    Status::create([
+        'type' => 'order',
+        'key' => 'returned',
+        'label' => 'Returned',
+        'color' => 'orange',
+        'is_system' => true,
+    ]);
+
+    Status::create([
+        'type' => 'order',
+        'key' => 'refunded',
+        'label' => 'Refunded',
+        'color' => 'red',
+        'is_system' => true,
+    ]);
+
     $pendingStatus = Status::where('type', 'order')->where('key', 'pending')->first();
 
     $this->order = Order::create([
@@ -182,11 +206,24 @@ test('available transitions from shipped', function () {
     expect($transitions)->toContain('returned');
 });
 
-test('available transitions from delivered is empty', function () {
+test('available transitions from delivered', function () {
     $this->service->confirm($this->order);
     $this->service->startPreparing($this->order->fresh());
     $this->service->ship($this->order->fresh());
     $this->service->deliver($this->order->fresh());
+    $transitions = $this->service->availableTransitions($this->order->fresh());
+
+    expect($transitions)->toContain('returned');
+    expect($transitions)->toContain('completed');
+    expect($transitions)->not->toContain('cancelled');
+});
+
+test('available transitions from completed is empty', function () {
+    $this->service->confirm($this->order);
+    $this->service->startPreparing($this->order->fresh());
+    $this->service->ship($this->order->fresh());
+    $this->service->deliver($this->order->fresh());
+    $this->service->transition($this->order->fresh(), 'completed');
     $transitions = $this->service->availableTransitions($this->order->fresh());
 
     expect($transitions)->toBeEmpty();

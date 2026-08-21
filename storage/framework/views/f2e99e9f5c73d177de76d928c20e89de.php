@@ -11,13 +11,43 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-    public $statusFilter;
-
-    public $search;
+    public $filters;
 
     public $orders;
 
     public $page;
+
+    public $visibleColumns;
+
+    public $allStatuses;
+
+    public $allMembers;
+
+    public $allStates;
+
+    public $showCreateModal;
+
+    public $showEditModal;
+
+    public $editingOrderId;
+
+    public $form;
+
+    public $formProductSearch;
+
+    public $formProductResults;
+
+    public $statusChangeOrderId;
+
+    public $statusChangeValue;
+
+    public $expandedOrderId;
+
+    public $showReassignModal;
+
+    public $reassignOrderId;
+
+    public $reassignMembershipId;
 
     public function mount(): void
     {
@@ -26,60 +56,165 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
     }
 
-    public function loadOrders()
+    public function loadColumnPreferences(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('loadOrders'))->execute(...$arguments);
+        (new Actions\CallMethod('loadColumnPreferences'))->execute(...$arguments);
     }
 
-    public function setPage(int $page)
+    public function saveColumnPreferences(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('setPage'))->execute(...$arguments);
+        (new Actions\CallMethod('saveColumnPreferences'))->execute(...$arguments);
     }
 
-    public function confirm(string $orderId)
+    public function getCurrentMembership(): ?\App\Models\Stores\Team\StoreMembership
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('confirm'))->execute(...$arguments);
+        return (new Actions\CallMethod('getCurrentMembership'))->execute(...$arguments);
     }
 
-    public function prepare(string $orderId)
+    public function loadOrders(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('prepare'))->execute(...$arguments);
+        (new Actions\CallMethod('loadOrders'))->execute(...$arguments);
     }
 
-    public function ship(string $orderId)
+    public function setPage(int $page): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('ship'))->execute(...$arguments);
+        (new Actions\CallMethod('setPage'))->execute(...$arguments);
     }
 
-    public function deliver(string $orderId)
+    public function setFilter(string $key, $value): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('deliver'))->execute(...$arguments);
+        (new Actions\CallMethod('setFilter'))->execute(...$arguments);
     }
 
-    public function cancel(string $orderId)
+    public function clearFilters(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('cancel'))->execute(...$arguments);
+        (new Actions\CallMethod('clearFilters'))->execute(...$arguments);
     }
 
-    public function refreshOrders()
+    public function toggleStatusFilter(string $statusId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('refreshOrders'))->execute(...$arguments);
+        (new Actions\CallMethod('toggleStatusFilter'))->execute(...$arguments);
+    }
+
+    public function toggleColumn(string $column): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleColumn'))->execute(...$arguments);
+    }
+
+    public function transitionOrder(string $orderId, string $statusKey): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('transitionOrder'))->execute(...$arguments);
+    }
+
+    public function openCreateModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openCreateModal'))->execute(...$arguments);
+    }
+
+    public function searchProducts(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('searchProducts'))->execute(...$arguments);
+    }
+
+    public function addFormItem(string $variantId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('addFormItem'))->execute(...$arguments);
+    }
+
+    public function removeFormItem(int $index): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('removeFormItem'))->execute(...$arguments);
+    }
+
+    public function updateFormItemQty(int $index, int $qty): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('updateFormItemQty'))->execute(...$arguments);
+    }
+
+    public function submitCreate(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitCreate'))->execute(...$arguments);
+    }
+
+    public function openEditModal(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openEditModal'))->execute(...$arguments);
+    }
+
+    public function submitEdit(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitEdit'))->execute(...$arguments);
+    }
+
+    public function refreshOrders(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('refreshOrders'))->execute(...$arguments);
+    }
+
+    public function toggleDetail(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleDetail'))->execute(...$arguments);
+    }
+
+    public function openReassignModal(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openReassignModal'))->execute(...$arguments);
+    }
+
+    public function submitReassign(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitReassign'))->execute(...$arguments);
+    }
+
+    public function deleteOrder(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('deleteOrder'))->execute(...$arguments);
     }
 
 };

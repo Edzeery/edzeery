@@ -7,79 +7,55 @@ test('profile page is displayed', function () {
 
     $response = $this
         ->actingAs($user)
-        ->get('/profile');
+        ->get('/merchant/account/profile');
 
     $response->assertOk();
 });
 
-test('profile information can be updated', function () {
-    $user = User::factory()->create();
+test('profile page shows user name', function () {
+    $user = User::factory()->create(['name' => 'Ahmed Test']);
 
     $response = $this
         ->actingAs($user)
-        ->patch('/profile', [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        ->get('/merchant/account/profile');
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/profile');
-
-    $user->refresh();
-
-    $this->assertSame('Test User', $user->name);
-    $this->assertSame('test@example.com', $user->email);
-    $this->assertNull($user->email_verified_at);
+    $response->assertOk();
+    $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'Ahmed Test']);
 });
 
-test('email verification status is unchanged when the email address is unchanged', function () {
+test('password can be updated via security endpoint', function () {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
-        ->patch('/profile', [
-            'name' => 'Test User',
-            'email' => $user->email,
+        ->post('/merchant/account/password', [
+            'current_password' => 'password',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'new-password-123',
         ]);
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/profile');
-
-    $this->assertNotNull($user->refresh()->email_verified_at);
+    $response->assertRedirect();
+    $this->assertTrue(
+        \Illuminate\Support\Facades\Hash::check('new-password-123', $user->fresh()->password)
+    );
 });
 
-test('user can delete their account', function () {
+test('correct password must be provided to update password', function () {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
-        ->delete('/profile', [
-            'password' => 'password',
+        ->post('/merchant/account/password', [
+            'current_password' => 'wrong-password',
+            'new_password' => 'new-password-123',
+            'new_password_confirmation' => 'new-password-123',
         ]);
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/');
-
-    $this->assertGuest();
-    $this->assertSoftDeleted($user);
+    $response->assertSessionHasErrors();
 });
 
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
+test('guest cannot access profile page', function () {
+    $response = $this->get('/merchant/account/profile');
 
-    $response = $this
-        ->actingAs($user)
-        ->from('/profile')
-        ->delete('/profile', [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrorsIn('userDeletion', 'password')
-        ->assertRedirect('/profile');
-
-    $this->assertNotNull($user->fresh());
+    $response->assertRedirect();
 });

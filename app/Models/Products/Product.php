@@ -64,6 +64,12 @@ class Product extends Model
         return $this->belongsTo(Brand::class);
     }
 
+    // الفئة الرئيسية
+    public function primaryCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'primary_category_id');
+    }
+
     public function categories()
     {
         return $this->belongsToMany(Category::class)

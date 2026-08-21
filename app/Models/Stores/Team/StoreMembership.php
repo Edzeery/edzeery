@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StoreMembership extends Model
@@ -78,5 +79,32 @@ class StoreMembership extends Model
             $permission instanceof StorePermissionEnum ? $permission->value : $permission,
             'merchant'
         );
+    }
+
+    public function confirmationShifts(): HasMany
+    {
+        return $this->hasMany(\App\Domains\Order\Models\ConfirmationShift::class, 'membership_id');
+    }
+
+    public function productAssignments(): HasMany
+    {
+        return $this->hasMany(\App\Domains\Order\Models\ConfirmationProductAssignment::class, 'membership_id');
+    }
+
+    public function isOnActiveShift(?\Carbon\Carbon $at = null): bool
+    {
+        $at = $at ?? now();
+        $dayOfWeek = $at->dayOfWeekIso;
+        $currentTime = $at->format('H:i:s');
+
+        return $this->confirmationShifts()
+            ->where('is_active', true)
+            ->where('start_time', '<=', $currentTime)
+            ->where('end_time', '>=', $currentTime)
+            ->where(function ($q) use ($dayOfWeek) {
+                $q->whereNull('days_of_week')
+                  ->orWhereJsonContains('days_of_week', $dayOfWeek);
+            })
+            ->exists();
     }
 }

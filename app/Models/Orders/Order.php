@@ -36,11 +36,23 @@ class Order extends Model
         'shipping_cost',
         'notes',
         'phone_secondary',
+        'assigned_to_membership_id',
+        'assigned_at',
+        'assignment_method',
+        'assigned_by_membership_id',
+        'confirmation_attempts',
+        'last_contact_at',
+        'weight_kg',
+        'shipment_type',
     ];
 
     protected $casts = [
         'total_amount'  => 'decimal:2',
         'shipping_cost' => 'decimal:2',
+        'weight_kg' => 'decimal:2',
+        'assigned_at' => 'datetime',
+        'last_contact_at' => 'datetime',
+        'confirmation_attempts' => 'integer',
     ];
 
     const DELIVERY_HOME    = 'home';
@@ -121,6 +133,16 @@ class Order extends Model
     public function createdByMembership()
     {
         return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'created_by_membership_id');
+    }
+
+    public function assignedMembership(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'assigned_to_membership_id');
+    }
+
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'assigned_by_membership_id');
     }
 
     public function nextOrderNumber(): string

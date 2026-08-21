@@ -79,9 +79,9 @@ $addToCart = function (string $variantId) {
                     <img src="{{ asset('storage/' . $store->logo) }}" alt="{{ $store->name }}"
                         class="w-20 h-20 rounded-full mx-auto mb-6 object-cover border-4 border-white/20">
                 @endif
-                                    <h1 class="text-2xl sm:text-3xl lg:text-5xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
-                @if ($hero['description'] ?: $store->description)
-                    <p class="text-lg text-white/80 max-w-2xl mx-auto">{{ $hero['description'] ?: $store->description }}
+                                    <h1 class="text-2xl sm:text-3xl lg:text-5xl font-bold mb-4">{{ $hero['title'] ?? '' ?: $store->name }}</h1>
+                @if (($hero['description'] ?? '') ?: $store->description)
+                    <p class="text-lg text-white/80 max-w-2xl mx-auto">{{ $hero['description'] ?? '' ?: $store->description }}
                     </p>
                 @endif
 

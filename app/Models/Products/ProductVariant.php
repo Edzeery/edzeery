@@ -70,16 +70,6 @@ class ProductVariant extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function brand()
-    {
-        return $this->product()->with('brand');
-    }
-
-    public function categories()
-    {
-        return $this->product()->with('categories');
-    }
-
     public function store()
     {
         return $this->belongsTo(Store::class, 'store_id');

@@ -41,7 +41,7 @@
 
                             </div>
 
-                            <x-status-badge domain="store" :status="$store['store_status']->getLabel()" />
+                            <x-status-badge domain="store" :status="$store['store_status']" />
                         </div>
                     </div>
 

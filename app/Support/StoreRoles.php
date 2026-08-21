@@ -24,12 +24,12 @@ class StoreRoles
             |--------------------------------------------------------------------------
             */
             StoreRoleEnum::ADMIN => collect(StorePermissionEnum::values())
-                ->except([
+                ->filter(fn(string $perm) => !in_array($perm, [
                     StorePermissionEnum::STORE_DELETE_FINAL->value,
                     StorePermissionEnum::STORE_TRANSFER_OWNERSHIP->value,
                     StorePermissionEnum::STORE_BILLING_MANAGE->value,
                     StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value,
-                ])
+                ]))
                 ->values()
                 ->toArray(),
 
@@ -47,12 +47,14 @@ class StoreRoles
                 StorePermissionEnum::PRODUCT_VIEW->value,
                 StorePermissionEnum::PRODUCT_CREATE->value,
                 StorePermissionEnum::PRODUCT_UPDATE->value,
+                StorePermissionEnum::PRODUCT_DELETE->value,
 
                 // Orders
                 StorePermissionEnum::ORDER_VIEW->value,
                 StorePermissionEnum::ORDER_MANAGE->value,
                 StorePermissionEnum::ORDER_CONFIRM->value,
                 StorePermissionEnum::ORDER_CANCEL->value,
+                StorePermissionEnum::ORDER_ASSIGN->value,
 
                 // Inventory
                 StorePermissionEnum::INVENTORY_VIEW->value,
@@ -66,6 +68,15 @@ class StoreRoles
                 StorePermissionEnum::CRM_ORDER_TRACKING->value,
                 StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
                 StorePermissionEnum::CRM_INVENTORY_TRACKING->value,
+                StorePermissionEnum::CRM_INVENTORY_MANAGE->value,
+
+                // Delivery & Accounting
+                StorePermissionEnum::DELIVERY_PRICING_MANAGE->value,
+
+                // Finance / Debts
+                StorePermissionEnum::FINANCE_DEBT_VIEW->value,
+                StorePermissionEnum::FINANCE_DEBT_CREATE->value,
+                StorePermissionEnum::FINANCE_DEBT_UPDATE->value,
 
                 // Analytics
                 StorePermissionEnum::STATS_TEAM_VIEW->value,
@@ -82,6 +93,7 @@ class StoreRoles
                 StorePermissionEnum::PRODUCT_VIEW->value,
 
                 StorePermissionEnum::ORDER_VIEW->value,
+                StorePermissionEnum::ORDER_MANAGE->value,
                 StorePermissionEnum::ORDER_CONFIRM->value,
 
                 StorePermissionEnum::INVENTORY_VIEW->value,

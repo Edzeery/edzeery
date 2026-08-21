@@ -15,8 +15,8 @@ class AccountProfileData
         public readonly ?string $address,
         public readonly ?string $birthdate,
         public readonly ?string $avatar,
-        
-        public readonly UserRoleEnum|StoreRoleEnum $membershipRole,
+
+        public readonly UserRoleEnum|StoreRoleEnum|null $membershipRole,
 
         public readonly ?string $country,
         public readonly ?string $state,

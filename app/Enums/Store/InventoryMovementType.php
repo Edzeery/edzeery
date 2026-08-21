@@ -73,6 +73,7 @@ enum InventoryMovementType: string
     {
         return in_array($this, [
             self::SALE,
+            self::RESERVE,
         ], true);
     }
 

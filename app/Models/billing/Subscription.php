@@ -28,6 +28,7 @@ class Subscription extends Model
         'canceled_at',
         'ends_at',
         'suppressed_at',
+        'grace_ends_at',
 
         'status',
     ];
@@ -39,6 +40,7 @@ class Subscription extends Model
         'canceled_at' => 'date',
         'ends_at' => 'date',
         'suppressed_at' => 'date',
+        'grace_ends_at' => 'date',
         'is_trial' => 'boolean',
     ];
 

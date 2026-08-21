@@ -147,6 +147,12 @@ with($withData);
                 <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
             </a>
 
+            <a href="{{ route('merchant.order-settings', $store) }}" wire:navigate
+               class="edz-sidebar__link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__link--active @endif">
+                <x-edz.icon name="settings" class="edz-sidebar__icon" />
+                <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
+            </a>
+
             @if ($canViewDebts)
                 <a href="{{ route('merchant.debts.index', $store) }}" wire:navigate
                    class="edz-sidebar__link @if (request()->routeIs('merchant.debts.*')) edz-sidebar__link--active @endif">

@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Cart\Services\CartService;
+use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Plan\Services\FeatureUsageService;
 use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\ShippingCostCalculator;
@@ -9,6 +10,8 @@ use App\Models\Locations\City;
 use App\Models\Locations\State;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
+use App\Models\Orders\OrderStatusHistory;
+use App\Models\Products\ProductVariant;
 use App\Models\Status;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -114,24 +117,26 @@ $submitOrder = function () {
             'payment_method' => $this->payment_method,
             'shipping_cost' => $shippingCost,
             'notes'        => $this->notes,
-            'phone_secondary' => $this->phone,
             'stopdesk_point_id' => $this->delivery_type === 'stopdesk' ? $this->selectedStopdesk : null,
         ]);
 
+        OrderStatusHistory::create([
+            'order_id'  => $order->id,
+            'status_id' => $status->id,
+            'reason'    => 'Order placed via storefront',
+        ]);
+
         foreach ($items as $item) {
+            $variant = ProductVariant::find($item['variant_id']);
             OrderItem::create([
                 'store_id'            => $storeId,
                 'order_id'            => $order->id,
                 'product_variant_id'  => $item['variant_id'],
+                'product_id'          => $variant?->product_id,
                 'quantity'            => $item['quantity'],
                 'price'               => $item['price'],
                 'subtotal'            => $item['price'] * $item['quantity'],
             ]);
-
-            if (class_exists(\App\Models\Products\ProductVariant::class)) {
-                \App\Models\Products\ProductVariant::where('id', $item['variant_id'])
-                    ->decrement('stock', $item['quantity']);
-            }
         }
 
         $store = currentStore();
@@ -143,6 +148,16 @@ $submitOrder = function () {
         DB::commit();
 
         $cartService->clear($storeId);
+
+        // Auto-assign order
+        try {
+            app(OrderAssignmentService::class)->assign($order);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Order auto-assign failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         session()->flash('success', __('storefront.order_placed') . ' #' . $order->number);
         return redirect()->route('storefront.order.success', ['store' => currentStore()?->slug, 'order' => $order->number]);

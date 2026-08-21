@@ -7,15 +7,6 @@ enum StorePermissionEnum: string
 
     /*
     |--------------------------------------------------------------------------
-    | Platform / Stores (High Level)
-    |--------------------------------------------------------------------------
-    */
-    case STORES_CREATE = 'stores.create';
-    case STORES_UPDATE = 'stores.update';
-    case STORES_DELETE = 'stores.delete'; // ❌ نهائي (OWNER فقط)
-
-        /*
-    |--------------------------------------------------------------------------
     | Store Core
     |--------------------------------------------------------------------------
     */
@@ -52,6 +43,7 @@ enum StorePermissionEnum: string
     case ORDER_CONFIRM  = 'order.confirm';
     case ORDER_CANCEL   = 'order.cancel';
     case ORDER_DELETE   = 'order.delete';
+    case ORDER_ASSIGN   = 'order.assign';
 
         /*
     |--------------------------------------------------------------------------

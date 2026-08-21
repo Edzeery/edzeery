@@ -73,9 +73,9 @@ $addToCart = function (string $variantId) {
         @php $hero = $section_content['hero'] ?? []; @endphp
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?: $store->name }}</h1>
+                                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?? '' ?: $store->name }}</h1>
                 <p class="text-lg text-white/80 mb-8">
-                    {{ $hero['description'] ?: $store->description ?? __('storefront.browse_our_full_catalog') }}</p>
+                    {{ $hero['description'] ?? '' ?: $store->description ?? __('storefront.browse_our_full_catalog') }}</p>
 
                 {{-- Search --}}
                 <div class="max-w-xl mx-auto">
