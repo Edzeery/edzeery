@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 
 ?>
 
-<div x-data="{ shiftTypeChanging: false }">
+<div>
     <?php
         $SHIFT_TYPES = [
             'morning'   => __('merchant_panel.shift_morning'),
@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Validator;
     ?>
 
     
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div class="mb-6">
         <?php if (isset($component)) { $__componentOriginal64446345db7363332d7ff2707d878bc4 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal64446345db7363332d7ff2707d878bc4 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.page-header','data' => ['title' => ''.e(__('merchant_panel.order_settings')).'','description' => ''.e(__('merchant_panel.order_settings_desc')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -58,8 +58,27 @@ use Illuminate\Support\Facades\Validator;
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
-                    <ion-icon name="time-outline" class="text-lg text-primary-500"></ion-icon>
+                <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center">
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'adjustments','class' => 'w-5 h-5 text-brand-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'adjustments','class' => 'w-5 h-5 text-brand-500']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-ink"><?php echo e(count($shifts)); ?></p>
@@ -70,7 +89,26 @@ use Illuminate\Support\Facades\Validator;
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
-                    <ion-icon name="checkmark-circle-outline" class="text-lg text-success-500"></ion-icon>
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-5 h-5 text-success-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-5 h-5 text-success-500']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-ink"><?php echo e(collect($shifts)->where('is_active', true)->count()); ?></p>
@@ -81,7 +119,26 @@ use Illuminate\Support\Facades\Validator;
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
-                    <ion-icon name="cube-outline" class="text-lg text-warning-500"></ion-icon>
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'package','class' => 'w-5 h-5 text-warning-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'package','class' => 'w-5 h-5 text-warning-500']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-ink"><?php echo e(count($assignments)); ?></p>
@@ -92,7 +149,26 @@ use Illuminate\Support\Facades\Validator;
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-info-50 dark:bg-info-900/20 flex items-center justify-center">
-                    <ion-icon name="people-outline" class="text-lg text-info-500"></ion-icon>
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-5 h-5 text-info-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'user','class' => 'w-5 h-5 text-info-500']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <div>
                     <p class="text-2xl font-bold text-ink"><?php echo e(collect($shifts)->pluck('membership_id')->unique()->count()); ?></p>
@@ -103,16 +179,54 @@ use Illuminate\Support\Facades\Validator;
     </div>
 
     
-    <div class="flex gap-1 mb-6 border-b border-surface-200 dark:border-ink-700">
+    <div class="flex gap-1 mb-6 border-b border-surface-border">
         <button wire:click="setTab('shifts')"
-                class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px <?php echo e($tab === 'shifts' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-ink-muted hover:text-ink'); ?>">
-            <ion-icon name="time-outline" class="inline mr-1"></ion-icon>
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px <?php echo e($tab === 'shifts' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-ink-muted hover:text-ink'); ?>">
+            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'adjustments','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'adjustments','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
             <?php echo e(__('merchant_panel.tab_shifts')); ?>
 
         </button>
         <button wire:click="setTab('products')"
-                class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px <?php echo e($tab === 'products' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-ink-muted hover:text-ink'); ?>">
-            <ion-icon name="cube-outline" class="inline mr-1"></ion-icon>
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px <?php echo e($tab === 'products' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-ink-muted hover:text-ink'); ?>">
+            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'package','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'package','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
             <?php echo e(__('merchant_panel.tab_product_assignments')); ?>
 
         </button>
@@ -123,7 +237,26 @@ use Illuminate\Support\Facades\Validator;
         <div class="flex items-center justify-between mb-4">
             <p class="text-sm text-ink-muted"><?php echo e(__('merchant_panel.tab_shifts_desc')); ?></p>
             <button wire:click="openShiftModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                <ion-icon name="add-outline" class="text-base"></ion-icon>
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 <?php echo e(__('merchant_panel.new_shift')); ?>
 
             </button>
@@ -132,60 +265,103 @@ use Illuminate\Support\Facades\Validator;
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($shifts)): ?>
             <div class="edz-card overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-secondary">
+                    <table class="edz-table">
+                        <thead>
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.agent')); ?></th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.type')); ?></th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.hours')); ?></th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.days')); ?></th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.status')); ?></th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-ink-muted uppercase"><?php echo e(__('merchant_panel.actions')); ?></th>
+                                <th><?php echo e(__('merchant_panel.agent')); ?></th>
+                                <th><?php echo e(__('merchant_panel.type')); ?></th>
+                                <th><?php echo e(__('merchant_panel.hours')); ?></th>
+                                <th><?php echo e(__('merchant_panel.days')); ?></th>
+                                <th><?php echo e(__('merchant_panel.status')); ?></th>
+                                <th class="text-end"><?php echo e(__('merchant_panel.actions')); ?></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-surface-100 dark:divide-ink-800">
+                        <tbody>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $shifts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $shift): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <tr class="hover:bg-surface-50 dark:hover:bg-ink-800/50">
-                                    <td class="px-4 py-3 font-medium text-ink">
+                                <tr>
+                                    <td class="font-medium text-ink">
                                         <?php echo e($shift['membership']['user']['name'] ?? '—'); ?>
 
                                     </td>
-                                    <td class="px-4 py-3 text-ink-muted capitalize">
+                                    <td class="capitalize">
                                         <?php echo e($SHIFT_TYPES[$shift['shift_type']] ?? $shift['shift_type']); ?>
 
                                     </td>
-                                    <td class="px-4 py-3 text-ink-muted text-xs font-mono">
+                                    <td class="font-mono text-xs">
                                         <?php echo e($shift['start_time']); ?> — <?php echo e($shift['end_time']); ?>
 
                                     </td>
-                                    <td class="px-4 py-3 text-xs text-ink-muted">
+                                    <td class="text-xs">
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($shift['days_of_week'])): ?>
                                             <?php
                                                 $dayLabels = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'];
                                             ?>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $shift['days_of_week']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                                <span class="inline-block px-1.5 py-0.5 rounded bg-surface-100 dark:bg-ink-700 mr-1 mb-0.5"><?php echo e($dayLabels[$day] ?? $day); ?></span>
-                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <span class="inline-flex flex-wrap gap-1">
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $shift['days_of_week']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <span class="edz-badge edz-badge--neutral"><?php echo e($dayLabels[$day] ?? $day); ?></span>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </span>
                                         <?php else: ?>
                                             <span class="text-ink-muted"><?php echo e(__('merchant_panel.all_days')); ?></span>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </td>
-                                    <td class="px-4 py-3">
-                                        <button wire:click="toggleShiftActive('<?php echo e($shift['id']); ?>')"
-                                                class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full <?php echo e($shift['is_active'] ? 'bg-success-50 text-success-700 dark:bg-success-900/30 dark:text-success-300' : 'bg-surface-100 text-ink-muted dark:bg-ink-700'); ?>">
+                                    <td>
+                                        <button type="button" wire:click="toggleShiftActive('<?php echo e($shift['id']); ?>')"
+                                                class="cursor-pointer <?php echo e($shift['is_active'] ? 'edz-badge edz-badge--success' : 'edz-badge edz-badge--neutral'); ?>">
                                             <?php echo e($shift['is_active'] ? __('merchant_panel.active') : __('merchant_panel.inactive')); ?>
 
                                         </button>
                                     </td>
-                                    <td class="px-4 py-3 text-right">
+                                    <td class="text-end">
                                         <div class="flex items-center justify-end gap-1">
-                                            <button wire:click="openShiftModal('<?php echo e($shift['id']); ?>')" class="edz-btn edz-btn--ghost edz-btn--xs">
-                                                <ion-icon name="create-outline" class="text-sm"></ion-icon>
+                                            <button type="button" aria-label="<?php echo e(__('merchant_panel.edit_shift')); ?>"
+                                                    wire:click="openShiftModal('<?php echo e($shift['id']); ?>')"
+                                                    class="edz-btn edz-btn--ghost edz-btn--sm">
+                                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'edit','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'edit','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                             </button>
-                                            <button class="edz-btn edz-btn--ghost edz-btn--xs text-red-500"
+                                            <button type="button" aria-label="<?php echo e(__('merchant_panel.delete_shift')); ?>"
+                                                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                                     x-data
                                                     x-on:click="if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__('merchant_panel.delete_shift'))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__('merchant_panel.confirm_delete_shift'))->toHtml() ?>)) $wire.deleteShift('<?php echo e($shift['id']); ?>')">
-                                                <ion-icon name="trash-outline" class="text-sm"></ion-icon>
+                                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                             </button>
                                         </div>
                                     </td>
@@ -197,12 +373,50 @@ use Illuminate\Support\Facades\Validator;
             </div>
         <?php else: ?>
             <div class="edz-card p-12 text-center">
-                <div class="w-16 h-16 rounded-full bg-surface-100 dark:bg-ink-700 flex items-center justify-center mx-auto mb-4">
-                    <ion-icon name="time-outline" class="text-3xl text-ink-muted opacity-40"></ion-icon>
+                <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'adjustments','class' => 'w-8 h-8 text-ink-muted opacity-40']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'adjustments','class' => 'w-8 h-8 text-ink-muted opacity-40']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <p class="text-ink-muted mb-4"><?php echo e(__('merchant_panel.no_shifts_yet')); ?></p>
                 <button wire:click="openShiftModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                    <ion-icon name="add-outline" class="text-base"></ion-icon>
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                     <?php echo e(__('merchant_panel.new_shift')); ?>
 
                 </button>
@@ -215,7 +429,26 @@ use Illuminate\Support\Facades\Validator;
         <div class="flex items-center justify-between mb-4">
             <p class="text-sm text-ink-muted"><?php echo e(__('merchant_panel.tab_product_assignments_desc')); ?></p>
             <button wire:click="openAssignModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                <ion-icon name="add-outline" class="text-base"></ion-icon>
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 <?php echo e(__('merchant_panel.assign_products')); ?>
 
             </button>
@@ -231,33 +464,110 @@ use Illuminate\Support\Facades\Validator;
                         $agentName = $items->first()['membership']['user']['name'] ?? '—';
                     ?>
                     <div class="edz-card overflow-hidden">
-                        <div class="px-4 py-3 bg-secondary flex items-center justify-between">
+                        <div class="bg-surface-secondary border-b border-surface-border px-4 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
-                                    <ion-icon name="person-outline" class="text-sm text-primary-600 dark:text-primary-400"></ion-icon>
+                                <div class="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
+                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-4 h-4 text-brand-600 dark:text-brand-400']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'user','class' => 'w-4 h-4 text-brand-600 dark:text-brand-400']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                 </div>
                                 <span class="font-semibold text-sm text-ink"><?php echo e($agentName); ?></span>
-                                <span class="text-xs text-ink-muted bg-surface-100 dark:bg-ink-700 px-2 py-0.5 rounded-full"><?php echo e($items->count()); ?> <?php echo e(__('merchant_panel.products')); ?></span>
+                                <span class="edz-badge edz-badge--neutral"><?php echo e($items->count()); ?> <?php echo e(__('merchant_panel.products')); ?></span>
                             </div>
-                            <button wire:click="openAssignModal('<?php echo e($memberId); ?>')" class="edz-btn edz-btn--ghost edz-btn--xs">
-                                <ion-icon name="create-outline" class="text-sm"></ion-icon>
+                            <button wire:click="openAssignModal('<?php echo e($memberId); ?>')" class="edz-btn edz-btn--ghost edz-btn--sm">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'edit','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'edit','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                 <?php echo e(__('merchant_panel.edit')); ?>
 
                             </button>
                         </div>
-                        <div class="divide-y divide-surface-100 dark:divide-ink-800">
+                        <div class="divide-y divide-surface-border">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <div class="px-4 py-3 flex items-center justify-between hover:bg-surface-50 dark:hover:bg-ink-800/50">
+                                <div class="px-4 py-3 flex items-center justify-between hover:bg-surface-secondary">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-surface-100 dark:bg-ink-700 flex items-center justify-center">
-                                            <ion-icon name="cube-outline" class="text-sm text-ink-muted"></ion-icon>
+                                        <div class="w-8 h-8 rounded-lg bg-surface-secondary flex items-center justify-center">
+                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'package','class' => 'w-4 h-4 text-ink-muted']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'package','class' => 'w-4 h-4 text-ink-muted']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                         </div>
                                         <span class="text-sm text-ink"><?php echo e($a['product']['name'] ?? '—'); ?></span>
                                     </div>
-                                    <button class="edz-btn edz-btn--ghost edz-btn--xs text-red-500"
+                                    <button type="button"
+                                            class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                             x-data
                                             x-on:click="if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__('merchant_panel.remove_assignment'))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__('merchant_panel.confirm_delete_assignment'))->toHtml() ?>)) $wire.removeAssignment('<?php echo e($a['id']); ?>')">
-                                        <ion-icon name="trash-outline" class="text-sm"></ion-icon>
+                                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                     </button>
                                 </div>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -267,12 +577,50 @@ use Illuminate\Support\Facades\Validator;
             </div>
         <?php else: ?>
             <div class="edz-card p-12 text-center">
-                <div class="w-16 h-16 rounded-full bg-surface-100 dark:bg-ink-700 flex items-center justify-center mx-auto mb-4">
-                    <ion-icon name="cube-outline" class="text-3xl text-ink-muted opacity-40"></ion-icon>
+                <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'package','class' => 'w-8 h-8 text-ink-muted opacity-40']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'package','class' => 'w-8 h-8 text-ink-muted opacity-40']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                 </div>
                 <p class="text-ink-muted mb-4"><?php echo e(__('merchant_panel.no_assignments_yet')); ?></p>
                 <button wire:click="openAssignModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                    <ion-icon name="add-outline" class="text-base"></ion-icon>
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                     <?php echo e(__('merchant_panel.assign_products')); ?>
 
                 </button>
@@ -281,129 +629,236 @@ use Illuminate\Support\Facades\Validator;
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showShiftModal): ?>
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
-             x-data
-             x-on:keydown.escape.window="$wire.set('showShiftModal', false)">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" x-on:click="$wire.set('showShiftModal', false)"></div>
-            <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-                    <h3 class="text-lg font-bold text-ink"><?php echo e($editingShiftId ? __('merchant_panel.edit_shift') : __('merchant_panel.new_shift')); ?></h3>
-                    <div class="flex items-center gap-2">
-                        <button wire:click="saveShift" class="edz-btn edz-btn--primary edz-btn--sm"><?php echo e(__('merchant_panel.save')); ?></button>
-                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                x-on:click="$wire.set('showShiftModal', false)">
-                            <ion-icon name="close-outline" class="text-lg"></ion-icon>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="edz-label"><?php echo e(__('merchant_panel.agent')); ?> *</label>
-                        <select wire:model="shiftForm.membership_id" class="edz-input text-sm">
+    <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showShiftModal]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.modal'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['isOpen' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showShiftModal)]); ?>
+        <form wire:submit="saveShift">
+            <div class="p-6 space-y-4">
+                <h3 class="text-lg font-semibold text-ink">
+                    <?php echo e($editingShiftId ? __('merchant_panel.edit_shift') : __('merchant_panel.new_shift')); ?>
+
+                </h3>
+
+                <div class="space-y-4">
+                    <div class="edz-field">
+                        <label class="edz-field__label" for="shift-agent"><?php echo e(__('merchant_panel.agent')); ?> *</label>
+                        <select id="shift-agent" wire:model="shiftForm.membership_id"
+                                class="edz-select <?php $__errorArgs = ['shiftForm.membership_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> edz-input--error <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
                             <option value="">— <?php echo e(__('merchant_panel.select_agent')); ?> —</option>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $members; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <option value="<?php echo e($m['id']); ?>"><?php echo e($m['user']['name'] ?? $m['id']); ?></option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </select>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['shiftForm.membership_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                            <span class="edz-field__error"><?php echo e($message); ?></span>
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <div>
-                        <label class="edz-label"><?php echo e(__('merchant_panel.shift_type')); ?></label>
-                        <select wire:model="shiftForm.shift_type"
+
+                    <div class="edz-field">
+                        <label class="edz-field__label" for="shift-type"><?php echo e(__('merchant_panel.shift_type')); ?></label>
+                        <select id="shift-type" wire:model="shiftForm.shift_type"
                                 x-on:change="$wire.call('onShiftTypeChange')"
-                                class="edz-input text-sm">
+                                class="edz-select">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $SHIFT_TYPES; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $k => $v): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <option value="<?php echo e($k); ?>"><?php echo e($v); ?></option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </select>
                     </div>
+
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.start_time')); ?></label>
-                            <input type="time" wire:model="shiftForm.start_time" class="edz-input text-sm">
+                        <div class="edz-field">
+                            <label class="edz-field__label" for="shift-start"><?php echo e(__('merchant_panel.start_time')); ?></label>
+                            <input type="time" id="shift-start" wire:model="shiftForm.start_time" class="edz-input">
                         </div>
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.end_time')); ?></label>
-                            <input type="time" wire:model="shiftForm.end_time" class="edz-input text-sm">
+                        <div class="edz-field">
+                            <label class="edz-field__label" for="shift-end"><?php echo e(__('merchant_panel.end_time')); ?></label>
+                            <input type="time" id="shift-end" wire:model="shiftForm.end_time"
+                                   class="edz-input <?php $__errorArgs = ['shiftForm.end_time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> edz-input--error <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['shiftForm.end_time'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-                                <p class="text-xs text-red-500 mt-1"><?php echo e($message); ?></p>
+                                <span class="edz-field__error"><?php echo e($message); ?></span>
                             <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </div>
-                    <div>
-                        <label class="edz-label"><?php echo e(__('merchant_panel.days_of_week')); ?></label>
-                        <div class="flex flex-wrap gap-2 mt-1">
+
+                    <div class="edz-field">
+                        <span class="edz-field__label"><?php echo e(__('merchant_panel.days_of_week')); ?></span>
+                        <div class="flex flex-wrap gap-2">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $dayNum => $dayLabel): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <button type="button" wire:click="toggleShiftDay(<?php echo e($dayNum); ?>)"
-                                        class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors <?php echo e(in_array($dayNum, $shiftForm['days_of_week'] ?? []) ? 'bg-primary-500 text-white border-primary-500' : 'bg-white dark:bg-gray-700 text-ink-muted border-gray-200 dark:border-gray-600 hover:border-primary-400'); ?>">
+                                        class="cursor-pointer <?php echo e(in_array($dayNum, $shiftForm['days_of_week'] ?? []) ? 'edz-badge edz-badge--brand' : 'edz-badge edz-badge--neutral'); ?>">
                                     <?php echo e($dayLabel); ?>
 
                                 </button>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+
+                    <div class="flex items-center gap-2 pt-2 border-t border-surface-border">
                         <input type="checkbox" wire:model="shiftForm.is_active" id="shift_active"
-                               class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                               class="h-4 w-4 rounded border-surface-border text-brand-600">
                         <label for="shift_active" class="text-sm text-ink"><?php echo e(__('merchant_panel.active')); ?></label>
                     </div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showAssignModal): ?>
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
-             x-data
-             x-on:keydown.escape.window="$wire.set('showAssignModal', false)">
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" x-on:click="$wire.set('showAssignModal', false)"></div>
-            <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-                    <h3 class="text-lg font-bold text-ink"><?php echo e(__('merchant_panel.assign_products')); ?></h3>
-                    <div class="flex items-center gap-2">
-                        <button wire:click="saveAssignments" class="edz-btn edz-btn--primary edz-btn--sm"><?php echo e(__('merchant_panel.save')); ?></button>
-                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                x-on:click="$wire.set('showAssignModal', false)">
-                            <ion-icon name="close-outline" class="text-lg"></ion-icon>
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
+                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                            <?php echo e(__('buttons.cancel')); ?>
+
+                        </button>
+                        <button type="submit" class="edz-btn edz-btn--primary">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <?php echo e(__('merchant_panel.save')); ?>
+
                         </button>
                     </div>
                 </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="edz-label"><?php echo e(__('merchant_panel.agent')); ?> *</label>
-                        <select wire:model="assignForm.membership_id" class="edz-input text-sm">
+            </div>
+        </form>
+     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $attributes = $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+
+    
+    <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showAssignModal]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.modal'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['isOpen' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showAssignModal)]); ?>
+        <form wire:submit="saveAssignments">
+            <div class="p-6 space-y-4">
+                <h3 class="text-lg font-semibold text-ink"><?php echo e(__('merchant_panel.assign_products')); ?></h3>
+
+                <div class="space-y-4">
+                    <div class="edz-field">
+                        <label class="edz-field__label" for="assign-agent"><?php echo e(__('merchant_panel.agent')); ?> *</label>
+                        <select id="assign-agent" wire:model="assignForm.membership_id"
+                                class="edz-select <?php $__errorArgs = ['assignForm.membership_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> edz-input--error <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
                             <option value="">— <?php echo e(__('merchant_panel.select_agent')); ?> —</option>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $members; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <option value="<?php echo e($m['id']); ?>"><?php echo e($m['user']['name'] ?? $m['id']); ?></option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </select>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['assignForm.membership_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                            <span class="edz-field__error"><?php echo e($message); ?></span>
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                    <div>
-                        <label class="edz-label"><?php echo e(__('merchant_panel.search_products')); ?></label>
+
+                    <div class="edz-field">
+                        <label class="edz-field__label" for="assign-search"><?php echo e(__('merchant_panel.search_products')); ?></label>
                         <div class="relative">
-                            <input type="text" wire:model.live.debounce.300ms="productSearch"
-                                   wire:keyup.debounce.500ms="searchAssignProducts"
+                            <input type="text" id="assign-search" wire:model.live.debounce.300ms="productSearch"
+                                   wire:keyup.debounce.300ms="searchAssignProducts"
                                    placeholder="<?php echo e(__('merchant_panel.type_product_name')); ?>"
-                                   class="edz-input text-sm ps-9">
-                            <ion-icon name="search-outline" class="absolute start-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none"></ion-icon>
+                                   class="edz-input ps-9">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-right','class' => 'absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'arrow-right','class' => 'absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                         </div>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($productResults)): ?>
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg max-h-40 overflow-y-auto mt-2">
+                            <div class="border border-surface-border rounded-lg max-h-40 overflow-y-auto mt-2">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $productResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <label class="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                    <label class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-surface-secondary">
                                         <input type="checkbox"
                                                <?php echo e(in_array($p['id'], $assignForm['product_ids'] ?? []) ? 'checked' : ''); ?>
 
                                                wire:click="toggleAssignProduct('<?php echo e($p['id']); ?>')"
-                                               class="rounded border-gray-300 text-primary-600">
+                                               class="rounded border-surface-border text-brand-600">
                                         <span class="flex-1"><?php echo e($p['name']); ?></span>
                                         <span class="text-xs text-ink-muted"><?php echo e(currency($p['price'] ?? 0)); ?></span>
                                     </label>
@@ -411,25 +866,86 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             </div>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
+
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($assignForm['product_ids'])): ?>
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.selected_count')); ?> (<?php echo e(count($assignForm['product_ids'])); ?>)</label>
+                        <div class="edz-field">
+                            <span class="edz-field__label"><?php echo e(__('merchant_panel.selected_count')); ?> (<?php echo e(count($assignForm['product_ids'])); ?>)</span>
                             <div class="flex flex-wrap gap-2 mt-1">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $assignForm['product_ids']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pid): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <?php $pname = collect($allProducts)->firstWhere('id', $pid)['name'] ?? $pid ?>
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                                    <span class="edz-badge edz-badge--brand">
                                         <?php echo e($pname); ?>
 
-                                        <button wire:click="toggleAssignProduct('<?php echo e($pid); ?>')" class="hover:text-primary-900 dark:hover:text-white">
-                                            <ion-icon name="close-outline" class="text-sm"></ion-icon>
+                                        <button type="button" wire:click="toggleAssignProduct('<?php echo e($pid); ?>')"
+                                                class="cursor-pointer" aria-label="<?php echo e(__('buttons.cancel')); ?>">
+                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
                                         </button>
                                     </span>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                         </div>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
+                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                            <?php echo e(__('buttons.cancel')); ?>
+
+                        </button>
+                        <button type="submit" class="edz-btn edz-btn--primary">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <?php echo e(__('merchant_panel.save')); ?>
+
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </form>
+     <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $attributes = $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
 </div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire/merchant/order-settings.blade.php ENDPATH**/ ?>

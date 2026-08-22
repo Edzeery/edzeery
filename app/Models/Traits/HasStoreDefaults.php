@@ -7,10 +7,8 @@ trait HasStoreDefaults
     public function initializeHasStoreDefaults(): void
     {
         if (! $this->exists) {
-            $this->saving(function ($model) {
-                if (!$model->relationLoaded('settings')) {
-                    $model->settings()->create();
-                }
+            $this->created(function ($model) {
+                $model->settings()->firstOrCreate(['store_id' => $model->id]);
             });
         }
     }

@@ -39,10 +39,11 @@ class OrderService
         DB::beginTransaction();
 
         try {
-            $order->_changed_by_membership_id = $changedBy?->id;
-            $order->_status_reason = $reason;
+            Order::setTransitionMeta($order->id, $changedBy?->id, $reason);
 
             $order->update(['status_id' => $newStatus->id]);
+
+            Order::popTransitionMeta($order->id);
 
             DB::commit();
 

@@ -50,11 +50,13 @@ class OrderObserver
             return;
         }
 
+        $meta = Order::popTransitionMeta($order->id) ?? [];
+
         OrderStatusHistory::create([
             'order_id'                 => $order->id,
             'status_id'                => $status->id,
-            'changed_by_membership_id' => $order->_changed_by_membership_id ?? null,
-            'reason'                   => $order->_status_reason ?? null,
+            'changed_by_membership_id' => $meta['changed_by_membership_id'] ?? null,
+            'reason'                   => $meta['reason'] ?? null,
         ]);
 
         if (! $status->affects_inventory) {

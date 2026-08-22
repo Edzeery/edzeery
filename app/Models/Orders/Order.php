@@ -19,6 +19,22 @@ class Order extends Model
     use HasUlids;
     use SoftDeletes;
 
+    /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string}> */
+    private static array $transitionMeta = [];
+
+    public static function setTransitionMeta(int|string $orderId, ?string $changedByMembershipId, ?string $reason): void
+    {
+        self::$transitionMeta[$orderId] = [
+            'changed_by_membership_id' => $changedByMembershipId,
+            'reason' => $reason,
+        ];
+    }
+
+    public static function popTransitionMeta(int|string $orderId): ?array
+    {
+        return (self::$transitionMeta[$orderId] ?? null) ? array_pop(self::$transitionMeta[$orderId]) : null;
+    }
+
     protected $fillable = [
         'store_id',
         'user_id',
