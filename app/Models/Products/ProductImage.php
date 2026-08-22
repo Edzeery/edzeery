@@ -22,6 +22,15 @@ class ProductImage extends Model
         'is_primary' => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        static::creating(function (self $image) {
+            if (blank($image->store_id) && $image->imageable) {
+                $image->store_id = $image->imageable->store_id;
+            }
+        });
+    }
+
     public function imageable(): MorphTo
     {
         return $this->morphTo();

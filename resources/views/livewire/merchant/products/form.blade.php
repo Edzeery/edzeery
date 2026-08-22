@@ -196,31 +196,65 @@ $optionsChanged = protect(function (): bool {
 $syncExistingVariants = protect(function (array $preview): void {
     $fields = ['sku', 'barcode', 'price', 'compare_price', 'cost_price', 'stock', 'low_stock_threshold', 'weight', 'length', 'width', 'height', 'is_active'];
 
-    $existing = $this->product->variants()->get()
+    $dbVariants = $this->product->variants()->get()->values();
+
+    $existing = $dbVariants
         ->map(fn ($v) => [
             'id' => $v->id,
             'combo' => implode('-', $v->optionValues()->pluck('product_option_values.id')->map(fn ($id) => (string) $id)->sort()->values()->all()),
-        ])
-        ->keyBy('combo');
+        ]);
 
-    foreach ($preview as $row) {
-        $combo = implode('-', collect($row['value_ids'] ?? [])
-            ->map(fn ($id) => (string) $id)
-            ->sort()
-            ->values()
-            ->all());
+    $hasDuplicateCombos = $existing->pluck('combo')->duplicates()->isNotEmpty();
 
-        $variant = $this->product->variants()->find($existing->get($combo)['id'] ?? null);
+    if ($hasDuplicateCombos) {
+        $matched = [];
 
-        if (! $variant) {
-            continue;
-        }
+        foreach ($preview as $index => $row) {
+            $variant = $dbVariants[$index] ?? null;
 
-        $variant->update(
-            collect($fields)
+            if (! $variant) {
+                continue;
+            }
+
+            $dirty = collect($fields)
                 ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
-                ->all()
-        );
+                ->filter(fn ($value, $key) => $variant->{$key} != $value)
+                ->all();
+
+            if (! empty($dirty)) {
+                $variant->update($dirty);
+            }
+
+            $matched[] = $variant->id;
+        }
+    } else {
+        $existingByCombo = $existing->keyBy('combo');
+        $matched = [];
+
+        foreach ($preview as $row) {
+            $combo = implode('-', collect($row['value_ids'] ?? [])
+                ->map(fn ($id) => (string) $id)
+                ->sort()
+                ->values()
+                ->all());
+
+            $variant = $this->product->variants()->find($existingByCombo->get($combo)['id'] ?? null);
+
+            if (! $variant) {
+                continue;
+            }
+
+            $dirty = collect($fields)
+                ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
+                ->filter(fn ($value, $key) => $variant->{$key} != $value)
+                ->all();
+
+            if (! empty($dirty)) {
+                $variant->update($dirty);
+            }
+
+            $matched[] = $variant->id;
+        }
     }
 });
 

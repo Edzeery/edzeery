@@ -9,6 +9,8 @@ use App\Enums\Store\StoreStatusEnum;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Products\Product;
+use App\Models\Products\ProductOption;
+use App\Models\Products\ProductOptionValue;
 use App\Models\Products\ProductVariant;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
@@ -132,9 +134,9 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'techvibe',
                 'category_slugs'    => ['demo-electronics', 'demo-accessories'],
                 'variants'          => [
-                    ['name' => 'Black', 'sku' => 'DEMO-EAR-001-BK', 'price' => 4500.00, 'stock' => 50],
-                    ['name' => 'White', 'sku' => 'DEMO-EAR-001-WH', 'price' => 4500.00, 'stock' => 35],
-                    ['name' => 'Blue',  'sku' => 'DEMO-EAR-001-BL', 'price' => 4800.00, 'stock' => 20],
+                    ['name' => 'Black', 'sku' => 'DEMO-EAR-001-BK', 'price' => 4500.00, 'stock' => 50, 'option_values' => [['Color', 'Black']]],
+                    ['name' => 'White', 'sku' => 'DEMO-EAR-001-WH', 'price' => 4500.00, 'stock' => 35, 'option_values' => [['Color', 'White']]],
+                    ['name' => 'Blue',  'sku' => 'DEMO-EAR-001-BL', 'price' => 4800.00, 'stock' => 20, 'option_values' => [['Color', 'Blue']]],
                 ],
             ],
             [
@@ -151,8 +153,8 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'techvibe',
                 'category_slugs'    => ['demo-electronics'],
                 'variants'          => [
-                    ['name' => '42mm - Silver', 'sku' => 'DEMO-WATCH-001-SV', 'price' => 8900.00, 'stock' => 15],
-                    ['name' => '46mm - Black',  'sku' => 'DEMO-WATCH-001-BK', 'price' => 9500.00, 'stock' => 20],
+                    ['name' => '42mm - Silver', 'sku' => 'DEMO-WATCH-001-SV', 'price' => 8900.00, 'stock' => 15, 'option_values' => [['Size', '42mm'], ['Color', 'Silver']]],
+                    ['name' => '46mm - Black',  'sku' => 'DEMO-WATCH-001-BK', 'price' => 9500.00, 'stock' => 20, 'option_values' => [['Size', '46mm'], ['Color', 'Black']]],
                 ],
             ],
             [
@@ -169,11 +171,11 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'urbanedge',
                 'category_slugs'    => ['demo-clothing'],
                 'variants'          => [
-                    ['name' => 'Small - Black',  'sku' => 'DEMO-TSHIRT-001-SB', 'price' => 1800.00, 'stock' => 40],
-                    ['name' => 'Medium - Black', 'sku' => 'DEMO-TSHIRT-001-MB', 'price' => 1800.00, 'stock' => 60],
-                    ['name' => 'Large - Black',  'sku' => 'DEMO-TSHIRT-001-LB', 'price' => 1800.00, 'stock' => 50],
-                    ['name' => 'Medium - White', 'sku' => 'DEMO-TSHIRT-001-MW', 'price' => 1800.00, 'stock' => 45],
-                    ['name' => 'Large - White',  'sku' => 'DEMO-TSHIRT-001-LW', 'price' => 1800.00, 'stock' => 30],
+                    ['name' => 'Small - Black',  'sku' => 'DEMO-TSHIRT-001-SB', 'price' => 1800.00, 'stock' => 40, 'option_values' => [['Size', 'Small'], ['Color', 'Black']]],
+                    ['name' => 'Medium - Black', 'sku' => 'DEMO-TSHIRT-001-MB', 'price' => 1800.00, 'stock' => 60, 'option_values' => [['Size', 'Medium'], ['Color', 'Black']]],
+                    ['name' => 'Large - Black',  'sku' => 'DEMO-TSHIRT-001-LB', 'price' => 1800.00, 'stock' => 50, 'option_values' => [['Size', 'Large'], ['Color', 'Black']]],
+                    ['name' => 'Medium - White', 'sku' => 'DEMO-TSHIRT-001-MW', 'price' => 1800.00, 'stock' => 45, 'option_values' => [['Size', 'Medium'], ['Color', 'White']]],
+                    ['name' => 'Large - White',  'sku' => 'DEMO-TSHIRT-001-LW', 'price' => 1800.00, 'stock' => 30, 'option_values' => [['Size', 'Large'], ['Color', 'White']]],
                 ],
             ],
             [
@@ -241,9 +243,9 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'urbanedge',
                 'category_slugs'    => ['demo-clothing'],
                 'variants'          => [
-                    ['name' => 'Medium - Beige',  'sku' => 'DEMO-SHIRT-001-MB', 'price' => 2800.00, 'stock' => 25],
-                    ['name' => 'Large - Beige',   'sku' => 'DEMO-SHIRT-001-LB', 'price' => 2800.00, 'stock' => 20],
-                    ['name' => 'Medium - Green',  'sku' => 'DEMO-SHIRT-001-MG', 'price' => 2800.00, 'stock' => 15],
+                    ['name' => 'Medium - Beige',  'sku' => 'DEMO-SHIRT-001-MB', 'price' => 2800.00, 'stock' => 25, 'option_values' => [['Size', 'Medium'], ['Color', 'Beige']]],
+                    ['name' => 'Large - Beige',   'sku' => 'DEMO-SHIRT-001-LB', 'price' => 2800.00, 'stock' => 20, 'option_values' => [['Size', 'Large'], ['Color', 'Beige']]],
+                    ['name' => 'Medium - Green',  'sku' => 'DEMO-SHIRT-001-MG', 'price' => 2800.00, 'stock' => 15, 'option_values' => [['Size', 'Medium'], ['Color', 'Green']]],
                 ],
             ],
             [
@@ -297,7 +299,7 @@ class DemoStoreSeeder extends Seeder
             }
 
             foreach ($data['variants'] as $i => $vData) {
-                ProductVariant::firstOrCreate(
+                $variant = ProductVariant::firstOrCreate(
                     ['store_id' => $store->id, 'sku' => $vData['sku']],
                     [
                         'product_id' => $product->id,
@@ -308,6 +310,24 @@ class DemoStoreSeeder extends Seeder
                         'is_default' => $i === 0,
                     ]
                 );
+
+                if ($data['type'] === 'variable' && isset($vData['option_values'])) {
+                    foreach ($vData['option_values'] as [$optionName, $optionValue]) {
+                        $option = ProductOption::firstOrCreate(
+                            ['store_id' => $store->id, 'name' => $optionName],
+                            ['type' => 'select', 'sort_order' => 0]
+                        );
+
+                        $optValue = ProductOptionValue::firstOrCreate(
+                            ['store_id' => $store->id, 'product_option_id' => $option->id, 'value' => $optionValue],
+                            ['sort_order' => 0]
+                        );
+
+                        $variant->optionValues()->syncWithoutDetaching([
+                            $optValue->id => ['product_option_id' => $option->id],
+                        ]);
+                    }
+                }
             }
 
             if (! $product->images()->exists()) {

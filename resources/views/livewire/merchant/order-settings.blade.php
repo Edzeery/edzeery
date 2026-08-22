@@ -39,32 +39,6 @@ state([
     'productResults' => [],
 ]);
 
-$DAYS_OF_WEEK = [
-    1 => __('merchant_panel.monday'),
-    2 => __('merchant_panel.tuesday'),
-    3 => __('merchant_panel.wednesday'),
-    4 => __('merchant_panel.thursday'),
-    5 => __('merchant_panel.friday'),
-    6 => __('merchant_panel.saturday'),
-    7 => __('merchant_panel.sunday'),
-];
-
-$SHIFT_TYPES = [
-    'morning'   => __('merchant_panel.shift_morning'),
-    'afternoon' => __('merchant_panel.shift_afternoon'),
-    'evening'   => __('merchant_panel.shift_evening'),
-    'full_day'  => __('merchant_panel.shift_full_day'),
-    'custom'    => __('merchant_panel.shift_custom'),
-];
-
-$SHIFT_TIMES = [
-    'morning'   => ['start_time' => '08:00', 'end_time' => '12:00'],
-    'afternoon' => ['start_time' => '12:00', 'end_time' => '17:00'],
-    'evening'   => ['start_time' => '17:00', 'end_time' => '22:00'],
-    'full_day'  => ['start_time' => '08:00', 'end_time' => '22:00'],
-    'custom'    => ['start_time' => '08:00', 'end_time' => '17:00'],
-];
-
 mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
     $this->loadData();

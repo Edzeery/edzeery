@@ -71,14 +71,23 @@ $save = function (): void {
         'status' => $this->status,
     ];
 
-    if ($this->debtId) {
-        $debt = Debt::where('store_id', currentStoreId())->findOrFail($this->debtId);
-        $debt->update($data);
-    } else {
-        Debt::create($data);
+    try {
+        if ($this->debtId) {
+            $debt = Debt::where('store_id', currentStoreId())->findOrFail($this->debtId);
+            $debt->update($data);
+        } else {
+            Debt::create($data);
+        }
+    } catch (\Throwable $e) {
+        report($e);
+
+        $this->dispatch('swal', type: 'error', title: __('messages.action_failed'));
+
+        return;
     }
 
-    $this->redirect(route('merchant.debts.index', request()->route('store')), navigate: true);
+    $this->dispatch('swal', type: 'success', title: $this->debtId ? __('messages.updated_successfully') : __('messages.created_successfully'));
+    $this->redirect(route('merchant.debts.index', currentStore()), navigate: true);
 };
 ?>
 
@@ -89,7 +98,7 @@ $save = function (): void {
                 {{ $debtId ? __('finance.edit_debt') : __('finance.add_debt') }}
             </h1>
         </div>
-        <a href="{{ route('merchant.debts.index', request()->route('store')) }}"
+        <a href="{{ route('merchant.debts.index', currentStore()) }}"
            wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
             {{ __('finance.back') }}
         </a>
@@ -97,6 +106,17 @@ $save = function (): void {
 
     <div class="edz-card">
         <div class="edz-card__body">
+            @if ($errors->any())
+                <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
+                    <p class="font-semibold">{{ __('messages.validation_error') }}</p>
+                    <ul class="mt-1 list-inside list-disc">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <form wire:submit="save" x-data="edzDirty()">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
@@ -126,7 +146,8 @@ $save = function (): void {
                     <div>
                         <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.total_amount') }}</label>
                         <input type="number" step="0.01" wire:model="total_amount"
-                               class="edz-input" required />
+                               class="edz-input @error('total_amount') edz-input--error @enderror" required />
+                        @error('total_amount') <span class="edz-field__error">{{ $message }}</span> @enderror
                     </div>
 
                     <div>
@@ -154,7 +175,7 @@ $save = function (): void {
                     <button type="submit" class="edz-btn edz-btn--primary">
                         {{ $debtId ? __('finance.update') : __('finance.create') }}
                     </button>
-                    <a href="{{ route('merchant.debts.index', request()->route('store')) }}"
+                    <a href="{{ route('merchant.debts.index', currentStore()) }}"
                        wire:navigate class="edz-btn edz-btn--ghost">
                         {{ __('finance.back') }}
                     </a>

@@ -2,7 +2,10 @@
 
 return [
     'advanced_analytics' => 'Analyses avancées',
+    'basic' => 'Basique',
+    'enterprise' => 'Entreprise',
     'future_integrations' => 'Intégrations futures',
+    'max_stores' => 'Nombre maximum de boutiques',
     'nbr_daily_orders' => 'Limite de commandes quotidiennes',
     'nbr_delivery_agents' => 'Nombre d’agents de livraison',
     'nbr_delivery_companies' => 'Nombre de sociétés de livraison',
@@ -10,4 +13,6 @@ return [
     'nbr_staff_limit' => 'Nombre de membres du personnel',
     'nbr_store_orders' => 'Limite des commandes du magasin',
     'priority_support' => 'Support prioritaire',
+    'pro' => 'Pro',
+    'trial' => 'Essai gratuit',
 ];

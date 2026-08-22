@@ -56,7 +56,8 @@ $canDelete = fn () => canStore(StorePermissionEnum::FINANCE_DEBT_DELETE->value);
 $delete = function (Debt $debt): void {
     abort_unless(canStore(StorePermissionEnum::FINANCE_DEBT_DELETE->value), 403);
     $debt->delete();
-    $this->redirect(route('merchant.debts.index', request()->route('store')), navigate: true);
+    $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));
+    $this->redirect(route('merchant.debts.index', currentStore()), navigate: true);
 };
 
 $formatAmount = function (float $amount): string {
@@ -70,8 +71,8 @@ $formatAmount = function (float $amount): string {
             <h1 class="edz-page-head__title">{{ __('finance.debts') }}</h1>
             <p class="edz-page-head__subtitle">{{ __('finance.manage_debts_subtitle') }}</p>
         </div>
-        @if ($canCreate())
-            <a href="{{ route('merchant.debts.create', request()->route('store')) }}" wire:navigate
+        @if ($this->canCreate())
+            <a href="{{ route('merchant.debts.create', currentStore()) }}" wire:navigate
                class="edz-btn edz-btn--primary edz-btn--sm">
                 <x-edz.icon name="plus" class="edz-btn__icon" />
                 {{ __('finance.add_debt') }}
@@ -84,13 +85,13 @@ $formatAmount = function (float $amount): string {
         <div class="edz-card">
             <div class="edz-card__body">
                 <p class="text-sm text-ink-muted">{{ __('finance.total_receivable') }}</p>
-                <p class="text-2xl font-bold text-success-600">{{ $formatAmount($totalOwed) }}</p>
+                <p class="text-2xl font-bold text-success-600">{{ $this->formatAmount($this->totalOwed) }}</p>
             </div>
         </div>
         <div class="edz-card">
             <div class="edz-card__body">
                 <p class="text-sm text-ink-muted">{{ __('finance.total_payable') }}</p>
-                <p class="text-2xl font-bold text-danger-600">{{ $formatAmount($totalOwing) }}</p>
+                <p class="text-2xl font-bold text-danger-600">{{ $this->formatAmount($this->totalOwing) }}</p>
             </div>
         </div>
     </div>
@@ -141,32 +142,32 @@ $formatAmount = function (float $amount): string {
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($debts as $debt)
+                    @forelse($this->debts as $debt)
                         <tr class="border-b border-surface-border last:border-0 hover:bg-surface-secondary/50">
                             <td class="px-4 py-3 font-medium text-ink">{{ $debt->counterparty_name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <x-merchant.status domain="debt_type" :status="$debt->type->value" />
                             </td>
-                            <td class="px-4 py-3 text-ink-soft">{{ $formatAmount($debt->total_amount) }}</td>
-                            <td class="px-4 py-3 text-ink-soft">{{ $formatAmount($debt->paid_amount) }}</td>
-                            <td class="px-4 py-3 text-ink-soft">{{ $formatAmount($debt->remaining_amount) }}</td>
+                            <td class="px-4 py-3 text-ink-soft">{{ $this->formatAmount($debt->total_amount) }}</td>
+                            <td class="px-4 py-3 text-ink-soft">{{ $this->formatAmount($debt->paid_amount) }}</td>
+                            <td class="px-4 py-3 text-ink-soft">{{ $this->formatAmount($debt->remaining_amount) }}</td>
                             <td class="px-4 py-3 text-ink-soft">{{ $debt->due_date?->format('Y-m-d') ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <x-merchant.status domain="debt" :status="$debt->status->value" />
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
-                                    <a href="{{ route('merchant.debts.show', [request()->route('store'), $debt]) }}"
+                                    <a href="{{ route('merchant.debts.show', [currentStore(), $debt]) }}"
                                        wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
                                         {{ __('finance.details') }}
                                     </a>
-                                    @if ($canUpdate())
-                                        <a href="{{ route('merchant.debts.edit', [request()->route('store'), $debt]) }}"
+                                    @if ($this->canUpdate())
+                                        <a href="{{ route('merchant.debts.edit', [currentStore(), $debt]) }}"
                                            wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
                                             {{ __('finance.edit') }}
                                         </a>
                                     @endif
-                                    @if ($canDelete())
+                                    @if ($this->canDelete())
                                         <button x-data
                                                 @click.prevent="if (await EdzSwal.confirmAction('{{ __('finance.delete') }}', '{{ __('finance.confirm_delete') }}')) $wire.delete('{{ $debt->id }}')"
                                                 class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
@@ -186,10 +187,10 @@ $formatAmount = function (float $amount): string {
                 </tbody>
             </table>
         </div>
+        @if ($this->debts->hasPages())
 
-        @if ($debts->hasPages())
             <div class="border-t border-surface-border px-4 py-3">
-                {{ $debts->links() }}
+                {{ $this->debts->links() }}
             </div>
         @endif
     </div>

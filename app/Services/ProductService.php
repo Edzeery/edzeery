@@ -44,7 +44,7 @@ class ProductService
 
             if (!$baseSku) {
                 throw ValidationException::withMessages([
-                    'sku' => 'SKU is required. Enable auto-generate or enter a SKU manually.',
+                    'sku' => __('messages.sku_required'),
                 ]);
             }
 
@@ -148,7 +148,7 @@ class ProductService
     {
         if (empty($data['variants_preview'])) {
             throw ValidationException::withMessages([
-                'variants_preview' => __('variants_preview.'),
+                'variants_preview' => __('messages.variants_preview_required'),
             ]);
         }
 
@@ -156,7 +156,7 @@ class ProductService
 
             if (empty($preview['price']) || empty($preview['cost_price'])) {
                 throw ValidationException::withMessages([
-                    'variants_preview' => 'Each variant must have price and cost price.',
+                    'variants_preview' => __('messages.variant_price_cost_required'),
                 ]);
             }
 
@@ -164,7 +164,7 @@ class ProductService
                 'name'       => $preview['name'] ?? $product->name,
                 'sku' => ($data['auto_generate_sku'] ?? false)
                     ? SkuGenerator::variant(currentStore()->slug, $product->slug, $preview['sku_parts'] ?? [])
-                    : ($preview['sku'] ?? throw ValidationException::withMessages(['sku' => 'SKU is required for variant.'])),
+                    : ($preview['sku'] ?? throw ValidationException::withMessages(['sku' => __('messages.variant_sku_required')])),
                 'barcode' => ($data['auto_generate_barcode'] ?? false)
                     ? BarcodeService::variant(null)
                     : ($preview['barcode'] ?? null),
@@ -222,6 +222,7 @@ class ProductService
         foreach (array_values($images) as $index => $path) {
             $product->images()->create([
                 'path' => $path,
+                'store_id' => $product->store_id,
                 'sort_order' => $index,
             ]);
         }

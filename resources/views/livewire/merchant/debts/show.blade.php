@@ -13,12 +13,11 @@ use Carbon\Carbon;
 layout('components.layouts.store');
 
 state([
+    'debt' => null,
     'payment_amount' => '',
     'payment_date' => '',
     'payment_notes' => '',
 ]);
-
-$debt = null;
 
 mount(function (Debt $debt): void {
     abort_unless($debt->store_id === currentStoreId(), 404);
@@ -54,6 +53,7 @@ $addPayment = function (): void {
     $this->reset(['payment_amount', 'payment_notes']);
     $this->payment_date = Carbon::now()->format('Y-m-d');
     $this->dispatch('payment-added');
+    $this->dispatch('swal', type: 'success', title: __('finance.payment_recorded'));
 };
 
 $formatAmount = function (float $amount): string {
@@ -69,11 +69,11 @@ $formatAmount = function (float $amount): string {
                 <p class="edz-page-head__subtitle">{{ $debt->description ?? '—' }}</p>
             </div>
             <div class="flex items-center gap-2">
-                <a href="{{ route('merchant.debts.edit', [request()->route('store'), $debt]) }}"
+                <a href="{{ route('merchant.debts.edit', [currentStore(), $debt]) }}"
                    wire:navigate class="edz-btn edz-btn--secondary edz-btn--sm">
                     {{ __('finance.edit') }}
                 </a>
-                <a href="{{ route('merchant.debts.index', request()->route('store')) }}"
+                <a href="{{ route('merchant.debts.index', currentStore()) }}"
                    wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
                     {{ __('finance.back') }}
                 </a>
@@ -85,19 +85,19 @@ $formatAmount = function (float $amount): string {
             <div class="edz-card">
                 <div class="edz-card__body">
                     <p class="text-sm text-ink-muted">{{ __('finance.total_amount') }}</p>
-                    <p class="text-xl font-bold text-ink">{{ $formatAmount($debt->total_amount) }}</p>
+                    <p class="text-xl font-bold text-ink">{{ $this->formatAmount($debt->total_amount) }}</p>
                 </div>
             </div>
             <div class="edz-card">
                 <div class="edz-card__body">
                     <p class="text-sm text-ink-muted">{{ __('finance.paid_amount') }}</p>
-                    <p class="text-xl font-bold text-success-600">{{ $formatAmount($debt->paid_amount) }}</p>
+                    <p class="text-xl font-bold text-success-600">{{ $this->formatAmount($debt->paid_amount) }}</p>
                 </div>
             </div>
             <div class="edz-card">
                 <div class="edz-card__body">
                     <p class="text-sm text-ink-muted">{{ __('finance.remaining') }}</p>
-                    <p class="text-xl font-bold text-danger-600">{{ $formatAmount($debt->remaining_amount) }}</p>
+                    <p class="text-xl font-bold text-danger-600">{{ $this->formatAmount($debt->remaining_amount) }}</p>
                 </div>
             </div>
             <div class="edz-card">
@@ -192,7 +192,7 @@ $formatAmount = function (float $amount): string {
                         @forelse($debt->payments()->latest('payment_date')->get() as $payment)
                             <tr class="border-b border-surface-border last:border-0">
                                 <td class="px-4 py-3 text-ink-soft">{{ $payment->payment_date->format('Y-m-d') }}</td>
-                                <td class="px-4 py-3 font-medium text-success-600">{{ $formatAmount($payment->amount) }}</td>
+                                <td class="px-4 py-3 font-medium text-success-600">{{ $this->formatAmount($payment->amount) }}</td>
                                 <td class="px-4 py-3 text-ink-soft">{{ $payment->notes ?? '—' }}</td>
                             </tr>
                         @empty

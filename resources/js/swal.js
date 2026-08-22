@@ -142,9 +142,12 @@ const EdzSwal = {
     },
 };
 
+let swalBound = false;
+
 function initSwal() {
     const bind = () => {
-        if (typeof window.Livewire !== "undefined") {
+        if (typeof window.Livewire !== "undefined" && !swalBound) {
+            swalBound = true;
             window.Livewire.on("swal", (data) => {
                 const payload = Array.isArray(data) ? data[0] : data;
                 EdzSwal.fire(payload);

@@ -1,9 +1,9 @@
 <?php
 
 return [
+    'actions' => 'Actions',
     'action_failed' => 'Une erreur est survenue ❌',
     'action_success' => 'Action effectuée avec succès ✅',
-    'actions' => 'Actions',
     'active' => 'Actif',
     'address' => 'Adresse',
     'all' => 'Tout',
@@ -93,9 +93,10 @@ return [
     'save_changes' => 'Enregistrer les modifications',
     'search' => 'Rechercher',
     'search_in' => 'Rechercher par',
+    'select' => 'Sélectionner...',
+    'selected_count' => ':count sélectionné(s)',
     'select_country' => 'Sélectionner le pays',
     'select_range' => 'Sélectionnez la plage d\'enregistrement',
-    'selected_count' => ':count sélectionné(s)',
     'settings' => 'Paramètres',
     'spanish' => 'Espagnol',
     'speech_bubble' => 'Un tableau de bord intelligent et facile à utiliser ⚡',

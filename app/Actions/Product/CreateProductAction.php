@@ -23,7 +23,7 @@ class CreateProductAction
                 : ($data['sku'] ?? null);
 
             if (!$sku) {
-                throw new \DomainException('SKU is required.');
+                throw new \DomainException(__('messages.sku_required'));
             }
 
             // توليد Barcode

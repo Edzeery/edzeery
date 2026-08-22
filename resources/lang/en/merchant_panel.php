@@ -223,6 +223,7 @@ return [
     'friday' => 'Fri',
     'saturday' => 'Sat',
     'sunday' => 'Sun',
+    'visit_store' => 'Visit Store',
     'save' => 'Save',
     'edit' => 'Edit',
 ];

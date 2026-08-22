@@ -15,9 +15,17 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $search;
 
-    public $type;
+    public $brand_id;
 
-    public $status;
+    public $is_active;
+
+    public $is_featured;
+
+    public $created_at;
+
+    public $selected;
+
+    public $select_all;
 
     public function mount(): void
     {
@@ -27,27 +35,19 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     }
 
     #[\Livewire\Attributes\Computed()]
-    public function debts()
+    public function products()
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('debts'))->execute(...$arguments);
+        return (new Actions\CallMethod('products'))->execute(...$arguments);
     }
 
     #[\Livewire\Attributes\Computed()]
-    public function totalOwed()
+    public function brands()
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('totalOwed'))->execute(...$arguments);
-    }
-
-    #[\Livewire\Attributes\Computed()]
-    public function totalOwing()
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('totalOwing'))->execute(...$arguments);
+        return (new Actions\CallMethod('brands'))->execute(...$arguments);
     }
 
     public function canCreate()
@@ -71,18 +71,46 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('canDelete'))->execute(...$arguments);
     }
 
-    public function delete(\App\Models\Finance\Debt $debt): void
+    public function imageUrl(\App\Models\Products\Product $product): string
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('imageUrl'))->execute(...$arguments);
+    }
+
+    public function delete(\App\Models\Products\Product $product): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('delete'))->execute(...$arguments);
     }
 
-    public function formatAmount(float $amount): string
+    public function deleteSelected(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('formatAmount'))->execute(...$arguments);
+        (new Actions\CallMethod('deleteSelected'))->execute(...$arguments);
+    }
+
+    public function activateSelected(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('activateSelected'))->execute(...$arguments);
+    }
+
+    public function deactivateSelected(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('deactivateSelected'))->execute(...$arguments);
+    }
+
+    public function updated($name)
+    {
+        $arguments = [static::$__context, $this, array_slice(func_get_args(), 1)];
+
+        return (new Actions\CallPropertyHook('updated', $name))->execute(...$arguments);
     }
 
 };

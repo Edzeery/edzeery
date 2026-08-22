@@ -11,19 +11,19 @@ class SyncVariantsAction
     public function handle(Product $product, array $data): void
     {
         if (empty($data['variants_preview'])) {
-            throw new \DomainException('Variants preview is required.');
+            throw new \DomainException(__('messages.variants_preview_required'));
         }
 
         foreach ($data['variants_preview'] as $index => $preview) {
             if (empty($preview['price']) || empty($preview['cost_price'])) {
-                throw new \DomainException('Each variant must have price and cost price.');
+                throw new \DomainException(__('messages.variant_price_cost_required'));
             }
 
             $variant = $product->variants()->create([
                 'name' => $preview['name'] ?? $product->name,
                 'sku' => ($data['auto_generate_sku'] ?? false)
                     ? SkuGenerator::variant($product->store->slug, $product->slug, $preview['sku_parts'] ?? [])
-                    : ($preview['sku'] ?? throw new \DomainException('Variant SKU required')),
+                    : ($preview['sku'] ?? throw new \DomainException(__('messages.variant_sku_required'))),
                 'barcode' => ($data['auto_generate_barcode'] ?? false)
                     ? BarcodeService::variant(null)
                     : ($preview['barcode'] ?? null),

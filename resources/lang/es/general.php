@@ -1,9 +1,9 @@
 <?php
 
 return [
+    'actions' => 'Acciones',
     'action_failed' => 'Ocurrió un error',
     'action_success' => 'Acción completada exitosamente',
-    'actions' => 'Acciones',
     'active' => 'Activo',
     'address' => 'Dirección',
     'all' => 'Todo',
@@ -55,6 +55,7 @@ return [
     'heading3' => 'y fácilmente',
     'home' => 'Inicio',
     'inactive' => 'Inactivo',
+    'issued_invoices' => 'Facturas emitidas',
     'key' => 'Clave',
     'language' => 'Idioma',
     'language_changed' => 'Idioma cambiado exitosamente a:',
@@ -92,9 +93,10 @@ return [
     'save_changes' => 'Guardar cambios',
     'search' => 'Buscar',
     'search_in' => 'Buscar en',
+    'select' => 'Seleccionar...',
+    'selected_count' => ':count seleccionado(s)',
     'select_country' => 'Seleccionar país',
     'select_range' => 'Seleccionar rango',
-    'selected_count' => ':count seleccionado(s)',
     'settings' => 'Configuración',
     'spanish' => 'Español',
     'speech_bubble' => 'Un panel inteligente y fácil de usar ⚡',

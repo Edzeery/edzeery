@@ -10,6 +10,26 @@ use Illuminate\Support\Facades\Validator;
 ?>
 
 <div x-data="{ shiftTypeChanging: false }">
+    <?php
+        $SHIFT_TYPES = [
+            'morning'   => __('merchant_panel.shift_morning'),
+            'afternoon' => __('merchant_panel.shift_afternoon'),
+            'evening'   => __('merchant_panel.shift_evening'),
+            'full_day'  => __('merchant_panel.shift_full_day'),
+            'custom'    => __('merchant_panel.shift_custom'),
+        ];
+
+        $DAYS_OF_WEEK = [
+            1 => __('merchant_panel.monday'),
+            2 => __('merchant_panel.tuesday'),
+            3 => __('merchant_panel.wednesday'),
+            4 => __('merchant_panel.thursday'),
+            5 => __('merchant_panel.friday'),
+            6 => __('merchant_panel.saturday'),
+            7 => __('merchant_panel.sunday'),
+        ];
+    ?>
+
     
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <?php if (isset($component)) { $__componentOriginal64446345db7363332d7ff2707d878bc4 = $component; } ?>
