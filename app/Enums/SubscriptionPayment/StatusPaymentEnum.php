@@ -13,11 +13,12 @@ enum StatusPaymentEnum: string implements HasLabel
 
     protected const GROUP = 'payment';
 
-    case PENDING   = 'pending';
-    case PAID      = 'paid';
-    case FAILED    = 'failed';
-    case REFUNDED  = 'refunded';
-    case CANCELED  = 'canceled';
+    case PENDING         = 'pending';
+    case PENDING_REVIEW  = 'pending_review';
+    case PAID            = 'paid';
+    case FAILED          = 'failed';
+    case REFUNDED        = 'refunded';
+    case CANCELED        = 'canceled';
 
     public function getLabel(): string
     {

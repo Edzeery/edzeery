@@ -48,17 +48,17 @@ $addToCart = function (string $variantId) {
             ->where('is_active', true)
             ->with(['images', 'brand', 'categories', 'variants']);
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%");
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', "%{$this->search}%")->orWhere('description', 'like', "%{$this->search}%");
             });
         }
 
-        if ($category_id) {
-            $query->whereHas('categories', fn($q) => $q->where('categories.id', $category_id));
+        if ($this->category_id) {
+            $query->whereHas('categories', fn($q) => $q->where('categories.id', $this->category_id));
         }
 
-        match ($sortBy) {
+        match ($this->sortBy) {
             'price_asc' => $query->orderBy('price'),
             'price_desc' => $query->orderByDesc('price'),
             'oldest' => $query->orderBy('created_at'),
@@ -69,8 +69,8 @@ $addToCart = function (string $variantId) {
     @endphp
 
     {{-- Hero --}}
-    @if (in_array('hero', $sections))
-        @php $hero = $section_content['hero'] ?? []; @endphp
+    @if (in_array('hero', $this->sections))
+        @php $hero = $this->section_content['hero'] ?? []; @endphp
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                                     <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?? '' ?: $store->name }}</h1>
@@ -99,7 +99,7 @@ $addToCart = function (string $variantId) {
     @endif
 
     {{-- Categories --}}
-    @if (in_array('categories', $sections))
+    @if (in_array('categories', $this->sections))
 
         {{-- Breadcrumb --}}
         <nav class="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -116,13 +116,13 @@ $addToCart = function (string $variantId) {
                     <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                         <button wire:click="$set('category_id', '')"
                             class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
-                        {{ empty($category_id) ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                        {{ empty($this->category_id) ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
                             {{ __('storefront.all') }}
                         </button>
                         @foreach ($categories as $cat)
                             <button wire:click="$set('category_id', '{{ $cat->id }}')"
                                 class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
-                            {{ $category_id === $cat->id ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                            {{ $this->category_id === $cat->id ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
                                 {{ $cat->name }} ({{ $cat->products_count }})
                             </button>
                         @endforeach
@@ -157,7 +157,7 @@ $addToCart = function (string $variantId) {
                             class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition group">
                             <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                 class="block">
-                                <div class="aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                <div class="relative aspect-square bg-gray-100 dark:bg-gray-700 overflow-hidden">
                                     @if ($product->images->count())
                                         <img src="{{ asset('storage/' . $product->images->first()->path) }}"
                                             alt="{{ $product->name }}"
@@ -166,6 +166,12 @@ $addToCart = function (string $variantId) {
                                     @else
                                         <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}"
                                             class="w-full h-full object-contain p-4 opacity-60">
+                                    @endif
+                                    @if($product->is_featured)
+                                        <span class="absolute top-2 {{ isRTL() ? 'end-2' : 'start-2' }} z-10 flex items-center gap-1 store-bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
+                                            <ion-icon name="star" class="text-xs"></ion-icon>
+                                            {{ __('storefront.featured') }}
+                                        </span>
                                     @endif
                                 </div>
                             </a>
@@ -181,12 +187,19 @@ $addToCart = function (string $variantId) {
                                         {{ $product->brand->name }}</p>
                                 @endif
                                 <div class="flex items-center justify-between mt-3">
+                                    @php
+                                        $_cardMinPrice = (float) ($product->variants->min('price') ?? $product->price);
+                                        $_cardMaxCompare = (float) $product->variants->max('compare_price');
+                                        $_cardDiscount = ($_cardMaxCompare > 0 && $_cardMinPrice > 0 && $_cardMaxCompare > $_cardMinPrice)
+                                            ? (int) round((1 - $_cardMinPrice / $_cardMaxCompare) * 100)
+                                            : 0;
+                                    @endphp
                                     <div class="flex items-center gap-2">
-                                        <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
-                                        @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
-                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
+                                        <span class="text-lg font-bold store-text-primary">{{ currency($_cardMinPrice) }}</span>
+                                        @if($_cardDiscount > 0)
+                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($_cardMaxCompare) }}</span>
                                             <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
-                                                -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
+                                                -{{ $_cardDiscount }}%
                                             </span>
                                         @endif
                                     </div>
@@ -221,4 +234,27 @@ $addToCart = function (string $variantId) {
             @endif
         </div>
     </section>
+
+    {{-- Social Proof --}}
+    @if(in_array('social_proof', $this->sections ?? []))
+        @php $sp = ($this->section_content ?? [])['social_proof'] ?? []; @endphp
+        @if($sp && !empty($sp['items']))
+        <section class="py-16 bg-gray-50 dark:bg-gray-900">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">{{ $sp['title'] ?? __('storefront.why_customers_love_us') }}</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                    @foreach($sp['items'] as $item)
+                        <div class="flex flex-col items-center">
+                            <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
+                                <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
+                            </div>
+                            <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+        @endif
+    @endif
 </div>

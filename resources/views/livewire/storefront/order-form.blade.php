@@ -359,7 +359,7 @@ $submitOrder = function () {
                         </div>
                     </div>
 
-                    @if($delivery_type === 'stopdesk' && $stopdesks->count())
+                    @if($this->delivery_type === 'stopdesk' && $stopdesks->count())
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }} *</label>
                             <select wire:model="selectedStopdesk"
@@ -377,7 +377,7 @@ $submitOrder = function () {
                         </div>
                     @endif
 
-                    @if($delivery_type === 'home')
+                    @if($this->delivery_type === 'home')
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.address') }} *</label>
                             <textarea wire:model="address" rows="2"

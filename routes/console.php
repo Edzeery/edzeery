@@ -19,3 +19,5 @@ Schedule::call(function () {
         ShiftHandoverJob::dispatch($store);
     }
 })->name('shift-handover')->everyFifteenMinutes()->withoutOverlapping();
+
+Schedule::command('billing:trial-reminders')->dailyAt('09:00');

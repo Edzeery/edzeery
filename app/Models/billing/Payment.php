@@ -26,12 +26,19 @@ class Payment extends Model
         'amount',
         'currency',
         'meta',
-        'paid_at'
+        'paid_at',
+        'manual_method',
+        'reference_number',
+        'proof_file_path',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_reason',
     ];
     protected $casts = [
         'status' => StatusPaymentEnum::class,
         'meta' => 'array',
         'paid_at' => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
 
     // علاقة بالمتجر
@@ -56,5 +63,15 @@ class Payment extends Model
     public function isPaid(): bool
     {
         return $this->status === StatusPaymentEnum::PAID && $this->paid_at !== null;
+    }
+
+    public function isPendingReview(): bool
+    {
+        return $this->status === StatusPaymentEnum::PENDING_REVIEW;
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'reviewed_by');
     }
 }

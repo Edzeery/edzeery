@@ -76,7 +76,7 @@
                                 <div class="text-xs">
                                     <x-role-badge :role="$item->role" />
                                 </div>
-                                <x-status-badge domain="general" :status="$item->store->currentStatus()" />
+                                <x-status-badge domain="general" :status="$item->store->currentStatus()->value" />
                             </div>
 
                             {{-- Subscription --}}
@@ -89,7 +89,7 @@
                                         ?? App\Enums\SubscriptionPayment\StatusSubscriptionEnum::PENDING;
                                 @endphp
                                 <div class="text-xs">
-                                    <x-status-badge domain="general" :status="$subStatus" />
+                                    <x-status-badge domain="general" :status="$subStatus->value" />
                                 </div>
                             </div>
 

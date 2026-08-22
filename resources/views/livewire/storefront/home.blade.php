@@ -27,11 +27,11 @@ mount(function (): void {
 ?>
 
 <div>
-    @if ($template === 'single_product')
+    @if ($this->template === 'single_product')
         @livewire('storefront.templates.single-product')
-    @elseif($template === 'catalog')
+    @elseif($this->template === 'catalog')
         @livewire('storefront.templates.catalog')
-    @elseif($template === 'brand')
+    @elseif($this->template === 'brand')
         @livewire('storefront.templates.brand')
     @else
         @livewire('storefront.templates.single-product')

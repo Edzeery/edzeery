@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domains\Billing\Contracts\PaymentGatewayContract;
+use App\Domains\Billing\Events\PaymentSucceeded;
+use App\Domains\Billing\Gateways\ChargilyGateway;
+use App\Domains\Billing\Gateways\MockGateway;
+use App\Domains\Billing\Listeners\ActivateSubscriptionOnPaymentSucceeded;
 use App\Models\Orders\Order;
 use App\Models\billing\Subscription;
 use App\Models\Products\Product;
@@ -30,6 +35,17 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Domains\Shipping\Services\ShippingCostCalculator::class);
         $this->app->singleton(\App\Domains\Cart\Services\CartService::class);
         $this->app->singleton(\App\Domains\Order\Services\OrderService::class);
+
+        $this->app->bind(PaymentGatewayContract::class, function () {
+            return match (config('billing.gateway', 'mock')) {
+                'chargily' => new ChargilyGateway(
+                    apiKey: config('services.chargily.api_key', ''),
+                    secretKey: config('services.chargily.secret_key', ''),
+                    mode: config('services.chargily.mode', 'test'),
+                ),
+                default => new MockGateway(),
+            };
+        });
     }
 
     /**
@@ -37,6 +53,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Event-Listener bindings
+        $this->app->events->listen(PaymentSucceeded::class, ActivateSubscriptionOnPaymentSucceeded::class);
+
         View::composer('*', function ($view) {
             $view->with('user', user());
             $store = currentStore();

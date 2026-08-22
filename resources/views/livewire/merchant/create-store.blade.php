@@ -113,25 +113,34 @@ $createStore = function (): void {
             'landing_template' => $this->landing_template,
         ]);
 
-        $store->settings()->create([
-            'currency' => $this->currency,
-            'currency_symbol' => $this->currency_symbol,
-            'language' => $this->language,
-            'inventory_tracking' => $this->inventory_tracking,
-            'guest_checkout' => $this->guest_checkout,
-        ]);
+        $store->settings()->updateOrCreate(
+            ['store_id' => $store->id],
+            [
+                'currency' => $this->currency,
+                'currency_symbol' => $this->currency_symbol,
+                'language' => $this->language,
+                'inventory_tracking' => $this->inventory_tracking,
+                'guest_checkout' => $this->guest_checkout,
+            ]
+        );
 
-        $store->seo()->create([
-            'meta_title' => $this->meta_title ?: null,
-            'meta_description' => $this->meta_description ?: null,
-            'meta_keywords' => $this->meta_keywords ?: null,
-        ]);
+        $store->seo()->updateOrCreate(
+            ['store_id' => $store->id],
+            [
+                'meta_title' => $this->meta_title ?: null,
+                'meta_description' => $this->meta_description ?: null,
+                'meta_keywords' => $this->meta_keywords ?: null,
+            ]
+        );
 
-        $store->theme()->create([
-            'primary_color' => $this->primary_color,
-            'secondary_color' => $this->secondary_color,
-            'font_family' => $this->font_family,
-        ]);
+        $store->theme()->updateOrCreate(
+            ['store_id' => $store->id],
+            [
+                'primary_color' => $this->primary_color,
+                'secondary_color' => $this->secondary_color,
+                'font_family' => $this->font_family,
+            ]
+        );
 
         $membership = StoreMembership::create([
             'store_id' => $store->id,

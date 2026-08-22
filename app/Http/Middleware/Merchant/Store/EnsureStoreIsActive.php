@@ -26,8 +26,8 @@ class EnsureStoreIsActive
                 StoreStatusEnum::SUSPENDED,
             ], true)
         ) {
-            if (! $request->routeIs('merchant.billing.index')) {
-                return redirect()->route('merchant.billing.index')
+            if (! $request->routeIs('account.billing')) {
+                return redirect()->route('account.billing')
                     ->with('warning', __('Your store is not active. Please check your subscription.'));
             }
         }
@@ -35,8 +35,8 @@ class EnsureStoreIsActive
         $subscription = user()?->latestSubscription();
 
         if ($subscription && ! $subscription->isActive() && ! $subscription->onTrial()) {
-            if (! $request->routeIs('merchant.billing.index')) {
-                return redirect()->route('merchant.billing.index')
+            if (! $request->routeIs('account.billing')) {
+                return redirect()->route('account.billing')
                     ->with('warning', __('Your subscription has expired.'));
             }
         }

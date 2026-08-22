@@ -378,6 +378,52 @@
                 }
             }
         }
+
+        function productInfo(variants, lowStockTemplate, inStockLabel, outOfStockLabel, outOfStockShortLabel, addToCartLabel) {
+            return {
+                variants,
+                lowStockTemplate,
+                inStockLabel,
+                outOfStockLabel,
+                outOfStockShortLabel,
+                addToCartLabel,
+                get activeVariant() {
+                    return this.variants[$wire.selectedVariantId] || Object.values(this.variants)[0] || null;
+                },
+                get stock() {
+                    return this.activeVariant ? parseInt(this.activeVariant.stock) : 1;
+                },
+                get threshold() {
+                    return this.activeVariant ? parseInt(this.activeVariant.threshold) : 0;
+                },
+                get isOutOfStock() {
+                    return !this.activeVariant || this.stock <= 0;
+                },
+                get stockDotClass() {
+                    if (this.isOutOfStock) return 'bg-red-500';
+                    if (this.stock <= this.threshold) return 'bg-amber-500';
+                    return 'bg-green-500';
+                },
+                get stockTextClass() {
+                    if (this.isOutOfStock) return 'text-red-600 dark:text-red-400';
+                    if (this.stock <= this.threshold) return 'text-amber-600 dark:text-amber-400';
+                    return 'text-green-600 dark:text-green-400';
+                },
+                get stockLabel() {
+                    if (!this.activeVariant) return '';
+                    if (this.isOutOfStock) return this.outOfStockLabel;
+                    if (this.stock <= this.threshold) return this.lowStockTemplate.replace(':count', String(this.stock));
+                    return this.inStockLabel;
+                },
+                select(id) {
+                    $wire.set('selectedVariantId', id);
+                    const v = this.variants[id];
+                    if (v && parseInt(v.stock) > 0 && $wire.quantity > parseInt(v.stock)) {
+                        $wire.set('quantity', parseInt(v.stock));
+                    }
+                }
+            };
+        }
     </script>
 
     @if (session('swal.type'))

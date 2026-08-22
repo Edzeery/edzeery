@@ -1,0 +1,30 @@
+<?php
+
+return [
+    'renew' => 'Renouveler l\'abonnement',
+    'grace_subject' => 'Votre abonnement a expiré – Période de grâce active',
+    'grace_intro' => 'Votre abonnement a expiré. Vous êtes en période de grâce.',
+    'grace_expires' => 'Votre période de grâce se termine le :date. Renouvelez maintenant.',
+    'expiry_reminder_subject' => 'Votre abonnement expire bientôt',
+    'expiry_reminder_intro' => 'Votre abonnement expirera le :date.',
+    'expiry_reminder_date' => 'Renouvelez avant le :date pour éviter toute interruption.',
+    'cancel_immediate' => 'Annuler immédiatement',
+    'cancel_end_of_period' => 'Annuler en fin de période',
+    'cancel_no_refund' => 'Aucun remboursement ne sera effectué pour une annulation immédiate.',
+    'cancel_scheduled' => 'Votre abonnement sera annulé à la fin de la période actuelle.',
+    'downgrade_min_days' => 'Vous ne pouvez rétrograder qu\'après :days jours depuis le début.',
+    'downgrade_min_discount' => 'La différence de prix entre les deux plans est trop faible (:current% seulement). La réduction doit être d\'au moins :min%.',
+    'personal_new_users_only' => 'Le plan Personal est réservé aux nouveaux comptes.',
+    'personal_existing_users' => 'Le plan Personal n\'est pas disponible pour les comptes existants.',
+    'personal_existing_users_desc' => 'Vous êtes actuellement sur un forfait payant. Le plan Personal n\'est disponible que pour les nouveaux comptes. Veuillez contacter le support si vous souhaitez rétrograder.',
+    'expiry_alert_title' => 'Votre abonnement expire bientôt',
+    'expiry_alert_message' => 'Votre abonnement expirera dans :days jours le :date. Renouvelez maintenant pour éviter toute interruption.',
+    'expiry_alert_snoozed' => 'Nous vous rappellerons demain.',
+    'expiry_alert_snooze' => 'Rappelez-moi demain',
+
+    'personal_plan_description' => ' Commencez par un essai gratuit de 30 jours — puis débloquez la gestion financière premium pour les particuliers.',
+    'business_plan_description' => ' Pour les petites entreprises et les équipes ayant besoin de plusieurs espaces de travail.',
+    'professional_plan_description' => ' Pour les professionnels et les entreprises ayant besoin de fonctionnalités avancées et d\'un support prioritaire.',
+    'enterprise_plan_description' => ' Pour les grandes entreprises ayant besoin de fonctionnalités personnalisées et d\'un support dédié.',
+    'free_plan_description' => 'Plan gratuit avec des fonctionnalités limitées pour les particuliers et les petites équipes.',
+];

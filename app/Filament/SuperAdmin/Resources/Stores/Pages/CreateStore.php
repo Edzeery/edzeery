@@ -31,26 +31,35 @@ class CreateStore extends CreateRecord
                 'status' => StoreStatusEnum::PENDING,
             ]);
 
-            $store->settings()->create([
-                'currency' => $this->data['currency'],
-                'currency_symbol' => $this->data['currency_symbol'] ?? 'DA',
-                'language' => $this->data['language'] ?? 'ar',
-                'inventory_tracking' => $this->data['inventory_tracking'] ?? true,
-                'guest_checkout' => $this->data['guest_checkout'] ?? true,
-            ]);
+            $store->settings()->updateOrCreate(
+                ['store_id' => $store->id],
+                [
+                    'currency' => $this->data['currency'],
+                    'currency_symbol' => $this->data['currency_symbol'] ?? 'DA',
+                    'language' => $this->data['language'] ?? 'ar',
+                    'inventory_tracking' => $this->data['inventory_tracking'] ?? true,
+                    'guest_checkout' => $this->data['guest_checkout'] ?? true,
+                ]
+            );
 
-            $store->seo()->create([
-                'meta_title' => $this->data['meta_title'] ?? null,
-                'meta_description' => $this->data['meta_description'] ?? null,
-                'meta_keywords' => $this->data['meta_keywords'] ?? null,
-                'og_image' => uploadPath($this->data['og_image'] ?? null),
-            ]);
+            $store->seo()->updateOrCreate(
+                ['store_id' => $store->id],
+                [
+                    'meta_title' => $this->data['meta_title'] ?? null,
+                    'meta_description' => $this->data['meta_description'] ?? null,
+                    'meta_keywords' => $this->data['meta_keywords'] ?? null,
+                    'og_image' => uploadPath($this->data['og_image'] ?? null),
+                ]
+            );
 
-            $store->theme()->create([
-                'primary_color' => $this->data['primary_color'] ?? '#000000',
-                'secondary_color' => $this->data['secondary_color'] ?? '#ffffff',
-                'font_family' => $this->data['font_family'] ?? 'Cairo',
-            ]);
+            $store->theme()->updateOrCreate(
+                ['store_id' => $store->id],
+                [
+                    'primary_color' => $this->data['primary_color'] ?? '#000000',
+                    'secondary_color' => $this->data['secondary_color'] ?? '#ffffff',
+                    'font_family' => $this->data['font_family'] ?? 'Cairo',
+                ]
+            );
         });
 
         redirect()->route('filament.super-admin.resources.stores.index');

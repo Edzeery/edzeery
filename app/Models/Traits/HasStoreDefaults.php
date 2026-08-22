@@ -8,7 +8,9 @@ trait HasStoreDefaults
     {
         if (! $this->exists) {
             $this->created(function ($model) {
-                $model->settings()->firstOrCreate(['store_id' => $model->id]);
+                $model->settings()->updateOrCreate(
+                    ['store_id' => $model->id],
+                );
             });
         }
     }

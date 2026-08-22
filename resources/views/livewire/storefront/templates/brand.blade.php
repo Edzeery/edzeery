@@ -46,17 +46,17 @@ $addToCart = function (string $variantId) {
             ->where('is_active', true)
             ->with(['images', 'brand', 'categories', 'variants']);
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%");
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', "%{$this->search}%")->orWhere('description', 'like', "%{$this->search}%");
             });
         }
 
-        if ($brand_id) {
-            $query->where('brand_id', $brand_id);
+        if ($this->brand_id) {
+            $query->where('brand_id', $this->brand_id);
         }
 
-        match ($sortBy) {
+        match ($this->sortBy) {
             'price_asc' => $query->orderBy('price'),
             'price_desc' => $query->orderByDesc('price'),
             default => $query->orderByDesc('created_at'),
@@ -66,8 +66,8 @@ $addToCart = function (string $variantId) {
     @endphp
 
     {{-- Hero / Brand Header --}}
-    @if (in_array('hero', $sections))
-        @php $hero = $section_content['hero'] ?? []; @endphp
+    @if (in_array('hero', $this->sections))
+        @php $hero = $this->section_content['hero'] ?? []; @endphp
         <section class="relative overflow-hidden text-white">
             <div class="absolute inset-0 store-gradient opacity-90"></div>
             @if ($store->cover)
@@ -116,8 +116,8 @@ $addToCart = function (string $variantId) {
     </nav>
 
     {{-- Brand Filter --}}
-    @if (in_array('brands', $sections) && $brands->count())
-        @php $brandsContent = $section_content['brands'] ?? []; @endphp
+    @if (in_array('brands', $this->sections) && $brands->count())
+        @php $brandsContent = $this->section_content['brands'] ?? []; @endphp
         <section class="py-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
@@ -125,13 +125,13 @@ $addToCart = function (string $variantId) {
                 <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     <button wire:click="$set('brand_id', '')"
                         class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                        {{ empty($brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
+                        {{ empty($this->brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                         {{ __('storefront.all_collections') }}
                     </button>
                     @foreach ($brands as $brand)
                         <button wire:click="$set('brand_id', '{{ $brand->id }}')"
                             class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                            {{ $brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
+                            {{ $this->brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                             {{ $brand->name }}
                             <span class="ml-1 text-xs opacity-70">({{ $brand->products_count }})</span>
                         </button>

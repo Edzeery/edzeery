@@ -11,6 +11,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+    use Livewire\WithFileUploads;
+
     public $user;
 
     public $subscription;
@@ -47,6 +49,16 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $selectedBillingPeriod;
 
+    public $showManualPayment;
+
+    public $manualMethod;
+
+    public $manualReference;
+
+    public $manualProofFile;
+
+    public $pendingReviewPayments;
+
     public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
@@ -73,6 +85,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('openEditBilling'))->execute(...$arguments);
+    }
+
+    public function openManualPayment(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openManualPayment'))->execute(...$arguments);
+    }
+
+    public function submitManualPayment(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitManualPayment'))->execute(...$arguments);
     }
 
     public function saveBilling(): void

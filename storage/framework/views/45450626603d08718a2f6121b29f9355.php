@@ -19,17 +19,17 @@ use App\Models\Products\Product;
             ->where('is_active', true)
             ->with(['images', 'brand', 'categories', 'variants']);
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%");
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('name', 'like', "%{$this->search}%")->orWhere('description', 'like', "%{$this->search}%");
             });
         }
 
-        if ($brand_id) {
-            $query->where('brand_id', $brand_id);
+        if ($this->brand_id) {
+            $query->where('brand_id', $this->brand_id);
         }
 
-        match ($sortBy) {
+        match ($this->sortBy) {
             'price_asc' => $query->orderBy('price'),
             'price_desc' => $query->orderByDesc('price'),
             default => $query->orderByDesc('created_at'),
@@ -39,8 +39,8 @@ use App\Models\Products\Product;
     ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('hero', $sections)): ?>
-        <?php $hero = $section_content['hero'] ?? []; ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('hero', $this->sections)): ?>
+        <?php $hero = $this->section_content['hero'] ?? []; ?>
         <section class="relative overflow-hidden text-white">
             <div class="absolute inset-0 store-gradient opacity-90"></div>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store->cover): ?>
@@ -91,8 +91,8 @@ use App\Models\Products\Product;
     </nav>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('brands', $sections) && $brands->count()): ?>
-        <?php $brandsContent = $section_content['brands'] ?? []; ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('brands', $this->sections) && $brands->count()): ?>
+        <?php $brandsContent = $this->section_content['brands'] ?? []; ?>
         <section class="py-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
@@ -100,14 +100,14 @@ use App\Models\Products\Product;
                 <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                     <button wire:click="$set('brand_id', '')"
                         class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                        <?php echo e(empty($brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]'); ?>">
+                        <?php echo e(empty($this->brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]'); ?>">
                         <?php echo e(__('storefront.all_collections')); ?>
 
                     </button>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $brands; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $brand): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <button wire:click="$set('brand_id', '<?php echo e($brand->id); ?>')"
                             class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                            <?php echo e($brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]'); ?>">
+                            <?php echo e($this->brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]'); ?>">
                             <?php echo e($brand->name); ?>
 
                             <span class="ml-1 text-xs opacity-70">(<?php echo e($brand->products_count); ?>)</span>

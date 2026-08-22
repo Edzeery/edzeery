@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Billing\Actions\SubmitManualPaymentAction;
+use App\Domains\Billing\Enums\ManualPaymentMethodEnum;
 use App\Models\billing\Payment;
 use App\Models\billing\Subscription;
 use App\Models\Billing\BillingAddress;
@@ -7,12 +9,15 @@ use App\Models\Plans\Plan;
 use App\Models\Plans\PlanPrice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use function Livewire\Volt\usesFileUploads;
 use function Livewire\Volt\action;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 
 layout('components.layouts.account');
+
+usesFileUploads();
 
 state([
     'user' => null,
@@ -33,6 +38,11 @@ state([
     'billing_zip' => '',
     'billing_phone' => '',
     'selectedBillingPeriod' => 'monthly',
+    'showManualPayment' => false,
+    'manualMethod' => '',
+    'manualReference' => '',
+    'manualProofFile' => null,
+    'pendingReviewPayments' => [],
 ]);
 
 mount(function (): void {
@@ -50,6 +60,10 @@ mount(function (): void {
         ->with('subscription.plan')
         ->latest('created_at')
         ->get();
+
+    $this->pendingReviewPayments = $this->payments
+        ->where('status->value', 'pending_review')
+        ->values();
 
     $this->stores = $u->stores()->with('payments')->distinct()->get();
 });
@@ -128,6 +142,57 @@ $openEditBilling = action(function (): void {
     $this->billing_address_line_2 = $ba->address_line_2 ?? '';
     $this->billing_zip = $ba->zip ?? '';
     $this->billing_phone = $ba->phone ?? '';
+});
+
+$openManualPayment = action(function (): void {
+    if (! $this->subscription) {
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.no_active_subscription'));
+        return;
+    }
+    $this->showManualPayment = true;
+    $this->manualMethod = '';
+    $this->manualReference = '';
+    $this->manualProofFile = null;
+});
+
+$submitManualPayment = action(function (): void {
+    $v = Validator::make(
+        $this->only(['manualMethod', 'manualReference']),
+        [
+            'manualMethod'    => ['required', 'string'],
+            'manualReference' => ['required', 'string', 'max:255'],
+        ]
+    );
+    $v->validate();
+
+    if (! $this->subscription) {
+        return;
+    }
+
+    $method = ManualPaymentMethodEnum::tryFrom($this->manualMethod);
+    if (! $method) {
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.invalid_payment_method'));
+        return;
+    }
+
+    app(SubmitManualPaymentAction::class)->execute(
+        subscription: $this->subscription,
+        method: $method,
+        referenceNumber: $this->manualReference,
+        proofFile: $this->manualProofFile,
+    );
+
+    $this->showManualPayment = false;
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.payment_submitted'));
+
+    $this->payments = Payment::where('user_id', $this->user->id)
+        ->with('subscription.plan')
+        ->latest('created_at')
+        ->get();
+
+    $this->pendingReviewPayments = $this->payments
+        ->where('status->value', 'pending_review')
+        ->values();
 });
 
 $saveBilling = action(function (): void {
@@ -362,6 +427,88 @@ $saveBilling = action(function (): void {
         </div>
     </div>
 
+    {{-- ═══ Section 2b: Pending Review Payments ═══ --}}
+    @if ($pendingReviewPayments->isNotEmpty())
+        <div class="edz-card">
+            <div class="edz-card__header">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                        <x-edz.icon name="eye" class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h3 class="edz-card__title">{{ __('merchant_panel.pending_review_payments') }}</h3>
+                        <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.pending_review_payments_desc') }}</p>
+                    </div>
+                </div>
+            </div>
+            @foreach ($pendingReviewPayments as $payment)
+                <div class="px-6 py-4 {{ !$loop->last ? 'border-t border-surface-border' : '' }}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                                <x-edz.icon name="clock" class="w-5 h-5 text-blue-500" />
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-ink">
+                                    {{ $payment->subscription?->plan?->name ?? '-' }}
+                                </p>
+                                <p class="text-xs text-ink-muted">
+                                    {{ $payment->manual_method }} · {{ $payment->reference_number }}
+                                    · {{ $payment->created_at->format('Y-m-d H:i') }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-semibold text-ink">
+                                {{ number_format($payment->amount, 2) }} {{ $payment->currency ?? 'DZD' }}
+                            </span>
+                            <x-merchant.status domain="payment" :status="'pending_review'" />
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- ═══ Section 2c: Submit Manual Payment Button ═══ --}}
+    <div class="edz-card">
+        <div class="edz-card__header">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-warning-50 dark:bg-warning-900/30 flex items-center justify-center">
+                    <x-edz.icon name="banknotes" class="w-5 h-5 text-warning-600 dark:text-warning-400" />
+                </div>
+                <div>
+                    <h3 class="edz-card__title">{{ __('merchant_panel.submit_manual_payment') }}</h3>
+                    <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.submit_manual_payment_desc') }}</p>
+                </div>
+            </div>
+            <button type="button" wire:click="openManualPayment"
+                class="edz-btn edz-btn--primary edz-btn--sm">
+                <x-edz.icon name="banknotes" class="w-4 h-4 me-1" />
+                {{ __('merchant_panel.pay_now') }}
+            </button>
+        </div>
+        <div class="edz-card--padded">
+            <p class="text-xs text-ink-muted">
+                {{ __('merchant_panel.manual_payment_info') }}
+            </p>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="flex items-center gap-2 p-3 rounded-lg bg-surface-secondary">
+                    <x-edz.icon name="device-phone-mobile" class="w-4 h-4 text-ink-muted" />
+                    <span class="text-xs font-medium text-ink">BaridiMob</span>
+                </div>
+                <div class="flex items-center gap-2 p-3 rounded-lg bg-surface-secondary">
+                    <x-edz.icon name="credit-card" class="w-4 h-4 text-ink-muted" />
+                    <span class="text-xs font-medium text-ink">CCP</span>
+                </div>
+                <div class="flex items-center gap-2 p-3 rounded-lg bg-surface-secondary">
+                    <x-edz.icon name="building-library" class="w-4 h-4 text-ink-muted" />
+                    <span class="text-xs font-medium text-ink">{{ __('merchant_panel.bank_transfer') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ═══ Section 3: Invoice History ═══ --}}
     <div class="edz-card">
         <div class="edz-card__header">
@@ -533,6 +680,61 @@ $saveBilling = action(function (): void {
                     <button type="submit" class="edz-btn edz-btn--primary">
                         <x-edz.icon name="check-circle" class="w-4 h-4" />
                         {{ __('buttons.save') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-edz.modal>
+
+    {{-- ═══ Manual Payment Modal ═══ --}}
+    <x-edz.modal :isOpen="$showManualPayment">
+        <div class="p-6">
+            <h3 class="text-lg font-semibold text-ink mb-2">{{ __('merchant_panel.submit_manual_payment') }}</h3>
+            <p class="text-sm text-ink-muted mb-5">{{ __('merchant_panel.manual_payment_instructions') }}</p>
+
+            <form wire:submit="submitManualPayment" class="space-y-4">
+                <div class="edz-field">
+                    <label class="edz-field__label">{{ __('merchant_panel.payment_method') }} *</label>
+                    <select wire:model="manualMethod" class="edz-input @error('manualMethod') edz-input--error @enderror" required>
+                        <option value="">{{ __('merchant_panel.select_method') }}</option>
+                        @foreach (\App\Domains\Billing\Enums\ManualPaymentMethodEnum::cases() as $method)
+                            <option value="{{ $method->value }}">{{ $method->getLabel() }}</option>
+                        @endforeach
+                    </select>
+                    @error('manualMethod') <span class="edz-field__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="edz-field">
+                    <label class="edz-field__label">{{ __('merchant_panel.reference_number') }} *</label>
+                    <input type="text" wire:model="manualReference" class="edz-input @error('manualReference') edz-input--error @enderror"
+                        placeholder="{{ __('merchant_panel.reference_number_placeholder') }}" required />
+                    @error('manualReference') <span class="edz-field__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="edz-field">
+                    <label class="edz-field__label">{{ __('merchant_panel.proof_of_payment') }}</label>
+                    <input type="file" wire:model="manualProofFile" accept="image/*,.pdf"
+                        class="edz-input file:me-3 file:rounded-lg file:border-0 file:bg-accent-50 file:px-3 file:py-1.5 file:text-accent-700 file:font-medium file:text-xs dark:file:bg-accent-900/30 dark:file:text-accent-300" />
+                    <p class="mt-1 text-xs text-ink-muted">{{ __('merchant_panel.proof_of_payment_hint') }}</p>
+                    @error('manualProofFile') <span class="edz-field__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="rounded-lg bg-warning-50 dark:bg-warning-900/20 p-4">
+                    <div class="flex items-start gap-2">
+                        <x-edz.icon name="information-circle" class="w-4 h-4 text-warning-600 dark:text-warning-400 mt-0.5 shrink-0" />
+                        <p class="text-xs text-warning-700 dark:text-warning-300">
+                            {{ __('merchant_panel.manual_payment_note') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
+                    <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                        {{ __('buttons.cancel') }}
+                    </button>
+                    <button type="submit" class="edz-btn edz-btn--primary">
+                        <x-edz.icon name="paper-airplane" class="w-4 h-4" />
+                        {{ __('merchant_panel.submit_for_review') }}
                     </button>
                 </div>
             </form>

@@ -16,11 +16,12 @@ return [
 
     // ===== Payments =====
     'payment' => [
-        'paid'     => ['filament' => 'success', 'light' => 'text-green-600 bg-green-100', 'dark' => 'text-green-400 bg-green-950', 'hex' => '#16a34a', 'icon' => 'heroicon-o-currency-dollar'],
-        'pending'  => ['filament' => 'warning', 'light' => 'text-yellow-600 bg-yellow-100', 'dark' => 'text-yellow-400 bg-yellow-950', 'hex' => '#facc15', 'icon' => 'heroicon-o-clock'],
-        'failed'   => ['filament' => 'danger', 'light' => 'text-red-600 bg-red-100', 'dark' => 'text-red-400 bg-red-950', 'hex' => '#dc2626', 'icon' => 'heroicon-o-x-circle'],
-        'refunded' => ['filament' => 'info', 'light' => 'text-blue-600 bg-blue-100', 'dark' => 'text-blue-400 bg-blue-950', 'hex' => '#2563eb', 'icon' => 'heroicon-o-arrow-path'],
-        'canceled' => ['filament'=> Color::Gray, 'light' => 'text-gray-600 bg-gray-100', 'dark' => 'text-gray-400 bg-gray-900', 'hex' => '#9ca3af', 'icon' => 'heroicon-o-x-mark'],
+        'paid'           => ['filament' => 'success', 'light' => 'text-green-600 bg-green-100', 'dark' => 'text-green-400 bg-green-950', 'hex' => '#16a34a', 'icon' => 'heroicon-o-currency-dollar'],
+        'pending'        => ['filament' => 'warning', 'light' => 'text-yellow-600 bg-yellow-100', 'dark' => 'text-yellow-400 bg-yellow-950', 'hex' => '#facc15', 'icon' => 'heroicon-o-clock'],
+        'pending_review' => ['filament' => 'info', 'light' => 'text-blue-600 bg-blue-100', 'dark' => 'text-blue-400 bg-blue-950', 'hex' => '#2563eb', 'icon' => 'heroicon-o-eye'],
+        'failed'         => ['filament' => 'danger', 'light' => 'text-red-600 bg-red-100', 'dark' => 'text-red-400 bg-red-950', 'hex' => '#dc2626', 'icon' => 'heroicon-o-x-circle'],
+        'refunded'       => ['filament' => 'info', 'light' => 'text-blue-600 bg-blue-100', 'dark' => 'text-blue-400 bg-blue-950', 'hex' => '#2563eb', 'icon' => 'heroicon-o-arrow-path'],
+        'canceled'       => ['filament'=> Color::Gray, 'light' => 'text-gray-600 bg-gray-100', 'dark' => 'text-gray-400 bg-gray-900', 'hex' => '#9ca3af', 'icon' => 'heroicon-o-x-mark'],
     ],
 
     // ===== Users =====
