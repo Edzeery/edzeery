@@ -28,7 +28,7 @@ class ChargilyGateway implements PaymentGatewayContract
             'description' => $params['description'] ?? null,
             'success_url' => $params['success_url'] ?? null,
             'failure_url' => $params['failure_url'] ?? null,
-            'webhook_url' => $params['webhook_url'] ?? route('api.webhooks.chargily'),
+            'webhook_url' => $params['webhook_url'] ?? route('webhooks.chargily'),
             'customer_name' => $params['customer_name'] ?? null,
             'customer_email' => $params['customer_email'] ?? null,
             'metadata' => ['payment_id' => $payment->id],

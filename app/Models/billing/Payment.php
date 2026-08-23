@@ -53,6 +53,12 @@ class Payment extends Model
         return $this->belongsTo(Subscription::class);
     }
 
+    // علاقة بالمتجر
+    public function store()
+    {
+        return $this->belongsTo(\App\Models\Stores\Store::class);
+    }
+
     // علاقة بالخطة (وقت الدفع)
 
     public function planPrice()

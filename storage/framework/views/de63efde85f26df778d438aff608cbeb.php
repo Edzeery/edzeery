@@ -49,6 +49,9 @@ unset($__defined_vars, $__key, $__value); ?>
             } else {
                 document.body.style.overflow = 'unset';
                 this.$dispatch('edz-modal-closed');
+                if (this.$wire && typeof this.$wire.closeAllModals === 'function') {
+                    this.$wire.closeAllModals();
+                }
             }
         });
     }
@@ -103,4 +106,4 @@ unset($__defined_vars, $__key, $__value); ?>
         </div>
     </div>
 </div>
-<?php /**PATH C:\laragon\www\edzeery\resources\views/components/edz/modal.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\edzeery\resources\views\components\edz\modal.blade.php ENDPATH**/ ?>

@@ -135,7 +135,7 @@ class Store extends Model
 
     public function payment()
     {
-        return $this->hasOne(Payment::class)->latest('created_at')->orderByDesc('id');
+        return $this->hasOne(Payment::class)->latestOfMany();
     }
 
     public function payments()

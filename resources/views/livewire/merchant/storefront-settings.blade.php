@@ -143,7 +143,7 @@ $openPreview = function (): void {
         </div>
     @endif
 
-    <form wire:submit="save" x-data="{ ...edzDirty(), activeTab: 'template' }">
+    <form wire:submit="save" x-data="{ activeTab: 'template' }">
 
         <div class="flex flex-col lg:flex-row gap-6">
 
@@ -276,7 +276,7 @@ $openPreview = function (): void {
                                                     <div class="flex-1 grid grid-cols-3 gap-1.5">
                                                         @for ($i = 0; $i < 6; $i++)
                                                             <div class="rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                                <x-edz.icon name="bag" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                                                <x-edz.icon name="bag" class="w-100  text-gray-400 dark:text-gray-500" />
                                                             </div>
                                                         @endfor
                                                     </div>
@@ -303,7 +303,7 @@ $openPreview = function (): void {
                                                  :class="selectedTemplate === '{{ $key }}'
                                                      ? 'bg-accent-500 text-white scale-100 opacity-100'
                                                      : 'bg-gray-400/50 text-white scale-75 opacity-0'">
-                                                <x-edz.icon name="check" class="w-4 h-4" />
+                                                <x-edz.icon name="check" class="w-100 " />
                                             </div>
                                         </div>
 
@@ -315,7 +315,7 @@ $openPreview = function (): void {
                                                target="_blank" rel="noopener noreferrer"
                                                x-on:click.stop
                                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
-                                                 <x-edz.icon name="eye" class="w-4 h-4" />
+                                                 <x-edz.icon name="eye" class="w-100 " />
                                                 {{ __('storefront.preview_template') }}
                                             </a>
                                         </div>
@@ -437,7 +437,7 @@ $openPreview = function (): void {
                                            class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2">
-                                            <x-edz.icon :name="$section['icon']" class="w-4 h-4 text-ink-400 shrink-0" />
+                                            <x-edz.icon :name="$section['icon']" class="w-4 h-4  text-ink-400 shrink-0" />
                                             <p class="text-sm font-medium text-ink truncate">{{ $section['label'] }}</p>
                                         </div>
                                         <p class="text-xs text-ink-400 mt-0.5">{{ $section['description'] }}</p>
@@ -449,7 +449,7 @@ $openPreview = function (): void {
                         {{-- Section Content Editing --}}
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
                             <div class="flex items-center gap-2 mb-4">
-                                <x-edz.icon name="edit" class="w-5 h-5 text-ink-400" />
+                                <x-edz.icon name="edit" class="w-4 h-4  text-ink-400" />
                                 <h4 class="text-sm font-semibold text-ink">{{ __('merchant_panel.section_content') }}</h4>
                             </div>
                             <p class="text-xs text-ink-400 mb-5">{{ __('merchant_panel.section_content_desc') }}</p>

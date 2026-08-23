@@ -20,6 +20,14 @@ if (! function_exists('canUseFeature')) {
             return false;
         }
 
+        // If storeId is provided, verify the subscription belongs to a store the user owns/has access to
+        if ($storeId) {
+            $store = \App\Models\Stores\Store::find($storeId);
+            if ($store && $store->user_id !== user()?->id) {
+                return false;
+            }
+        }
+
         $feature = PlanFeature::where('slug', $featureSlug)->first();
 
 

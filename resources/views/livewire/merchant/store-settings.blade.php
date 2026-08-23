@@ -64,6 +64,9 @@ $save = function (): void {
         'logo' => 'nullable|image|max:2048',
         'cover' => 'nullable|image|max:4096',
         'favicon' => 'nullable|file|max:256|mimes:png,svg',
+        'supported_languages' => 'nullable|array',
+        'supported_languages.*' => 'in:ar,fr,en,es',
+        'language' => 'required|in:ar,fr,en,es',
     ]);
 
     $data = [
@@ -96,7 +99,12 @@ $save = function (): void {
     ];
 
     if (Schema::hasColumn('store_settings', 'supported_languages')) {
-        $settingsData['supported_languages'] = $this->supported_languages;
+        $supported = $this->supported_languages ?? [];
+        // Ensure default language is in supported languages
+        if (! in_array($this->language, $supported)) {
+            $supported[] = $this->language;
+        }
+        $settingsData['supported_languages'] = array_unique($supported);
     }
     if (Schema::hasColumn('store_settings', 'phone')) {
         $settingsData['phone'] = $this->phone;
@@ -389,6 +397,7 @@ $save = function (): void {
                                     <option value="en">{{ __('merchant_panel.english') }}</option>
                                     <option value="es">{{ __('merchant_panel.spanish') }}</option>
                                 </select>
+                                @error('language') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                             </div>
 
                             <div>
@@ -407,6 +416,7 @@ $save = function (): void {
                                         </label>
                                     @endforeach
                                 </div>
+                                @error('supported_languages') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                                 <p class="text-xs text-ink-muted mt-2">{{ __('merchant_panel.supported_languages_desc') }}</p>
                             </div>
                         </div>

@@ -46,4 +46,19 @@ class OrderItem extends Model
     {
         return $this->belongsTo(\App\Models\Stores\Store::class);
     }
+
+    protected static function booted(): void
+    {
+        static::deleted(function (OrderItem $item) {
+            if ($item->variant) {
+                \App\Services\InventoryService::apply(
+                    variant: $item->variant,
+                    quantity: $item->quantity,
+                    type: \App\Enums\Store\InventoryMovementType::ADJUSTMENT,
+                    source: $item->order,
+                    user: $item->order?->user
+                );
+            }
+        });
+    }
 }

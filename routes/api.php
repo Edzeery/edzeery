@@ -33,4 +33,5 @@ Route::prefix('v1')
 */
 
 Route::post('/webhooks/chargily', ChargilyWebhookController::class)
-    ->name('webhooks.chargily');
+    ->name('webhooks.chargily')
+    ->middleware('throttle:60,1');

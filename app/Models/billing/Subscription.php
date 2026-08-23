@@ -90,7 +90,7 @@ class Subscription extends Model
     public function activeSubscription(): ?self
     {
         return $this->where('status', StatusSubscriptionEnum::ACTIVE)
-            ->latest('updated_at')
+            ->latest('starts_at')
             ->first();
     }
 

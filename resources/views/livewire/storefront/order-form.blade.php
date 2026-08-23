@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
+use function Livewire\Volt\computed;
 
 layout('components.layouts.storefront');
 
@@ -40,8 +41,18 @@ mount(function (): void {
     $this->email = auth()->user()?->email ?? '';
 });
 
+$paymentMethods = computed(function (): array {
+    $store = currentStore();
+    $settings = $store?->settings;
+    $methods = $settings?->payment_methods ?? ['cod'];
+    if (! is_array($methods) || empty($methods)) {
+        return ['cod'];
+    }
+    return $methods;
+});
+
 $submitOrder = function () {
-    $paymentMethods = ['cod'];
+    $methods = $this->paymentMethods;
 
     $validated = Validator::make($this->only([
         'name', 'phone', 'email', 'state_id', 'city_id',
@@ -135,7 +146,13 @@ $submitOrder = function () {
         ]);
 
         foreach ($items as $item) {
-            $variant = ProductVariant::find($item['variant_id']);
+            $variant = ProductVariant::where('store_id', $storeId)
+                ->find($item['variant_id']);
+
+            if (! $variant) {
+                throw new \Exception(__('storefront.invalid_variant', ['id' => $item['variant_id']]));
+            }
+
             OrderItem::create([
                 'store_id'            => $storeId,
                 'order_id'            => $order->id,
@@ -335,17 +352,18 @@ $submitOrder = function () {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
-                        <select wire:model.live="city_id"
-                            style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                                   bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                                   shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
-                                   transition-all duration-200">
+<select wire:model.live="city_id"
+                             style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
+                             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
+                                    bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
+                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
+                                    transition-all duration-200">
                             <option value="">{{ __('storefront.select_city') }}</option>
                             @foreach($cities as $city)
                                 <option value="{{ $city->id }}">{{ $city->name }}</option>
                             @endforeach
                         </select>
+                        @error('city_id') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="sm:col-span-2">

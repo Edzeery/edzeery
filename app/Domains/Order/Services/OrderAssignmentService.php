@@ -136,15 +136,17 @@ class OrderAssignmentService
     private function resolveCandidatePool(string $storeId, array $productIds): \Illuminate\Support\Collection
     {
         // Members with ORDER_CONFIRM permission in this store
+        // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
         $allConfirmers = StoreMembership::where('store_id', $storeId)
             ->where('is_active', true)
+            ->with('storeWithTimezone')
             ->get()
             ->filter(fn (StoreMembership $m) => $m->can(StorePermissionEnum::ORDER_CONFIRM))
             ->values();
 
         if ($allConfirmers->isEmpty()) {
             Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
-                'order_id' => $order->id,
+                'order_id' => $order->id ?? 'unknown',
                 'store_id' => $storeId,
             ]);
             return collect();

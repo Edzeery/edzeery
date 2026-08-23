@@ -65,10 +65,10 @@ class OrderObserver
 
         DB::transaction(function () use ($order, $status, $meta) {
             // Resolve the actual actor who changed the status (not the buyer)
-            $actorUserId = null;
+            $actorUser = null;
             if (! empty($meta['changed_by_membership_id'])) {
                 $membership = \App\Models\Stores\Team\StoreMembership::find($meta['changed_by_membership_id']);
-                $actorUserId = $membership?->user_id;
+                $actorUser = $membership?->user;
             }
 
             foreach ($order->items as $item) {
@@ -83,7 +83,7 @@ class OrderObserver
                     quantity: $item->quantity,
                     type: $status->movement_type,
                     source: $order,
-                    user: $actorUserId ? \App\Models\User::find($actorUserId) : $order->user
+                    user: $actorUser ?? $order->user
                 );
             }
         });

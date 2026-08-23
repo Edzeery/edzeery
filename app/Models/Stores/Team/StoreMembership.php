@@ -41,6 +41,13 @@ class StoreMembership extends Model
             ->withoutGlobalScopes(); // مهم إذا كان لديك global scopes على المتجر
     }
 
+    public function storeWithTimezone(): BelongsTo
+    {
+        return $this->belongsTo(Store::class)
+            ->withoutGlobalScopes()
+            ->with('settings');
+    }
+
     public function user() :BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -93,8 +100,9 @@ class StoreMembership extends Model
 
     public function isOnActiveShift(?\Carbon\Carbon $at = null): bool
     {
-        // Use store's timezone for shift calculations
-        $timezone = $this->store?->settings?->timezone ?? config('app.timezone');
+        // Use store's timezone for shift calculations (avoids N+1 by using storeWithTimezone when eager loaded)
+        $store = $this->storeWithTimezone()->first() ?? $this->store;
+        $timezone = $store?->settings?->timezone ?? config('app.timezone');
         $at = $at ?? now($timezone);
         $dayOfWeek = $at->dayOfWeekIso;
         $currentTime = $at->format('H:i:s');
