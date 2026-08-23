@@ -4,14 +4,14 @@
             x-data
             class="border rounded-xl p-6 cursor-pointer transition
                    hover:shadow-lg
-                   {{ $getState('plan_id') == $plan->id ? 'ring-2 ring-primary-500' : '' }}"
+                   {{ $getState('plan_id') == $plan->id ? 'ring-2 ring-brand-500' : '' }}"
             @click="$wire.set('data.plan_id', {{ $plan->id }})"
         >
             <div class="flex justify-between items-center mb-3">
                 <h3 class="text-lg font-bold">{{ $plan->name }}</h3>
 
                 @if($plan->is_default)
-                    <span class="text-xs px-2 py-1 rounded bg-primary-500 text-white">
+                    <span class="text-xs px-2 py-1 rounded bg-brand-500 text-white">
                         Most Popular
                     </span>
                 @endif

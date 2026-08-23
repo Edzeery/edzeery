@@ -32,7 +32,9 @@ class Order extends Model
 
     public static function popTransitionMeta(int|string $orderId): ?array
     {
-        return (self::$transitionMeta[$orderId] ?? null) ? array_pop(self::$transitionMeta[$orderId]) : null;
+        $meta = self::$transitionMeta[$orderId] ?? null;
+        unset(self::$transitionMeta[$orderId]);
+        return $meta;
     }
 
     protected $fillable = [

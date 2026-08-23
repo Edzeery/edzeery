@@ -16,36 +16,47 @@ class CheckSubscriptions extends Command
     public function handle()
     {
         $today = Carbon::today();
-        $stateService = new SubscriptionStateService;
+        $stateService = app(SubscriptionStateService::class);
 
-        // اشتراكات انتهت أو trial انتهت
-        $subscriptions = Subscription::where(function ($q) use ($today) {
-            $q->where('ends_at', '<', $today)
-                ->orWhere('trial_ends_at', '<', $today);
-        })->where('status', 'active')->get();
+        // Active subscriptions past their end date
+        $subscriptions = Subscription::where('status', StatusSubscriptionEnum::ACTIVE)
+            ->where(function ($q) use ($today) {
+                $q->where('ends_at', '<', $today)
+                    ->orWhere('trial_ends_at', '<', $today);
+            })->get();
+
         foreach ($subscriptions as $subscription) {
-
-            if ($subscription->ends_at->isPast()) {
-
-                if (!$subscription->grace_ends_at) {
+            // If ends_at is past
+            if ($subscription->ends_at && $subscription->ends_at->isPast()) {
+                // Grant grace period once
+                if (! $subscription->grace_ends_at) {
                     $subscription->update([
                         'grace_ends_at' => now()->addDays(7),
                     ]);
-                } elseif (now()->gt($subscription->grace_ends_at)) {
+                    continue; // Wait for grace period to expire
+                }
+
+                // Grace period expired → suspend
+                if (now()->gt($subscription->grace_ends_at)) {
                     $stateService->transition($subscription, StatusSubscriptionEnum::SUSPENDED);
+                    continue; // Suspension applied, stop here
                 }
             }
 
+            // If trial is past, clear trial flag
             if ($subscription->trial_ends_at && now()->gt($subscription->trial_ends_at)) {
-                $subscription->is_trial = false;
+                $subscription->update(['is_trial' => false]);
             }
+        }
 
-            if ($subscription->ends_at && now()->gt($subscription->ends_at)) {
-                $subscription->status = 'expired';
-            }
+        // Suspended subscriptions past their grace period → expire
+        $suspended = Subscription::where('status', StatusSubscriptionEnum::SUSPENDED)
+            ->whereNotNull('grace_ends_at')
+            ->where('grace_ends_at', '<', $today)
+            ->get();
 
-            $subscription->save();
-
+        foreach ($suspended as $subscription) {
+            $stateService->transition($subscription, StatusSubscriptionEnum::EXPIRED);
         }
 
         $this->info('Subscriptions checked and store statuses updated.');

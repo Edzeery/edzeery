@@ -503,7 +503,8 @@ $removeAssignment = function (string $assignmentId): void {
     @endif
 
     {{-- Shift Modal --}}
-    <x-edz.modal :isOpen="$showShiftModal">
+    @if($showShiftModal)
+    <x-edz.modal :isOpen="true" wire:key="shift-modal-{{ $showShiftModal ? 'open' : 'closed' }}">
         <form wire:submit="saveShift">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-ink">
@@ -570,7 +571,7 @@ $removeAssignment = function (string $assignmentId): void {
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                        <button type="button" @click="$wire.set('showShiftModal', false)" class="edz-btn edz-btn--ghost">
                             {{ __('buttons.cancel') }}
                         </button>
                         <button type="submit" class="edz-btn edz-btn--primary">
@@ -582,9 +583,11 @@ $removeAssignment = function (string $assignmentId): void {
             </div>
         </form>
     </x-edz.modal>
+    @endif
 
     {{-- Assign Products Modal --}}
-    <x-edz.modal :isOpen="$showAssignModal">
+    @if($showAssignModal)
+    <x-edz.modal :isOpen="true" wire:key="assign-modal-{{ $showAssignModal ? 'open' : 'closed' }}">
         <form wire:submit="saveAssignments">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-ink">{{ __('merchant_panel.assign_products') }}</h3>
@@ -648,7 +651,7 @@ $removeAssignment = function (string $assignmentId): void {
                     @endif
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                        <button type="button" @click="$wire.set('showAssignModal', false)" class="edz-btn edz-btn--ghost">
                             {{ __('buttons.cancel') }}
                         </button>
                         <button type="submit" class="edz-btn edz-btn--primary">
@@ -660,4 +663,5 @@ $removeAssignment = function (string $assignmentId): void {
             </div>
         </form>
     </x-edz.modal>
+    @endif
 </div>

@@ -49,21 +49,42 @@ mount(function (): void {
     if (! $this->product) {
         abort(404);
     }
+
+    $this->selectedVariant = $this->product->variants->first();
 });
 
-$addToCart = function (string $variantId = null) {
+$selectVariant = function (string $variantId): void {
+    $variant = $this->product->variants->firstWhere('id', $variantId);
+
+    if (! $variant) {
+        return;
+    }
+
+    $this->selectedVariant = $variant;
+};
+
+$addToCart = function (): void {
     $storeId = currentStoreId();
     if (!$storeId) { return; }
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
 
-    if ($variantId) {
-        $cartService->addItem($storeId, $variantId, 1);
-    } elseif ($this->product->variants->count() === 1) {
-        $cartService->addItem($storeId, $this->product->variants->first()->id, 1);
-    } else {
+    $variant = $this->selectedVariant;
+
+    if (!$variant && $this->product->variants->count() === 1) {
+        $variant = $this->product->variants->first();
+    }
+
+    if (!$variant) {
         $this->dispatch('swal', type: 'error', title: __('storefront.please_select_variant'));
         return;
     }
+
+    if ($variant->isOutOfStock()) {
+        $this->dispatch('swal', type: 'error', title: __('storefront.out_of_stock'));
+        return;
+    }
+
+    $cartService->addItem($storeId, $variant->id, 1);
 
     $this->dispatch('cart-updated');
 };
@@ -91,12 +112,13 @@ $addToCart = function (string $variantId = null) {
                     @endif
 
                     @php
-                        $_heroPrice = (float) ($this->product->variants->min('price') ?? $this->product->price);
-                        $_heroCompare = (float) $this->product->variants->max('compare_price');
+                        $_variant = $this->selectedVariant ?? $this->product->variants->first();
+                        $_heroPrice = (float) ($_variant?->price ?? $this->product->price);
+                        $_heroCompare = (float) ($_variant?->compare_price ?? 0);
                         $_heroShowCompare = $_heroCompare > 0 && $_heroCompare > $_heroPrice;
                         $_heroPct = $_heroShowCompare ? (int) round((1 - $_heroPrice / $_heroCompare) * 100) : 0;
                     @endphp
-                    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-8">
+                    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
                         <span class="text-2xl sm:text-3xl lg:text-4xl font-bold store-text-primary">{{ currency($_heroPrice) }}</span>
                         @if($_heroShowCompare)
                             <span class="text-lg text-gray-400 dark:text-gray-500 line-through">{{ currency($_heroCompare) }}</span>
@@ -104,17 +126,36 @@ $addToCart = function (string $variantId = null) {
                         @endif
                     </div>
 
+                    {{-- Stock status --}}
+                    @if($_variant)
+                        <p class="mb-6 text-sm font-medium {{ match ($_variant->stockStatus()) {
+                            'out' => 'text-red-500 dark:text-red-400',
+                            'low' => 'text-amber-600 dark:text-amber-400',
+                            default => 'text-emerald-600 dark:text-emerald-400',
+                        } }}">
+                            @if($_variant->stockStatus() === 'low')
+                                {{ __('storefront.low_stock', ['count' => $_variant->stock]) }}
+                            @elseif($_variant->stockStatus() === 'out')
+                                {{ __('storefront.out_of_stock') }}
+                            @else
+                                {{ __('storefront.in_stock') }}
+                            @endif
+                        </p>
+                    @endif
+
                     {{-- Variant selector --}}
                     @if($this->product->variants->count() > 1)
-                        <div class="mb-6" x-data="{ selected: '{{ $this->product->variants->first()?->id }}' }">
+                        <div class="mb-6">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.options') }}</label>
                             <div class="flex flex-wrap gap-2">
                                 @foreach($this->product->variants as $variant)
                                     <button
                                         type="button"
-                                        x-on:click="selected = '{{ $variant->id }}'"
-                                        :class="selected === '{{ $variant->id }}' ? 'store-border-primary store-bg-primary-soft store-text-primary' : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'"
-                                        class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer"
+                                        wire:click="selectVariant('{{ $variant->id }}')"
+                                        class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer
+                                            {{ $this->selectedVariant?->id === $variant->id
+                                                ? 'store-border-primary store-bg-primary-soft store-text-primary'
+                                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300' }}"
                                     >
                                         {{ $variant->name }}
                                     </button>
@@ -123,8 +164,12 @@ $addToCart = function (string $variantId = null) {
 
                             <button
                                 type="button"
-                                x-on:click="$wire.addToCart(selected)"
-                                class="mt-4 w-full sm:w-auto store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg"
+                                wire:click="addToCart"
+                                @if($this->selectedVariant?->isOutOfStock())
+                                    disabled
+                                @endif
+                                class="mt-4 w-full sm:w-auto store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                wire:loading.attr="disabled"
                             >
                                 <ion-icon name="cart-outline" class="mr-2"></ion-icon>
                                 {{ __('storefront.add_to_cart') }}
@@ -133,8 +178,11 @@ $addToCart = function (string $variantId = null) {
                     @else
                         <button
                             type="button"
-                            wire:click="addToCart(null)"
-                            class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg"
+                            wire:click="addToCart"
+                            @if($this->selectedVariant?->isOutOfStock())
+                                disabled
+                            @endif
+                            class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
                         >
                             <ion-icon name="cart-outline" class="mr-2"></ion-icon>
@@ -168,8 +216,9 @@ $addToCart = function (string $variantId = null) {
 
                     {{-- Discount Badge --}}
                     @php
-                        $_heroMaxCompare = (float) $this->product->variants->max('compare_price');
-                        $_heroMinPrice = (float) ($this->product->variants->min('price') ?? $this->product->price);
+                        $_badgeVariant = $this->selectedVariant ?? $this->product->variants->first();
+                        $_heroMaxCompare = (float) ($_badgeVariant?->compare_price ?? 0);
+                        $_heroMinPrice = (float) ($_badgeVariant?->price ?? $this->product->price);
                         $_heroDiscount = ($_heroMaxCompare > 0 && $_heroMinPrice > 0 && $_heroMaxCompare > $_heroMinPrice)
                             ? (int) round((1 - $_heroMinPrice / $_heroMaxCompare) * 100)
                             : 0;

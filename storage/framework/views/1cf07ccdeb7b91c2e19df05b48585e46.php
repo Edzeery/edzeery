@@ -42,7 +42,7 @@ unset($__defined_vars, $__key, $__value); ?>
             
             <td style="vertical-align: top;">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($invoice->company_logo): ?>
-                    <img src="<?php echo e(storage_path('app/public/' . $invoice->company_logo)); ?>"
+                    <img src="<?php echo e(asset('storage/' . $invoice->company_logo)); ?>"
                          alt="<?php echo e($invoice->company_name); ?>"
                          style="height: 50px; margin-bottom: 12px;">
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

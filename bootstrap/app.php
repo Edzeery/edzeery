@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\Auth\PlatformRole;
 use App\Http\Middleware\SetLocale;
-use App\Http\Middleware\Merchant\Store\EnsureStoreMembership;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,9 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role' => PlatformRole::class,
-            'merchant.access' => EnsureStoreMembership::class,
             'store.context' => \App\Http\Middleware\Api\EnsureStoreContext::class,
             'resolve.store' => \App\Http\Middleware\ResolveStoreFromSubdomain::class,
             'store.locale' => \App\Http\Middleware\Store\SetStoreLocale::class,

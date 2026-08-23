@@ -119,7 +119,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="text-sm font-medium text-ink-soft">{{ __('inventories.total_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['total']) }}</p>
                 </div>
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300">Σ</span>
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300"><x-edz.icon name="check-circle" class="w-5 h-5" /></span>
             </div>
         </div>
         <div class="edz-card">
@@ -128,7 +128,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="text-sm font-medium text-ink-soft">{{ __('inventories.low_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['low']) }}</p>
                 </div>
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300">!</span>
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300"><x-edz.icon name="exclamation-triangle" class="w-5 h-5" /></span>
             </div>
         </div>
         <div class="edz-card">
@@ -137,7 +137,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="text-sm font-medium text-ink-soft">{{ __('inventories.out_of_stock') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['out']) }}</p>
                 </div>
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300">✕</span>
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300"><x-edz.icon name="x-mark" class="w-5 h-5" /></span>
             </div>
         </div>
         <div class="edz-card">
@@ -146,7 +146,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="text-sm font-medium text-ink-soft">{{ __('inventories.movements_7d') }}</p>
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['movements7']) }}</p>
                 </div>
-                <span class="grid h-10 w-10 place-items-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">⇄</span>
+                <span class="grid h-10 w-10 place-items-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"><x-edz.icon name="arrows-right-left" class="w-5 h-5" /></span>
             </div>
         </div>
     </div>

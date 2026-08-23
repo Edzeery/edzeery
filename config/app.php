@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://edzeery.com'),
+    'url' => env('APP_URL', 'https://edzeery.com'),
 
     /*
     |--------------------------------------------------------------------------

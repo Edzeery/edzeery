@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ProductsController;
+use App\Http\Controllers\Api\Webhooks\ChargilyWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,3 +23,14 @@ Route::prefix('v1')
         // ---- Products domain ----
         Route::apiResource('products', ProductsController::class);
     });
+
+/*
+|--------------------------------------------------------------------------
+| Payment Webhooks
+|--------------------------------------------------------------------------
+| Public endpoint called by Chargily Pay. Signature is verified against
+| the raw payload using HMAC-SHA256 inside the gateway.
+*/
+
+Route::post('/webhooks/chargily', ChargilyWebhookController::class)
+    ->name('webhooks.chargily');

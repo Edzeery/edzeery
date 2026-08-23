@@ -29,6 +29,12 @@
     pointer-events: none;
   }
 
+  &--xs {
+    padding: 0.1875rem 0.5rem;
+    font-size: 0.6875rem;
+    border-radius: var(--edz-radius-sm);
+  }
+
   &--sm {
     padding: 0.3125rem 0.625rem;
     font-size: 0.75rem;

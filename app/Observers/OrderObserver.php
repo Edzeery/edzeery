@@ -63,7 +63,14 @@ class OrderObserver
             return;
         }
 
-        DB::transaction(function () use ($order, $status) {
+        DB::transaction(function () use ($order, $status, $meta) {
+            // Resolve the actual actor who changed the status (not the buyer)
+            $actorUserId = null;
+            if (! empty($meta['changed_by_membership_id'])) {
+                $membership = \App\Models\Stores\Team\StoreMembership::find($meta['changed_by_membership_id']);
+                $actorUserId = $membership?->user_id;
+            }
+
             foreach ($order->items as $item) {
                 $variant = $item->variant;
 
@@ -76,7 +83,7 @@ class OrderObserver
                     quantity: $item->quantity,
                     type: $status->movement_type,
                     source: $order,
-                    user: $order->user
+                    user: $actorUserId ? \App\Models\User::find($actorUserId) : $order->user
                 );
             }
         });

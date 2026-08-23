@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\billing\Payment;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -60,10 +59,6 @@ class Invoice extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-    public function payment()
-    {
-        return $this->belongsTo(Payment::class);
     }
 
     public function items(): HasMany

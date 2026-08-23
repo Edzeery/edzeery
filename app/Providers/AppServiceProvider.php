@@ -22,6 +22,7 @@ use BezhanSalleh\LanguageSwitch\LanguageSwitch;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -53,6 +54,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force HTTPS when behind a TLS-terminating proxy (Cloudflare, load balancer, etc.)
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Event-Listener bindings
         $this->app->events->listen(PaymentSucceeded::class, ActivateSubscriptionOnPaymentSucceeded::class);
 

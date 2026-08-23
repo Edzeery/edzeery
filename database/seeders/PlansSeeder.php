@@ -196,9 +196,9 @@ class PlansSeeder extends Seeder
         $billing = app(BillingService::class);
         $billing->subscribeUser(
             user: $user,
-            plan: $plan,
+            plan: $trialPlan,
             price: $trialPrice,
-            trial: false
+            trial: true
         );
 
 

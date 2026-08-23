@@ -1109,4 +1109,4 @@ use Illuminate\Support\Facades\DB;
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire\merchant\orders\index.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire/merchant/orders/index.blade.php ENDPATH**/ ?>

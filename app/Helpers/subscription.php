@@ -15,7 +15,7 @@ if (! function_exists('canUseFeature')) {
 
         if (
             ! $subscription ||
-            ! $subscription->isActive()
+            (! $subscription->isActive() && ! $subscription->onTrial())
         ) {
             return false;
         }

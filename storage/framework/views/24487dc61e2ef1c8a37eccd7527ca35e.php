@@ -2,8 +2,8 @@
 
 $__newAttributes = [];
 $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
-    'title' => '',
-    'subtitle' => null,
+    'title',
+    'description' => null,
 ]));
 
 foreach ($attributes->all() as $__key => $__value) {
@@ -20,8 +20,8 @@ unset($__propNames);
 unset($__newAttributes);
 
 foreach (array_filter(([
-    'title' => '',
-    'subtitle' => null,
+    'title',
+    'description' => null,
 ]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
@@ -34,31 +34,18 @@ foreach ($attributes->all() as $__key => $__value) {
 
 unset($__defined_vars, $__key, $__value); ?>
 
-<div class="w-full max-w-lg
-            border border-neutral-border dark:border-dark-border
-            rounded-2xl
-            bg-neutral-surface dark:bg-dark-surface
-            shadow-card
-            p-6 sm:p-8
-            animate-scale-in">
-
-    
-    <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-ink tracking-tight">
-            <?php echo e($title); ?>
-
-        </h2>
-
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($subtitle)): ?>
-            <p class="text-sm text-neutral-soft dark:text-dark-soft mt-1.5">
-                <?php echo e($subtitle); ?>
-
-            </p>
+<div class="edz-page-head">
+    <div>
+        <h1 class="edz-page-head__title"><?php echo e($title); ?></h1>
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($description): ?>
+            <p class="edz-page-head__subtitle"><?php echo e($description); ?></p>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($actions) && $actions): ?>
+        <div class="edz-page-head__actions">
+            <?php echo e($actions); ?>
 
-    
-    <?php echo e($slot); ?>
-
+        </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div>
-<?php /**PATH C:\laragon\www\edzeery\resources\views/components/auth/card.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\edzeery\resources\views/components/edz/page-header.blade.php ENDPATH**/ ?>

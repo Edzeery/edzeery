@@ -59,6 +59,7 @@ use Illuminate\Support\Facades\Validator;
             : collect();
         $calculator = app(ShippingCostCalculator::class);
         $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
+        $paymentMethods = ['cod'];
     ?>
 
     
@@ -279,6 +280,46 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
                                    transition-all duration-200 resize-none"></textarea>
                     </div>
+                </div>
+            </div>
+
+            
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center">
+                        <ion-icon name="cash-outline" class="text-xl store-text-primary"></ion-icon>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white"><?php echo e(__('storefront.payment_method')); ?></h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><?php echo e(__('storefront.payment_method_desc')); ?></p>
+                    </div>
+                </div>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['payment_method'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="text-red-500 dark:text-red-400 text-xs mb-3"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $paymentMethods; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $method): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <label class="cursor-pointer">
+                            <input type="radio" wire:model.live="payment_method" value="<?php echo e($method); ?>" class="peer sr-only">
+                            <div class="border-2 rounded-xl p-4 flex items-center gap-3 peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
+                                <ion-icon name="<?php echo e($method === 'cod' ? 'cash-outline' : 'card-outline'); ?>" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        <?php echo e($method === 'cod' ? __('storefront.payment_on_delivery') : ucfirst($method)); ?>
+
+                                    </p>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($method === 'cod'): ?>
+                                        <p class="text-xs text-gray-400 dark:text-gray-500"><?php echo e(__('storefront.pay_on_delivery')); ?></p>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </div>
+                            </div>
+                        </label>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
             </div>
         </div>

@@ -103,10 +103,7 @@ class StoreTeamService
                 $role = StoreRoleEnum::from($data['store_role']);
 
                 $user->guard_name = 'merchant';
-                $existingRoles = $user->getRoleNames('merchant');
-                if ($existingRoles->isEmpty()) {
-                    $user->assignRole($role->value);
-                }
+                $user->syncRoles([$role->value]);
             }
 
             if (isset($data['permissions']) && is_array($data['permissions'])) {
@@ -119,6 +116,27 @@ class StoreTeamService
     }
 
 
+
+    public function removeMember(StoreMembership $membership): void
+    {
+        DB::transaction(function () use ($membership): void {
+            $user = $membership->user;
+
+            $membership->delete();
+
+            if (! $user) {
+                return;
+            }
+
+            if ($user->storeMemberships()->where('is_active', true)->exists()) {
+                return;
+            }
+
+            $user->guard_name = 'merchant';
+            $user->syncRoles([]);
+            $user->syncPermissions([]);
+        });
+    }
 
     protected function ensureUserIsNotPlatformStaff(string $email): void
     {

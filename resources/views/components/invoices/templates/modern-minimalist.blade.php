@@ -14,7 +14,7 @@
             {{-- Company Info --}}
             <td style="vertical-align: top;">
                 @if($invoice->company_logo)
-                    <img src="{{ storage_path('app/public/' . $invoice->company_logo) }}"
+                    <img src="{{ asset('storage/' . $invoice->company_logo) }}"
                          alt="{{ $invoice->company_name }}"
                          style="height: 50px; margin-bottom: 12px;">
                 @endif

@@ -75,6 +75,7 @@ return [
     'manage_plan' => 'إدارة الخطط',
     'month' => 'شهر',
     'my_stores' => 'متاجري',
+    'year' => 'سنة',
     'my_teams' => 'فريقي',
     'name' => 'الاسم',
     'no_invoices_yet' => 'لا توجد فواتير بعد',

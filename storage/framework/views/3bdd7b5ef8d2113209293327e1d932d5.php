@@ -67,7 +67,7 @@ use App\Models\Orders\Order;
             <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400"><?php echo e(__('storefront.subtotal')); ?></span>
-                    <span class="font-medium text-gray-900 dark:text-white tabular-nums"><?php echo e(currency($this->order->subtotal ?? 0)); ?></span>
+                    <span class="font-medium text-gray-900 dark:text-white tabular-nums"><?php echo e(currency($this->order->items->sum(fn($i) => $i->price * $i->quantity))); ?></span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400"><?php echo e(__('storefront.shipping')); ?></span>

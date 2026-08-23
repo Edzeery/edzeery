@@ -100,7 +100,7 @@ use App\Models\Finance\Debt;
                         <th class="px-4 py-3 text-start font-semibold"><?php echo e(__('finance.remaining')); ?></th>
                         <th class="px-4 py-3 text-start font-semibold"><?php echo e(__('finance.due_date')); ?></th>
                         <th class="px-4 py-3 text-start font-semibold"><?php echo e(__('finance.status')); ?></th>
-                        <th class="px-4 py-3 text-end font-semibold"></th>
+                        <th class="px-4 py-3 text-end font-semibold text-xs uppercase text-ink-muted"><?php echo e(__('buttons.actions')); ?></th>
                     </tr>
                 </thead>
                 <tbody>

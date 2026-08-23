@@ -19,7 +19,7 @@
                   text-ink
                    bg-gray-100 rounded-xl dark:bg-gray-800">
                         @if (isset($store['store_logo']))
-                            <img src="{{ $store['store_logo'] }}" alt="User" />
+                            <img src="{{ asset('storage/' . $store['store_logo']) }}" alt="User" />
                         @else
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                                 class="bi bi-shop" viewBox="0 0 16 16">
@@ -79,14 +79,14 @@
     {{-- Create New Store --}}
     @if (user()?->canCreateMultiStore())
         <a href="{{ route('merchant.create-store') }}"
-            class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/40 p-6 text-center transition hover:bg-primary-50 dark:border-primary-700 dark:bg-primary-900/10">
+            class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 p-6 text-center transition hover:bg-brand-50 dark:border-brand-700 dark:bg-brand-900/10">
 
             <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md">
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-md">
                 +
             </div>
 
-            <h3 class="text-lg font-bold text-primary-700 dark:text-primary-400">
+            <h3 class="text-lg font-bold text-brand-700 dark:text-brand-400">
                 {{ __('buttons.create') }} {{ __('buttons.new') }}
             </h3>
         </a>

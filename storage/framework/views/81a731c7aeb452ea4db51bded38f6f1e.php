@@ -629,16 +629,17 @@ use Illuminate\Support\Facades\Validator;
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showShiftModal): ?>
     <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showShiftModal]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'wire:key' => 'shift-modal-'.e($showShiftModal ? 'open' : 'closed').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['isOpen' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showShiftModal)]); ?>
+<?php $component->withAttributes(['isOpen' => true,'wire:key' => 'shift-modal-'.e($showShiftModal ? 'open' : 'closed').'']); ?>
         <form wire:submit="saveShift">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-ink">
@@ -735,7 +736,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                        <button type="button" @click="$wire.set('showShiftModal', false)" class="edz-btn edz-btn--ghost">
                             <?php echo e(__('buttons.cancel')); ?>
 
                         </button>
@@ -777,18 +778,20 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showAssignModal): ?>
     <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showAssignModal]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'wire:key' => 'assign-modal-'.e($showAssignModal ? 'open' : 'closed').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['isOpen' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showAssignModal)]); ?>
+<?php $component->withAttributes(['isOpen' => true,'wire:key' => 'assign-modal-'.e($showAssignModal ? 'open' : 'closed').'']); ?>
         <form wire:submit="saveAssignments">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-ink"><?php echo e(__('merchant_panel.assign_products')); ?></h3>
@@ -906,7 +909,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
-                        <button type="button" @click="open = false" class="edz-btn edz-btn--ghost">
+                        <button type="button" @click="$wire.set('showAssignModal', false)" class="edz-btn edz-btn--ghost">
                             <?php echo e(__('buttons.cancel')); ?>
 
                         </button>
@@ -948,4 +951,5 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire\merchant\order-settings.blade.php ENDPATH**/ ?>

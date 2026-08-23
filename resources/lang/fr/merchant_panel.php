@@ -97,6 +97,7 @@ return [
     'monday' => 'Lun',
     'month' => 'mois',
     'my_stores' => 'Mes magasins',
+    'year' => 'an',
     'my_teams' => 'Mon équipe',
     'name' => 'Nom',
     'new_shift' => 'Nouvelle équipe',

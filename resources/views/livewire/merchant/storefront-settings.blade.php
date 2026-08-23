@@ -33,9 +33,9 @@ mount(function (): void {
         'social_proof' => [
             'title' => __('storefront.why_customers_love_us'),
             'items' => [
-                ['title' => __('storefront.secure_payment'), 'description' => __('storefront.pay_on_delivery'), 'icon' => 'shield-checkmark-outline'],
-                ['title' => __('storefront.fast_delivery'), 'description' => __('storefront.across_the_country'), 'icon' => 'car-outline'],
-                ['title' => __('storefront.easy_returns'), 'description' => __('storefront.hassle_free_policy'), 'icon' => 'refresh-outline'],
+                ['title' => __('storefront.secure_payment'), 'description' => __('storefront.pay_on_delivery'), 'icon' => 'shield-check'],
+                ['title' => __('storefront.fast_delivery'), 'description' => __('storefront.across_the_country'), 'icon' => 'arrow-right'],
+                ['title' => __('storefront.easy_returns'), 'description' => __('storefront.hassle_free_policy'), 'icon' => 'refresh'],
             ],
         ],
         'faq' => [
@@ -117,7 +117,7 @@ $openPreview = function (): void {
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-accent-100 dark:bg-accent-800/50 flex items-center justify-center">
-                        <ion-icon name="storefront-outline" class="text-xl text-accent-600 dark:text-accent-400"></ion-icon>
+                        <x-edz.icon name="storefront" class="w-5 h-5 text-accent-600 dark:text-accent-400" />
                     </div>
                     <div>
                         <p class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ __('storefront.your_store_link') }}</p>
@@ -129,12 +129,13 @@ $openPreview = function (): void {
                         x-data="{ copied: false }"
                         x-on:click="navigator.clipboard.writeText('{{ currentStore()->public_url }}'); copied = true; setTimeout(() => copied = false, 2000)"
                         class="edz-btn edz-btn--secondary edz-btn--sm">
-                        <ion-icon :name="copied ? 'checkmark-outline' : 'copy-outline'" class="w-4 h-4 me-1"></ion-icon>
+                        <span x-show="!copied"><x-edz.icon name="copy" class="w-4 h-4 me-1" /></span>
+                        <span x-show="copied" x-cloak><x-edz.icon name="check" class="w-4 h-4 me-1" /></span>
                         <span x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
                     </button>
                     <button type="button" @click="$dispatch('open-preview')"
                         class="edz-btn edz-btn--primary edz-btn--sm">
-                        <ion-icon name="eye-outline" class="w-4 h-4 me-1"></ion-icon>
+                        <x-edz.icon name="eye" class="w-4 h-4 me-1" />
                         {{ __('storefront.preview') }} {{ __('merchant_panel.store') }}
                     </button>
                 </div>
@@ -142,7 +143,7 @@ $openPreview = function (): void {
         </div>
     @endif
 
-    <form wire:submit="save" x-data="edzDirty()">
+    <form wire:submit="save" x-data="{ ...edzDirty(), activeTab: 'template' }">
 
         <div class="flex flex-col lg:flex-row gap-6">
 
@@ -153,9 +154,9 @@ $openPreview = function (): void {
                 <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto">
                     @php
                         $tabs = [
-                            'template' => ['icon' => 'color-palette-outline', 'label' => __('merchant_panel.tab_template')],
-                            'design'   => ['icon' => 'brush-outline',         'label' => __('merchant_panel.tab_design')],
-                            'sections' => ['icon' => 'list-outline',          'label' => __('merchant_panel.tab_sections')],
+                            'template' => ['icon' => 'color-palette', 'label' => __('merchant_panel.tab_template')],
+                            'design'   => ['icon' => 'swatch',        'label' => __('merchant_panel.tab_design')],
+                            'sections' => ['icon' => 'list-bullet',   'label' => __('merchant_panel.tab_sections')],
                         ];
                     @endphp
                     @foreach ($tabs as $tabKey => $tab)
@@ -165,7 +166,7 @@ $openPreview = function (): void {
                             :class="activeTab === '{{ $tabKey }}'
                                 ? 'bg-white dark:bg-gray-700 text-accent-600 dark:text-accent-400 shadow-sm'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
-                            <ion-icon name="{{ $tab['icon'] }}" class="text-base shrink-0"></ion-icon>
+                            <x-edz.icon :name="$tab['icon']" class="w-4 h-4 shrink-0" />
                             <span>{{ $tab['label'] }}</span>
                         </button>
                     @endforeach
@@ -179,9 +180,9 @@ $openPreview = function (): void {
                 <div class="edz-card p-2 sticky top-6">
                     @php
                         $tabs = [
-                            'template' => ['icon' => 'color-palette-outline', 'label' => __('merchant_panel.tab_template'),  'desc' => __('merchant_panel.tab_template_desc')],
-                            'design'   => ['icon' => 'brush-outline',         'label' => __('merchant_panel.tab_design'),    'desc' => __('merchant_panel.tab_design_desc')],
-                            'sections' => ['icon' => 'list-outline',          'label' => __('merchant_panel.tab_sections'),  'desc' => __('merchant_panel.tab_sections_desc')],
+                            'template' => ['icon' => 'color-palette', 'label' => __('merchant_panel.tab_template'),  'desc' => __('merchant_panel.tab_template_desc')],
+                            'design'   => ['icon' => 'swatch',        'label' => __('merchant_panel.tab_design'),    'desc' => __('merchant_panel.tab_design_desc')],
+                            'sections' => ['icon' => 'list-bullet',   'label' => __('merchant_panel.tab_sections'),  'desc' => __('merchant_panel.tab_sections_desc')],
                         ];
                     @endphp
                     <nav class="space-y-1">
@@ -196,10 +197,7 @@ $openPreview = function (): void {
                                      :class="activeTab === '{{ $tabKey }}'
                                          ? 'bg-accent-100 dark:bg-accent-800/40'
                                          : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'">
-                                    <ion-icon name="{{ $tab['icon'] }}" class="text-lg"
-                                        :class="activeTab === '{{ $tabKey }}'
-                                            ? 'text-accent-600 dark:text-accent-400'
-                                            : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'"></ion-icon>
+                                    <x-edz.icon :name="$tab['icon']" class="w-5 h-5" />
                                 </div>
                                 <div class="min-w-0">
                                     <p class="text-sm font-semibold leading-tight"
@@ -264,7 +262,7 @@ $openPreview = function (): void {
                                                         <div class="h-9 w-28 rounded-xl bg-accent-500/90 mt-2"></div>
                                                     </div>
                                                     <div class="w-28 h-full rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                        <ion-icon name="image-outline" class="text-3xl text-gray-400 dark:text-gray-500"></ion-icon>
+                                                        <x-edz.icon name="image" class="w-8 h-8 text-gray-400 dark:text-gray-500" />
                                                     </div>
                                                 </div>
                                             @elseif ($key === 'catalog')
@@ -278,7 +276,7 @@ $openPreview = function (): void {
                                                     <div class="flex-1 grid grid-cols-3 gap-1.5">
                                                         @for ($i = 0; $i < 6; $i++)
                                                             <div class="rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                                <ion-icon name="bag-outline" class="text-sm text-gray-400 dark:text-gray-500"></ion-icon>
+                                                                <x-edz.icon name="bag" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                                             </div>
                                                         @endfor
                                                     </div>
@@ -305,7 +303,7 @@ $openPreview = function (): void {
                                                  :class="selectedTemplate === '{{ $key }}'
                                                      ? 'bg-accent-500 text-white scale-100 opacity-100'
                                                      : 'bg-gray-400/50 text-white scale-75 opacity-0'">
-                                                <ion-icon name="checkmark-outline" class="text-sm"></ion-icon>
+                                                <x-edz.icon name="check" class="w-4 h-4" />
                                             </div>
                                         </div>
 
@@ -317,7 +315,7 @@ $openPreview = function (): void {
                                                target="_blank" rel="noopener noreferrer"
                                                x-on:click.stop
                                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
-                                                <ion-icon name="eye-outline" class="text-sm"></ion-icon>
+                                                 <x-edz.icon name="eye" class="w-4 h-4" />
                                                 {{ __('storefront.preview_template') }}
                                             </a>
                                         </div>
@@ -419,13 +417,13 @@ $openPreview = function (): void {
 
                         @php
                             $availableSections = [
-                                'hero'         => ['label' => __('merchant_panel.section_hero'),         'description' => __('merchant_panel.section_hero_desc'),         'icon' => 'image-outline'],
-                                'social_proof' => ['label' => __('merchant_panel.section_social_proof'), 'description' => __('merchant_panel.section_social_proof_desc'), 'icon' => 'shield-checkmark-outline'],
-                                'faq'          => ['label' => __('merchant_panel.section_faq'),           'description' => __('merchant_panel.section_faq_desc'),           'icon' => 'help-circle-outline'],
-                                'cta'          => ['label' => __('merchant_panel.section_cta'),            'description' => __('merchant_panel.section_cta_desc'),            'icon' => 'megaphone-outline'],
-                                'categories'   => ['label' => __('merchant_panel.section_categories'),    'description' => __('merchant_panel.section_categories_desc'),    'icon' => 'grid-outline'],
-                                'brands'       => ['label' => __('merchant_panel.section_brands'),        'description' => __('merchant_panel.section_brands_desc'),        'icon' => 'ribbon-outline'],
-                                'description'  => ['label' => __('merchant_panel.section_description'),   'description' => __('merchant_panel.section_description_desc'),   'icon' => 'document-text-outline'],
+                                'hero'         => ['label' => __('merchant_panel.section_hero'),         'description' => __('merchant_panel.section_hero_desc'),         'icon' => 'image'],
+                                'social_proof' => ['label' => __('merchant_panel.section_social_proof'), 'description' => __('merchant_panel.section_social_proof_desc'), 'icon' => 'shield-check'],
+                                'faq'          => ['label' => __('merchant_panel.section_faq'),           'description' => __('merchant_panel.section_faq_desc'),           'icon' => 'help-circle'],
+                                'cta'          => ['label' => __('merchant_panel.section_cta'),            'description' => __('merchant_panel.section_cta_desc'),            'icon' => 'megaphone'],
+                                'categories'   => ['label' => __('merchant_panel.section_categories'),    'description' => __('merchant_panel.section_categories_desc'),    'icon' => 'grid'],
+                                'brands'       => ['label' => __('merchant_panel.section_brands'),        'description' => __('merchant_panel.section_brands_desc'),        'icon' => 'ribbon'],
+                                'description'  => ['label' => __('merchant_panel.section_description'),   'description' => __('merchant_panel.section_description_desc'),   'icon' => 'document-text'],
                             ];
                         @endphp
 
@@ -439,7 +437,7 @@ $openPreview = function (): void {
                                            class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2">
-                                            <ion-icon name="{{ $section['icon'] }}" class="text-base text-ink-400 shrink-0"></ion-icon>
+                                            <x-edz.icon :name="$section['icon']" class="w-4 h-4 text-ink-400 shrink-0" />
                                             <p class="text-sm font-medium text-ink truncate">{{ $section['label'] }}</p>
                                         </div>
                                         <p class="text-xs text-ink-400 mt-0.5">{{ $section['description'] }}</p>
@@ -451,20 +449,20 @@ $openPreview = function (): void {
                         {{-- Section Content Editing --}}
                         <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
                             <div class="flex items-center gap-2 mb-4">
-                                <ion-icon name="create-outline" class="text-lg text-ink-400"></ion-icon>
+                                <x-edz.icon name="edit" class="w-5 h-5 text-ink-400" />
                                 <h4 class="text-sm font-semibold text-ink">{{ __('merchant_panel.section_content') }}</h4>
                             </div>
                             <p class="text-xs text-ink-400 mb-5">{{ __('merchant_panel.section_content_desc') }}</p>
 
                             @php
                                 $sectionIcons = [
-                                    'hero'         => 'image-outline',
-                                    'social_proof' => 'shield-checkmark-outline',
-                                    'faq'          => 'help-circle-outline',
-                                    'cta'          => 'megaphone-outline',
-                                    'categories'   => 'grid-outline',
-                                    'brands'       => 'ribbon-outline',
-                                    'description'  => 'document-text-outline',
+                                    'hero'         => 'image',
+                                    'social_proof' => 'shield-check',
+                                    'faq'          => 'help-circle',
+                                    'cta'          => 'megaphone',
+                                    'categories'   => 'grid',
+                                    'brands'       => 'ribbon',
+                                    'description'  => 'document-text',
                                 ];
                             @endphp
 
@@ -478,15 +476,14 @@ $openPreview = function (): void {
                                                 x-on:click="open = !open; $wire.set('expanded_section', open ? '{{ $key }}' : '');"
                                                 class="w-full px-5 py-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                                                 <div class="flex items-center gap-3">
-                                                    <ion-icon name="{{ $sectionIcons[$key] }}" class="text-lg text-accent-500"></ion-icon>
+                                                    <x-edz.icon :name="$sectionIcons[$key]" class="w-5 h-5 text-accent-500" />
                                                     <span class="text-sm font-semibold text-ink">{{ $section['label'] }}</span>
                                                     @if (!empty($section_content[$key]))
                                                         <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
                                                     @endif
                                                 </div>
-                                                <ion-icon :name="open ? 'chevron-up-outline' : 'chevron-down-outline'"
-                                                    class="text-ink-400 transition-transform"
-                                                    x-bind:class="open && 'rotate-180'"></ion-icon>
+                                                <span x-show="!open"><x-edz.icon name="chevron-down" class="w-5 h-5 text-ink-400" /></span>
+                                                <span x-show="open" x-cloak><x-edz.icon name="chevron-up" class="w-5 h-5 text-ink-400" /></span>
                                             </button>
 
                                             {{-- Accordion Content --}}
@@ -631,12 +628,12 @@ $openPreview = function (): void {
                 @if (currentStore()?->isPubliclyActive())
                     <a href="{{ currentStore()->public_url }}" target="_blank" rel="noopener noreferrer"
                        class="edz-btn edz-btn--secondary edz-btn--sm hidden sm:inline-flex">
-                        <ion-icon name="open-outline" class="w-4 h-4 me-1"></ion-icon>
+                        <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
                         {{ __('storefront.open_store') }}
                     </a>
                 @endif
                 <button type="submit" class="edz-btn edz-btn--primary">
-                    <ion-icon name="save-outline" class="w-4 h-4 me-1"></ion-icon>
+                    <x-edz.icon name="save" class="w-4 h-4 me-1" />
                     {{ __('merchant_panel.save_template') }}
                 </button>
             </div>
@@ -662,7 +659,7 @@ $openPreview = function (): void {
                 <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center">
-                            <ion-icon name="eye-outline" class="text-lg text-accent-600 dark:text-accent-400"></ion-icon>
+                            <x-edz.icon name="eye" class="w-5 h-5 text-accent-600 dark:text-accent-400" />
                         </div>
                         <div>
                             <p class="text-sm font-semibold text-ink">{{ __('storefront.preview') }} — {{ currentStore()->name }}</p>
@@ -672,12 +669,12 @@ $openPreview = function (): void {
                     <div class="flex items-center gap-2">
                         <a href="{{ currentStore()->public_url . '?preview=1' }}" target="_blank" rel="noopener noreferrer"
                            class="edz-btn edz-btn--secondary edz-btn--sm">
-                            <ion-icon name="open-outline" class="w-4 h-4 me-1"></ion-icon>
+                        <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
                             {{ __('storefront.open_in_new_tab') }}
                         </a>
                         <button type="button" @click="previewOpen = false; $wire.set('showPreview', false)"
                             class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                            <ion-icon name="close-outline" class="text-xl text-ink-400"></ion-icon>
+                            <x-edz.icon name="x-mark" class="w-5 h-5 text-ink-400" />
                         </button>
                     </div>
                 </div>

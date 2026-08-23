@@ -25,6 +25,7 @@ state([
     'is_active' => '',
     'selected' => [],
     'select_all' => false,
+    'isNew' => false,
     'editingId' => null,
     'name' => '',
     'slug' => '',
@@ -74,9 +75,21 @@ $toggleActive = function (Brand $brand): void {
     $brand->update(['is_active' => ! $brand->is_active]);
 };
 
+$openCreate = function (): void {
+    abort_unless($this->canUpdate(), 403);
+
+    $this->isNew = true;
+    $this->editingId = null;
+    $this->name = '';
+    $this->slug = '';
+    $this->isActive = true;
+    $this->logo = null;
+};
+
 $beginEdit = function (Brand $brand): void {
     abort_unless($this->canUpdate(), 403);
 
+    $this->isNew = false;
     $this->editingId = $brand->id;
     $this->name = $brand->name;
     $this->slug = $brand->slug;
@@ -99,11 +112,8 @@ $save = function (): void {
         'logo' => ['nullable', 'image', 'max:2048'],
     ]);
 
-    $brand = Brand::query()
-        ->where('store_id', currentStoreId())
-        ->findOrFail($this->editingId);
-
     $data = [
+        'store_id' => currentStoreId(),
         'name' => $validated['name'],
         'slug' => $validated['slug'],
         'is_active' => $validated['isActive'],
@@ -113,13 +123,20 @@ $save = function (): void {
         $data['logo'] = $this->logo->store('brands', 'public');
     }
 
-    $brand->update($data);
+    if ($this->isNew) {
+        Brand::create($data);
+    } else {
+        Brand::query()
+            ->where('store_id', currentStoreId())
+            ->findOrFail($this->editingId)
+            ->update($data);
+    }
 
-    $this->reset('editingId', 'name', 'slug', 'logo', 'isActive');
+    $this->reset('isNew', 'editingId', 'name', 'slug', 'logo', 'isActive');
 };
 
 $cancelEdit = function (): void {
-    $this->reset('editingId', 'name', 'slug', 'logo', 'isActive');
+    $this->reset('isNew', 'editingId', 'name', 'slug', 'logo', 'isActive');
 };
 
 $delete = function (Brand $brand): void {
@@ -141,19 +158,25 @@ $deleteSelected = function (): void {
 ?>
 
 <div>
-    <div class="edz-page-head">
-        <div>
-            <h1 class="edz-page-head__title">{{ __('brands.title') }}</h1>
-            <p class="edz-page-head__subtitle">{{ __('brands.subtitle', ['store' => currentStore()?->name]) }}</p>
-        </div>
-    </div>
+    <x-edz.page-header
+        title="{{ __('brands.title') }}"
+        description="{{ __('brands.subtitle', ['store' => currentStore()?->name]) }}">
+        <x-slot:actions>
+            @if ($this->canUpdate())
+                <button wire:click="openCreate" class="edz-btn edz-btn--primary edz-btn--sm">
+                    <x-edz.icon name="plus" class="w-4 h-4" />
+                    {{ __('brands.add_brand') }}
+                </button>
+            @endif
+        </x-slot:actions>
+    </x-edz.page-header>
 
-    @if ($editingId)
+    @if ($isNew || $editingId)
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div>
-                    <h2 class="edz-card__title">{{ __('brands.edit_brand') }}</h2>
-                    <p class="text-sm text-ink-400">{{ __('brands.update_details') }}</p>
+                    <h2 class="edz-card__title">{{ $isNew ? __('brands.add_brand') : __('brands.edit_brand') }}</h2>
+                    <p class="text-sm text-ink-400">{{ $isNew ? __('brands.create_details') : __('brands.update_details') }}</p>
                 </div>
             </div>
 

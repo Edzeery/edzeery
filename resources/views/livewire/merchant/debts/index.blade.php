@@ -138,7 +138,7 @@ $formatAmount = function (float $amount): string {
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.remaining') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.due_date') }}</th>
                         <th class="px-4 py-3 text-start font-semibold">{{ __('finance.status') }}</th>
-                        <th class="px-4 py-3 text-end font-semibold"></th>
+                        <th class="px-4 py-3 text-end font-semibold text-xs uppercase text-ink-muted">{{ __('buttons.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>

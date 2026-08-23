@@ -1,7 +1,10 @@
 <?php
 
 use App\Domains\Billing\Actions\SubmitManualPaymentAction;
+use App\Domains\Billing\DTOs\SubscriptionData;
 use App\Domains\Billing\Enums\ManualPaymentMethodEnum;
+use App\Domains\Billing\Services\SubscriptionService;
+use App\Enums\SubscriptionPayment\StatusSubscriptionEnum;
 use App\Models\billing\Payment;
 use App\Models\billing\Subscription;
 use App\Models\Billing\BillingAddress;
@@ -59,7 +62,8 @@ use Illuminate\Support\Facades\Validator;
                 <button type="button" wire:model.live="selectedBillingPeriod" value="yearly"
                     class="px-4 py-1.5 text-xs font-semibold rounded-lg transition
                         <?php echo e($selectedBillingPeriod === 'yearly' ? 'bg-accent-600 text-white shadow-sm' : 'bg-surface-secondary text-ink-muted hover:text-ink'); ?>">
-                    <?php echo e(__('merchant_panel.month')); ?> (<?php echo e(__('merchant_panel.expires')); ?>)
+                    <?php echo e(__('merchant_panel.year')); ?>
+
                 </button>
             </div>
 
@@ -108,7 +112,7 @@ use Illuminate\Support\Facades\Validator;
                         <div class="mt-3 flex items-baseline gap-1">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($price): ?>
                                 <span class="text-3xl font-bold text-ink"><?php echo e(number_format($price->price, 0)); ?></span>
-                                <span class="text-sm text-ink-muted">/ <?php echo e($selectedBillingPeriod === 'monthly' ? __('merchant_panel.month') : __('merchant_panel.month')); ?></span>
+                                <span class="text-sm text-ink-muted">/ <?php echo e($selectedBillingPeriod === 'monthly' ? __('merchant_panel.month') : __('merchant_panel.year')); ?></span>
                             <?php else: ?>
                                 <span class="text-lg font-semibold text-ink-muted"><?php echo e(__('merchant_panel.contact_us')); ?></span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -116,7 +120,7 @@ use Illuminate\Support\Facades\Validator;
 
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($price && $price->isYearly()): ?>
                             <p class="mt-1 text-xs text-success-600 dark:text-success-400 font-medium">
-                                <?php echo e(number_format($price->duration / 12, 0)); ?> <?php echo e(__('merchant_panel.month')); ?>
+                                <?php echo e(round($price->duration / 30)); ?> <?php echo e(__('merchant_panel.month')); ?>
 
                             </p>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -746,7 +750,8 @@ use Illuminate\Support\Facades\Validator;
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $stores; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $store): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <?php
-                $latestPayment = $store->payments()->latest('created_at')->first();
+                $latestPayment = $store->payments()->latest('created_at')->first()
+                    ?? $this->payments->first();
                 $isPaid = $latestPayment?->isPaid();
             ?>
             <div class="px-6 py-4 border-t border-surface-border">

@@ -93,7 +93,9 @@ class StoreMembership extends Model
 
     public function isOnActiveShift(?\Carbon\Carbon $at = null): bool
     {
-        $at = $at ?? now();
+        // Use store's timezone for shift calculations
+        $timezone = $this->store?->settings?->timezone ?? config('app.timezone');
+        $at = $at ?? now($timezone);
         $dayOfWeek = $at->dayOfWeekIso;
         $currentTime = $at->format('H:i:s');
 

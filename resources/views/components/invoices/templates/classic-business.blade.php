@@ -13,7 +13,7 @@
         <tr>
             <td style="vertical-align: middle;">
                 @if($invoice->company_logo)
-                    <img src="{{ storage_path('app/public/' . $invoice->company_logo) }}"
+                    <img src="{{ asset('storage/' . $invoice->company_logo) }}"
                          alt="{{ $invoice->company_name }}"
                          style="height: 60px; margin-bottom: 10px;">
                 @endif

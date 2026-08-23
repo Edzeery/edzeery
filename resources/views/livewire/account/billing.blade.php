@@ -1,7 +1,10 @@
 <?php
 
 use App\Domains\Billing\Actions\SubmitManualPaymentAction;
+use App\Domains\Billing\DTOs\SubscriptionData;
 use App\Domains\Billing\Enums\ManualPaymentMethodEnum;
+use App\Domains\Billing\Services\SubscriptionService;
+use App\Enums\SubscriptionPayment\StatusSubscriptionEnum;
 use App\Models\billing\Payment;
 use App\Models\billing\Subscription;
 use App\Models\Billing\BillingAddress;
@@ -84,34 +87,27 @@ $changePlan = action(function (string $planId): void {
     }
 
     DB::transaction(function () use ($plan, $price) {
-        $u = $this->user;
+        $user = $this->user;
 
-        if ($this->subscription && $this->subscription->isActive()) {
-            $this->subscription->update([
-                'status' => 'canceled',
+        // Cancel any existing active subscription
+        $existing = $user->subscriptions()
+            ->where('status', StatusSubscriptionEnum::ACTIVE)
+            ->get();
+
+        foreach ($existing as $sub) {
+            $sub->update([
+                'status' => StatusSubscriptionEnum::CANCELED,
                 'canceled_at' => now(),
                 'was_switched' => true,
             ]);
         }
 
-        $newSub = $u->subscriptions()->create([
-            'plan_id' => $plan->id,
-            'plan_price_id' => $price->id,
-            'status' => 'active',
-            'is_trial' => false,
-            'starts_at' => now(),
-            'ends_at' => $price->endsAt(),
-        ]);
-
-        $newSub->payments()->create([
-            'user_id' => $u->id,
-            'plan_price_id' => $price->id,
-            'status' => 'paid',
-            'amount' => $price->price,
-            'currency' => $plan->currency ?? 'DZD',
-            'paid_at' => now(),
-            'gateway' => 'manual',
-        ]);
+        // Create subscription + record payment through the domain layer
+        $service = app(SubscriptionService::class);
+        $newSub = $service->createWithPayment(
+            data: SubscriptionData::from(user: $user, plan: $plan, planPrice: $price),
+            gateway: 'manual',
+        );
 
         $this->subscription = $newSub->fresh();
     });
@@ -267,7 +263,7 @@ $saveBilling = action(function (): void {
                 <button type="button" wire:model.live="selectedBillingPeriod" value="yearly"
                     class="px-4 py-1.5 text-xs font-semibold rounded-lg transition
                         {{ $selectedBillingPeriod === 'yearly' ? 'bg-accent-600 text-white shadow-sm' : 'bg-surface-secondary text-ink-muted hover:text-ink' }}">
-                    {{ __('merchant_panel.month') }} ({{ __('merchant_panel.expires') }})
+                    {{ __('merchant_panel.year') }}
                 </button>
             </div>
 
@@ -296,7 +292,7 @@ $saveBilling = action(function (): void {
                         <div class="mt-3 flex items-baseline gap-1">
                             @if ($price)
                                 <span class="text-3xl font-bold text-ink">{{ number_format($price->price, 0) }}</span>
-                                <span class="text-sm text-ink-muted">/ {{ $selectedBillingPeriod === 'monthly' ? __('merchant_panel.month') : __('merchant_panel.month') }}</span>
+                                <span class="text-sm text-ink-muted">/ {{ $selectedBillingPeriod === 'monthly' ? __('merchant_panel.month') : __('merchant_panel.year') }}</span>
                             @else
                                 <span class="text-lg font-semibold text-ink-muted">{{ __('merchant_panel.contact_us') }}</span>
                             @endif
@@ -304,7 +300,7 @@ $saveBilling = action(function (): void {
 
                         @if ($price && $price->isYearly())
                             <p class="mt-1 text-xs text-success-600 dark:text-success-400 font-medium">
-                                {{ number_format($price->duration / 12, 0) }} {{ __('merchant_panel.month') }}
+                                {{ round($price->duration / 30) }} {{ __('merchant_panel.month') }}
                             </p>
                         @endif
 
@@ -576,7 +572,8 @@ $saveBilling = action(function (): void {
 
         @forelse ($stores as $store)
             @php
-                $latestPayment = $store->payments()->latest('created_at')->first();
+                $latestPayment = $store->payments()->latest('created_at')->first()
+                    ?? $this->payments->first();
                 $isPaid = $latestPayment?->isPaid();
             @endphp
             <div class="px-6 py-4 border-t border-surface-border">

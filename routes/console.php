@@ -21,3 +21,5 @@ Schedule::call(function () {
 })->name('shift-handover')->everyFifteenMinutes()->withoutOverlapping();
 
 Schedule::command('billing:trial-reminders')->dailyAt('09:00');
+
+Schedule::command('subscriptions:check-expired')->daily();

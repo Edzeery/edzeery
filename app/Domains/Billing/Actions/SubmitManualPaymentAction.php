@@ -25,6 +25,7 @@ class SubmitManualPaymentAction
 
         $payment = Payment::create([
             'user_id'         => $subscription->user_id,
+            'store_id'        => currentStoreId() ?? $subscription->user->stores()->first()?->id,
             'subscription_id' => $subscription->id,
             'plan_price_id'   => $subscription->plan_price_id,
             'gateway'         => 'manual',

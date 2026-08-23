@@ -52,7 +52,7 @@ use App\Domains\Merchant\Actions\GetStoreCardsAction;
                             <div class="flex items-center gap-4">
                                 <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent-500 to-brand-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store['store_logo']): ?>
-                                        <img src="<?php echo e($store['store_logo']); ?>" alt="<?php echo e($store['store_name']); ?>" class="w-14 h-14 rounded-2xl object-cover" />
+                                        <img src="<?php echo e(asset('storage/' . $store['store_logo'])); ?>" alt="<?php echo e($store['store_name']); ?>" class="w-14 h-14 rounded-2xl object-cover" />
                                     <?php else: ?>
                                         <?php echo e(strtoupper(mb_substr($store['store_name'], 0, 1))); ?>
 

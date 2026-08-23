@@ -16,6 +16,7 @@
                 document.body.style.overflow = 'hidden';
             } else {
                 document.body.style.overflow = 'unset';
+                this.$dispatch('edz-modal-closed');
             }
         });
     }

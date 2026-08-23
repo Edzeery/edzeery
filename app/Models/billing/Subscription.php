@@ -35,12 +35,12 @@ class Subscription extends Model
 
     protected $casts = [
         'status' => StatusSubscriptionEnum::class,
-        'trial_ends_at' => 'date',
-        'starts_at' => 'date',
-        'canceled_at' => 'date',
-        'ends_at' => 'date',
-        'suppressed_at' => 'date',
-        'grace_ends_at' => 'date',
+        'trial_ends_at' => 'datetime',
+        'starts_at' => 'datetime',
+        'canceled_at' => 'datetime',
+        'ends_at' => 'datetime',
+        'suppressed_at' => 'datetime',
+        'grace_ends_at' => 'datetime',
         'is_trial' => 'boolean',
     ];
 

@@ -189,7 +189,7 @@ $deleteSelected = function (): void {
         </div>
         <div class="flex items-center gap-2">
             @if ($this->canCreate())
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">{{ __('product_options.new_option') }}</button>
+                <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" wire:click="openCreate">{{ __('product_options.new_option') }}</button>
             @endif
         </div>
     </div>
@@ -330,10 +330,10 @@ $deleteSelected = function (): void {
                                                 {{ $value->value }}
                                                 <span class="text-xs text-ink-muted">{{ trans_choice('product_options.variant_count', $value->variants_count, ['count' => $value->variants_count]) }}</span>
                                                 @if ($this->canDelete() && ! $value->variants()->exists())
-                                                    <button type="button" class="text-danger-600 hover:text-danger-700"
+                                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700"
                                                             x-data
                                                             @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($value->value) }}')) $wire.deleteValue('{{ $value->id }}')"
-                                                            >×</button>
+                                                            ><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                                                 @endif
                                             </span>
                                         @empty

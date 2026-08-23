@@ -217,7 +217,7 @@ $deleteSelected = function (): void {
         </div>
         <div class="flex items-center gap-2">
             @if ($this->canCreate())
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">{{ __('variants.new_variant') }}</button>
+                <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" wire:click="openCreate">{{ __('variants.new_variant') }}</button>
             @endif
         </div>
     </div>

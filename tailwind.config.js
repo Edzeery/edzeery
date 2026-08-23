@@ -233,13 +233,13 @@ export default {
             },
             animation: {
                 "fade-up":
-                    "fade-up 400ms cubic-bezier(0.16,1,0.3,1) both",
+                    "fade-up 400ms cubic-bezier(0.16,1,0.3,1) backwards",
                 "fade-in":
-                    "fade-in 350ms cubic-bezier(0.16,1,0.3,1) both",
+                    "fade-in 350ms cubic-bezier(0.16,1,0.3,1) backwards",
                 "scale-in":
-                    "scale-in 250ms cubic-bezier(0.16,1,0.3,1) both",
+                    "scale-in 250ms cubic-bezier(0.16,1,0.3,1) backwards",
                 "slide-in-right":
-                    "slide-in-right 400ms cubic-bezier(0.16,1,0.3,1) both",
+                    "slide-in-right 400ms cubic-bezier(0.16,1,0.3,1) backwards",
                 shimmer: "shimmer 2s linear infinite",
             },
             zIndex: {

@@ -1,5 +1,9 @@
 import "./bootstrap.js";
 import "./swal.js";
+import flatpickr from "flatpickr";
+import "flatpickr/dist/flatpickr.min.css";
+
+window.flatpickr = flatpickr;
 
 document.addEventListener("alpine:init", () => {
     const Alpine = window.Alpine;
@@ -43,39 +47,122 @@ document.addEventListener("alpine:init", () => {
         },
     });
 
+    // --- Global dirty state store ---
+    Alpine.store("dirty", {
+        forms: new Set(),
+        isDirty() {
+            return this.forms.size > 0;
+        },
+        register(id) {
+            this.forms.add(id);
+        },
+        unregister(id) {
+            this.forms.delete(id);
+        },
+        clear() {
+            this.forms.clear();
+        },
+    });
+
+    // --- Livewire hook: abort SPA navigation when dirty ---
+    function setupNavigateHook() {
+        if (typeof window.Livewire === "undefined") return;
+        window.Livewire.hook("navigate", () => {
+            if (Alpine.store("dirty").isDirty()) {
+                throw new Error("navigate-aborted-by-dirty-guard");
+            } else {
+                Alpine.store("dirty").clear();
+            }
+        });
+    }
+    if (typeof window.Livewire !== "undefined") {
+        setupNavigateHook();
+    } else {
+        document.addEventListener("livewire:initialized", setupNavigateHook, {
+            once: true,
+        });
+    }
+
+    // --- Capture-phase click interceptor for wire:navigate links ---
+    document.addEventListener(
+        "click",
+        (e) => {
+            const link = e.target.closest("a[wire\\:navigate]");
+            if (!link) return;
+            if (!Alpine.store("dirty").isDirty()) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            // Remove wire:navigate so Livewire's handler ignores this click
+            const hadNavigate = link.hasAttribute("wire:navigate");
+            if (hadNavigate) link.removeAttribute("wire:navigate");
+
+            EdzSwal.unsavedChanges(() => {
+                // User confirmed "Leave" — navigate via Livewire SPA
+                Alpine.store("dirty").clear();
+                if (hadNavigate) {
+                    link.setAttribute("wire:navigate", "");
+                    link.click();
+                } else {
+                    window.location.href = link.href;
+                }
+            });
+            // If user clicked "Stay", wire:navigate stays removed —
+            // link becomes a regular <a>, next click re-triggers the guard.
+        },
+        true,
+    );
+
+    // --- Unsaved changes guard for browser-level navigation ---
+    window.addEventListener("beforeunload", (e) => {
+        if (Alpine.store("dirty").isDirty()) {
+            e.preventDefault();
+            e.returnValue = "";
+        }
+    });
+
+    // --- edzDirty Alpine component ---
     Alpine.data("edzDirty", () => ({
         dirty: false,
         _snapshot: "",
         _formEl: null,
+        _id: null,
 
         init() {
             this._formEl = this.$el.closest("form");
             if (!this._formEl) return;
+            this._id = this._formEl.id || "form-" + Math.random().toString(36).slice(2, 9);
+            if (!this._formEl.id) this._formEl.id = this._id;
+
             this._snapshot = this._serialize();
             this._formEl.addEventListener("input", () => {
                 this.dirty = this._serialize() !== this._snapshot;
+                this._syncStore();
             });
             this._formEl.addEventListener("reset", () => {
                 this.$nextTick(() => {
                     this._snapshot = this._serialize();
                     this.dirty = false;
+                    this._syncStore();
                 });
-            });
-            window.addEventListener("beforeunload", (e) => {
-                if (this.dirty) {
-                    e.preventDefault();
-                    e.returnValue = "";
-                }
-            });
-            document.addEventListener("livewire:navigating", () => {
-                this.dirty = false;
             });
             this.$el.addEventListener("livewire:updated", () => {
                 this.$nextTick(() => {
                     this._snapshot = this._serialize();
                     this.dirty = false;
+                    this._syncStore();
                 });
             });
+        },
+
+        _syncStore() {
+            if (this.dirty) {
+                Alpine.store("dirty").register(this._id);
+            } else {
+                Alpine.store("dirty").unregister(this._id);
+            }
         },
 
         _serialize() {
@@ -94,32 +181,40 @@ document.addEventListener("alpine:init", () => {
         markClean() {
             this._snapshot = this._serialize();
             this.dirty = false;
-        },
-
-        confirmLeave(callback) {
-            if (!this.dirty) {
-                callback();
-                return;
-            }
-            EdzSwal.unsavedChanges(() => {
-                this.dirty = false;
-                callback();
-            });
+            this._syncStore();
         },
     }));
+});
 
-    document.addEventListener("click", (e) => {
-        const link = e.target.closest("a[wire\\:navigate]");
-        if (!link) return;
-        const form = document.querySelector("form[x-data*='edzDirty']");
-        if (!form) return;
-        const comp = Alpine.$data(form);
-        if (comp && comp.dirty) {
-            e.preventDefault();
-            e.stopPropagation();
-            comp.confirmLeave(() => {
-                window.location.href = link.href;
+// Auto-initialize flatpickr on elements with .flatpickr-input class
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.flatpickr-input').forEach(el => {
+        if (!el._flatpickr) {
+            flatpickr(el, {
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                clickOpens: true,
+                onChange: (selectedDates, dateStr, instance) => {
+                    // Trigger Livewire wire:model update
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                },
             });
         }
-    }, true);
+    });
+});
+
+// Re-initialize on Livewire navigation
+document.addEventListener('livewire:navigated', () => {
+    document.querySelectorAll('.flatpickr-input').forEach(el => {
+        if (!el._flatpickr) {
+            flatpickr(el, {
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                clickOpens: true,
+                onChange: (selectedDates, dateStr, instance) => {
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                },
+            });
+        }
+    });
 });

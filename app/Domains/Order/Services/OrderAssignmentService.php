@@ -41,6 +41,14 @@ class OrderAssignmentService
 
         // 4. If shift-filtered pool is empty, leave unassigned for later dispatch
         if ($shiftFiltered->isEmpty()) {
+            Log::warning('Order auto-assignment skipped: no candidates on active shift', [
+                'order_id' => $order->id,
+                'store_id' => $storeId,
+                'candidate_count' => $candidates->count(),
+                'candidate_ids' => $candidates->pluck('id')->toArray(),
+                'product_ids' => $productIds,
+            ]);
+
             $order->update([
                 'assigned_to_membership_id' => null,
                 'assignment_method' => null,
@@ -52,6 +60,11 @@ class OrderAssignmentService
         $selected = $this->loadBalance($shiftFiltered, $storeId);
 
         if (! $selected) {
+            Log::warning('Order auto-assignment skipped: load balance returned null', [
+                'order_id' => $order->id,
+                'store_id' => $storeId,
+                'shift_filtered_count' => $shiftFiltered->count(),
+            ]);
             return $order;
         }
 
@@ -130,6 +143,10 @@ class OrderAssignmentService
             ->values();
 
         if ($allConfirmers->isEmpty()) {
+            Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
+                'order_id' => $order->id,
+                'store_id' => $storeId,
+            ]);
             return collect();
         }
 
@@ -156,7 +173,7 @@ class OrderAssignmentService
             ->whereNotIn('product_id', $productIds)
             ->pluck('membership_id')
             ->unique()
-            ->toArray;
+            ->toArray();
 
         $generalPool = $allConfirmers->filter(
             fn (StoreMembership $m) => ! in_array($m->id, $onlySpecialistIds)
@@ -171,9 +188,16 @@ class OrderAssignmentService
      */
     private function filterOnShift(\Illuminate\Support\Collection $candidates): \Illuminate\Support\Collection
     {
-        return $candidates->filter(
-            fn (StoreMembership $m) => $m->isOnActiveShift()
-        )->values();
+        return $candidates->filter(function (StoreMembership $m) {
+            $isOnShift = $m->isOnActiveShift();
+            if (! $isOnShift) {
+                Log::debug('Member not on active shift', [
+                    'membership_id' => $m->id,
+                    'user_id' => $m->user_id,
+                ]);
+            }
+            return $isOnShift;
+        })->values();
     }
 
     /**

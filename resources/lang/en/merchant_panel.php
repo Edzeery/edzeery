@@ -75,6 +75,7 @@ return [
     'manage_plan' => 'Manage Plan',
     'month' => 'month',
     'my_stores' => 'My Stores',
+    'year' => 'year',
     'my_teams' => 'My Teams',
     'name' => 'Name',
     'no_invoices_yet' => 'No invoices yet',

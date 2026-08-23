@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Auth\AdminSessionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\ChooseStoreController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -12,6 +11,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
+use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
@@ -64,9 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 
-    Route::get('/merchant/choose-store', [ChooseStoreController::class, 'index'])
+    Volt::route('/merchant/choose-store', 'merchant.choose-store')
         ->name('merchant.choose-store');
 
-    Route::post('/merchant/choose-store/{store:slug}', [ChooseStoreController::class, 'select'])
+    Route::post('/merchant/choose-store/{store:slug}', [\App\Http\Controllers\Auth\ChooseStoreController::class, 'select'])
         ->name('merchant.choose-store.select');
 });

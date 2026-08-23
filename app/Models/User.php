@@ -284,7 +284,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function latestSubscriptions()
     {
         return $this->subscriptions()
-            ->latest('updated_at');
+            ->latest('starts_at');
     }
 
     public function onTrial(): bool
@@ -296,12 +296,12 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
     public function latestSubscriptionRelation(): HasOne
     {
-        return $this->hasOne(Subscription::class)->latestOfMany('updated_at');
+        return $this->hasOne(Subscription::class)->latestOfMany('starts_at');
     }
     public function latestSubscription()
     {
         return $this->subscriptions()
-            ->latest('updated_at')
+            ->latest('starts_at')
             ->first();
     }
 

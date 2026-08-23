@@ -17,10 +17,6 @@ use function Livewire\Volt\state;
 
 layout('components.layouts.store');
 
-mount(function (): void {
-    abort_unless(canStore(StorePermissionEnum::TEAM_VIEW->value), 403);
-});
-
 state([
     'search' => '',
     'creating' => false,
@@ -37,6 +33,7 @@ state([
 ]);
 
 mount(function (): void {
+    abort_unless(canStore(StorePermissionEnum::TEAM_VIEW->value), 403);
     abort_unless(canManageTeam(), 403);
 });
 
@@ -192,7 +189,7 @@ $toggleActive = function (StoreMembership $membership): void {
 $remove = function (StoreMembership $membership): void {
     abort_unless($this->canModify($membership), 403);
 
-    $membership->delete();
+    app(StoreTeamService::class)->removeMember($membership);
 
     $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));
 };
@@ -238,8 +235,8 @@ $allPermissions = computed(function () {
             <p class="edz-page-head__subtitle">{{ __('teams.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         @if ($this->canCreate())
-            <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate">
-                <x-edz.icon name="plus" class="h-5 w-5" /> {{ __('teams.add_member') }}
+            <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" wire:click="openCreate">
+                <x-edz.icon name="plus" class="w-4 h-4" /> {{ __('teams.add_member') }}
             </button>
         @endif
     </div>
@@ -348,7 +345,7 @@ $allPermissions = computed(function () {
                                     wire:click="$set('permissions', {{ json_encode(\App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role))) }})">
                                 {{ __('buttons.select_all') }}
                             </button>
-                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600"
+                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                     wire:click="$set('permissions', [])">
                                 {{ __('buttons.unselect_all') }}
                             </button>

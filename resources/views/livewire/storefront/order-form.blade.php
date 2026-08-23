@@ -41,6 +41,8 @@ mount(function (): void {
 });
 
 $submitOrder = function () {
+    $paymentMethods = ['cod'];
+
     $validated = Validator::make($this->only([
         'name', 'phone', 'email', 'state_id', 'city_id',
         'address', 'delivery_type', 'payment_method', 'notes', 'selectedStopdesk',
@@ -52,7 +54,7 @@ $submitOrder = function () {
         'city_id'       => 'required_if:delivery_type,home|nullable|exists:cities,id',
         'address'       => 'required_if:delivery_type,home|nullable|string|max:1000',
         'delivery_type' => 'required|in:home,stopdesk',
-        'payment_method' => 'required|in:cod',
+        'payment_method' => 'required|in:' . implode(',', $paymentMethods),
         'notes'         => 'nullable|string|max:500',
         'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer',
     ])->validate();
@@ -76,6 +78,12 @@ $submitOrder = function () {
 
     $subtotal = $cartService->getSubtotal($storeId);
     $shippingCost = $shipping['available'] ? $shipping['cost'] : 0;
+
+    // Block checkout if shipping is unavailable for home delivery
+    if ($this->delivery_type === 'home' && !($shipping['available'] ?? false)) {
+        $this->dispatch('swal', type: 'error', title: __('storefront.shipping_not_available'));
+        return;
+    }
 
     DB::beginTransaction();
 
@@ -211,6 +219,7 @@ $submitOrder = function () {
             : collect();
         $calculator = app(ShippingCostCalculator::class);
         $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
+        $paymentMethods = ['cod'];
     @endphp
 
     {{-- Back to Cart --}}
@@ -402,6 +411,38 @@ $submitOrder = function () {
                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
                                    transition-all duration-200 resize-none"></textarea>
                     </div>
+                </div>
+            </div>
+
+            {{-- Payment Method --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center">
+                        <ion-icon name="cash-outline" class="text-xl store-text-primary"></ion-icon>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.payment_method') }}</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.payment_method_desc') }}</p>
+                    </div>
+                </div>
+                @error('payment_method') <p class="text-red-500 dark:text-red-400 text-xs mb-3">{{ $message }}</p> @enderror
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    @foreach($paymentMethods as $method)
+                        <label class="cursor-pointer">
+                            <input type="radio" wire:model.live="payment_method" value="{{ $method }}" class="peer sr-only">
+                            <div class="border-2 rounded-xl p-4 flex items-center gap-3 peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
+                                <ion-icon name="{{ $method === 'cod' ? 'cash-outline' : 'card-outline' }}" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {{ $method === 'cod' ? __('storefront.payment_on_delivery') : ucfirst($method) }}
+                                    </p>
+                                    @if($method === 'cod')
+                                        <p class="text-xs text-gray-400 dark:text-gray-500">{{ __('storefront.pay_on_delivery') }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </label>
+                    @endforeach
                 </div>
             </div>
         </div>

@@ -18,7 +18,7 @@ use Livewire\Features\SupportFileUploads\WithFileUploads;
         </div>
         <div class="flex items-center gap-2">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canCreate()): ?>
-                <button type="button" class="edz-btn edz-btn--primary" wire:click="openCreate"><?php echo e(__('categories.new_category')); ?></button>
+                <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" wire:click="openCreate"><?php echo e(__('categories.new_category')); ?></button>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>

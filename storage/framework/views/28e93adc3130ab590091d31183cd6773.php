@@ -47,7 +47,7 @@ unset($__defined_vars, $__key, $__value); ?>
                   text-ink
                    bg-gray-100 rounded-xl dark:bg-gray-800">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($store['store_logo'])): ?>
-                            <img src="<?php echo e($store['store_logo']); ?>" alt="User" />
+                            <img src="<?php echo e(asset('storage/' . $store['store_logo'])); ?>" alt="User" />
                         <?php else: ?>
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                                 class="bi bi-shop" viewBox="0 0 16 16">
@@ -150,14 +150,14 @@ unset($__defined_vars, $__key, $__value); ?>
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(user()?->canCreateMultiStore()): ?>
         <a href="<?php echo e(route('merchant.create-store')); ?>"
-            class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/40 p-6 text-center transition hover:bg-primary-50 dark:border-primary-700 dark:bg-primary-900/10">
+            class="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-brand-300 bg-brand-50/40 p-6 text-center transition hover:bg-brand-50 dark:border-brand-700 dark:bg-brand-900/10">
 
             <div
-                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md">
+                class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-md">
                 +
             </div>
 
-            <h3 class="text-lg font-bold text-primary-700 dark:text-primary-400">
+            <h3 class="text-lg font-bold text-brand-700 dark:text-brand-400">
                 <?php echo e(__('buttons.create')); ?> <?php echo e(__('buttons.new')); ?>
 
             </h3>

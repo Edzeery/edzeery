@@ -1,10 +1,12 @@
 <?php
 
 return [
+    'add_brand' => 'Add brand',
     'activate' => 'Activate',
     'active' => 'Active',
     'all_statuses' => 'All statuses',
     'brand_active' => 'Active',
+    'create_details' => 'Add a new brand to your catalog',
     'brand_name' => 'Brand name',
     'brand_slug' => 'brand-slug',
     'created' => 'Created',

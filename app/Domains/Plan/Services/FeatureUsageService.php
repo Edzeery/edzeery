@@ -22,8 +22,13 @@ class FeatureUsageService
         $value = $subscription->plan->getFeatureValue($featureSlug);
 
         // unlimited
-        if ($value === 'unlimited' || $value === null) {
+        if ($value === 'unlimited') {
             return true;
+        }
+
+        // null or empty means feature not configured for this plan → deny
+        if ($value === null || $value === '') {
+            return false;
         }
 
         // boolean feature

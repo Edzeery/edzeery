@@ -304,7 +304,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                     {{-- Role + status badges --}}
                     <div class="flex items-center gap-2 flex-wrap">
                         <x-role-badge :role="$storeRole" />
-                        <x-status-badge domain="general" :status="$storeStatus" />
+                        <x-status-badge domain="general" :status="$storeStatus->value" />
                     </div>
 
                     {{-- Stats row --}}
@@ -331,7 +331,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                         <span class="truncate text-ink-muted">
                             {{ __('plans.max_stores') }}: <span class="font-semibold text-ink">{{ $store['plan_name'] ?? '—' }}</span>
                         </span>
-                        <x-status-badge domain="general" :status="$subStatus" />
+                        <x-status-badge domain="general" :status="$subStatus->value" />
                     </div>
 
                     {{-- Actions --}}
