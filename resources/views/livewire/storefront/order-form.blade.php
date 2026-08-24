@@ -65,7 +65,7 @@ $submitOrder = function () {
         'city_id'       => 'required_if:delivery_type,home|nullable|exists:cities,id',
         'address'       => 'required_if:delivery_type,home|nullable|string|max:1000',
         'delivery_type' => 'required|in:home,stopdesk',
-        'payment_method' => 'required|in:' . implode(',', $paymentMethods),
+        'payment_method' => 'required|in:' . implode(',', $this->paymentMethods),
         'notes'         => 'nullable|string|max:500',
         'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer',
     ])->validate();

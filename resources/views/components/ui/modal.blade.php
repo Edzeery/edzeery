@@ -3,18 +3,18 @@
     'showCloseButton' => true,
 ])
 
-<div x-data="{
+<div x-data='{
     open: @js($isOpen),
     init() {
-        this.$watch('open', value => {
+        this.$watch("open", value => {
             if (value) {
-                document.body.style.overflow = 'hidden';
+                document.body.style.overflow = "hidden";
             } else {
-                document.body.style.overflow = 'unset';
+                document.body.style.overflow = "unset";
             }
         });
     }
-}" x-show="open" x-cloak @keydown.escape.window="open = false"
+}' x-show="open" x-cloak @keydown.escape.window="open = false"
     class="modal fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-5"
     {{ $attributes->except('class') }}>
 

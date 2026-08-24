@@ -96,12 +96,12 @@ $openPreview = function (): void {
 };
 ?>
 
-<div x-data="{
-        previewOpen: @entangle('showPreview'),
-        activeTab: 'template',
+<div x-data='{
+        previewOpen: @entangle("showPreview"),
+        activeTab: "template",
         selectedTemplate: @js($this->template),
-        previewUrl: '{{ currentStore()?->isPubliclyActive() ? currentStore()->public_url : '#' }}'
-    }"
+        previewUrl: "{{ currentStore()?->isPubliclyActive() ? currentStore()->public_url : '#' }}"
+    }'
      x-init="$watch('$wire.template', v => selectedTemplate = v)"
      x-on:open-preview.window="previewOpen = true"
      x-on:close-preview.window="previewOpen = false">

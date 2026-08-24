@@ -96,7 +96,7 @@ use App\Models\Products\ProductVariant;
             <div class="flex items-center gap-1">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($count > 0): ?>
                     <button x-data
-                            x-on:click.prevent="if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__('storefront.clear_cart'))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__('storefront.clear_cart_confirm'))->toHtml() ?>)) $wire.clearCart()"
+                            x-on:click.prevent='if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__("storefront.clear_cart"))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__("storefront.clear_cart_confirm"))->toHtml() ?>)) $wire.clearCart()'
                             class="w-9 h-9 rounded-full flex items-center justify-center
                                    text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400
                                    hover:bg-red-50 dark:hover:bg-red-900/20
@@ -177,7 +177,7 @@ use App\Models\Products\ProductVariant;
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                     <button x-data
-                                            x-on:click.prevent="if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__('storefront.remove'))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__('messages.action_confirm_delete'))->toHtml() ?>)) $wire.removeItem('<?php echo e($item['variant_id']); ?>')"
+                                            x-on:click.prevent='if (await EdzSwal.confirmAction(<?php echo \Illuminate\Support\Js::from(__("storefront.remove"))->toHtml() ?>, <?php echo \Illuminate\Support\Js::from(__("messages.action_confirm_delete"))->toHtml() ?>)) $wire.removeItem("<?php echo e($item['variant_id']); ?>")'
                                             class="shrink-0 p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                             aria-label="<?php echo e(__('storefront.remove')); ?>">
                                         <ion-icon name="trash-outline" class="text-base"></ion-icon>

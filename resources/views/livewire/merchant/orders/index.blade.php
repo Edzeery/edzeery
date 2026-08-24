@@ -21,6 +21,7 @@ layout('components.layouts.store');
 
 state([
     'search' => '',
+    'showAdvancedFilters' => false,
     'filters' => [
         'number' => '',
         'customer' => '',
@@ -33,7 +34,6 @@ state([
         'date_from' => null,
         'date_to' => null,
     ],
-
     'orders' => [],
     'page' => 1,
     'visibleColumns' => [],
@@ -266,19 +266,7 @@ $toggleStatusFilter = function (string $statusId): void {
 };
 
 $toggleColumn = function (string $column): void {
-    $essential = $defaults; // الأعمدة التي لا يمكن إخفاؤها إطلاقاً
-
-    if (in_array($column, $essential)) {
-        $this->dispatch('swal', type: 'warning', title: __('This column cannot be hidden'));
-        return;
-    }
-
     if (in_array($column, $this->visibleColumns)) {
-        // امنع إزالة آخر عمود مرئي متبقٍ
-        if (count($this->visibleColumns) <= 1) {
-            $this->dispatch('swal', type: 'warning', title: __('At least one column must remain visible'));
-            return;
-        }
         $this->visibleColumns = array_values(array_diff($this->visibleColumns, [$column]));
     } else {
         $this->visibleColumns[] = $column;
@@ -632,16 +620,9 @@ $deleteOrder = function (string $orderId): void {
     $this->loadOrders();
     $this->dispatch('swal', type: 'success', title: __('Order deleted'));
 };
-
-$closeAllModals = function (): void {
-    $this->showCreateModal = false;
-    $this->showEditModal = false;
-    $this->showReassignModal = false;
-};
-
 ?>
 
-<div x-data="{ openFilter: null, openColToggle: false, showAdvancedFilters: false }">
+<div x-data="{ openFilter: null, openColToggle: false }">
     {{-- Page Header --}}
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <x-edz.page-header title="{{ __('merchant_panel.orders') }}" description="{{ __('Manage customer orders') }}">
@@ -679,13 +660,12 @@ $closeAllModals = function (): void {
                     {{ __('Columns') }}
                 </button>
                 <div x-show="openColToggle" x-transition
-                    class="absolute z-40 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-2 space-y-1 ">
+                    class="absolute z-40 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-2 space-y-1">
                     @foreach (['number' => '#', 'customer' => 'Customer', 'phone' => 'Phone', 'wilaya' => 'Wilaya', 'products' => 'Products', 'amount' => 'Amount', 'status' => 'Status', 'assigned_agent' => 'Agent', 'created_at' => 'Date', 'confirmation_attempts' => 'Attempts', 'last_contact' => 'Last Contact', 'weight' => 'Weight', 'shipment_type' => 'Shipment'] as $col => $label)
                         <label
                             class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary dark:hover:bg-ink-700 cursor-pointer text-sm">
                             <input type="checkbox" wire:click="toggleColumn('{{ $col }}')"
-                                {{ in_array($col, $this->visibleColumns) ? 'checked' : '' }}
-                                {{ in_array($col, ['number']) ? 'disabled' : '' }}
+                                {{ in_array($col, $this->visibleColumns) ? 'checked disabled' : '' }}
                                 class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ $label }}
                         </label>
@@ -694,7 +674,8 @@ $closeAllModals = function (): void {
             </div>
 
             {{-- Advanced Filters Toggle --}}
-            <button @click="showAdvancedFilters = !showAdvancedFilters" class="edz-btn edz-btn--ghost edz-btn--sm">
+            <button wire:click="$set('showAdvancedFilters', !$get('showAdvancedFilters'))"
+                class="edz-btn edz-btn--ghost edz-btn--sm">
                 <x-edz.icon name="adjustments" class="w-4 h-4" />
                 {{ __('Filters') }}
                 @if (array_filter($this->filters))
@@ -705,7 +686,7 @@ $closeAllModals = function (): void {
         </div>
 
         {{-- Advanced Filters (collapsible) --}}
-        <div x-show="showAdvancedFilters" x-transition class="mt-3 pt-3 border-t border-surface-border">
+        <div x-show="$get('showAdvancedFilters')" x-transition class="mt-3 pt-3 border-t border-surface-border">
             <div class="flex flex-wrap items-center gap-3">
 
                 {{-- Status Multi-select --}}
@@ -782,59 +763,64 @@ $closeAllModals = function (): void {
                             <thead class="bg-secondary">
                                 <tr>
                                     @if (in_array('number', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">#
-                                        </th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.number') }}</th>
                                     @endif
                                     @if (in_array('customer', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Customer</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.customer') }}</th>
                                     @endif
                                     @if (in_array('phone', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Phone</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.phone') }}</th>
                                     @endif
                                     @if (in_array('wilaya', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Wilaya</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.state') }}</th>
                                     @endif
                                     @if (in_array('products', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Products</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.products') }}</th>
                                     @endif
                                     @if (in_array('amount', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Amount</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.amount') }}</th>
                                     @endif
                                     @if (in_array('status', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Status</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.status') }}</th>
                                     @endif
                                     @if (in_array('assigned_agent', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Agent</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.agent') }}</th>
                                     @endif
                                     @if (in_array('created_at', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Date</th>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.date') }}</th>
                                     @endif
                                     @if (in_array('confirmation_attempts', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Attempts</th>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.attempts') }}</th>
                                     @endif
                                     @if (in_array('last_contact', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Last Contact</th>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.last_contact') }}</th>
                                     @endif
                                     @if (in_array('weight', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Weight</th>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.weight') }}</th>
                                     @endif
                                     @if (in_array('shipment_type', $this->visibleColumns))
-                                        <th class="px-4 py-3 text-left text-xs font-semibold text-ink-muted uppercase">
-                                            Shipment</th>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.shipment') }}</th>
                                     @endif
-                                    <th class="px-4 py-3 text-right text-xs font-semibold text-ink-muted uppercase">
-                                        Actions</th>
+                                    <th class="px-4 py-3 text-end text-xs font-semibold text-ink-muted uppercase">
+                                        {{ __('merchant_panel.actions') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-surface-100 dark:divide-ink-800">
@@ -882,39 +868,30 @@ $closeAllModals = function (): void {
                                         @endif
                                         @if (in_array('status', $this->visibleColumns))
                                             <td class="px-4 py-3">
-                                                <div class="relative" x-data="{
-                                                    open: false,
-                                                    dropdownStyle: '',
-                                                    positionDropdown() {
-                                                        const rect = this.$refs.statusBtn.getBoundingClientRect();
-                                                        this.dropdownStyle = `position: fixed; top: ${rect.bottom + 4}px; left: ${rect.left}px; min-width: ${rect.width}px;`;
-                                                    }
-                                                }"
+                                                <div class="relative" x-data="{ open: false }"
                                                     @click.away="open = false">
-                                                    <button x-ref="statusBtn"
-                                                        @click="open = !open; if (open) positionDropdown()"
+                                                    <button @click="open = !open"
                                                         class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80"
                                                         style="background: {{ match ($order['status']['color'] ?? 'gray') {'success' => '#dcfce7','info' => '#dbeafe','warning' => '#fef3c7','danger' => '#fecaca',default => '#f3f4f6'} }}; color: {{ match ($order['status']['color'] ?? 'gray') {'success' => '#166534','info' => '#1e40af','warning' => '#92400e','danger' => '#991b1b',default => '#374151'} }};">
                                                         {{ $order['status']['label'] ?? '—' }}
+
                                                         <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                     </button>
-                                                    <template x-teleport="body">
-                                                        <div x-show="open" x-transition x-bind:style="dropdownStyle"
-                                                            @click.away="open = false"
-                                                            class="fixed z-50 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto">
-                                                            @foreach ($this->allStatuses as $s)
-                                                                @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
-                                                                    <button
-                                                                        wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                        @click="open = false"
-                                                                        class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                                                        <span class="w-2 h-2 rounded-full shrink-0"
-                                                                            style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
-                                                                        {{ $s['label'] }}
-                                                                    </button>
-                                                                @endif
-                                                            @endforeach
-                                                        </div>
+                                                    <div x-show="open" x-transition
+                                                        class="absolute z-50 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto">
+                                                        @foreach ($this->allStatuses as $s)
+                                                            @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
+                                                                <button
+                                                                    wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
+                                                                    @click="open = false"
+                                                                    class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
+                                                                    <span class="w-2 h-2 rounded-full shrink-0"
+                                                                        style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
+                                                                    {{ $s['label'] }}
+                                                                </button>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
                                                 </div>
                                             </td>
                                         @endif
@@ -951,18 +928,19 @@ $closeAllModals = function (): void {
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex items-center justify-end gap-1">
                                                 <button wire:click="toggleDetail('{{ $orderId }}')"
-                                                    @click="expanded = !expanded"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    x-data="{ expanded: {{ $this->getExpandIcon($orderId) === 'chevron-up' ? 'true' : 'false' }} }"
-                                                    x-bind:class="{ 'text-brand-500': expanded }"
-                                                    title="Details">
-                                                    <x-edz.icon name="chevron-down" class="w-4 h-4" x-show="!expanded" />
-                                                    <x-edz.icon name="chevron-up" class="w-4 h-4" x-show="expanded" />
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs" title="Details"
+                                                    :class="$this->getExpandIcon('{{ $orderId }}') === 'chevron-up' ?
+                                                                                                            'text-brand-500' : ''">
+                                                    {{-- <x-edz.icon :name="$this->getExpandIcon('{{ $orderId }}')" class="w-4 h-4" /> --}}
+
+                                                    <x-status-icon domain="general" status="expanded" set="bi" class="w-4 h-4" />
+
                                                 </button>
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button wire:click="openEditModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs" title="Edit">
                                                         <x-edz.icon name="edit" class="w-4 h-4" />
+
                                                     </button>
                                                     <button wire:click="openReassignModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs" title="Reassign">
@@ -973,7 +951,7 @@ $closeAllModals = function (): void {
                                                     <button
                                                         class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700"
                                                         x-data
-                                                        x-on:click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($order['number'] ?? '') }}')) $wire.deleteOrder('{{ $orderId }}')"
+                                                        x-on:click.prevent="EdzSwal.confirmDelete(() => { $wire.deleteOrder('{{ $orderId }}') })"
                                                         title="Delete">
                                                         <x-edz.icon name="trash" class="w-4 h-4" />
                                                     </button>
@@ -1157,7 +1135,7 @@ $closeAllModals = function (): void {
                         </div>
                         <div>
                             <label class="edz-label">Wilaya</label>
-                            <select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
+                            <select wire:model="form.state_id" wire:change="$loadCities($event.target.value)"
                                 class="edz-input text-sm">
                                 <option value="">—</option>
                                 @foreach ($this->allStates as $st)
@@ -1265,7 +1243,7 @@ $closeAllModals = function (): void {
 
     {{-- Reassign Modal --}}
     @if ($showReassignModal)
-        <x-edz.modal :isOpen="true" wire:key="order-reassign-modal">
+        <x-edz.modal :isOpen="true" wire:key="order-reassign-{{ now()->timestamp }}">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-bold text-ink">{{ __('Reassign Order') }}</h3>
                 <div>

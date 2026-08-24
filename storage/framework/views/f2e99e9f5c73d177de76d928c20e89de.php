@@ -13,6 +13,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $search;
 
+    public $showAdvancedFilters;
+
     public $filters;
 
     public $orders;
@@ -233,13 +235,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('deleteOrder'))->execute(...$arguments);
-    }
-
-    public function closeAllModals(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('closeAllModals'))->execute(...$arguments);
     }
 
     public function updated($name)

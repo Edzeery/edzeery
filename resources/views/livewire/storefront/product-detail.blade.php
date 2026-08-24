@@ -246,8 +246,8 @@ $decrementQuantity = function (): void {
                 </div>
 
                 {{-- Info --}}
-                <div class="flex flex-col"
-                     x-data="productInfo({!! json_encode($__variantPayload) !!}, @js(__('storefront.low_stock', ['count' => ':count'])), @js(__('storefront.in_stock')), @js(__('storefront.out_of_stock')), @js(__('storefront.out_of_stock_short')), @js(__('storefront.add_to_cart')))">
+<div class="flex flex-col"
+                      x-data='productInfo({!! json_encode($__variantPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}, @js(__("storefront.low_stock", ["count" => ":count"])), @js(__("storefront.in_stock")), @js(__("storefront.out_of_stock")), @js(__("storefront.out_of_stock_short")), @js(__("storefront.add_to_cart")))'>
                     @if($this->product->brand)
                         <span class="text-sm font-semibold store-text-primary uppercase tracking-wider mb-2">{{ $this->product->brand->name }}</span>
                     @endif

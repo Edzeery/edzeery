@@ -42,6 +42,11 @@ state([
 mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
     $this->loadData();
+    
+    // Handle product search on model update
+    $this->productSearchUpdated = function (): void {
+        $this->searchAssignProducts();
+    };
 });
 
 $loadData = function (): void {
@@ -369,7 +374,7 @@ $removeAssignment = function (string $assignmentId): void {
                         </thead>
                         <tbody>
                             @foreach($shifts as $shift)
-                                <tr>
+                                <tr wire:key="shift-{{ $shift['id'] }}">
                                     <td class="font-medium text-ink">
                                         {{ $shift['membership']['user']['name'] ?? '—' }}
                                     </td>
@@ -381,12 +386,9 @@ $removeAssignment = function (string $assignmentId): void {
                                     </td>
                                     <td class="text-xs">
                                         @if(!empty($shift['days_of_week']))
-                                            @php
-                                                $dayLabels = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'];
-                                            @endphp
                                             <span class="inline-flex flex-wrap gap-1">
                                                 @foreach($shift['days_of_week'] as $day)
-                                                    <span class="edz-badge edz-badge--neutral">{{ $dayLabels[$day] ?? $day }}</span>
+                                                    <span class="edz-badge edz-badge--neutral">{{ $DAYS_OF_WEEK[$day] ?? $day }}</span>
                                                 @endforeach
                                             </span>
                                         @else
@@ -406,11 +408,11 @@ $removeAssignment = function (string $assignmentId): void {
                                                     class="edz-btn edz-btn--ghost edz-btn--sm">
                                                 <x-edz.icon name="edit" class="w-4 h-4" />
                                             </button>
-                                            <button type="button" aria-label="{{ __('merchant_panel.delete_shift') }}"
+<button type="button" aria-label="{{ __('merchant_panel.delete_shift') }}"
                                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                                     x-data
-                                                    x-on:click="if (await EdzSwal.confirmAction(@js(__('merchant_panel.delete_shift')), @js(__('merchant_panel.confirm_delete_shift')))) $wire.deleteShift('{{ $shift['id'] }}')">
-                                                <x-edz.icon name="x-mark" class="w-4 h-4" />
+                                                    x-on:click='if (await EdzSwal.confirmAction(addslashes(__("merchant_panel.delete_shift")), addslashes(__("merchant_panel.confirm_delete_shift")))) $wire.deleteShift("{{ $shift['id'] }}")'>
+                                                    <x-edz.icon name="x-mark" class="w-4 h-4" />
                                             </button>
                                         </div>
                                     </td>
@@ -452,8 +454,8 @@ $removeAssignment = function (string $assignmentId): void {
                 @foreach($grouped as $memberId => $items)
                     @php
                         $agentName = $items->first()['membership']['user']['name'] ?? '—';
-                    @endphp
-                    <div class="edz-card overflow-hidden">
+                    @endphp>
+                    <div class="edz-card overflow-hidden" wire:key="group-{{ $memberId }}">
                         <div class="bg-surface-secondary border-b border-surface-border px-4 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <div class="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
@@ -469,7 +471,7 @@ $removeAssignment = function (string $assignmentId): void {
                         </div>
                         <div class="divide-y divide-surface-border">
                             @foreach($items as $a)
-                                <div class="px-4 py-3 flex items-center justify-between hover:bg-surface-secondary">
+                                <div class="px-4 py-3 flex items-center justify-between hover:bg-surface-secondary" wire:key="assign-{{ $a['id'] }}">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 rounded-lg bg-surface-secondary flex items-center justify-center">
                                             <x-edz.icon name="package" class="w-4 h-4 text-ink-muted" />
@@ -479,7 +481,7 @@ $removeAssignment = function (string $assignmentId): void {
                                     <button type="button"
                                             class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                             x-data
-                                            x-on:click="if (await EdzSwal.confirmAction(@js(__('merchant_panel.remove_assignment')), @js(__('merchant_panel.confirm_delete_assignment')))) $wire.removeAssignment('{{ $a['id'] }}')">
+                                            x-on:click='if (await EdzSwal.confirmAction(addslashes(__("merchant_panel.remove_assignment")), addslashes(__("merchant_panel.confirm_delete_assignment")))) $wire.removeAssignment("{{ $a['id'] }}")'>
                                         <x-edz.icon name="x-mark" class="w-4 h-4" />
                                     </button>
                                 </div>
@@ -555,7 +557,7 @@ $removeAssignment = function (string $assignmentId): void {
                     <div class="edz-field">
                         <span class="edz-field__label">{{ __('merchant_panel.days_of_week') }}</span>
                         <div class="flex flex-wrap gap-2">
-                            @foreach([1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'] as $dayNum => $dayLabel)
+                            @foreach($DAYS_OF_WEEK as $dayNum => $dayLabel)
                                 <button type="button" wire:click="toggleShiftDay({{ $dayNum }})"
                                         class="cursor-pointer {{ in_array($dayNum, $shiftForm['days_of_week'] ?? []) ? 'edz-badge edz-badge--brand' : 'edz-badge edz-badge--neutral' }}">
                                     {{ $dayLabel }}
@@ -611,7 +613,6 @@ $removeAssignment = function (string $assignmentId): void {
                         <label class="edz-field__label" for="assign-search">{{ __('merchant_panel.search_products') }}</label>
                         <div class="relative">
                             <input type="text" id="assign-search" wire:model.live.debounce.300ms="productSearch"
-                                   wire:keyup.debounce.300ms="searchAssignProducts"
                                    placeholder="{{ __('merchant_panel.type_product_name') }}"
                                    class="edz-input ps-9">
                             <x-edz.icon name="arrow-right" class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />

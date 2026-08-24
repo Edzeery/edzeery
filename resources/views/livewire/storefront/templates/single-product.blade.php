@@ -109,49 +109,39 @@ $addToCart = function (): void {
                         <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                             {{ $this->product->short_description ?? Str::limit($this->product->description, 200) }}
                         </p>
-@endif
+                    @endif
 
-                    <div x-data="{
-                            selectedVariantId: @js($this->product->variants->first()?->id),
-                            variants: @js($this->product->variants->map(fn($v) => ['id' => $v->id, 'name' => $v->name, 'price' => (float) $v->price, 'compare_price' => (float) ($v->compare_price ?? 0), 'stock' => $v->stock, 'low_stock_threshold' => $v->low_stock_threshold]),
-                            getVariant(id) { return this.variants.find(v => v.id === id); },
-                            getVariantPrice(v) { return v ? (float) v.price : 0; },
-                            getVariantCompare(v) { return v ? (float) (v.compare_price ?? 0) : 0; },
-                            getVariantStock(v) { return v ? v.stock : 0; },
-                            getVariantLowStockThreshold(v) { return v ? v.low_stock_threshold : 0; },
-                            getStockStatus(v) {
-                                if (!v) return 'in';
-                                if (v.stock <= 0) return 'out';
-                                if (v.stock > 0 && v.stock <= v.low_stock_threshold) return 'low';
-                                return 'in';
-                            },
-                            getStockText(v) {
-                                const status = this.getStockStatus(v);
-                                if (status === 'low') return '@php echo e(__(\'storefront.low_stock\', [\'count\' => 1])); @endphp'.replace('1', v.stock);
-                                if (status === 'out') return '@php echo e(__(\'storefront.out_of_stock\')); @endphp';
-                                return '@php echo e(__(\'storefront.in_stock\')); @endphp';
-                            },
-                            getStockClass(status) {
-                                return status === 'out' ? 'text-red-500 dark:text-red-400' :
-                                       status === 'low' ? 'text-amber-600 dark:text-amber-400' :
-                                       'text-emerald-600 dark:text-emerald-400';
-                            }
-                        }"
-                        x-init="selectedVariantId = @js($this->product->variants->first()?->id)">
+                    @php
+                        $_variant = $this->selectedVariant ?? $this->product->variants->first();
+                        $_heroPrice = (float) ($_variant?->price ?? $this->product->price);
+                        $_heroCompare = (float) ($_variant?->compare_price ?? 0);
+                        $_heroShowCompare = $_heroCompare > 0 && $_heroCompare > $_heroPrice;
+                        $_heroPct = $_heroShowCompare ? (int) round((1 - $_heroPrice / $_heroCompare) * 100) : 0;
+                    @endphp
+                    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
+                        <span class="text-2xl sm:text-3xl lg:text-4xl font-bold store-text-primary">{{ currency($_heroPrice) }}</span>
+                        @if($_heroShowCompare)
+                            <span class="text-lg text-gray-400 dark:text-gray-500 line-through">{{ currency($_heroCompare) }}</span>
+                            <span class="text-sm font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full">-{{ $_heroPct }}%</span>
+                        @endif
+                    </div>
 
-                    {{-- Price display (reactive via Alpine) --}}
-                    <template x-if="getVariant(getVariant(selectedVariantId))">
-                        <div class="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2">
-                            <span class="text-2xl sm:text-3xl lg:text-4xl font-bold store-text-primary" x-text="currency(getVariantPrice(getVariant(selectedVariantId)))"></span>
-                            <template x-if="getVariantCompare(getVariant(selectedVariantId)) > 0 && getVariantCompare(getVariant(selectedVariantId)) > getVariantPrice(getVariant(selectedVariantId))">
-                                <span class="text-lg text-gray-400 dark:text-gray-500 line-through" x-text="currency(getVariantCompare(getVariant(selectedVariantId)))"></span>
-                                <span class="text-sm font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-0.5 rounded-full" x-text="'-' + Math.round((1 - getVariantPrice(getVariant(selectedVariantId)) / getVariantCompare(getVariant(selectedVariantId))) * 100) + '%'"></span>
-                            </template>
-                        </div>
-
-                        {{-- Stock status --}}
-                        <p class="mb-6 text-sm font-medium" :class="getStockClass(getStockStatus(getVariant(selectedVariantId)))" x-text="getStockText(getVariant(selectedVariantId))"></p>
-                    </template>
+                    {{-- Stock status --}}
+                    @if($_variant)
+                        <p class="mb-6 text-sm font-medium {{ match ($_variant->stockStatus()) {
+                            'out' => 'text-red-500 dark:text-red-400',
+                            'low' => 'text-amber-600 dark:text-amber-400',
+                            default => 'text-emerald-600 dark:text-emerald-400',
+                        } }}">
+                            @if($_variant->stockStatus() === 'low')
+                                {{ __('storefront.low_stock', ['count' => $_variant->stock]) }}
+                            @elseif($_variant->stockStatus() === 'out')
+                                {{ __('storefront.out_of_stock') }}
+                            @else
+                                {{ __('storefront.in_stock') }}
+                            @endif
+                        </p>
+                    @endif
 
                     {{-- Variant selector --}}
                     @if($this->product->variants->count() > 1)
@@ -161,11 +151,11 @@ $addToCart = function (): void {
                                 @foreach($this->product->variants as $variant)
                                     <button
                                         type="button"
-                                        @click="selectedVariantId = '{{ $variant->id }}'; $wire.selectVariant('{{ $variant->id }}')"
-                                        :class="selectedVariantId === '{{ $variant->id }}'
-                                            ? 'store-border-primary store-bg-primary-soft store-text-primary'
-                                            : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'"
-                                        class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer"
+                                        wire:click="selectVariant('{{ $variant->id }}')"
+                                        class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer
+                                            {{ $this->selectedVariant?->id === $variant->id
+                                                ? 'store-border-primary store-bg-primary-soft store-text-primary'
+                                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300' }}"
                                     >
                                         {{ $variant->name }}
                                     </button>
@@ -175,11 +165,13 @@ $addToCart = function (): void {
                             <button
                                 type="button"
                                 wire:click="addToCart"
-                                :disabled="getStockStatus(getVariant(selectedVariantId)) === 'out'"
+                                @if($this->selectedVariant?->isOutOfStock())
+                                    disabled
+                                @endif
                                 class="mt-4 w-full sm:w-auto store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 wire:loading.attr="disabled"
                             >
-<x-edz.icon name="cart" class="mr-2 w-5 h-5"></x-edz.icon>
+                                <ion-icon name="cart-outline" class="mr-2"></ion-icon>
                                 {{ __('storefront.add_to_cart') }}
                             </button>
                         </div>
@@ -187,11 +179,13 @@ $addToCart = function (): void {
                         <button
                             type="button"
                             wire:click="addToCart"
-                            :disabled="getStockStatus(getVariant(selectedVariantId)) === 'out'"
+                            @if($this->selectedVariant?->isOutOfStock())
+                                disabled
+                            @endif
                             class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
                         >
-                            <x-edz.icon name="cart" class="mr-2 w-5 h-5"></x-edz.icon>
+                            <ion-icon name="cart-outline" class="mr-2"></ion-icon>
                             {{ __('storefront.add_to_cart') }}
                         </button>
                     @endif
@@ -215,7 +209,7 @@ $addToCart = function (): void {
                     {{-- Featured Badge --}}
                     @if($this->product->is_featured)
                         <span class="absolute top-4 {{ isRTL() ? 'end-4' : 'start-4' }} z-10 flex items-center gap-1.5 store-bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                            <x-edz.icon name="star" class="text-sm w-4 h-4"></x-edz.icon>
+                            <ion-icon name="star" class="text-sm"></ion-icon>
                             {{ __('storefront.featured') }}
                         </span>
                     @endif
@@ -262,7 +256,7 @@ $addToCart = function (): void {
                 @foreach(($sp['items'] ?? []) as $item)
                     <div class="flex flex-col items-center">
                         <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
-                            <x-edz.icon :name="$item['icon'] ?? 'check'" class="text-2xl w-8 h-8 store-text-primary"></x-edz.icon>
+                            <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
                         </div>
                         <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
@@ -288,7 +282,7 @@ $addToCart = function (): void {
                             class="w-full px-6 py-4 text-start flex items-center justify-between"
                         >
                             <span class="font-medium text-gray-900 dark:text-white">{{ $faqItem['question'] ?? '' }}</span>
-                            <x-edz.icon :name="openFaq === {{ $loop->index }} ? 'chevron-up' : 'chevron-down'" class="text-gray-500 dark:text-gray-400 w-5 h-5"></x-edz.icon>
+                            <ion-icon :name="openFaq === {{ $loop->index }} ? 'chevron-up-outline' : 'chevron-down-outline'" class="text-gray-500 dark:text-gray-400"></ion-icon>
                         </button>
                         <div x-show="openFaq === {{ $loop->index }}" x-transition class="px-6 pb-4">
                             <p class="text-gray-600 dark:text-gray-300">{{ $faqItem['answer'] ?? '' }}</p>
@@ -312,7 +306,7 @@ $addToCart = function (): void {
                 x-on:click.prevent="window.scrollTo({ top: 0, behavior: 'smooth' })"
                 class="inline-flex items-center gap-2 bg-white dark:bg-gray-100 font-bold py-3 px-8 rounded-lg hover:bg-white/90 dark:hover:bg-white transition text-lg store-text-primary"
             >
-                <x-edz.icon name="cart" class="w-5 h-5"></x-edz.icon>
+                <ion-icon name="cart-outline"></ion-icon>
                 {{ $cta['button_text'] ?? __('storefront.order_now') }}
             </a>
         </div>

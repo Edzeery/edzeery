@@ -153,7 +153,7 @@ $updateQty = function (string $variantId, int $qty) {
             <div class="flex items-center gap-1">
                 @if ($count > 0)
                     <button x-data
-                            x-on:click.prevent="if (await EdzSwal.confirmAction(@js(__('storefront.clear_cart')), @js(__('storefront.clear_cart_confirm')))) $wire.clearCart()"
+                            x-on:click.prevent='if (await EdzSwal.confirmAction(@js(__("storefront.clear_cart")), @js(__("storefront.clear_cart_confirm")))) $wire.clearCart()'
                             class="w-9 h-9 rounded-full flex items-center justify-center
                                    text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400
                                    hover:bg-red-50 dark:hover:bg-red-900/20
@@ -229,7 +229,7 @@ $updateQty = function (string $variantId, int $qty) {
                                         @endif
                                     </div>
                                     <button x-data
-                                            x-on:click.prevent="if (await EdzSwal.confirmAction(@js(__('storefront.remove')), @js(__('messages.action_confirm_delete')))) $wire.removeItem('{{ $item['variant_id'] }}')"
+                                            x-on:click.prevent='if (await EdzSwal.confirmAction(@js(__("storefront.remove")), @js(__("messages.action_confirm_delete")))) $wire.removeItem("{{ $item['variant_id'] }}")'
                                             class="shrink-0 p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                             aria-label="{{ __('storefront.remove') }}">
                                         <ion-icon name="trash-outline" class="text-base"></ion-icon>

@@ -8,22 +8,22 @@
     $sizeClass = "edz-modal__panel--{$size}";
 @endphp
 
-<div x-data="{
+<div x-data='{
     open: @js($isOpen),
     init() {
-        this.$watch('open', value => {
+        this.$watch("open", value => {
             if (value) {
-                document.body.style.overflow = 'hidden';
+                document.body.style.overflow = "hidden";
             } else {
-                document.body.style.overflow = 'unset';
-                this.$dispatch('edz-modal-closed');
-                if (this.$wire && typeof this.$wire.closeAllModals === 'function') {
+                document.body.style.overflow = "unset";
+                this.$dispatch("edz-modal-closed");
+                if (this.$wire && typeof this.$wire.closeAllModals === "function") {
                     this.$wire.closeAllModals();
                 }
             }
         });
     }
-}" x-show="open" x-cloak @keydown.escape.window="open = false"
+}' x-show="open" x-cloak @keydown.escape.window="open = false"
     class="edz-modal"
     {{ $attributes->except('class') }}>
 

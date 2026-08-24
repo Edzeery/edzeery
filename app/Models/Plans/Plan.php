@@ -32,7 +32,8 @@ class Plan extends Model
     public function features()
     {
         return $this->belongsToMany(PlanFeature::class, 'plan_plan_feature')
-            ->withPivot('value')
+            ->using(PlanPlanFeature::class)
+            ->withPivot('value', 'charges')
             ->withTimestamps();
     }
 
