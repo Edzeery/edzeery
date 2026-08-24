@@ -269,4 +269,13 @@ return [
     'payment_submitted' => 'تم إرسال الدفعة للمراجعة',
     'invalid_payment_method' => 'طريقة دفع غير صالحة',
     'no_active_subscription' => 'لا يوجد اشتراك نشط',
+    'number' => 'الرقم',
+    'customer' => 'العميل',
+    'shipment' => 'الشحن',
+    'agent' => 'المندوب',
+    'date' => 'التاريخ',
+    'attempts' => ' المحاولات',
+    'last_contact' => 'آخر اتصال',
+    'weight' => 'الوزن',
+    'amount' => 'المبلغ',
 ];

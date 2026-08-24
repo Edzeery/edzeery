@@ -1,7 +1,6 @@
 import "./bootstrap";
 import "./swal.js";
 import "@iconify/iconify";
-import './ionicons/dist/ionicons.js';
 import ApexCharts from "apexcharts";
 
 // flatpickr

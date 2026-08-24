@@ -120,4 +120,7 @@ return [
     'your_cart_is_empty' => 'سلة التسوق فارغة',
     'your_order_number' => 'رقم طلبك هو',
     'your_store_link' => 'رابط متجرك',
+    'invalid_variant' => 'الخيار المحدد للمنتج غير صالح.',
+    'please_select_variant' => 'يرجى اختيار خيار متاح أولاً',
+    'quantity' => 'الكمية',
 ];

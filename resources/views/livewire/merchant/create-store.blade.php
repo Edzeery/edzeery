@@ -320,7 +320,7 @@ $createStore = function (): void {
                                             @if ($logo)
                                                 <div class="relative w-full h-full flex items-center justify-center p-2">
                                                     <img src="{{ $logo->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
-                                                    <button type="button" wire:click="$set('logo', null)"
+                                                     <button type="button" x-on:click="$wire.set('logo', null)"
                                                             class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600 transition">
                                                         <ion-icon name="close-outline" class="text-sm"></ion-icon>
                                                     </button>
@@ -345,7 +345,7 @@ $createStore = function (): void {
                                             @if ($cover)
                                                 <div class="relative w-full h-full flex items-center justify-center p-2">
                                                     <img src="{{ $cover->temporaryUrl() }}" class="max-h-full max-w-full object-cover rounded-lg">
-                                                    <button type="button" wire:click="$set('cover', null)"
+                                                     <button type="button" x-on:click="$wire.set('cover', null)"
                                                             class="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600 transition">
                                                         <ion-icon name="close-outline" class="text-sm"></ion-icon>
                                                     </button>
@@ -547,7 +547,7 @@ $createStore = function (): void {
                                     <div class="flex flex-wrap gap-2">
                                         @foreach (['#000000', '#465fff', '#039855', '#d92d20', '#b54708', '#7a2e0e', '#6366f1', '#0ea5e9'] as $preset)
                                             <button type="button"
-                                                    wire:click="$set('primary_color', '{{ $preset }}')"
+                                                    x-on:click="$wire.set('primary_color', '{{ $preset }}')"
                                                     class="w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110
                                                            {{ $primary_color === $preset ? 'border-ink dark:border-white shadow-md scale-110' : 'border-transparent' }}"
                                                     style="background-color: {{ $preset }}">
@@ -562,7 +562,7 @@ $createStore = function (): void {
                                     <div class="grid grid-cols-3 gap-3">
                                         @foreach (['Cairo' => __('stores.font_cairo'), 'Inter' => __('stores.font_inter'), 'Tajawal' => __('stores.font_tajawal')] as $fontKey => $fontLabel)
                                             <button type="button"
-                                                    wire:click="$set('font_family', '{{ $fontKey }}')"
+                                                    x-on:click="$wire.set('font_family', '{{ $fontKey }}')"
                                                     class="p-3 rounded-xl border-2 text-center transition-all duration-200
                                                            {{ $font_family === $fontKey
                                                               ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-sm'
@@ -630,7 +630,7 @@ $createStore = function (): void {
                                 <div class="space-y-3">
                                     @foreach ($templates as $tplKey => $tpl)
                                         <button type="button"
-                                                wire:click="$set('landing_template', '{{ $tplKey }}')"
+                                                x-on:click="$wire.set('landing_template', '{{ $tplKey }}')"
                                                 class="w-full flex items-start gap-4 p-4 rounded-xl border-2 text-start transition-all duration-200
                                                        @if ($landing_template === $tplKey)
                                                            border-brand-500 bg-brand-50/50 dark:bg-brand-900/15 shadow-sm ring-1 ring-brand-500/20

@@ -119,4 +119,8 @@ return [
     'your_cart_is_empty' => 'Your cart is empty',
     'your_order_number' => 'Your order number is',
     'your_store_link' => 'Your Store Link',
+    'invalid_variant' => 'Invalid product variant selected.',
+    'please_select_variant' => 'Please select an available option first',
+    'quantity' => 'Quantity',
+    'you_may_also_like' => 'You May Also Like',
 ];

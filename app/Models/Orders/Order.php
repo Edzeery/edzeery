@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
@@ -167,9 +168,9 @@ class Order extends Model
     {
         $lastNumber = self::withTrashed()
             ->where('store_id', $this->store_id)
-            ->max('number');
+            ->max(DB::raw('CAST(number AS UNSIGNED)'));
 
-        $nextNumber = $lastNumber ? (int) $lastNumber + 1 : 1;
+        $nextNumber = $lastNumber ? ((int) $lastNumber + 1) : 1;
 
         return str_pad((string) $nextNumber, 5, '0', STR_PAD_LEFT);
     }

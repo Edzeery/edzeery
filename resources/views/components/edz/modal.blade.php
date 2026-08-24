@@ -17,9 +17,6 @@
             } else {
                 document.body.style.overflow = "unset";
                 this.$dispatch("edz-modal-closed");
-                if (this.$wire && typeof this.$wire.closeAllModals === "function") {
-                    this.$wire.closeAllModals();
-                }
             }
         });
     }

@@ -121,4 +121,7 @@ return [
     'your_cart_is_empty' => 'Votre panier est vide',
     'your_order_number' => 'Votre numéro de commande est',
     'your_store_link' => 'Lien de votre boutique',
+    'invalid_variant' => 'Variante de produit invalide sélectionnée.',
+    'please_select_variant' => 'Veuillez d\'abord sélectionner une option disponible',
+    'quantity' => 'Quantité',
 ];

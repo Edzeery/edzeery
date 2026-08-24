@@ -97,9 +97,9 @@ $addToCart = function (string $variantId) {
                                  border border-white/30
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
-                        <ion-icon name="search-outline"
+                        <x-edz.icon name="magnifying-glass"
                             class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none"></ion-icon>
+                                text-white/70 text-xl pointer-events-none" />
                     </div>
                 </div>
             </div>
@@ -123,15 +123,15 @@ $addToCart = function (string $variantId) {
                 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
                     {{ $brandsContent['title'] ?? __('storefront.collections') }}</h2>
                 <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    <button wire:click="$set('brand_id', '')"
+                    <button x-on:click="$wire.set('brand_id', '')"
                         class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
                         {{ empty($this->brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                         {{ __('storefront.all_collections') }}
                     </button>
                     @foreach ($brands as $brand)
-                        <button wire:click="$set('brand_id', '{{ $brand->id }}')"
+                        <button x-on:click="$wire.set('brand_id', '{{ $brand->id }}')"
                             class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
-                            {{ $this->brand_id === $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
+                            {{ (string) $this->brand_id === (string) $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                             {{ $brand->name }}
                             <span class="ml-1 text-xs opacity-70">({{ $brand->products_count }})</span>
                         </button>
@@ -205,12 +205,12 @@ $addToCart = function (string $variantId) {
                                             wire:loading.attr="disabled" wire:loading.class="opacity-50"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}">
-                                            <ion-icon name="cart-outline"></ion-icon>
+                                            <x-edz.icon name="shopping-cart" />
                                         </button>
                                     @elseif ($product->variants->count() > 1)
                                         <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
-                                            <ion-icon name="options-outline"></ion-icon>
+                                            <x-edz.icon name="adjustments-horizontal" />
                                             {{ __('storefront.view_options') }}
                                         </a>
                                     @endif
@@ -225,7 +225,7 @@ $addToCart = function (string $variantId) {
                 </div>
             @else
                 <div class="text-center py-20">
-                    <ion-icon name="bag-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
+                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
                     <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
                 </div>
             @endif

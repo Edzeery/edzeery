@@ -198,7 +198,7 @@ $save = function (): void {
                                     @if ($logo)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $logo->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
-                                            <button type="button" wire:click="$set('logo', null)"
+                                            <button type="button" x-on:click="$wire.set('logo', null)"
                                                     class="absolute top-1 right-1 w-5 h-5 rounded-full bg-danger-500 text-white flex items-center justify-center text-xs hover:bg-danger-600 transition">
                                                 <x-edz.icon name="x" class="w-3 h-3" />
                                             </button>
@@ -227,7 +227,7 @@ $save = function (): void {
                                     @if ($cover)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $cover->temporaryUrl() }}" class="max-h-full max-w-full object-cover rounded-lg">
-                                            <button type="button" wire:click="$set('cover', null)"
+                                            <button type="button" x-on:click="$wire.set('cover', null)"
                                                     class="absolute top-1 right-1 w-5 h-5 rounded-full bg-danger-500 text-white flex items-center justify-center text-xs hover:bg-danger-600 transition">
                                                 <x-edz.icon name="x" class="w-3 h-3" />
                                             </button>
@@ -256,7 +256,7 @@ $save = function (): void {
                                     @if ($favicon)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $favicon->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
-                                            <button type="button" wire:click="$set('favicon', null)"
+                                            <button type="button" x-on:click="$wire.set('favicon', null)"
                                                     class="absolute top-1 right-1 w-5 h-5 rounded-full bg-danger-500 text-white flex items-center justify-center text-xs hover:bg-danger-600 transition">
                                                 <x-edz.icon name="x" class="w-3 h-3" />
                                             </button>

@@ -143,7 +143,7 @@ $decrementQuantity = function (): void {
                 <div x-data="productGallery()" class="space-y-4" dir="ltr">
                     @if($this->product->images->count())
                         {{-- Main Image --}}
-                        <div class="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group cursor-zoom-in"
+                        <div x-ref="mainGallery" class="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 group cursor-zoom-in"
                              @click="openLightbox()" role="region" aria-label="{{ __('storefront.product_images') ?? 'Product images' }}">
                             @foreach($this->product->images as $i => $img)
                                 <img
@@ -162,7 +162,7 @@ $decrementQuantity = function (): void {
                             {{-- Featured Badge --}}
                             @if($this->product->is_featured)
                                 <span class="absolute top-4 left-4 z-10 flex items-center gap-1.5 store-bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    <ion-icon name="star" class="text-sm"></ion-icon>
+                                    <x-edz.icon name="star" class="text-sm" />
                                     {{ __('storefront.featured') }}
                                 </span>
                             @endif
@@ -184,12 +184,12 @@ $decrementQuantity = function (): void {
                                 <button type="button" x-on:click.stop="prev()"
                                     class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-700 dark:text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center hover:bg-white dark:hover:bg-gray-900 z-10"
                                     aria-label="Previous image">
-                                    <ion-icon name="chevron-back" class="text-xl"></ion-icon>
+                                    <x-edz.icon name="chevron-left" class="text-xl" />
                                 </button>
                                 <button type="button" x-on:click.stop="next()"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm text-gray-700 dark:text-gray-200 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center hover:bg-white dark:hover:bg-gray-900 z-10"
                                     aria-label="Next image">
-                                    <ion-icon name="chevron-forward" class="text-xl"></ion-icon>
+                                    <x-edz.icon name="chevron-right" class="text-xl" />
                                 </button>
                             @endif
                         </div>
@@ -215,7 +215,7 @@ $decrementQuantity = function (): void {
                         <div class="aspect-square rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden relative">
                             @if($this->product->is_featured)
                                 <span class="absolute top-4 left-4 z-10 flex items-center gap-1.5 store-bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    <ion-icon name="star" class="text-sm"></ion-icon>
+                                    <x-edz.icon name="star" class="text-sm" />
                                     {{ __('storefront.featured') }}
                                 </span>
                             @endif
@@ -226,14 +226,14 @@ $decrementQuantity = function (): void {
                     {{-- Lightbox --}}
                     <div x-show="lightbox" x-transition.opacity class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center" @click.self="lightbox = false" @keydown.escape.window="lightbox = false" @keydown.left.window="if(lightbox) prev()" @keydown.right.window="if(lightbox) next()" style="display:none">
                         <button type="button" @click="lightbox = false" class="absolute top-4 right-4 text-white/70 hover:text-white transition" aria-label="Close">
-                            <ion-icon name="close" class="text-3xl"></ion-icon>
+                            <x-edz.icon name="x-mark" class="text-3xl" />
                         </button>
                         @if($this->product->images->count() > 1)
                             <button type="button" x-on:click="prev()" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" aria-label="Previous">
-                                <ion-icon name="chevron-back" class="text-2xl"></ion-icon>
+                                <x-edz.icon name="chevron-left" class="text-2xl" />
                             </button>
                             <button type="button" x-on:click="next()" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" aria-label="Next">
-                                <ion-icon name="chevron-forward" class="text-2xl"></ion-icon>
+                                <x-edz.icon name="chevron-right" class="text-2xl" />
                             </button>
                         @endif
                         @foreach($this->product->images as $i => $img)
@@ -331,7 +331,7 @@ $decrementQuantity = function (): void {
                                     :disabled="$wire.quantity <= 1"
                                     aria-label="Decrease quantity"
                                 >
-                                    <ion-icon name="remove" class="text-lg"></ion-icon>
+                                    <x-edz.icon name="minus" class="text-lg" />
                                 </button>
                                 <input
                                     type="number"
@@ -348,7 +348,7 @@ $decrementQuantity = function (): void {
                                     :disabled="activeVariant && $wire.quantity >= activeVariant.stock"
                                     aria-label="Increase quantity"
                                 >
-                                    <ion-icon name="add" class="text-lg"></ion-icon>
+                                    <x-edz.icon name="plus" class="text-lg" />
                                 </button>
                             </div>
                         </div>
@@ -365,7 +365,7 @@ $decrementQuantity = function (): void {
                         wire:loading.class="opacity-50"
                         wire:target="addToCart"
                     >
-                        <ion-icon name="cart-outline" class="text-xl"></ion-icon>
+                        <x-edz.icon name="shopping-cart" class="text-xl " />
                         <span x-text="isOutOfStock ? outOfStockShortLabel : addToCartLabel" wire:loading.remove wire:target="addToCart">{{ __('storefront.add_to_cart') }}</span>
                         <span wire:loading class="hidden" wire:target="addToCart">{{ __('storefront.placing') }}</span>
                     </button>
@@ -373,15 +373,15 @@ $decrementQuantity = function (): void {
                     {{-- Trust signals --}}
                     <div class="mt-10 pt-8 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4">
                         <div class="flex flex-col items-center text-center">
-                            <ion-icon name="shield-checkmark-outline" class="text-2xl store-text-primary mb-1"></ion-icon>
+                            <x-edz.icon name="shield-check" class="text-2xl store-text-primary mb-1" />
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.secure_payment') }}</span>
                         </div>
                         <div class="flex flex-col items-center text-center">
-                            <ion-icon name="car-outline" class="text-2xl store-text-primary mb-1"></ion-icon>
+                            <x-edz.icon name="truck" class="text-2xl store-text-primary mb-1" />
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.fast_delivery') }}</span>
                         </div>
                         <div class="flex flex-col items-center text-center">
-                            <ion-icon name="refresh-outline" class="text-2xl store-text-primary mb-1"></ion-icon>
+                            <x-edz.icon name="arrow-path" class="text-2xl store-text-primary mb-1" />
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('storefront.easy_returns') }}</span>
                         </div>
                     </div>
@@ -440,7 +440,7 @@ $decrementQuantity = function (): void {
 
                                         @if($rp->is_featured)
                                             <span class="absolute top-3 right-3 flex items-center gap-1 store-bg-primary text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                                <ion-icon name="star" class="text-xs"></ion-icon>
+                                                <x-edz.icon name="star" class="text-xs" />
                                                 {{ __('storefront.featured') }}
                                             </span>
                                         @endif
@@ -479,17 +479,17 @@ $decrementQuantity = function (): void {
                                                 wire:target="addRelatedToCart('{{ $__rpFirstVariant->id }}')"
                                                 class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm disabled:cursor-not-allowed"
                                                 title="{{ __('storefront.add_to_cart') }}">
-                                                <ion-icon name="cart-outline"></ion-icon>
+                                                <x-edz.icon name="shopping-cart" />
                                             </button>
                                         @elseif(! $__rpHasStock)
                                             <span class="bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm cursor-not-allowed"
                                                 title="{{ __('storefront.out_of_stock') }}">
-                                                <ion-icon name="cart-outline"></ion-icon>
+                                                <x-edz.icon name="shopping-cart" />
                                             </span>
                                         @else
                                             <a href="{{ $__rpUrl }}"
                                                 class="store-btn-primary text-white min-h-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
-                                                <ion-icon name="options-outline"></ion-icon>
+                                                <x-edz.icon name="adjustments-horizontal" />
                                                 {{ __('storefront.view_options') }}
                                             </a>
                                         @endif
@@ -503,7 +503,7 @@ $decrementQuantity = function (): void {
         </div>
     @else
         <div class="text-center py-20">
-            <ion-icon name="bag-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
+            <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
             <p class="text-gray-500 dark:text-gray-400 text-lg">{{ __('storefront.product_not_found') }}</p>
             <a href="/" class="mt-4 inline-block store-btn-primary text-white font-semibold py-2.5 px-6 rounded-lg transition">
                 {{ __('storefront.back_to_store') }}

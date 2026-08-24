@@ -50,13 +50,29 @@ class OrderItem extends Model
     protected static function booted(): void
     {
         static::deleted(function (OrderItem $item) {
+            if ($item->isForceDeleting()) {
+                return;
+            }
+
             if ($item->variant) {
                 \App\Services\InventoryService::apply(
                     variant: $item->variant,
                     quantity: $item->quantity,
-                    type: \App\Enums\Store\InventoryMovementType::ADJUSTMENT,
+                    type: \App\Enums\Store\InventoryMovementType::RELEASE,
                     source: $item->order,
-                    user: $item->order?->user
+                    user: auth()->user()
+                );
+            }
+        });
+
+        static::restored(function (OrderItem $item) {
+            if ($item->variant) {
+                \App\Services\InventoryService::apply(
+                    variant: $item->variant,
+                    quantity: $item->quantity,
+                    type: \App\Enums\Store\InventoryMovementType::RESERVE,
+                    source: $item->order,
+                    user: auth()->user()
                 );
             }
         });

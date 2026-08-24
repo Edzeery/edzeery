@@ -57,6 +57,7 @@ return [
         'archived' => ['variant' => 'gray',    'light' => 'text-gray-700 bg-gray-100',      'dark' => 'dark:text-gray-300 dark:bg-gray-800',        'hex' => '#9ca3af', 'icon' => 'archived'],
         'expand' => ['variant' => 'info',    'light' => 'text-blue-700 bg-blue-100',      'dark' => 'dark:text-blue-300 dark:bg-blue-900/40',     'hex' => '#2563eb', 'icon' => 'expand'],
         'collapse' => ['variant' => 'info',    'light' => 'text-blue-700 bg-blue-100',      'dark' => 'dark:text-blue-300 dark:bg-blue-900/40',     'hex' => '#2563eb', 'icon' => 'collapse'],
+        'backup' => ['variant' => 'gray',    'light' => 'text-blue-700 bg-blue-100',      'dark' => 'dark:text-blue-300 dark:bg-blue-900/40',     'hex' => '#2563eb', 'icon' => 'returned'],
         'default' => ['variant' => 'gray',    'light' => 'text-gray-700 bg-gray-100',      'dark' => 'dark:text-gray-300 dark:bg-gray-800',        'hex' => '#9ca3af', 'icon' => 'default'],
     ],
 
@@ -470,8 +471,8 @@ return [
         'confirmed_email' => ['icon' => 'verified'],
         'unconfirmed_email' => ['icon' => 'unverified'],
         'password_reset' => ['variant' => 'info', 'light' => 'text-blue-700 bg-blue-100', 'dark' => 'dark:text-blue-300 dark:bg-blue-900/40', 'hex' => '#2563eb', 'icon' => 'key'],
-        'expanded' => ['icon' => 'expand'],
-        'collapsed' => ['icon' => 'collapse'],
+        'expanded' => ['icon' => 'chevron-up'],
+        'collapsed' => ['icon' => 'chevron-down'], 
         'unknown' => ['icon' => 'default'],
     ],
 

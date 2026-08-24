@@ -171,7 +171,7 @@ $addToCart = function (): void {
                                 class="mt-4 w-full sm:w-auto store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 wire:loading.attr="disabled"
                             >
-                                <ion-icon name="cart-outline" class="mr-2"></ion-icon>
+                                <x-edz.icon name="shopping-cart" class="mr-2" />
                                 {{ __('storefront.add_to_cart') }}
                             </button>
                         </div>
@@ -185,7 +185,7 @@ $addToCart = function (): void {
                             class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             wire:loading.attr="disabled"
                         >
-                            <ion-icon name="cart-outline" class="mr-2"></ion-icon>
+                            <x-edz.icon name="shopping-cart" class="mr-2" />
                             {{ __('storefront.add_to_cart') }}
                         </button>
                     @endif
@@ -209,7 +209,7 @@ $addToCart = function (): void {
                     {{-- Featured Badge --}}
                     @if($this->product->is_featured)
                         <span class="absolute top-4 {{ isRTL() ? 'end-4' : 'start-4' }} z-10 flex items-center gap-1.5 store-bg-primary text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                            <ion-icon name="star" class="text-sm"></ion-icon>
+                            <x-edz.icon name="star" class="text-sm" />
                             {{ __('storefront.featured') }}
                         </span>
                     @endif
@@ -256,7 +256,7 @@ $addToCart = function (): void {
                 @foreach(($sp['items'] ?? []) as $item)
                     <div class="flex flex-col items-center">
                         <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
-                            <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
+                            <x-edz.icon name="{{ $item['icon'] ?? 'check' }}" class="text-2xl store-text-primary" />
                         </div>
                         <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
@@ -282,7 +282,7 @@ $addToCart = function (): void {
                             class="w-full px-6 py-4 text-start flex items-center justify-between"
                         >
                             <span class="font-medium text-gray-900 dark:text-white">{{ $faqItem['question'] ?? '' }}</span>
-                            <ion-icon :name="openFaq === {{ $loop->index }} ? 'chevron-up-outline' : 'chevron-down-outline'" class="text-gray-500 dark:text-gray-400"></ion-icon>
+                            <x-edz.icon :name="openFaq === {{ $loop->index }} ? 'chevron-up' : 'chevron-down'" class="text-gray-500 dark:text-gray-400" />
                         </button>
                         <div x-show="openFaq === {{ $loop->index }}" x-transition class="px-6 pb-4">
                             <p class="text-gray-600 dark:text-gray-300">{{ $faqItem['answer'] ?? '' }}</p>
@@ -306,7 +306,7 @@ $addToCart = function (): void {
                 x-on:click.prevent="window.scrollTo({ top: 0, behavior: 'smooth' })"
                 class="inline-flex items-center gap-2 bg-white dark:bg-gray-100 font-bold py-3 px-8 rounded-lg hover:bg-white/90 dark:hover:bg-white transition text-lg store-text-primary"
             >
-                <ion-icon name="cart-outline"></ion-icon>
+                <x-edz.icon name="shopping-cart" />
                 {{ $cta['button_text'] ?? __('storefront.order_now') }}
             </a>
         </div>

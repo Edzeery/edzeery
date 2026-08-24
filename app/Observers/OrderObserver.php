@@ -2,11 +2,11 @@
 
 namespace App\Observers;
 
+use App\Enums\Store\InventoryMovementType;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderStatusHistory;
 use App\Models\Status;
 use App\Services\InventoryService;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
 class OrderObserver
@@ -59,12 +59,16 @@ class OrderObserver
             'reason'                   => $meta['reason'] ?? null,
         ]);
 
-        if (! $status->affects_inventory) {
+        if (! $status->affects_inventory || empty($status->movement_type)) {
             return;
         }
 
-        DB::transaction(function () use ($order, $status, $meta) {
-            // Resolve the actual actor who changed the status (not the buyer)
+        $movementType = InventoryMovementType::tryFrom($status->movement_type);
+        if (! $movementType || ! $movementType->affectsStock()) {
+            return;
+        }
+
+        DB::transaction(function () use ($order, $movementType, $meta) {
             $actorUser = null;
             if (! empty($meta['changed_by_membership_id'])) {
                 $membership = \App\Models\Stores\Team\StoreMembership::find($meta['changed_by_membership_id']);
@@ -81,9 +85,9 @@ class OrderObserver
                 InventoryService::apply(
                     variant: $variant,
                     quantity: $item->quantity,
-                    type: $status->movement_type,
+                    type: $movementType,
                     source: $order,
-                    user: $actorUser ?? $order->user
+                    user: $actorUser ?? auth()->user()
                 );
             }
         });
@@ -91,11 +95,12 @@ class OrderObserver
 
     protected function generateOrderNumber(Order $order): string
     {
-        $lastNumber = Order::withTrashed()
-            ->where('store_id', $order->store_id)
-            ->max('number');
+        $store = \App\Models\Stores\Store::lockForUpdate()->find($order->store_id);
+        $lastNumber = $store
+            ? Order::withTrashed()->where('store_id', $order->store_id)->max(DB::raw('CAST(number AS UNSIGNED)'))
+            : 0;
 
-        $nextNumber = $lastNumber ? (int) $lastNumber + 1 : 1;
+        $nextNumber = $lastNumber ? ((int) $lastNumber + 1) : 1;
 
         return str_pad((string) $nextNumber, 5, '0', STR_PAD_LEFT);
     }

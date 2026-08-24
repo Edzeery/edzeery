@@ -7,8 +7,7 @@
         @foreach($templates as $template)
             <button
                 type="button"
-                wire:click="$set('data.template_id', {{ $template->id }})"
-                x-on:click="selectedTemplate = {{ $template->id }}"
+                x-on:click="$wire.set('data.template_id', {{ $template->id }}); selectedTemplate = {{ $template->id }}"
                 class="relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200"
                 x-bind:class="selectedTemplate === {{ $template->id }}
                     ? 'border-blue-600 shadow-lg'

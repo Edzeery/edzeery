@@ -11,7 +11,7 @@ use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Status;
 use App\Models\Stores\Team\StoreMembership;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -79,6 +79,10 @@ state([
 updated(['search'], function (): void {
     $this->page = 1;
     $this->loadOrders();
+});
+
+updated(['formProductSearch'], function (): void {
+    $this->searchProducts();
 });
 
 mount(function (): void {
@@ -251,7 +255,7 @@ $clearFilters = function (): void {
 };
 
 $getExpandIcon = function (string $orderId): string {
-    return $this->expandedOrderId === $orderId ? 'chevron-up' : 'chevron-down';
+    return $this->expandedOrderId === $orderId ? 'expanded' : 'collapsed';
 };
 
 $toggleStatusFilter = function (string $statusId): void {
@@ -665,7 +669,7 @@ $deleteOrder = function (string $orderId): void {
                         <label
                             class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary dark:hover:bg-ink-700 cursor-pointer text-sm">
                             <input type="checkbox" wire:click="toggleColumn('{{ $col }}')"
-                                {{ in_array($col, $this->visibleColumns) ? 'checked disabled' : '' }}
+                                {{ in_array($col, $this->visibleColumns) ? 'checked' : '' }}
                                 class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                             {{ $label }}
                         </label>
@@ -674,7 +678,7 @@ $deleteOrder = function (string $orderId): void {
             </div>
 
             {{-- Advanced Filters Toggle --}}
-            <button wire:click="$set('showAdvancedFilters', !$get('showAdvancedFilters'))"
+            <button x-on:click="$wire.set('showAdvancedFilters', !$wire.get('showAdvancedFilters'))"
                 class="edz-btn edz-btn--ghost edz-btn--sm">
                 <x-edz.icon name="adjustments" class="w-4 h-4" />
                 {{ __('Filters') }}
@@ -686,7 +690,7 @@ $deleteOrder = function (string $orderId): void {
         </div>
 
         {{-- Advanced Filters (collapsible) --}}
-        <div x-show="$get('showAdvancedFilters')" x-transition class="mt-3 pt-3 border-t border-surface-border">
+        <div x-show="$wire.showAdvancedFilters" x-transition class="mt-3 pt-3 border-t border-surface-border">
             <div class="flex flex-wrap items-center gap-3">
 
                 {{-- Status Multi-select --}}
@@ -717,16 +721,14 @@ $deleteOrder = function (string $orderId): void {
                 </div>
 
                 {{-- Date Range --}}
-                <input type="date" wire:model.blur="filters.date_from"
-                    wire:change="setFilter('date_from', $event.target.value)" class="edz-input text-sm w-36"
-                    placeholder="From">
+                <input type="text" wire:model.blur="filters.date_from" class="edz-input text-sm w-36 flatpickr-input"
+                    placeholder="From" readonly>
 
-                <input type="date" wire:model.blur="filters.date_to"
-                    wire:change="setFilter('date_to', $event.target.value)" class="edz-input text-sm w-36"
-                    placeholder="To">
+                <input type="text" wire:model.blur="filters.date_to" class="edz-input text-sm w-36 flatpickr-input"
+                    placeholder="To" readonly>
 
                 @if (!empty($this->search) || array_filter($this->filters))
-                    <button wire:click="$set('search', ''); clearFilters()"
+                    <button x-on:click="$wire.set('search', ''); $wire.clearFilters()"
                         class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
                         <x-edz.icon name="x-circle" class="w-4 h-4" />
                         Clear All
@@ -795,13 +797,11 @@ $deleteOrder = function (string $orderId): void {
                                             {{ __('merchant_panel.agent') }}</th>
                                     @endif
                                     @if (in_array('created_at', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.date') }}</th>
                                     @endif
                                     @if (in_array('confirmation_attempts', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.attempts') }}</th>
                                     @endif
                                     @if (in_array('last_contact', $this->visibleColumns))
@@ -928,23 +928,20 @@ $deleteOrder = function (string $orderId): void {
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex items-center justify-end gap-1">
                                                 <button wire:click="toggleDetail('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs" title="Details"
-                                                    :class="$this->getExpandIcon('{{ $orderId }}') === 'chevron-up' ?
-                                                                                                            'text-brand-500' : ''">
-                                                    {{-- <x-edz.icon :name="$this->getExpandIcon('{{ $orderId }}')" class="w-4 h-4" /> --}}
-
-                                                    <x-status-icon domain="general" status="expanded" set="bi" class="w-4 h-4" />
-
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs" title="Details">
+                                                    <x-status-icon domain="general" status="expanded" set="fa" class="w-4 h-4" />
                                                 </button>
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button wire:click="openEditModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs" title="Edit">
-                                                        <x-edz.icon name="edit" class="w-4 h-4" />
+                                                        <x-edz.icon name="edit"
+                                                            class="w-4 h-4" />
 
                                                     </button>
                                                     <button wire:click="openReassignModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs" title="Reassign">
-                                                        <x-edz.icon name="arrows-right-left" class="w-4 h-4" />
+                                                        <x-edz.icon  name="arrows-right-left"
+                                                            class="w-4 h-4" />
                                                     </button>
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
@@ -959,7 +956,7 @@ $deleteOrder = function (string $orderId): void {
                                             </div>
                                         </td>
                                     </tr>
-                                    @if ($this->getExpandIcon($orderId) === 'chevron-up')
+                                    @if ($this->getExpandIcon($orderId) === 'expanded')
                                         <tr>
                                             <td colspan="99" class="px-4 py-4 bg-surface-50 dark:bg-ink-800/30">
                                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -1121,13 +1118,19 @@ $deleteOrder = function (string $orderId): void {
                     {{-- Customer --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="edz-label">Name</label>
-                            <input type="text" wire:model="form.customer_name" class="edz-input text-sm">
+                            <label class="edz-label">Name *</label>
+                            <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
+                            @error('form.customer_name')
+                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
                         <div>
                             <label class="edz-label">Phone *</label>
                             <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm"
                                 required>
+                            @error('form.customer_phone')
+                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
                         <div>
                             <label class="edz-label">Phone 2</label>
@@ -1135,13 +1138,16 @@ $deleteOrder = function (string $orderId): void {
                         </div>
                         <div>
                             <label class="edz-label">Wilaya</label>
-                            <select wire:model="form.state_id" wire:change="$loadCities($event.target.value)"
+                            <select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
                                 class="edz-input text-sm">
                                 <option value="">—</option>
                                 @foreach ($this->allStates as $st)
                                     <option value="{{ $st['id'] }}">{{ $st['name'] }}</option>
                                 @endforeach
                             </select>
+                            @error('form.state_id')
+                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
                         <div>
                             <label class="edz-label">City</label>
@@ -1151,6 +1157,9 @@ $deleteOrder = function (string $orderId): void {
                                     <option value="{{ $city['id'] }}">{{ $city['name'] }}</option>
                                 @endforeach
                             </select>
+                            @error('form.city_id')
+                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
                         <div class="sm:col-span-2">
                             <label class="edz-label">Address</label>
@@ -1192,8 +1201,7 @@ $deleteOrder = function (string $orderId): void {
                     <div>
                         <label class="edz-label">Products</label>
                         <input type="text" wire:model.live.debounce.300ms="formProductSearch"
-                            wire:keyup.debounce.300ms="searchProducts" placeholder="Search products..."
-                            class="edz-input text-sm mb-2">
+                            placeholder="Search products..." class="edz-input text-sm mb-2">
                         @if (!empty($formProductResults))
                             <div class="border border-surface-border rounded-lg max-h-40 overflow-y-auto mb-2">
                                 @foreach ($formProductResults as $pv)
@@ -1243,7 +1251,7 @@ $deleteOrder = function (string $orderId): void {
 
     {{-- Reassign Modal --}}
     @if ($showReassignModal)
-        <x-edz.modal :isOpen="true" wire:key="order-reassign-{{ now()->timestamp }}">
+        <x-edz.modal :isOpen="true" wire:key="order-reassign-modal">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-bold text-ink">{{ __('Reassign Order') }}</h3>
                 <div>

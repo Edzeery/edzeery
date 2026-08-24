@@ -51,6 +51,8 @@ class OrderAssignmentService
 
             $order->update([
                 'assigned_to_membership_id' => null,
+                'assigned_at' => null,
+                'assigned_by_membership_id' => null,
                 'assignment_method' => null,
             ]);
             return $order;
@@ -88,6 +90,10 @@ class OrderAssignmentService
      */
     public function reassign(Order $order, StoreMembership $to, StoreMembership $by): Order
     {
+        if ($to->store_id !== $order->store_id) {
+            throw new \InvalidArgumentException('Cannot assign order to a member of a different store.');
+        }
+
         $order->update([
             'assigned_to_membership_id' => $to->id,
             'assigned_at' => now(),
@@ -146,7 +152,6 @@ class OrderAssignmentService
 
         if ($allConfirmers->isEmpty()) {
             Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
-                'order_id' => $order->id ?? 'unknown',
                 'store_id' => $storeId,
             ]);
             return collect();
@@ -212,6 +217,7 @@ class OrderAssignmentService
         $openOrderCounts = DB::table('orders')
             ->join('statuses', 'orders.status_id', '=', 'statuses.id')
             ->where('orders.store_id', $storeId)
+            ->whereNull('orders.deleted_at')
             ->whereNotNull('orders.assigned_to_membership_id')
             ->whereNotIn('statuses.key', $terminalStatusKeys)
             ->select('orders.assigned_to_membership_id', DB::raw('COUNT(*) as open_count'))
@@ -221,6 +227,7 @@ class OrderAssignmentService
 
         $lastAssigned = DB::table('orders')
             ->where('store_id', $storeId)
+            ->whereNull('deleted_at')
             ->whereNotNull('assigned_to_membership_id')
             ->whereNotNull('assigned_at')
             ->select('assigned_to_membership_id', DB::raw('MAX(assigned_at) as last_assigned'))

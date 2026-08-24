@@ -269,4 +269,13 @@ return [
     'payment_submitted' => 'Payment submitted for review',
     'invalid_payment_method' => 'Invalid payment method selected',
     'no_active_subscription' => 'No active subscription found',
+    'number' => 'Number',
+    'customer' => 'Customer',
+    'shipment' => 'Shipment',
+    'agent' => 'Agent',
+    'date' => 'Date',
+    'attempts' => 'Attempts',
+    'last_contact' => 'Last Contact',
+    'weight' => 'Weight',
+    'amount' => 'Amount',
 ];

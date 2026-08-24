@@ -267,4 +267,13 @@ return [
     'payment_submitted' => 'Pago enviado para revisión',
     'invalid_payment_method' => 'Método de pago inválido',
     'no_active_subscription' => 'No se encontró suscripción activa',
+    'number' => 'Número',
+    'customer' => 'Cliente',
+    'shipment' => 'Envío',
+    'agent' => 'Agente',
+    'date' => 'Fecha',
+    'attempts' => 'Intentos',
+    'last_contact' => 'Último contacto',
+    'weight' => 'Peso',
+    'amount' => 'Monto',
 ];

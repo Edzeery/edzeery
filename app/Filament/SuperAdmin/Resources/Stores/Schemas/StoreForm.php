@@ -51,7 +51,15 @@ class StoreForm
                                 TextInput::make('slug')
                                     ->required()
                                     ->readOnly()
-                                    ->unique('stores', 'slug'),
+                                    ->unique('stores', 'slug')
+                                    ->rules([function ($get, $set) {
+                                        return function ($attribute, $value, $fail) {
+                                            $reserved = ['www', 'api', 'admin', 'mail', 'app', 'demo', 'edzeery', 'support', 'help', 'status', 'cdn', 'assets'];
+                                            if (in_array(strtolower($value), $reserved)) {
+                                                $fail(__('validation.reserved', ['attribute' => $attribute]));
+                                            }
+                                        };
+                                    }]),
                             ]),
 
 

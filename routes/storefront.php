@@ -20,7 +20,7 @@ Route::domain('{store:slug}.' . config('app.domain'))
         Route::get('/cart/count', [\App\Http\Controllers\Storefront\CartController::class, 'count'])->name('storefront.cart.count');
 
         // Order success
-        Volt::route('/order/success/{order}', 'storefront.order-success')->name('storefront.order.success');
+        Volt::route('/order/success/{order:id}', 'storefront.order-success')->name('storefront.order.success');
 
         // Product detail
         Volt::route('/product/{product:slug}', 'storefront.product-detail')->name('storefront.product');

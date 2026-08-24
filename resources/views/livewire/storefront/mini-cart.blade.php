@@ -71,13 +71,17 @@ $updateQty = function (string $variantId, int $qty) {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.open) { this.open = false; }
         });
-        this._pollInterval = setInterval(() => {
-            if (document.visibilityState === 'visible') { this.$wire.refreshCart(); }
-        }, 30000);
+        this.$watch('open', (val) => {
+            clearInterval(this._pollInterval);
+            if (val) {
+                this._pollInterval = setInterval(() => {
+                    if (document.visibilityState === 'visible') { this.$wire.refreshCart(); }
+                }, 30000);
+            }
+        });
     },
     destroy() { clearInterval(this._pollInterval); },
     toggle() { this.open = !this.open; },
-    listen() { window.dispatchEvent(new Event('cart-updated')); }
 }" class="relative">
 
     {{-- Trigger Button --}}
@@ -87,7 +91,7 @@ $updateQty = function (string $variantId, int $qty) {
                transition-colors duration-150 min-h-[44px] min-w-[44px]
                flex items-center justify-center"
         aria-label="{{ __('storefront.cart') }}">
-        <ion-icon name="cart-outline" class="text-[22px] leading-none"></ion-icon>
+        <x-edz.icon name="shopping-cart" class="text-[22px] leading-none" />
         @if ($count > 0)
             <span class="absolute -top-0.5 -end-0.5 store-bg-primary text-white
                          text-[10px] font-bold leading-none
@@ -139,7 +143,7 @@ $updateQty = function (string $variantId, int $qty) {
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-full store-bg-primary flex items-center justify-center">
-                    <ion-icon name="cart-outline" class="text-white text-lg"></ion-icon>
+                    <x-edz.icon name="shopping-cart" class="text-white text-lg" />
                 </div>
                 <div>
                     <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('storefront.cart') }}</h2>
@@ -159,7 +163,7 @@ $updateQty = function (string $variantId, int $qty) {
                                    hover:bg-red-50 dark:hover:bg-red-900/20
                                    transition-colors duration-150"
                             aria-label="{{ __('storefront.clear_cart') }}">
-                        <ion-icon name="trash-outline" class="text-lg"></ion-icon>
+                        <x-edz.icon name="trash" class="text-lg" />
                     </button>
                 @endif
                 <button x-on:click="open = false"
@@ -168,7 +172,7 @@ $updateQty = function (string $variantId, int $qty) {
                            hover:bg-gray-100 dark:hover:bg-gray-700
                            transition-colors duration-150"
                     aria-label="Close">
-                    <ion-icon name="close-outline" class="text-xl"></ion-icon>
+                    <x-edz.icon name="x-mark" class="text-xl" />
                 </button>
             </div>
         </div>
@@ -178,7 +182,7 @@ $updateQty = function (string $variantId, int $qty) {
             {{-- Empty State --}}
             <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
                 <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
-                    <ion-icon name="bag-outline" class="text-4xl text-gray-300 dark:text-gray-600"></ion-icon>
+                    <x-edz.icon name="shopping-bag" class="text-4xl text-gray-300 dark:text-gray-600" />
                 </div>
                 <p class="text-base font-medium text-gray-900 dark:text-white mb-1.5">
                     {{ __('storefront.your_cart_is_empty') }}
@@ -190,7 +194,7 @@ $updateQty = function (string $variantId, int $qty) {
                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
                            store-btn-primary text-white text-sm font-semibold
                            transition-all duration-150 hover:shadow-lg">
-                    <ion-icon name="bag-handle-outline" class="text-base"></ion-icon>
+                    <x-edz.icon name="shopping-bag" class="text-base" />
                     {{ __('storefront.back_to_store') }}
                 </button>
             </div>
@@ -232,7 +236,7 @@ $updateQty = function (string $variantId, int $qty) {
                                             x-on:click.prevent='if (await EdzSwal.confirmAction(@js(__("storefront.remove")), @js(__("messages.action_confirm_delete")))) $wire.removeItem("{{ $item['variant_id'] }}")'
                                             class="shrink-0 p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                             aria-label="{{ __('storefront.remove') }}">
-                                        <ion-icon name="trash-outline" class="text-base"></ion-icon>
+                                        <x-edz.icon name="trash" class="text-base" />
                                     </button>
                                 </div>
 
@@ -292,12 +296,12 @@ $updateQty = function (string $variantId, int $qty) {
                           store-btn-primary text-white font-bold text-sm
                           min-h-[48px] flex items-center justify-center gap-2
                           transition-all duration-150 hover:shadow-lg hover:brightness-110">
-                    <ion-icon name="lock-closed-outline" class="text-base"></ion-icon>
+                    <x-edz.icon name="lock-closed" class="text-base" />
                     {{ __('storefront.checkout') }}
                 </a>
 
                 <p class="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-2.5">
-                    <ion-icon name="shield-checkmark-outline" class="align-text-bottom text-xs"></ion-icon>
+                    <x-edz.icon name="shield-check" class="align-text-bottom text-xs" />
                     {{ __('storefront.secure_checkout') }}
                 </p>
             </div>

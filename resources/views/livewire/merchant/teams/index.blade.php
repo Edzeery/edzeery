@@ -342,11 +342,11 @@ $allPermissions = computed(function () {
                         <div class="mb-3 flex items-center gap-2">
                             <span class="text-sm font-medium text-ink">{{ __('titles.permissions') }}</span>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                    wire:click="$set('permissions', {{ json_encode(\App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role))) }})">
+                                    x-on:click="$wire.set('permissions', {{ json_encode(\App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role))) }})">
                                 {{ __('buttons.select_all') }}
                             </button>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
-                                    wire:click="$set('permissions', [])">
+                                    x-on:click="$wire.set('permissions', [])">
                                 {{ __('buttons.unselect_all') }}
                             </button>
                         </div>

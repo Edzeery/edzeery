@@ -267,4 +267,13 @@ return [
     'payment_submitted' => 'Paiement soumis pour vérification',
     'invalid_payment_method' => 'Mode de paiement invalide',
     'no_active_subscription' => 'Aucun abonnement actif trouvé',
+    'number' => 'Numéro',
+    'customer' => 'Client',
+    'shipment' => 'Expédition',
+    'agent' => 'Agent',
+    'date' => 'Date',
+    'attempts' => 'Tentatives',
+    'last_contact' => 'Dernier contact',
+    'weight' => 'Poids',
+    'amount' => 'Montant',
 ];

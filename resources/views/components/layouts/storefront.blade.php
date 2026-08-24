@@ -335,7 +335,10 @@
                 lightbox: false,
                 total: 0,
                 init() {
-                    this.total = this.$el.querySelectorAll('[x-show^="active ==="]').length;
+                    const mainGallery = this.$refs.mainGallery;
+                    this.total = mainGallery
+                        ? mainGallery.querySelectorAll('img[x-show]').length
+                        : this.$el.querySelectorAll('[x-show^="active ==="]').length;
                     let startX = 0;
                     this.$el.addEventListener('touchstart', e => {
                         startX = e.touches[0].clientX;

@@ -5,10 +5,12 @@ use App\Domains\Order\Models\ConfirmationShift;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Products\Product;
 use App\Models\Stores\Team\StoreMembership;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
+use function Livewire\Volt\updated;
 
 layout('components.layouts.store');
 
@@ -42,11 +44,10 @@ state([
 mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
     $this->loadData();
-    
-    // Handle product search on model update
-    $this->productSearchUpdated = function (): void {
-        $this->searchAssignProducts();
-    };
+});
+
+updated(['productSearch'], function (): void {
+    $this->searchAssignProducts();
 });
 
 $loadData = function (): void {
@@ -141,10 +142,11 @@ $saveShift = function (): void {
 
     $validated = Validator::make($this->shiftForm, [
         'membership_id' => 'required|exists:store_memberships,id',
-        'shift_type' => 'required|string',
-        'start_time' => 'required|string',
-        'end_time' => 'required|string|after:start_time',
+        'shift_type' => 'required|string|in:morning,afternoon,evening,full_day,custom',
+        'start_time' => 'required|date_format:H:i',
+        'end_time' => 'required|date_format:H:i|after:start_time',
         'days_of_week' => 'required|array|min:1',
+        'days_of_week.*' => 'integer|min:1|max:7',
         'is_active' => 'boolean',
     ])->validate();
 
@@ -233,17 +235,19 @@ $saveAssignments = function (): void {
         return;
     }
 
-    ConfirmationProductAssignment::where('store_id', $storeId)
-        ->where('membership_id', $membershipId)
-        ->delete();
+    DB::transaction(function () use ($storeId, $membershipId) {
+        ConfirmationProductAssignment::where('store_id', $storeId)
+            ->where('membership_id', $membershipId)
+            ->delete();
 
-    foreach ($this->assignForm['product_ids'] as $productId) {
-        ConfirmationProductAssignment::create([
-            'store_id' => $storeId,
-            'membership_id' => $membershipId,
-            'product_id' => $productId,
-        ]);
-    }
+        foreach ($this->assignForm['product_ids'] as $productId) {
+            ConfirmationProductAssignment::create([
+                'store_id' => $storeId,
+                'membership_id' => $membershipId,
+                'product_id' => $productId,
+            ]);
+        }
+    });
 
     $this->showAssignModal = false;
     $this->loadData();
@@ -411,7 +415,7 @@ $removeAssignment = function (string $assignmentId): void {
 <button type="button" aria-label="{{ __('merchant_panel.delete_shift') }}"
                                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                                     x-data
-                                                    x-on:click='if (await EdzSwal.confirmAction(addslashes(__("merchant_panel.delete_shift")), addslashes(__("merchant_panel.confirm_delete_shift")))) $wire.deleteShift("{{ $shift['id'] }}")'>
+                                                    x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteShift('{{ $shift['id'] }}') })">
                                                     <x-edz.icon name="x-mark" class="w-4 h-4" />
                                             </button>
                                         </div>
@@ -454,7 +458,7 @@ $removeAssignment = function (string $assignmentId): void {
                 @foreach($grouped as $memberId => $items)
                     @php
                         $agentName = $items->first()['membership']['user']['name'] ?? '—';
-                    @endphp>
+                    @endphp
                     <div class="edz-card overflow-hidden" wire:key="group-{{ $memberId }}">
                         <div class="bg-surface-secondary border-b border-surface-border px-4 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
@@ -481,7 +485,7 @@ $removeAssignment = function (string $assignmentId): void {
                                     <button type="button"
                                             class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                             x-data
-                                            x-on:click='if (await EdzSwal.confirmAction(addslashes(__("merchant_panel.remove_assignment")), addslashes(__("merchant_panel.confirm_delete_assignment")))) $wire.removeAssignment("{{ $a['id'] }}")'>
+                                            x-on:click="EdzSwal.confirmDelete(() => { $wire.removeAssignment('{{ $a['id'] }}') })">
                                         <x-edz.icon name="x-mark" class="w-4 h-4" />
                                     </button>
                                 </div>

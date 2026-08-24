@@ -19,6 +19,7 @@ use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 use function Livewire\Volt\computed;
+use function Livewire\Volt\updated;
 
 layout('components.layouts.storefront');
 
@@ -39,6 +40,11 @@ mount(function (): void {
     $this->name = auth()->user()?->name ?? '';
     $this->phone = auth()->user()?->phone ?? '';
     $this->email = auth()->user()?->email ?? '';
+});
+
+updated(['state_id'], function (): void {
+    $this->city_id = '';
+    $this->selectedStopdesk = '';
 });
 
 $paymentMethods = computed(function (): array {
@@ -67,7 +73,7 @@ $submitOrder = function () {
         'delivery_type' => 'required|in:home,stopdesk',
         'payment_method' => 'required|in:' . implode(',', $this->paymentMethods),
         'notes'         => 'nullable|string|max:500',
-        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer',
+        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer|exists:stopdesk_points,id',
     ])->validate();
 
     $cartService = app(CartService::class);
@@ -79,21 +85,24 @@ $submitOrder = function () {
     }
 
     $items = $cartService->getItems($storeId);
-    $calculator = app(ShippingCostCalculator::class);
-    $shipping = $calculator->calculate(
-        currentStore(),
-        $this->state_id,
-        $this->city_id,
-        $cartService->getSubtotal($storeId)
-    );
-
     $subtotal = $cartService->getSubtotal($storeId);
-    $shippingCost = $shipping['available'] ? $shipping['cost'] : 0;
+    $shippingCost = 0;
 
-    // Block checkout if shipping is unavailable for home delivery
-    if ($this->delivery_type === 'home' && !($shipping['available'] ?? false)) {
-        $this->dispatch('swal', type: 'error', title: __('storefront.shipping_not_available'));
-        return;
+    if ($this->delivery_type === 'home') {
+        $calculator = app(ShippingCostCalculator::class);
+        $shipping = $calculator->calculate(
+            currentStore(),
+            $this->state_id,
+            $this->city_id,
+            $subtotal
+        );
+
+        if (!($shipping['available'] ?? false)) {
+            $this->dispatch('swal', type: 'error', title: __('storefront.shipping_not_available'));
+            return;
+        }
+
+        $shippingCost = $shipping['cost'] ?? 0;
     }
 
     DB::beginTransaction();
@@ -185,7 +194,7 @@ $submitOrder = function () {
         }
 
         session()->flash('success', __('storefront.order_placed') . ' #' . $order->number);
-        return redirect()->route('storefront.order.success', ['store' => currentStore()?->slug, 'order' => $order->number]);
+        return redirect()->route('storefront.order.success', ['store' => currentStore()?->slug, 'order' => $order->id]);
     } catch (\Exception $e) {
         DB::rollBack();
         \Illuminate\Support\Facades\Log::error('Order placement failed', [
@@ -236,14 +245,14 @@ $submitOrder = function () {
             : collect();
         $calculator = app(ShippingCostCalculator::class);
         $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
-        $paymentMethods = ['cod'];
+        $paymentMethods = $this->paymentMethods;
     @endphp
 
     {{-- Back to Cart --}}
     <div class="mb-6">
         <a href="{{ route('storefront.home', ['store' => currentStore()?->slug ?? '']) }}"
            class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
-            <ion-icon name="arrow-back-outline" class="text-base"></ion-icon>
+            <x-edz.icon name="arrow-{{$algin}}" class="w-4 h-4 text-base" />
             {{ __('storefront.back_to_store') }}
         </a>
     </div>
@@ -252,19 +261,22 @@ $submitOrder = function () {
     <div class="mb-8 flex items-center justify-between max-w-md">
         <div class="flex items-center">
             <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">
-                <ion-icon name="checkmark-outline" class="text-base"></ion-icon>
+
+                <x-status-icon domain="order" status="completed" set="bi" />
             </div>
             <span class="ms-2 text-sm font-medium store-text-primary hidden sm:inline">{{ __('storefront.cart') }}</span>
         </div>
         <div class="flex-1 h-0.5 mx-2 sm:mx-3 store-bg-primary"></div>
         <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">2</div>
+            <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">
+                <x-status-icon domain="order" status="confirmed" set="bi" />
+            </div>
             <span class="ms-2 text-sm font-medium store-text-primary hidden sm:inline">{{ __('storefront.delivery') }}</span>
         </div>
-        <div class="flex-1 h-0.5 mx-2 sm:mx-3 bg-gray-200 dark:bg-gray-700"></div>
+        <div class="flex-1 h-0.5 mx-2 sm:mx-3 store-bg-primary"></div>
         <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 flex items-center justify-center text-sm font-bold">3</div>
-            <span class="ms-2 text-sm font-medium text-gray-400 dark:text-gray-500 hidden sm:inline">{{ __('storefront.confirm') }}</span>
+            <div class="w-8 h-8 rounded-full store-bg-primary text-white flex items-center justify-center text-sm font-bold">3</div>
+            <span class="ms-2 text-sm font-medium store-text-primary hidden sm:inline">{{ __('storefront.confirm') }}</span>
         </div>
     </div>
 
@@ -277,7 +289,7 @@ $submitOrder = function () {
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
                 <div class="flex items-center gap-3 mb-5">
                     <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center">
-                        <ion-icon name="person-outline" class="text-xl store-text-primary"></ion-icon>
+                        <x-edz.icon name="user" class="text-xl store-text-primary w-5 h-5 " />
                     </div>
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.customer_information') }}</h2>
@@ -319,6 +331,7 @@ $submitOrder = function () {
                                    placeholder:text-gray-400 dark:placeholder:text-gray-500
                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
                                    transition-all duration-200" />
+                        @error('email') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -327,7 +340,7 @@ $submitOrder = function () {
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
                 <div class="flex items-center gap-3 mb-5">
                     <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center">
-                        <ion-icon name="car-outline" class="text-xl store-text-primary"></ion-icon>
+                        <x-edz.icon name="truck" class="text-xl store-text-primary w-5 h-5" />
                     </div>
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.delivery_information') }}</h2>
@@ -372,14 +385,14 @@ $submitOrder = function () {
                             <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="home" class="peer sr-only">
                                 <div class="border-2 rounded-xl p-4 text-center peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
-                                    <ion-icon name="home-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                    <x-edz.icon name="home" class="text-2xl text-gray-500 dark:text-gray-400 w-8 h-8 mx-auto" />
                                     <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.home_delivery') }}</p>
                                 </div>
                             </label>
                             <label class="cursor-pointer">
                                 <input type="radio" wire:model.live="delivery_type" value="stopdesk" class="peer sr-only">
                                 <div class="border-2 rounded-xl p-4 text-center peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
-                                    <ion-icon name="location-outline" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                    <x-edz.icon name="map-pin" class="text-2xl text-gray-500 dark:text-gray-400  w-8 h-8 mx-auto" />
                                     <p class="text-sm mt-1 font-medium text-gray-700 dark:text-gray-300">{{ __('storefront.stop_desk') }}</p>
                                 </div>
                             </label>
@@ -415,6 +428,7 @@ $submitOrder = function () {
                                        placeholder:text-gray-400 dark:placeholder:text-gray-500
                                        shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
                                        transition-all duration-200 resize-none"></textarea>
+                            @error('address') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                         </div>
                     @endif
 
@@ -428,6 +442,7 @@ $submitOrder = function () {
                                    placeholder:text-gray-400 dark:placeholder:text-gray-500
                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
                                    transition-all duration-200 resize-none"></textarea>
+                        @error('notes') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </div>
@@ -436,7 +451,7 @@ $submitOrder = function () {
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
                 <div class="flex items-center gap-3 mb-5">
                     <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center">
-                        <ion-icon name="cash-outline" class="text-xl store-text-primary"></ion-icon>
+                        <x-edz.icon name="banknotes" class="text-xl store-text-primary w-5 h-5" />
                     </div>
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ __('storefront.payment_method') }}</h2>
@@ -449,7 +464,7 @@ $submitOrder = function () {
                         <label class="cursor-pointer">
                             <input type="radio" wire:model.live="payment_method" value="{{ $method }}" class="peer sr-only">
                             <div class="border-2 rounded-xl p-4 flex items-center gap-3 peer-checked:border-[var(--store-primary)] peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_10%,transparent)] dark:peer-checked:bg-[color-mix(in_srgb,var(--store-primary)_20%,transparent)] border-gray-200 dark:border-gray-600 transition">
-                                <ion-icon name="{{ $method === 'cod' ? 'cash-outline' : 'card-outline' }}" class="text-2xl text-gray-500 dark:text-gray-400"></ion-icon>
+                                <x-edz.icon :name="$method === 'cod' ? 'banknotes' : 'credit-card'" class="text-2xl text-gray-500 dark:text-gray-400 w-8 h-8" />
                                 <div>
                                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
                                         {{ $method === 'cod' ? __('storefront.payment_on_delivery') : ucfirst($method) }}
@@ -525,8 +540,8 @@ $submitOrder = function () {
                     class="mt-6 w-full store-btn-primary text-white font-semibold py-3.5 px-4 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                     wire:loading.attr="disabled"
                 >
-                    <span wire:loading.remove wire:target="submitOrder" class="flex items-center gap-2">
-                        <ion-icon name="lock-closed-outline" class="text-lg"></ion-icon>
+                    <span wire:loading.remove wire:target="submitOrder" class="flex items-center gap-2 text-white">
+                        <x-edz.icon name="lock-closed" class="text-lg  w-5 h-5  mx-auto" />
                         {{ __('storefront.place_order') }}
                     </span>
                     <span wire:loading wire:target="submitOrder" class="flex items-center justify-center gap-2">
@@ -536,7 +551,7 @@ $submitOrder = function () {
                 </button>
 
                 <div class="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                    <ion-icon name="shield-checkmark-outline" class="text-base"></ion-icon>
+                    <x-edz.icon name="shield-check" class="text-base w-5 h-5" />
                     <span>{{ __('storefront.secure_checkout') }}</span>
                 </div>
             </div>

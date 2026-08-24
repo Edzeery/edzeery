@@ -89,9 +89,9 @@ $addToCart = function (string $variantId) {
                                  border border-white/30
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
-                        <ion-icon name="search-outline"
-                                             class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none"></ion-icon>
+                                                <x-edz.icon name="magnifying-glass"
+                                            class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
+                                text-white/70 text-xl pointer-events-none"/>
                     </div>
                 </div>
             </div>
@@ -114,15 +114,15 @@ $addToCart = function (string $variantId) {
             <section class="py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        <button wire:click="$set('category_id', '')"
+                        <button x-on:click="$wire.set('category_id', '')"
                             class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
                         {{ empty($this->category_id) ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
                             {{ __('storefront.all') }}
                         </button>
                         @foreach ($categories as $cat)
-                            <button wire:click="$set('category_id', '{{ $cat->id }}')"
+                            <button x-on:click="$wire.set('category_id', '{{ $cat->id }}')"
                                 class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
-                            {{ $this->category_id === $cat->id ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                            {{ (string) $this->category_id === (string) $cat->id ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
                                 {{ $cat->name }} ({{ $cat->products_count }})
                             </button>
                         @endforeach
@@ -169,7 +169,7 @@ $addToCart = function (string $variantId) {
                                     @endif
                                     @if($product->is_featured)
                                         <span class="absolute top-2 {{ isRTL() ? 'end-2' : 'start-2' }} z-10 flex items-center gap-1 store-bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
-                                            <ion-icon name="star" class="text-xs"></ion-icon>
+                                            <x-edz.icon name="star" class="text-xs"/>
                                             {{ __('storefront.featured') }}
                                         </span>
                                     @endif
@@ -208,12 +208,12 @@ $addToCart = function (string $variantId) {
                                             wire:loading.attr="disabled" wire:loading.class="opacity-50"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}">
-                                            <ion-icon name="cart-outline"></ion-icon>
+                                            <x-edz.icon name="shopping-cart"/>
                                         </button>
                                     @elseif ($product->variants->count() > 1)
                                         <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
-                                            <ion-icon name="options-outline"></ion-icon>
+                                            <x-edz.icon name="adjustments-horizontal"/>
                                             {{ __('storefront.view_options') }}
                                         </a>
                                     @endif
@@ -228,7 +228,7 @@ $addToCart = function (string $variantId) {
                 </div>
             @else
                 <div class="text-center py-20">
-                    <ion-icon name="bag-outline" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"></ion-icon>
+                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"/>
                     <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
                 </div>
             @endif
@@ -246,7 +246,7 @@ $addToCart = function (string $variantId) {
                     @foreach($sp['items'] as $item)
                         <div class="flex flex-col items-center">
                             <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
-                                <ion-icon name="{{ $item['icon'] ?? 'checkmark-outline' }}" class="text-2xl store-text-primary"></ion-icon>
+                                <x-edz.icon name="{{ $item['icon'] ?? 'shield-check' }}" class="text-2xl store-text-primary"/> 
                             </div>
                             <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
