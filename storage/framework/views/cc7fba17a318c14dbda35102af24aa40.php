@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\DB;
 
 ?>
 
+<?php $store = currentStore(); ?>
+
 <div x-data='{
         previewOpen: <?php echo \Illuminate\Support\Js::from($this->showPreview)->toHtml() ?>,
-        activeTab: "template",
         selectedTemplate: <?php echo \Illuminate\Support\Js::from($this->template)->toHtml() ?>,
-        previewUrl: <?php echo \Illuminate\Support\Js::from(currentStore()?->isPubliclyActive() ? currentStore()->public_url : "#")->toHtml() ?>
+        previewUrl: <?php echo \Illuminate\Support\Js::from($store?->isPubliclyActive() ? $store->public_url : "#")->toHtml() ?>
     }'
      x-init="$watch('$wire.template', v => selectedTemplate = v)"
      x-on:open-preview.window="previewOpen = true"
@@ -40,7 +41,7 @@ use Illuminate\Support\Facades\DB;
 <?php endif; ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(currentStore()?->isPubliclyActive()): ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store?->isPubliclyActive()): ?>
         <div class="mb-6 p-4 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800 rounded-xl">
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center gap-3">
@@ -68,13 +69,13 @@ use Illuminate\Support\Facades\DB;
                     </div>
                     <div>
                         <p class="text-sm font-medium text-accent-700 dark:text-accent-300"><?php echo e(__('storefront.your_store_link')); ?></p>
-                        <p class="text-xs text-accent-500 dark:text-accent-400 font-mono"><?php echo e(currentStore()->public_url); ?></p>
+                        <p class="text-xs text-accent-500 dark:text-accent-400 font-mono"><?php echo e($store->public_url); ?></p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button"
                         x-data="{ copied: false }"
-                        x-on:click="navigator.clipboard.writeText('<?php echo e(currentStore()->public_url); ?>'); copied = true; setTimeout(() => copied = false, 2000)"
+                        x-on:click="navigator.clipboard.writeText('<?php echo e($store->public_url); ?>'); copied = true; setTimeout(() => copied = false, 2000)"
                         class="edz-btn edz-btn--secondary edz-btn--sm">
                         <span x-show="!copied"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -148,7 +149,7 @@ use Illuminate\Support\Facades\DB;
         </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    <form wire:submit="save" x-data="{ activeTab: 'template' }">
+        <form wire:submit="save" x-data="{ activeTab: 'template' }">
 
         <div class="flex flex-col lg:flex-row gap-6">
 
@@ -342,14 +343,14 @@ use Illuminate\Support\Facades\DB;
                                                             <div class="rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                                                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'bag','class' => 'w-100  text-gray-400 dark:text-gray-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'bag','class' => 'w-full text-gray-400 dark:text-gray-500']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'bag','class' => 'w-100  text-gray-400 dark:text-gray-500']); ?>
+<?php $component->withAttributes(['name' => 'bag','class' => 'w-full text-gray-400 dark:text-gray-500']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -388,14 +389,14 @@ use Illuminate\Support\Facades\DB;
                                                      : 'bg-gray-400/50 text-white scale-75 opacity-0'">
                                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-100 ']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-5 h-5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-100 ']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-5 h-5']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -419,14 +420,14 @@ use Illuminate\Support\Facades\DB;
                                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
                                                  <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'eye','class' => 'w-100 ']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'eye','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'eye','class' => 'w-100 ']); ?>
+<?php $component->withAttributes(['name' => 'eye','class' => 'w-4 h-4']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -633,7 +634,8 @@ use Illuminate\Support\Facades\DB;
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $availableSections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $section): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($key, $sections)): ?>
                                         <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition-all"
-                                             x-data="{ open: $wire.expanded_section === '<?php echo e($key); ?>' }">
+                                             x-data="{ open: $wire.expanded_section === '<?php echo e($key); ?>' }"
+                                             x-init="$watch('$wire.expanded_section', v => open = v === '<?php echo e($key); ?>')">
                                             
                                             <button type="button"
                                                 x-on:click="open = !open; $wire.set('expanded_section', open ? '<?php echo e($key); ?>' : '');"
@@ -845,8 +847,8 @@ use Illuminate\Support\Facades\DB;
         
         <div class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700/50 z-10">
             <div class="flex items-center justify-end gap-3">
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(currentStore()?->isPubliclyActive()): ?>
-                    <a href="<?php echo e(currentStore()->public_url); ?>" target="_blank" rel="noopener noreferrer"
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store?->isPubliclyActive()): ?>
+                    <a href="<?php echo e($store->public_url); ?>" target="_blank" rel="noopener noreferrer"
                        class="edz-btn edz-btn--secondary edz-btn--sm hidden sm:inline-flex">
                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -901,7 +903,7 @@ use Illuminate\Support\Facades\DB;
     </form>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(currentStore()?->isPubliclyActive()): ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store?->isPubliclyActive()): ?>
         <div x-show="previewOpen" x-cloak
              class="fixed inset-0 z-[100] flex items-center justify-center p-4"
              x-transition:enter="transition ease-out duration-200"
@@ -941,12 +943,12 @@ use Illuminate\Support\Facades\DB;
 <?php endif; ?>
                         </div>
                         <div>
-                            <p class="text-sm font-semibold text-ink"><?php echo e(__('storefront.preview')); ?> — <?php echo e(currentStore()->name); ?></p>
-                            <p class="text-xs text-ink-400 font-mono"><?php echo e(currentStore()->public_url); ?></p>
+                            <p class="text-sm font-semibold text-ink"><?php echo e(__('storefront.preview')); ?> — <?php echo e($store->name); ?></p>
+                            <p class="text-xs text-ink-400 font-mono"><?php echo e($store->public_url); ?></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <a href="<?php echo e(currentStore()->public_url . '?preview=1'); ?>" target="_blank" rel="noopener noreferrer"
+                        <a href="<?php echo e($store->public_url . '?preview=1'); ?>" target="_blank" rel="noopener noreferrer"
                            class="edz-btn edz-btn--secondary edz-btn--sm">
                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -1001,7 +1003,7 @@ use Illuminate\Support\Facades\DB;
                     <iframe
                         x-ref="previewFrame"
                         x-show="previewOpen"
-                        src="<?php echo e(currentStore()->public_url . '?preview=1'); ?>"
+                        src="<?php echo e($store->public_url . '?preview=1'); ?>"
                         class="absolute inset-0 w-full h-full border-0"
                         loading="lazy"
                     ></iframe>

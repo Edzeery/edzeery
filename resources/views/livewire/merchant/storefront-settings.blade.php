@@ -96,11 +96,12 @@ $openPreview = function (): void {
 };
 ?>
 
+@php $store = currentStore(); @endphp
+
 <div x-data='{
         previewOpen: @js($this->showPreview),
-        activeTab: "template",
         selectedTemplate: @js($this->template),
-        previewUrl: @js(currentStore()?->isPubliclyActive() ? currentStore()->public_url : "#")
+        previewUrl: @js($store?->isPubliclyActive() ? $store->public_url : "#")
     }'
      x-init="$watch('$wire.template', v => selectedTemplate = v)"
      x-on:open-preview.window="previewOpen = true"
@@ -112,7 +113,7 @@ $openPreview = function (): void {
     </x-edz.page-header>
 
     {{-- Store Link Bar --}}
-    @if (currentStore()?->isPubliclyActive())
+    @if ($store?->isPubliclyActive())
         <div class="mb-6 p-4 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800 rounded-xl">
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center gap-3">
@@ -121,13 +122,13 @@ $openPreview = function (): void {
                     </div>
                     <div>
                         <p class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ __('storefront.your_store_link') }}</p>
-                        <p class="text-xs text-accent-500 dark:text-accent-400 font-mono">{{ currentStore()->public_url }}</p>
+                        <p class="text-xs text-accent-500 dark:text-accent-400 font-mono">{{ $store->public_url }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button"
                         x-data="{ copied: false }"
-                        x-on:click="navigator.clipboard.writeText('{{ currentStore()->public_url }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                        x-on:click="navigator.clipboard.writeText('{{ $store->public_url }}'); copied = true; setTimeout(() => copied = false, 2000)"
                         class="edz-btn edz-btn--secondary edz-btn--sm">
                         <span x-show="!copied"><x-edz.icon name="copy" class="w-4 h-4 me-1" /></span>
                         <span x-show="copied" x-cloak><x-edz.icon name="check" class="w-4 h-4 me-1" /></span>
@@ -143,7 +144,7 @@ $openPreview = function (): void {
         </div>
     @endif
 
-    <form wire:submit="save" x-data="{ activeTab: 'template' }">
+        <form wire:submit="save" x-data="{ activeTab: 'template' }">
 
         <div class="flex flex-col lg:flex-row gap-6">
 
@@ -276,7 +277,7 @@ $openPreview = function (): void {
                                                     <div class="flex-1 grid grid-cols-3 gap-1.5">
                                                         @for ($i = 0; $i < 6; $i++)
                                                             <div class="rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                                                                <x-edz.icon name="bag" class="w-100  text-gray-400 dark:text-gray-500" />
+                                                                <x-edz.icon name="bag" class="w-full text-gray-400 dark:text-gray-500" />
                                                             </div>
                                                         @endfor
                                                     </div>
@@ -303,7 +304,7 @@ $openPreview = function (): void {
                                                  :class="selectedTemplate === '{{ $key }}'
                                                      ? 'bg-accent-500 text-white scale-100 opacity-100'
                                                      : 'bg-gray-400/50 text-white scale-75 opacity-0'">
-                                                <x-edz.icon name="check" class="w-100 " />
+                                                <x-edz.icon name="check" class="w-5 h-5" />
                                             </div>
                                         </div>
 
@@ -315,7 +316,7 @@ $openPreview = function (): void {
                                                target="_blank" rel="noopener noreferrer"
                                                x-on:click.stop
                                                class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
-                                                 <x-edz.icon name="eye" class="w-100 " />
+                                                 <x-edz.icon name="eye" class="w-4 h-4" />
                                                 {{ __('storefront.preview_template') }}
                                             </a>
                                         </div>
@@ -470,7 +471,8 @@ $openPreview = function (): void {
                                 @foreach ($availableSections as $key => $section)
                                     @if (in_array($key, $sections))
                                         <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition-all"
-                                             x-data="{ open: $wire.expanded_section === '{{ $key }}' }">
+                                             x-data="{ open: $wire.expanded_section === '{{ $key }}' }"
+                                             x-init="$watch('$wire.expanded_section', v => open = v === '{{ $key }}')">
                                             {{-- Accordion Header --}}
                                             <button type="button"
                                                 x-on:click="open = !open; $wire.set('expanded_section', open ? '{{ $key }}' : '');"
@@ -625,8 +627,8 @@ $openPreview = function (): void {
         {{-- Save Bar --}}
         <div class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700/50 z-10">
             <div class="flex items-center justify-end gap-3">
-                @if (currentStore()?->isPubliclyActive())
-                    <a href="{{ currentStore()->public_url }}" target="_blank" rel="noopener noreferrer"
+                @if ($store?->isPubliclyActive())
+                    <a href="{{ $store->public_url }}" target="_blank" rel="noopener noreferrer"
                        class="edz-btn edz-btn--secondary edz-btn--sm hidden sm:inline-flex">
                         <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
                         {{ __('storefront.open_store') }}
@@ -641,7 +643,7 @@ $openPreview = function (): void {
     </form>
 
     {{-- Preview Modal --}}
-    @if (currentStore()?->isPubliclyActive())
+    @if ($store?->isPubliclyActive())
         <div x-show="previewOpen" x-cloak
              class="fixed inset-0 z-[100] flex items-center justify-center p-4"
              x-transition:enter="transition ease-out duration-200"
@@ -662,12 +664,12 @@ $openPreview = function (): void {
                             <x-edz.icon name="eye" class="w-5 h-5 text-accent-600 dark:text-accent-400" />
                         </div>
                         <div>
-                            <p class="text-sm font-semibold text-ink">{{ __('storefront.preview') }} — {{ currentStore()->name }}</p>
-                            <p class="text-xs text-ink-400 font-mono">{{ currentStore()->public_url }}</p>
+                            <p class="text-sm font-semibold text-ink">{{ __('storefront.preview') }} — {{ $store->name }}</p>
+                            <p class="text-xs text-ink-400 font-mono">{{ $store->public_url }}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <a href="{{ currentStore()->public_url . '?preview=1' }}" target="_blank" rel="noopener noreferrer"
+                        <a href="{{ $store->public_url . '?preview=1' }}" target="_blank" rel="noopener noreferrer"
                            class="edz-btn edz-btn--secondary edz-btn--sm">
                         <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
                             {{ __('storefront.open_in_new_tab') }}
@@ -683,7 +685,7 @@ $openPreview = function (): void {
                     <iframe
                         x-ref="previewFrame"
                         x-show="previewOpen"
-                        src="{{ currentStore()->public_url . '?preview=1' }}"
+                        src="{{ $store->public_url . '?preview=1' }}"
                         class="absolute inset-0 w-full h-full border-0"
                         loading="lazy"
                     ></iframe>
