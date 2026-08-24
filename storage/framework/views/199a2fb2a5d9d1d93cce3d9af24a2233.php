@@ -23,6 +23,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $section_content;
 
+    public $picker_query;
+
     public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
@@ -42,6 +44,30 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('resetSection'))->execute(...$arguments);
+    }
+
+    #[\Livewire\Attributes\Computed()]
+    public function productsForPicker()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('productsForPicker'))->execute(...$arguments);
+    }
+
+    #[\Livewire\Attributes\Computed()]
+    public function pickerOptions()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('pickerOptions'))->execute(...$arguments);
+    }
+
+    #[\Livewire\Attributes\Computed()]
+    public function chosenPickerProduct()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('chosenPickerProduct'))->execute(...$arguments);
     }
 
 };

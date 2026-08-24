@@ -31,7 +31,14 @@ mount(function (): void {
 $addToCart = function (string $variantId) {
     $storeId = currentStoreId();
     if (!$storeId) { return; }
-    app(\App\Domains\Cart\Services\CartService::class)->addItem($storeId, $variantId, 1);
+    $cartService = app(\App\Domains\Cart\Services\CartService::class);
+    $cartService->addItem($storeId, $variantId, 1);
+
+    $notice = limit_notice_payload($cartService);
+    if ($notice) {
+        $this->dispatch('edz-notice', title: $notice['title'], tone: $notice['tone']);
+    }
+
     $this->dispatch('cart-updated');
 };
 

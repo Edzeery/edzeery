@@ -29,6 +29,8 @@ state([
     'inventory_tracking' => true,
     'show_out_of_stock' => false,
     'allow_backorder' => false,
+    'min_order_qty' => null,
+    'max_order_qty' => null,
 ]);
 
 mount(function (): void {
@@ -50,6 +52,10 @@ mount(function (): void {
     $this->inventory_tracking = $settings->inventory_tracking ?? true;
     $this->show_out_of_stock = $settings->show_out_of_stock ?? false;
     $this->allow_backorder = $settings->allow_backorder ?? false;
+    if (Schema::hasColumn('store_settings', 'min_order_qty')) {
+        $this->min_order_qty = $settings->min_order_qty;
+        $this->max_order_qty = $settings->max_order_qty;
+    }
 });
 
 $save = function (): void {
@@ -67,6 +73,15 @@ $save = function (): void {
         'supported_languages' => 'nullable|array',
         'supported_languages.*' => 'in:ar,fr,en,es',
         'language' => 'required|in:ar,fr,en,es',
+        'min_order_qty' => 'nullable|integer|min:1|max:100000',
+        'max_order_qty' => [
+            'nullable', 'integer', 'min:1', 'max:100000',
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value !== null && (int) $this->min_order_qty !== 0 && (int) $value < (int) ($this->min_order_qty ?? 1)) {
+                    $fail(__('merchant_panel.max_below_min_error'));
+                }
+            },
+        ],
     ]);
 
     $data = [
@@ -108,6 +123,10 @@ $save = function (): void {
     }
     if (Schema::hasColumn('store_settings', 'phone')) {
         $settingsData['phone'] = $this->phone;
+    }
+    if (Schema::hasColumn('store_settings', 'min_order_qty')) {
+        $settingsData['min_order_qty'] = $this->min_order_qty;
+        $settingsData['max_order_qty'] = $this->max_order_qty;
     }
 
     $store->settings()->updateOrCreate([], $settingsData);
@@ -376,6 +395,27 @@ $save = function (): void {
                                     <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.show_out_of_stock_desc') }}</p>
                                 </div>
                             </label>
+                        </div>
+
+                        {{-- Store-wide default order limits. Individual products
+                             may override these from their own settings. --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-neutral-border dark:border-dark-border">
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.default_min_order_qty') }}</label>
+                                <input type="number" min="1" wire:model="min_order_qty"
+                                    placeholder="1"
+                                    class="edz-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.default_min_order_qty_desc') }}</p>
+                                @error('min_order_qty') <p class="text-red-500 dark:text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.default_max_order_qty') }}</label>
+                                <input type="number" min="1" wire:model="max_order_qty"
+                                    placeholder="{{ __('merchant_panel.unlimited') }}"
+                                    class="edz-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.default_max_order_qty_desc') }}</p>
+                                @error('max_order_qty') <p class="text-red-500 dark:text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                            </div>
                         </div>
                     </div>
                 </div>

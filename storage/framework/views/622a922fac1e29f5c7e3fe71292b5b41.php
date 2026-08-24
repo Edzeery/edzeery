@@ -349,7 +349,8 @@ use App\Models\Products\ProductVariant;
                                                 wire:loading.attr="disabled"
                                                 wire:loading.class="opacity-40"
                                                 :disabled="<?php echo e($item['max_stock'] && $item['quantity'] >= $item['max_stock'] ? 'true' : 'false'); ?>"
-                                                class="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800
+                                                class="w-8 h-8 flex items-center
+                                                justify-center bg-gray-50 dark:bg-gray-800
                                                        text-gray-600 dark:text-gray-400
                                                        hover:bg-gray-100 dark:hover:bg-gray-700
                                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed

@@ -1,9 +1,25 @@
-<?php
+﻿<?php
 
 return [
     'across_the_country' => 'Across the country',
     'active' => 'Active',
     'added_to_cart' => 'Added to cart',
+    'variants_matrix_title' => 'Order multiple variants at once',
+    'add_all_to_cart' => 'Add selected quantities to cart',
+    'nothing_selected' => 'Set a quantity for at least one variant',
+    'nothing_selected' => 'Set a quantity for at least one variant',
+    'pre_order' => 'Pre-order',
+    'exclusive_option' => 'Only one value can be selected for this option',
+    'min_order_error' => 'Minimum order is :min units',
+    'select_state_for_desks' => 'Select a state first to show available pickup points',
+    'select_city_for_desks' => 'Select your municipality to show available pickup points',
+    'no_desks_in_commune' => 'No pickup points listed in your municipality yet. Our team will assign the nearest desk when confirming your order',
+    'desk_optional_hint' => 'optional',
+    'no_desk_preference' => 'No preference - assigned at confirmation',
+    'order_limit_min' => 'The minimum order quantity is :min units',
+    'order_limit_max' => 'The maximum order quantity is :max units',
+    'min_order_hint' => 'Minimum order: :min',
+    'max_order_hint' => 'Up to :max units',
     'address' => 'Address',
     'address_placeholder' => 'Street address, building, floor...',
     'add_to_cart' => 'Add to Cart',

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Cart\Services;
 
+use App\Domains\Cart\Support\OrderRules;
 use App\Models\Products\ProductVariant;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
@@ -9,6 +10,12 @@ use Illuminate\Support\Facades\Session;
 class CartService
 {
     private const SESSION_KEY = 'edzeery_cart';
+
+    /**
+     * Last silent adjustment applied to a line, consumed by UI callers
+     * via takeNotice(). Shape: ['key' => string, 'limit' => int].
+     */
+    private ?array $notice = null;
 
     public function getStoreCart(string $storeId): array
     {
@@ -29,12 +36,26 @@ class CartService
         $existingQty = $cart['items'][$variantId]['quantity'] ?? 0;
         $newQty = $existingQty + $quantity;
 
-        if ($variant->stock !== null && $newQty > $variant->stock) {
-            $newQty = $variant->stock;
-        }
-
         if ($newQty <= 0) {
             return $cart;
+        }
+
+        // Shared storefront rules: merchant max order qty (always), inventory
+        // tracking and backorder policy decide the effective per-line cap.
+        $lineCap = OrderRules::lineCap($variant);
+        $minQty = OrderRules::limits($variant->product)['min'];
+
+        $this->notice = null;
+
+        // A brand-new line must respect the minimum order quantity.
+        if ($existingQty === 0 && $newQty < $minQty) {
+            $newQty = $minQty;
+            $this->notice = ['key' => 'order_limit_min', 'limit' => $minQty];
+        }
+
+        if ($lineCap !== null && $newQty > $lineCap) {
+            $newQty = $lineCap;
+            $this->notice = ['key' => 'order_limit_max', 'limit' => $lineCap];
         }
 
         $cart['items'][$variantId] = [
@@ -43,7 +64,7 @@ class CartService
             'variant_name' => $variant->name,
             'price'        => (float) ($variant->price ?? $variant->product->price ?? 0),
             'quantity'     => max(1, $newQty),
-            'max_stock'    => $variant->stock,
+            'max_stock'    => $lineCap,
         ];
 
         $this->persist($storeId, $cart);
@@ -69,12 +90,39 @@ class CartService
             return $this->removeItem($storeId, $variantId);
         }
 
-        $max = $variant->stock ?? $quantity;
-        $cart['items'][$variantId]['quantity'] = min($quantity, $max);
+        $cap = OrderRules::lineCap($variant);
+        $minQty = OrderRules::limits($variant->product)['min'];
+
+        $effectiveMin = $cap !== null ? min($minQty, max(1, $cap)) : $minQty;
+        $final = max($quantity, $effectiveMin);
+        if ($cap !== null) {
+            $final = min($final, $cap);
+        }
+
+        $this->notice = null;
+        if ($final !== $quantity) {
+            $this->notice = $quantity > $final
+                ? ['key' => 'order_limit_max', 'limit' => $final]
+                : ['key' => 'order_limit_min', 'limit' => $final];
+        }
+
+        $cart['items'][$variantId]['quantity'] = $final;
+        $cart['items'][$variantId]['max_stock'] = $cap;
 
         $this->persist($storeId, $cart);
 
         return $cart;
+    }
+
+    /**
+     * Fetch and clear the pending adjustment notice (if any).
+     */
+    public function takeNotice(): ?array
+    {
+        $notice = $this->notice;
+        $this->notice = null;
+
+        return $notice;
     }
 
     public function removeItem(string $storeId, string $variantId): array

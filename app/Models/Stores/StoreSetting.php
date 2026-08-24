@@ -30,6 +30,8 @@ class StoreSetting extends Model
         'inventory_tracking',
         'show_out_of_stock',
         'allow_backorder',
+        'min_order_qty',
+        'max_order_qty',
         'payment_methods',
         'contact_info',
     ];
@@ -39,6 +41,8 @@ class StoreSetting extends Model
         'inventory_tracking' => 'boolean',
         'show_out_of_stock' => 'boolean',
         'allow_backorder' => 'boolean',
+        'min_order_qty' => 'integer',
+        'max_order_qty' => 'integer',
         'payment_methods' => 'array',
         'contact_info' => 'array',
         'supported_languages' => 'array',

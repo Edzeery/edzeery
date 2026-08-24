@@ -125,6 +125,10 @@ final class StorefrontSections
             'categories' => ['title' => __('storefront.categories')],
             'brands' => ['title' => __('storefront.collections')],
             'description' => ['title' => __('storefront.product_details')],
+            // Template-scoped setting (not a toggleable homepage section):
+            // which product the single_product template showcases.
+            // Empty string = automatic (first active product).
+            'single_product' => ['product_id' => ''],
         ];
     }
 
@@ -202,6 +206,9 @@ final class StorefrontSections
             'section_content.categories.title' => ['nullable', 'string', 'max:' . self::TEXT_LIMITS['title']],
             'section_content.brands.title' => ['nullable', 'string', 'max:' . self::TEXT_LIMITS['title']],
             'section_content.description.title' => ['nullable', 'string', 'max:' . self::TEXT_LIMITS['title']],
+
+            // Format-only: ownership/activeness is enforced at save time.
+            'section_content.single_product.product_id' => ['nullable', 'string', 'max:64'],
         ];
     }
 
@@ -220,7 +227,9 @@ final class StorefrontSections
 
         if (isset($theme['section_content']) && is_array($theme['section_content'])) {
             foreach ($theme['section_content'] as $key => $value) {
-                if (! is_string($key) || ! in_array($key, self::ALL, true)) {
+                $allowed = in_array($key, self::ALL, true) || $key === 'single_product';
+
+                if (! is_string($key) || ! $allowed) {
                     unset($theme['section_content'][$key]);
                 }
             }

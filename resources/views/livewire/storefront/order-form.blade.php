@@ -68,19 +68,20 @@ $submitOrder = function () {
         'phone'         => 'required|string|max:20',
         'email'         => 'nullable|email|max:255',
         'state_id'      => 'required|exists:states,id',
-        'city_id'       => 'required_if:delivery_type,home|nullable|exists:cities,id',
+        'city_id'       => 'required|exists:cities,id',
         'address'       => 'required_if:delivery_type,home|nullable|string|max:1000',
         'delivery_type' => 'required|in:home,stopdesk',
         'payment_method' => 'required|in:' . implode(',', $this->paymentMethods),
         'notes'         => 'nullable|string|max:500',
-        'selectedStopdesk' => 'required_if:delivery_type,stopdesk|nullable|integer|exists:stopdesk_points,id',
+        // Optional preference only: the confirming agent assigns the desk.
+        'selectedStopdesk' => 'nullable|string|exists:stopdesk_points,id',
     ])->validate();
 
     $cartService = app(CartService::class);
     $storeId = currentStoreId();
 
     if ($cartService->isEmpty($storeId)) {
-        $this->dispatch('swal', type: 'error', title: __('storefront.cart_is_empty'));
+        $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.cart_is_empty'));
         return;
     }
 
@@ -98,7 +99,7 @@ $submitOrder = function () {
         );
 
         if (!($shipping['available'] ?? false)) {
-            $this->dispatch('swal', type: 'error', title: __('storefront.shipping_not_available'));
+            $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.shipping_not_available'));
             return;
         }
 
@@ -114,8 +115,10 @@ $submitOrder = function () {
                 'name'      => $this->name,
                 'email'     => $this->email,
                 'address'   => $this->address,
-                'state_id'  => $this->state_id,
-                'city_id'   => $this->city_id,
+                // Stopdesk orders legitimately skip city/address: never send
+                // empty strings into foreign-key columns.
+                'state_id'  => filled($this->state_id) ? $this->state_id : null,
+                'city_id'   => filled($this->city_id) ? $this->city_id : null,
                 'status'    => true,
             ]
         );
@@ -127,7 +130,7 @@ $submitOrder = function () {
 
         if (! $status) {
             DB::rollBack();
-            $this->dispatch('swal', type: 'error', title: __('storefront.failed_to_place_order'));
+            $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.failed_to_place_order'));
             return;
         }
 
@@ -138,14 +141,14 @@ $submitOrder = function () {
             'status_id'    => $status->id,
             'number'       => (new Order(['store_id' => $storeId]))->nextOrderNumber(),
             'total_amount' => $subtotal + $shippingCost,
-            'state_id'     => $this->state_id,
-            'city_id'      => $this->city_id,
-            'address'      => $this->address,
+            'state_id'     => filled($this->state_id) ? $this->state_id : null,
+            'city_id'      => filled($this->city_id) ? $this->city_id : null,
+            'address'      => filled($this->address) ? $this->address : null,
             'delivery_type' => $this->delivery_type,
             'payment_method' => $this->payment_method,
             'shipping_cost' => $shippingCost,
-            'notes'        => $this->notes,
-            'stopdesk_point_id' => $this->delivery_type === 'stopdesk' ? $this->selectedStopdesk : null,
+            'notes'        => filled($this->notes) ? $this->notes : null,
+            'stopdesk_point_id' => $this->delivery_type === 'stopdesk' && filled($this->selectedStopdesk) ? $this->selectedStopdesk : null,
         ]);
 
         OrderStatusHistory::create([
@@ -153,6 +156,10 @@ $submitOrder = function () {
             'status_id' => $status->id,
             'reason'    => 'Order placed via storefront',
         ]);
+
+        $store = currentStore();
+        $tracksInventory = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
+        $allowsBackorder = \App\Domains\Cart\Support\OrderRules::allowsBackorder($store);
 
         foreach ($items as $item) {
             $variant = ProductVariant::where('store_id', $storeId)
@@ -171,9 +178,26 @@ $submitOrder = function () {
                 'price'               => $item['price'],
                 'subtotal'            => $item['price'] * $item['quantity'],
             ]);
+
+            // Successful order => decrease stock and record a SALE movement.
+            if ($tracksInventory) {
+                $available = (int) ($variant->stock ?? 0);
+
+                if ($available >= (int) $item['quantity']) {
+                    \App\Services\InventoryService::apply(
+                        $variant,
+                        (int) $item['quantity'],
+                        \App\Enums\Store\InventoryMovementType::SALE,
+                        $order
+                    );
+                } elseif (! $allowsBackorder) {
+                    // Stock vanished between add-to-cart and checkout.
+                    throw new \Exception(__('storefront.out_of_stock'));
+                }
+                // Backorder accepted beyond available stock: leave the ledger alone.
+            }
         }
 
-        $store = currentStore();
         $subscription = $store?->user?->latestSubscription();
         if ($subscription && $subscription->plan) {
             app(FeatureUsageService::class)->consume($subscription, 'daily_orders_limit');
@@ -201,7 +225,7 @@ $submitOrder = function () {
             'store_id' => $storeId,
             'error' => $e->getMessage(),
         ]);
-        $this->dispatch('swal', type: 'error', title: __('storefront.failed_to_place_order'));
+        $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.failed_to_place_order'));
     }
 };
 ?>
@@ -240,9 +264,28 @@ $submitOrder = function () {
 
         $states = State::active()->orderBy('name')->get();
         $cities = $this->state_id ? City::where('state_id', $this->state_id)->active()->orderBy('name')->get() : collect();
-        $stopdesks = ($this->state_id && $this->delivery_type === 'stopdesk')
-            ? StopdeskPoint::where('store_id', currentStoreId())->where('state_id', $this->state_id)->where('is_active', true)->get()
+
+        // Desks are scoped to the customer's commune first; the confirming
+        // agent picks the exact desk later when the commune has none.
+        $stopdesks = collect();
+        if ($this->state_id && $this->city_id && $this->delivery_type === 'stopdesk') {
+            $stopdesks = StopdeskPoint::where('store_id', currentStoreId())
+                ->where('state_id', $this->state_id)
+                ->where('city_id', $this->city_id)
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get();
+        }
+        $deskProviders = $stopdesks->isNotEmpty()
+            ? \App\Domains\Shipping\Models\ShippingProvider::whereIn('id', $stopdesks->pluck('shipping_provider_id')->filter())
+                ->where('is_active', true)
+                ->pluck('name', 'id')
             : collect();
+        // Hide desks whose carrier was deactivated.
+        $stopdesks = $stopdesks->filter(
+            fn($p) => ! $p->shipping_provider_id || $deskProviders->has($p->shipping_provider_id)
+        );
+
         $calculator = app(ShippingCostCalculator::class);
         $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
         $paymentMethods = $this->paymentMethods;
@@ -399,21 +442,44 @@ $submitOrder = function () {
                         </div>
                     </div>
 
-                    @if($this->delivery_type === 'stopdesk' && $stopdesks->count())
+                    @if($this->delivery_type === 'stopdesk')
                         <div class="sm:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }} *</label>
-                            <select wire:model="selectedStopdesk"
-                            style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                                   bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                                   shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
-                                   transition-all duration-200">
-                                <option value="">{{ __('storefront.select_point') }}</option>
-                                @foreach($stopdesks as $point)
-                                    <option value="{{ $point->id }}">{{ $point->name }} — {{ $point->address }}</option>
-                                @endforeach
-                            </select>
-                            @error('selectedStopdesk') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                            @if($stopdesks->count())
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    {{ __('storefront.select_stopdesk_point') }}
+                                    <span class="font-normal text-gray-400 text-xs">({{ __('storefront.desk_optional_hint') }})</span>
+                                </label>
+                                <select wire:model="selectedStopdesk"
+                                style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
+                                       bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
+                                       shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
+                                       transition-all duration-200">
+                                    <option value="">{{ __('storefront.no_desk_preference') }}</option>
+                                    @foreach($stopdesks->groupBy('shipping_provider_id') as $providerId => $points)
+                                        <optgroup label="{{ $deskProviders[$providerId] ?? __('storefront.stop_desk') }}">
+                                            @foreach($points as $point)
+                                                <option value="{{ $point->id }}">{{ $point->name }} - {{ $point->address }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                                @error('selectedStopdesk') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                            @else
+                                {{-- No desks to list: keep the failure reason visible
+                                     instead of a silent validation dead-end. --}}
+                                <div class="rounded-xl border px-4 py-3 text-sm
+                                            bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700
+                                            text-amber-700 dark:text-amber-400">
+                                    @if(! $this->state_id)
+                                        {{ __('storefront.select_state_for_desks') }}
+                                    @elseif(! $this->city_id)
+                                        {{ __('storefront.select_city_for_desks') }}
+                                    @else
+                                        {{ __('storefront.no_desks_in_commune') }}
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @endif
 
@@ -499,7 +565,7 @@ $submitOrder = function () {
                             </div>
                             <div class="text-right shrink-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white tabular-nums">{{ currency($item['price'] * $item['quantity']) }}</p>
-                                <p class="text-xs text-gray-400 dark:text-gray-500">× {{ $item['quantity'] }}</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500">أ— {{ $item['quantity'] }}</p>
                             </div>
                         </div>
                     @empty

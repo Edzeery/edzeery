@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'account' => 'Compte',
@@ -10,6 +10,12 @@ return [
     'algerian_dinar' => 'Dinar algérien',
     'allow_backorder' => 'Autoriser les commandes en rupture',
     'allow_backorder_desc' => 'Autoriser les commandes même en rupture de stock',
+    'default_min_order_qty' => 'Quantité minimale de commande par défaut',
+    'default_min_order_qty_desc' => 'S\'applique à tous les produits sauf si le produit le remplace',
+    'default_max_order_qty' => 'Quantité maximale de commande par défaut',
+    'default_max_order_qty_desc' => 'Laisser vide pour illimité',
+    'max_below_min_error' => 'Le maximum doit être supérieur ou égal au minimum',
+    'unlimited' => 'Illimité',
     'all_days' => 'Tous les jours',
     'all_statuses' => 'Tous les statuts',
     'all_stores' => 'Tous les magasins',
@@ -208,6 +214,9 @@ return [
     'storefront' => 'Vitrine',
     'storefront_template' => 'Modèle de vitrine',
     'storefront_template_desc' => 'Choisissez l\'apparence de votre magasin public',
+    'template_product' => 'Produit du modèle',
+    'template_product_auto' => 'Automatique (premier produit actif)',
+    'template_product_hint' => 'Choisissez le produit mis en avant sur la page d\'accueil lorsque le modèle produit unique est actif.',
     'store_billing' => 'Facturation du magasin',
     'store_group' => 'Paramètres du magasin',
     'store_management' => 'Gestion du magasin',

@@ -31,6 +31,8 @@ class Product extends Model
         'short_description',
         'description',
         'price',
+        'min_order_qty',
+        'max_order_qty',
         'cost_price',
         'unit',
         'meta_title',
@@ -43,6 +45,8 @@ class Product extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'min_order_qty' => 'integer',
+        'max_order_qty' => 'integer',
     ];
 
     /* Relations */

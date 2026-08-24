@@ -49,6 +49,8 @@ state([
     'price' => null,
     'compare_price' => null,
     'cost_price' => null,
+    'min_order_qty' => null,
+    'max_order_qty' => null,
     'stock' => null,
     'low_stock_threshold' => 5,
     'options' => [],
@@ -78,6 +80,8 @@ mount(function (?Product $product = null): void {
 
         $this->brand_id = $product->brand_id;
         $this->categories = $product->categories()->pluck('categories.id')->toArray();
+        $this->min_order_qty = $product->min_order_qty;
+        $this->max_order_qty = $product->max_order_qty;
 
         // Keep existing codes stable by default on edit.
         $this->auto_generate_sku = false;
@@ -379,6 +383,15 @@ $stepRules = protect(function (int $step): array {
             'price' => ['nullable', 'numeric', 'min:0'],
             'compare_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
+            'min_order_qty' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'max_order_qty' => [
+                'nullable', 'integer', 'min:1', 'max:100000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null && (int) $this->min_order_qty !== 0 && (int) $value < (int) ($this->min_order_qty ?? 1)) {
+                        $fail(__('merchant_panel.max_below_min_error'));
+                    }
+                },
+            ],
         ],
         3 => [],
         4 => [
@@ -437,6 +450,8 @@ $save = action(function (): void {
         'cost_price' => ['nullable', 'numeric', 'min:0'],
         'stock' => ['nullable', 'integer', 'min:0'],
         'low_stock_threshold' => ['nullable', 'integer', 'min:0'],
+        'min_order_qty' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        'max_order_qty' => ['nullable', 'integer', 'min:1', 'max:100000'],
     ];
 
     $v = \Illuminate\Support\Facades\Validator::make($this->all(), $allRules);
@@ -724,6 +739,24 @@ $wizardSteps = computed(fn () => [
                                     {{ __('products.add_options_hint') }}
                                 </div>
                             @endif
+
+                            {{-- Per-product order limits override the store defaults. --}}
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-1">
+                                <div class="edz-field">
+                                    <label class="edz-field__label" for="product-min-order-qty">{{ __('products.min_order_qty') }}</label>
+                                    <input id="product-min-order-qty" type="number" min="1" class="edz-input @error('min_order_qty') edz-input--error @enderror"
+                                           wire:model="min_order_qty" placeholder="1">
+                                    <p class="text-xs text-ink-muted mt-1">{{ __('products.min_order_qty_hint') }}</p>
+                                    @error('min_order_qty') <span class="edz-field__error">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="edz-field">
+                                    <label class="edz-field__label" for="product-max-order-qty">{{ __('products.max_order_qty') }}</label>
+                                    <input id="product-max-order-qty" type="number" min="1" class="edz-input @error('max_order_qty') edz-input--error @enderror"
+                                           wire:model="max_order_qty" placeholder="{{ __('products.unlimited') }}">
+                                    <p class="text-xs text-ink-muted mt-1">{{ __('products.max_order_qty_hint') }}</p>
+                                    @error('max_order_qty') <span class="edz-field__error">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

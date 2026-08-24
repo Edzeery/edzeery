@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'activate' => 'Activer',
@@ -33,6 +33,11 @@ return [
     'compare_price_label' => 'Prix de comparaison',
     'cost' => 'Coût',
     'cost_price' => 'Prix de revient',
+    'min_order_qty' => 'Minimum order quantity',
+    'max_order_qty' => 'Maximum order quantity',
+    'min_order_qty_hint' => 'Leave empty to use the store default',
+    'max_order_qty_hint' => 'Leave empty to use the store default',
+    'unlimited' => 'Unlimited',
     'cost_price_label' => 'Prix de revient',
     'created' => 'Créé le',
     'deactivate' => 'Désactiver',

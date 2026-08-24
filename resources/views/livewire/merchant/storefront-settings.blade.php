@@ -5,6 +5,7 @@ use App\Enums\Store\StorePermissionEnum;
 use App\Services\Stores\StorefrontThemeService;
 use App\Support\Storefront\StorefrontSections;
 use Illuminate\Validation\ValidationException;
+use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -29,6 +30,8 @@ state([
     'secondary_color' => StorefrontSections::DEFAULT_SECONDARY_COLOR,
     'font_family' => StorefrontSections::DEFAULT_FONT_FAMILY,
     'section_content' => [],
+    // Ephemeral search term for the single-product picker (live, not persisted).
+    'picker_query' => '',
 ]);
 
 mount(function (): void {
@@ -74,6 +77,20 @@ $save = function (): void {
         // Contract first: validation rules assume the normalized shape.
         $payload['section_content'] = StorefrontSections::normalize($payload['section_content'] ?? null);
 
+        // Ownership guard: a stale/foreign/deactivated product choice silently
+        // falls back to automatic — same philosophy as unknown section keys.
+        $chosenProductId = (string) ($payload['section_content']['single_product']['product_id'] ?? '');
+        if ($chosenProductId !== '') {
+            $ownsChosen = \App\Models\Products\Product::whereKey($chosenProductId)
+                ->where('store_id', $store->id)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$ownsChosen) {
+                $payload['section_content']['single_product']['product_id'] = '';
+            }
+        }
+
         $validated = validator($payload, [
             'template' => ['required', 'string', 'in:' . implode(',', LandingTemplateEnum::values())],
             ...StorefrontSections::validationRules(),
@@ -116,6 +133,44 @@ $resetSection = function (string $key): void {
     $content[$key] = StorefrontSections::defaults()[$key];
     $this->section_content = $content;
 };
+
+$productsForPicker = computed(function () {
+    $store = currentStore();
+
+    if (!$store) {
+        return collect();
+    }
+
+    return \App\Models\Products\Product::query()
+        ->where('store_id', $store->id)
+        ->where('is_active', true)
+        ->orderByDesc('created_at')
+        ->limit(200)
+        ->get(['id', 'name']);
+});
+
+$pickerOptions = computed(function () {
+    $query = trim((string) $this->picker_query);
+
+    return $this->productsForPicker
+        ->when($query !== '', fn ($c) => $c->filter(
+            fn ($p) => str_contains(mb_strtolower($p->name), mb_strtolower($query))
+        ))
+        ->take(20)
+        ->values();
+});
+
+$chosenPickerProduct = computed(function () {
+    $chosenId = (string) ($this->section_content['single_product']['product_id'] ?? '');
+
+    if ($chosenId === '') {
+        return null;
+    }
+
+    return \App\Models\Products\Product::query()
+        ->where('store_id', currentStore()?->id)
+        ->find($chosenId);
+});
 
 ?>@php
     $store = currentStore();
@@ -333,6 +388,82 @@ $resetSection = function (string $key): void {
                                     </div>
                                 </div>
                             @endforeach
+                        </div>
+
+                        {{-- Single-product template: which product to showcase.
+                             Every choice commits LIVE so the selection is
+                             visible (and survives a refresh) immediately —
+                             no hidden deferred state, no save surprises. --}}
+                        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+                            x-show="selectedTemplate === 'single_product'" x-cloak
+                            x-data="{ open: false }" @click.outside="open = false">
+                            <label class="edz-label">{{ __('merchant_panel.template_product') }}</label>
+
+                            @php $chosenPickerProduct = $this->chosenPickerProduct; @endphp
+
+                            <div class="relative sm:max-w-md">
+                                <button type="button"
+                                    x-on:click="open = !open"
+                                    class="edz-input w-full flex items-center justify-between text-start"
+                                    aria-haspopup="listbox" :aria-expanded="open">
+                                    <span class="truncate flex items-center gap-2 min-w-0">
+                                        @if ($chosenPickerProduct)
+                                            <x-edz.icon name="check-circle" class="w-4 h-4 store-text-primary shrink-0" />
+                                            <span class="truncate font-medium">{{ $chosenPickerProduct->name }}</span>
+                                        @else
+                                            <span class="text-ink-muted">{{ __('merchant_panel.template_product_auto') }}</span>
+                                        @endif
+                                    </span>
+                                    <x-edz.icon name="chevron-down"
+                                        class="w-4 h-4 text-gray-400 shrink-0 ms-2 transition-transform duration-200"
+                                        x-bind:class="open ? 'rotate-180' : ''" />
+                                </button>
+
+                                <div x-show="open" x-cloak
+                                    x-transition:enter="transition ease-out duration-150"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="absolute z-30 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
+                                    <div class="p-2 border-b border-gray-100 dark:border-gray-800">
+                                        <input type="search" wire:model.live.debounce.250ms="picker_query"
+                                            placeholder="{{ __('storefront.search_products') }}"
+                                            class="edz-input w-full text-sm">
+                                    </div>
+
+                                    <ul class="max-h-56 overflow-y-auto py-1" role="listbox">
+                                        <li>
+                                            <button type="button" data-picker-value=""
+                                                x-on:click="$wire.set('section_content.single_product.product_id', $el.dataset.pickerValue); $wire.set('picker_query', ''); open = false"
+                                                class="w-full text-start px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-between gap-2 {{ $chosenPickerProduct ? '' : 'store-text-primary font-semibold' }}">
+                                                <span>{{ __('merchant_panel.template_product_auto') }}</span>
+                                                @if (! $chosenPickerProduct)
+                                                    <x-edz.icon name="check" class="w-4 h-4 shrink-0" />
+                                                @endif
+                                            </button>
+                                        </li>
+                                        @foreach ($this->pickerOptions as $pickerProduct)
+                                            @php $isChosen = (string) $chosenPickerProduct?->id === (string) $pickerProduct->id; @endphp
+                                            <li wire:key="picker-opt-{{ $pickerProduct->id }}">
+                                                <button type="button" data-picker-value="{{ $pickerProduct->id }}"
+                                                    x-on:click="$wire.set('section_content.single_product.product_id', $el.dataset.pickerValue); $wire.set('picker_query', ''); open = false"
+                                                    class="w-full text-start px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-between gap-2 {{ $isChosen ? 'store-text-primary font-semibold' : '' }}">
+                                                    <span class="truncate">{{ $pickerProduct->name }}</span>
+                                                    @if ($isChosen)
+                                                        <x-edz.icon name="check" class="w-4 h-4 shrink-0" />
+                                                    @endif
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                        @if ($this->pickerOptions->isEmpty())
+                                            <li class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                                {{ __('storefront.no_results_found') }}
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.template_product_hint') }}</p>
                         </div>
                     </div>
                 </div>

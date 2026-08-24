@@ -29,10 +29,18 @@ mount(function (): void {
     // Guarantees the full contract shape (legacy/partial rows included).
     $this->section_content = StorefrontSections::normalize($theme?->section_content);
 
-    $this->product = Product::where('store_id', $store->id)
+    // Merchant-chosen showcase product first; automatic fallback to the
+    // first active product (covers empty choice, stale id, foreign store).
+    $productQuery = Product::query()
+        ->where('store_id', $store->id)
         ->where('is_active', true)
-        ->with(['images', 'variants.optionValues.option', 'brand'])
-        ->first();
+        ->with(['images', 'variants.optionValues.option', 'brand']);
+
+    $chosenId = (string) ($this->section_content['single_product']['product_id'] ?? '');
+
+    $this->product = ($chosenId !== ''
+        ? (clone $productQuery)->whereKey($chosenId)->first()
+        : null) ?? $productQuery->first();
 
     if (!$this->product) {
         abort(404);
@@ -41,6 +49,8 @@ mount(function (): void {
     $this->selectedVariant = $this->product->variants->first();
 });
 
+// Kept for compatibility with deep links that re-select a variant; ordering
+// itself lives in the direct variant matrix below the hero.
 $selectVariant = function (string $variantId): void {
     $variant = $this->product->variants->firstWhere('id', $variantId);
 
@@ -49,34 +59,6 @@ $selectVariant = function (string $variantId): void {
     }
 
     $this->selectedVariant = $variant;
-};
-
-$addToCart = function (): void {
-    $storeId = currentStoreId();
-    if (!$storeId) {
-        return;
-    }
-    $cartService = app(\App\Domains\Cart\Services\CartService::class);
-
-    $variant = $this->selectedVariant;
-
-    if (!$variant && $this->product->variants->count() === 1) {
-        $variant = $this->product->variants->first();
-    }
-
-    if (!$variant) {
-        $this->dispatch('swal', type: 'error', title: __('storefront.please_select_variant'));
-        return;
-    }
-
-    if ($variant->isOutOfStock()) {
-        $this->dispatch('swal', type: 'error', title: __('storefront.out_of_stock'));
-        return;
-    }
-
-    $cartService->addItem($storeId, $variant->id, 1);
-
-    $this->dispatch('cart-updated');
 };
 ?>
 
@@ -144,40 +126,13 @@ $addToCart = function (): void {
                                 </p>
                             @endif
 
-                            {{-- Variant selector --}}
-                            @if ($this->product->variants->count() > 1)
+                            {{-- Ordering: the direct matrix is the single gateway.
+                                 No chips selector (it duplicated the matrix) and no
+                                 cart — quantities + "order now" go straight to checkout. --}}
+                            @if ($this->product->variants->count())
                                 <div class="mb-6">
-                                    <label
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.options') }}</label>
-                                    <div class="flex flex-wrap gap-2">
-                                        @foreach ($this->product->variants as $variant)
-                                            <button type="button" data-variant-id="{{ $variant->id }}"
-                                                x-on:click="$wire.selectVariant($el.dataset.variantId)"
-                                                class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer
-                                            {{ $this->selectedVariant?->id === $variant->id
-                                                ? 'store-border-primary store-bg-primary-soft store-text-primary'
-                                                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300' }}">
-                                                {{ $variant->name }}
-                                            </button>
-                                        @endforeach
-                                    </div>
-
-                                    <button type="button" wire:click="addToCart"
-                                        @if ($this->selectedVariant?->isOutOfStock()) disabled @endif
-                                        class="mt-4 w-full sm:w-auto store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                        wire:loading.attr="disabled">
-                                        <x-edz.icon name="shopping-cart" class="mr-2" />
-                                        {{ __('storefront.add_to_cart') }}
-                                    </button>
+                                    <livewire:storefront.variant-matrix :product-id="$this->product->id" :direct="true" :key="'vmd-'.$this->product->id" />
                                 </div>
-                            @else
-                                <button type="button" wire:click="addToCart"
-                                    @if ($this->selectedVariant?->isOutOfStock()) disabled @endif
-                                    class="store-btn-primary text-white font-bold py-3 px-8 rounded-lg transition text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                    wire:loading.attr="disabled">
-                                    <x-edz.icon name="shopping-cart" class=" h-5 w-5" />
-                                    {{ __('storefront.add_to_cart') }}
-                                </button>
                             @endif
                         </div>
 

@@ -272,3 +272,100 @@ test('editor html maxlengths mirror the TEXT_LIMITS contract exactly', function 
         expect($actual)->toHaveKey($id, (string) $max, "Field [{$id}] must carry the contract limit {$max}.");
     }
 });
+
+test('owner picks the showcased product for the single product template', function () {
+    [$user, $store] = createStoreMember('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'First Product',
+        'slug' => 'first-' . uniqid(),
+        'sku' => 'PICK-A-' . uniqid(),
+        'type' => 'simple',
+        'price' => 100,
+        'is_active' => true,
+    ]);
+    $second = \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'Second Showcase',
+        'slug' => 'second-' . uniqid(),
+        'sku' => 'PICK-B-' . uniqid(),
+        'type' => 'simple',
+        'price' => 200,
+        'is_active' => true,
+    ]);
+
+    Volt::test('merchant.storefront-settings')
+        ->set('template', 'single_product')
+        ->set('section_content.single_product.product_id', (string) $second->id)
+        ->call('save')
+        ->assertDispatched('swal', type: 'success');
+
+    expect($store->fresh()->theme->section_content['single_product']['product_id'])
+        ->toBe((string) $second->id);
+});
+
+test('single product picker silently drops foreign or inactive products', function () {
+    [$user, $store] = createStoreMember('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    [, $otherStore] = createStoreMember('owner');
+
+    $foreign = \App\Models\Products\Product::create([
+        'store_id' => $otherStore->id,
+        'name' => 'Foreign Product',
+        'slug' => 'foreign-' . uniqid(),
+        'sku' => 'FRN-' . uniqid(),
+        'type' => 'simple',
+        'price' => 50,
+        'is_active' => true,
+    ]);
+
+    Volt::test('merchant.storefront-settings')
+        ->set('template', 'single_product')
+        ->set('section_content.single_product.product_id', (string) $foreign->id)
+        ->call('save')
+        ->assertDispatched('swal', type: 'success');
+
+    expect($store->fresh()->theme->section_content['single_product']['product_id'])->toBe('');
+});
+
+test('single product picker is searchable and policy compliant', function () {
+    [$user, $store] = createStoreMember('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'Wireless Headphones',
+        'slug' => 'wh-' . uniqid(),
+        'sku' => 'SRCH-A-' . uniqid(),
+        'type' => 'simple',
+        'price' => 300,
+        'is_active' => true,
+    ]);
+    \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'Office Chair',
+        'slug' => 'oc-' . uniqid(),
+        'sku' => 'SRCH-B-' . uniqid(),
+        'type' => 'simple',
+        'price' => 400,
+        'is_active' => true,
+    ]);
+
+    $component = Volt::test('merchant.storefront-settings')
+        ->set('template', 'single_product')
+        ->set('picker_query', 'headphones');
+
+    $html = $component->html();
+
+    // Server-side filtering narrows the option list to the matching product.
+    expect($html)->toContain('Wireless Headphones')
+        ->and($html)->not->toContain('Office Chair')
+        ->and($html)->toContain('data-picker-value=')
+        ->and($html)->toContain('$el.dataset.pickerValue');
+
+    $component->set('picker_query', '')
+        ->assertSee('Office Chair');
+});

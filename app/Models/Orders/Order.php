@@ -49,6 +49,7 @@ class Order extends Model
         'state_id',
         'city_id',
         'stopdesk_point_id',
+        'shipping_provider_id',
         'address',
         'delivery_type',
         'payment_method',
@@ -119,6 +120,11 @@ class Order extends Model
     public function stopdeskPoint(): BelongsTo
     {
         return $this->belongsTo(\App\Domains\Shipping\Models\StopdeskPoint::class);
+    }
+
+    public function shippingProvider(): BelongsTo
+    {
+        return $this->belongsTo(\App\Domains\Shipping\Models\ShippingProvider::class);
     }
 
     public function statusHistories(): HasMany

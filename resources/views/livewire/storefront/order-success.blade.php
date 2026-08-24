@@ -262,13 +262,13 @@ mount(function (string $order): void {
     {{-- Contact / CTA --}}
     <div class="text-center">
         <div class="inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-5">
-            <x-edz.icon name="phone" class="text-base" />
+            <x-edz.icon name="phone" class="text-base w-5 h-5" />
             {{ __('storefront.we_will_contact_you') }}
         </div>
         <br>
         <a href="{{ route('storefront.home', ['store' => currentStore()?->slug ?? '']) }}"
             class="inline-flex items-center gap-2 store-btn-primary text-white font-semibold py-3 px-6 rounded-xl transition hover:shadow-lg">
-            <x-edz.icon name="arrow-left" class="text-lg" />
+            <x-edz.icon name="arrow-left" class="text-lg w-5 h-5" />
             {{ __('storefront.back_to_store') }}
         </a>
     </div>

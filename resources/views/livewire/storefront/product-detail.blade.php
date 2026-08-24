@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Domains\Cart\Services\CartService;
 use App\Models\Products\Product;
@@ -56,35 +56,60 @@ $addToCart = function (): void {
 
     $variant = $this->product->variants->firstWhere('id', $variantId);
 
-    if (!$variant || (int) $variant->stock <= 0) {
-        $this->dispatch('swal', type: 'error', title: __('storefront.out_of_stock'));
+    if (!$variant) {
         return;
     }
 
-    $quantity = max(1, min((int) $this->quantity, (int) $variant->stock));
+    // Merchant max + stock policy (tracking / backorder) in one number.
+    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant);
 
-    app(CartService::class)->addItem(currentStoreId(), $variantId, $quantity);
+    if ($lineCap !== null && $lineCap <= 0) {
+        $this->dispatch('edz-notice', title: __('storefront.out_of_stock'), tone: 'danger');
+        return;
+    }
 
+    $quantity = (int) $this->quantity;
+    if ($lineCap !== null) {
+        $quantity = min($quantity, $lineCap);
+    }
+
+    $cartService = app(CartService::class);
+    $cartService->addItem(currentStoreId(), $variantId, $quantity);
+
+    $notice = limit_notice_payload($cartService);
+    if ($notice) {
+        $this->dispatch('edz-notice', title: $notice['title'], tone: $notice['tone']);
+    }
     $this->dispatch('cart-updated');
-    $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
 };
 
 $addRelatedToCart = function (string $variantId): void {
-    app(CartService::class)->addItem(currentStoreId(), $variantId, 1);
+    $cartService = app(CartService::class);
+    $cartService->addItem(currentStoreId(), $variantId, 1);
 
+    $notice = limit_notice_payload($cartService);
+    if ($notice) {
+        $this->dispatch('edz-notice', title: $notice['title'], tone: $notice['tone']);
+    }
     $this->dispatch('cart-updated');
-    $this->dispatch('swal', type: 'success', title: __('storefront.added_to_cart'));
 };
 
 $incrementQuantity = function (): void {
     $variant = $this->product?->variants->firstWhere('id', $this->selectedVariantId ?? $this->product->variants->first()?->id);
 
-    if (!$variant || (int) $variant->stock <= 0) {
+    if (!$variant) {
         $this->quantity = 1;
         return;
     }
 
-    $this->quantity = min((int) $this->quantity + 1, (int) $variant->stock);
+    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant);
+
+    if ($lineCap !== null) {
+        $this->quantity = min((int) $this->quantity + 1, max(1, $lineCap));
+        return;
+    }
+
+    $this->quantity = (int) $this->quantity + 1;
 };
 
 $decrementQuantity = function (): void {
@@ -124,6 +149,8 @@ $decrementQuantity = function (): void {
                     'stock' => (int) $__v->stock,
                     'threshold' => (int) $__v->low_stock_threshold,
                     'out_of_stock' => (int) $__v->stock <= 0,
+                    // Effective per-line cap: merchant max + stock policy.
+                    'cap' => \App\Domains\Cart\Support\OrderRules::lineCap($__v),
                     'option_values' => $__v->optionValues
                         ->map(fn($ov) => $ov->option?->name . ': ' . $ov->value)
                         ->filter()
@@ -161,7 +188,7 @@ $decrementQuantity = function (): void {
                                     x-transition:enter-start="opacity-0 scale-105"
                                     x-transition:enter-end="opacity-100 scale-100"
                                     src="{{ asset('storage/' . $img->path) }}"
-                                    alt="{{ $this->product->name }} — {{ $i + 1 }}"
+                                    alt="{{ $this->product->name }} â€” {{ $i + 1 }}"
                                     class="w-full h-full object-cover absolute inset-0"
                                     onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
                                     draggable="false">
@@ -170,7 +197,7 @@ $decrementQuantity = function (): void {
                             {{-- Featured Badge --}}
                             @if ($this->product->is_featured)
                                 <span
-                                    class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
+                                    class="absolute top-4 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                                     <x-status-badge-wire domain="general" status="featured" set="bi" />
                                 </span>
@@ -209,8 +236,9 @@ $decrementQuantity = function (): void {
                         @if ($this->product->images->count() > 1)
                             <div class="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide" x-ref="thumbs">
                                 @foreach ($this->product->images as $i => $img)
-                                    <button type="button" x-on:click="goTo({{ $i }})"
-                                        :class="active === {{ $i }} ?
+                                    <button type="button" data-slide-index="{{ $i }}"
+                                        x-on:click="goTo(Number($el.dataset.slideIndex))"
+                                        :class="active === Number($el.dataset.slideIndex) ?
                                             'ring-2 ring-offset-2 store-border-primary ring-offset-white dark:ring-offset-gray-900 opacity-100' :
                                             'ring-1 ring-gray-200 dark:ring-gray-700 opacity-60 hover:opacity-90'"
                                         class="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden transition-all duration-200">
@@ -227,7 +255,7 @@ $decrementQuantity = function (): void {
                             class="aspect-square rounded-2xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden relative">
                             @if ($this->product->is_featured)
                                 <span
-                                    class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
+                                    class="absolute top-4 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                                     <x-status-badge-wire domain="general" status="featured" set="bi" />
                                 </span>
@@ -274,8 +302,16 @@ $decrementQuantity = function (): void {
                 </div>
 
                 {{-- Info --}}
-                <div class="flex flex-col"
-                    x-data='productInfo({!! json_encode($__variantPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) !!}, @js(__('storefront.low_stock', ['count' => ':count'])), @js(__('storefront.in_stock')), @js(__('storefront.out_of_stock')), @js(__('storefront.out_of_stock_short')), @js(__('storefront.add_to_cart')))'>
+                {{-- All server values reach productInfo() through plain data-*
+                     attributes; the Alpine expression stays literal so no quote
+                     collision can truncate it again. --}}
+                <div class="flex flex-col" x-data="productInfo(JSON.parse($el.dataset.variants || '{}'), $el.dataset.labelLowStock, $el.dataset.labelInStock, $el.dataset.labelOutOfStock, $el.dataset.labelOutShort, $el.dataset.labelAddToCart)"
+                    data-variants="{{ json_encode($__variantPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) }}"
+                    data-label-low-stock="{{ __('storefront.low_stock', ['count' => ':count']) }}"
+                    data-label-in-stock="{{ __('storefront.in_stock') }}"
+                    data-label-out-of-stock="{{ __('storefront.out_of_stock') }}"
+                    data-label-out-short="{{ __('storefront.out_of_stock_short') }}"
+                    data-label-add-to-cart="{{ __('storefront.add_to_cart') }}">
                     @if ($this->product->brand)
                         <span
                             class="text-sm font-semibold store-text-primary uppercase tracking-wider mb-2">{{ $this->product->brand->name }}</span>
@@ -336,9 +372,10 @@ $decrementQuantity = function (): void {
                                     @php
                                         $__outOfStock = (int) $variant->stock <= 0;
                                     @endphp
-                                    <button type="button" x-on:click="select('{{ $variant->id }}')"
+                                    <button type="button" data-variant-id="{{ $variant->id }}"
+                                        x-on:click="select($el.dataset.variantId)"
                                         @if ($__outOfStock) disabled tabindex="-1" @endif
-                                        :class="$wire.selectedVariantId === '{{ $variant->id }}' ?
+                                        :class="$wire.selectedVariantId === $el.dataset.variantId ?
                                             'store-border-primary store-bg-primary-soft store-text-primary ring-1 border-transparent cursor-default' :
                                             '{{ $__outOfStock
                                                 ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 line-through opacity-60 cursor-not-allowed'
@@ -364,17 +401,22 @@ $decrementQuantity = function (): void {
                             <div
                                 class="inline-flex items-center rounded-lg border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
                                 <button type="button" wire:click="decrementQuantity()"
-                                    class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                    class="w-10 h-10 flex items-center justify-center
+                                    text-gray-600 dark:text-gray-300 hover:bg-gray-100
+                                     dark:hover:bg-gray-700 transition
+                                     disabled:opacity-30 disabled:cursor-not-allowed"
                                     :disabled="$wire.quantity <= 1" aria-label="Decrease quantity">
                                     <x-edz.icon name="minus" class="text-lg w-5 h-5" />
                                 </button>
                                 <input type="number" wire:model.blur="quantity" min="1"
-                                    max="{{ $__activeVariant && (int) $__activeVariant->stock > 0 ? (int) $__activeVariant->stock : 1 }}"
+                                    :max="maxQty ?? 1"
                                     class="w-14 h-10 text-center border-x-2 border-gray-200 dark:border-gray-700 bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     aria-label="{{ __('storefront.quantity') }}">
                                 <button type="button" wire:click="incrementQuantity()"
-                                    class="w-10 h-10 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                                    :disabled="activeVariant && $wire.quantity >= activeVariant.stock"
+                                    class="w-10 h-10 flex items-center justify-center
+                                     text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition
+                                      disabled:opacity-30 disabled:cursor-not-allowed"
+                                    :disabled="maxQty !== null && $wire.quantity >= maxQty"
                                     aria-label="Increase quantity">
                                     <x-edz.icon name="plus" class="text-lg w-5 h-5 " />
                                 </button>
@@ -481,7 +523,7 @@ $decrementQuantity = function (): void {
 
                                         @if ($rp->is_featured)
                                             <span
-                                                class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
+                                                class="absolute top-4 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                                                 <x-status-badge-wire domain="general" status="featured"
                                                     set="bi" />

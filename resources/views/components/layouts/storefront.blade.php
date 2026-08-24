@@ -224,7 +224,11 @@
                     </svg>
                 </button>
 
-                @livewire('storefront.mini-cart')
+                {{-- Direct-order mode: single-product stores skip the cart
+                     entirely; the template's "order now" goes straight to checkout. --}}
+                @unless ($store->landing_template?->value === 'single_product')
+                    @livewire('storefront.mini-cart')
+                @endunless
             </div>
         </div>
     </header>
@@ -299,10 +303,38 @@
         </div>
     </footer>
 
+    {{-- Notice Toast (limits / errors / confirmations) --}}
+    <div x-data="edzNotice()" x-on:edz-notice.window="show($event.detail)" x-cloak
+        class="fixed bottom-24 {{ isRTL() ? 'start-6' : 'end-6' }} z-[70] pointer-events-none">
+        <div x-show="visible" x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 translate-y-4 scale-95"
+            class="pointer-events-auto flex items-center gap-3 border rounded-2xl shadow-xl px-4 py-3 min-w-[260px] max-w-sm"
+            :class="tone === 'success'
+                ? 'bg-white dark:bg-gray-800 border-green-200 dark:border-green-800'
+                : (tone === 'danger'
+                    ? 'bg-white dark:bg-gray-800 border-red-200 dark:border-red-800'
+                    : 'bg-white dark:bg-gray-800 border-amber-200 dark:border-amber-700')">
+            <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+                :class="tone === 'success'
+                    ? 'bg-green-100 dark:bg-green-900/30'
+                    : (tone === 'danger' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-amber-100 dark:bg-amber-900/30')">
+                <ion-icon class="text-lg"
+                    :class="tone === 'success'
+                        ? 'text-green-600 dark:text-green-400'
+                        : (tone === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')"
+                    :name="tone === 'success' ? 'checkmark-outline' : (tone === 'danger' ? 'close-circle-outline' : 'alert-circle-outline')"></ion-icon>
+            </div>
+            <p class="min-w-0 text-sm font-semibold text-gray-900 dark:text-white" x-text="message"></p>
+        </div>
+    </div>
+
     {{-- Cart Toast --}}
     <div x-data="cartToast()" x-on:cart-updated.window="show()" x-cloak
-        class="fixed bottom-6 {{ isRTL() ? 'start-6' : 'end-6' }} z-[70] pointer-events-none">
-        <div x-show="visible" x-transition:enter="transition ease-out duration-300"
+        class="fixed bottom-6 {{ isRTL() ? 'start-6' : 'end-6' }} z-[70] pointer-events-none">        <div x-show="visible" x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
             x-transition:leave="transition ease-in duration-200"
@@ -324,6 +356,24 @@
     @livewireScripts
 
     <script>
+        // Bridge legacy session flashes into the edz-notice channel. Runs
+        // before swal.js's DOMContentLoaded hook, which will find nothing to
+        // consume — preventing duplicate toasts.
+        (function () {
+            var el = document.querySelector('[data-sw]');
+            if (!el) return;
+            var tone = el.dataset.sw === 'success' ? 'success' : 'danger';
+            var title = el.dataset.swTitle || el.dataset.swMessage || '';
+            el.remove();
+            if (!title) return;
+            window.dispatchEvent(new CustomEvent('edz-notice', {
+                detail: {
+                    title: title,
+                    tone: tone
+                }
+            }));
+        })();
+
         function cartToast() {
             return {
                 visible: false,
@@ -332,6 +382,25 @@
                     clearTimeout(this.timeout);
                     this.visible = true;
                     this.timeout = setTimeout(() => this.visible = false, 2500);
+                }
+            }
+        }
+
+        // Storefront notification channel: deterministic corner toasts fed by
+        // the "edz-notice" browser event (limits, errors, confirmations).
+        function edzNotice() {
+            return {
+                visible: false,
+                message: '',
+                tone: 'warning',
+                timeout: null,
+                show(detail) {
+                    if (!detail || !detail.title) return;
+                    this.message = detail.title;
+                    this.tone = ['success', 'danger'].includes(detail.tone) ? detail.tone : 'warning';
+                    clearTimeout(this.timeout);
+                    this.visible = true;
+                    this.timeout = setTimeout(() => this.visible = false, 4000);
                 }
             }
         }
@@ -398,7 +467,7 @@
                 outOfStockShortLabel,
                 addToCartLabel,
                 get activeVariant() {
-                    return this.variants[$wire.selectedVariantId] || Object.values(this.variants)[0] || null;
+                    return this.variants[this.$wire.selectedVariantId] || Object.values(this.variants)[0] || null;
                 },
                 get stock() {
                     return this.activeVariant ? parseInt(this.activeVariant.stock) : 1;
@@ -406,8 +475,12 @@
                 get threshold() {
                     return this.activeVariant ? parseInt(this.activeVariant.threshold) : 0;
                 },
+                get maxQty() {
+                    if (!this.activeVariant || this.activeVariant.cap === null || this.activeVariant.cap === undefined) return null;
+                    return parseInt(this.activeVariant.cap);
+                },
                 get isOutOfStock() {
-                    return !this.activeVariant || this.stock <= 0;
+                    return !this.activeVariant || (this.maxQty !== null ? this.maxQty <= 0 : this.stock <= 0);
                 },
                 get stockDotClass() {
                     if (this.isOutOfStock) return 'bg-red-500';
@@ -426,10 +499,13 @@
                     return this.inStockLabel;
                 },
                 select(id) {
-                    $wire.set('selectedVariantId', id);
+                    this.$wire.set('selectedVariantId', id);
                     const v = this.variants[id];
-                    if (v && parseInt(v.stock) > 0 && $wire.quantity > parseInt(v.stock)) {
-                        $wire.set('quantity', parseInt(v.stock));
+                    if (!v) return;
+                    const cap = v.cap === null || v.cap === undefined ? null : parseInt(v.cap);
+                    const qty = parseInt(this.$wire.quantity);
+                    if (cap !== null && cap > 0 && qty > cap) {
+                        this.$wire.set('quantity', cap);
                     }
                 }
             };

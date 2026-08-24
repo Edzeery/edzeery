@@ -19,32 +19,69 @@ mount(function (): void {
 });
 
 $refreshCart = function () {
-    $cart = app(CartService::class);
+    $cartService = app(CartService::class);
     $storeId = currentStoreId();
 
-    $items = $cart->getItems($storeId)->toArray();
-    $this->subtotal = $cart->getSubtotal($storeId);
-    $this->count = $cart->getCount($storeId);
+    $items = $cartService->getItems($storeId)->toArray();
 
+    $store = currentStore();
+    $isSingleTemplate = $store?->landing_template?->value === 'single_product';
+
+    // Single-product stores: anything other than the showcased product is
+    // not orderable, so stale leftovers must not survive a template switch.
+    // The effective showcase resolves the chosen id ONLY while that product
+    // is still active — otherwise fall back to the first active product so
+    // a deleted choice can never nuke legitimate cart lines.
+    $showcaseProductId = null;
+    if ($isSingleTemplate) {
+        $content = \App\Support\Storefront\StorefrontSections::normalize($store->theme?->section_content);
+        $chosenId = (string) ($content['single_product']['product_id'] ?? '');
+
+        $activeIdsQuery = \App\Models\Products\Product::query()
+            ->where('store_id', $store->id)
+            ->where('is_active', true);
+
+        $showcaseProductId = $chosenId !== '' && $activeIdsQuery->clone()->whereKey($chosenId)->exists()
+            ? $chosenId
+            : ($activeIdsQuery->clone()->orderBy('id')->value('id'));
+
+        $showcaseProductId = $showcaseProductId !== null ? (string) $showcaseProductId : null;
+    }
+
+    // Purge stale items whose variant/product no longer resolves inside this
+    // store's visible scope (deleted product, emptied slug, removed variant).
+    // Otherwise rendering the link below would explode on a blank route param.
     if (!empty($items)) {
-        $variantIds = array_column($items, 'variant_id');
         $variants = ProductVariant::with('product.images')
-            ->whereIn('id', $variantIds)
+            ->whereIn('id', array_column($items, 'variant_id'))
             ->get()
             ->keyBy('id');
 
-        foreach ($items as &$item) {
+        foreach ($items as $key => $item) {
             $variant = $variants[$item['variant_id']] ?? null;
             $product = $variant?->product;
-            $firstImage = $product?->images?->first()?->path;
-            $item['image'] = $firstImage
+
+            if (
+                !$variant || !$product || blank($product->slug) ||
+                ($showcaseProductId !== null && (string) $product->id !== $showcaseProductId)
+            ) {
+                unset($items[$key]);
+                $cartService->removeItem($storeId, $item['variant_id']);
+                continue;
+            }
+
+            $firstImage = $product->images->first()?->path;
+            $items[$key]['image'] = $firstImage
                 ? asset('storage/' . $firstImage)
                 : asset('img/icons/noimg.png');
-            $item['slug'] = $product?->slug ?? '';
+            $items[$key]['slug'] = $product->slug;
         }
-        unset($item);
+
+        $items = array_values($items);
     }
 
+    $this->subtotal = $cartService->getSubtotal($storeId);
+    $this->count = $cartService->getCount($storeId);
     $this->items = $items;
 };
 
@@ -59,7 +96,14 @@ $clearCart = function () {
 };
 
 $updateQty = function (string $variantId, int $qty) {
-    app(CartService::class)->updateQuantity(currentStoreId(), $variantId, $qty);
+    $cartService = app(CartService::class);
+    $cartService->updateQuantity(currentStoreId(), $variantId, $qty);
+
+    $notice = limit_notice_payload($cartService);
+    if ($notice) {
+        $this->dispatch('edz-notice', title: $notice['title'], tone: $notice['tone']);
+    }
+
     $this->refreshCart();
 };
 ?>
@@ -269,7 +313,8 @@ $updateQty = function (string $variantId, int $qty) {
                                                 wire:loading.attr="disabled"
                                                 wire:loading.class="opacity-40"
                                                 :disabled="{{ $item['max_stock'] && $item['quantity'] >= $item['max_stock'] ? 'true' : 'false' }}"
-                                                class="w-8 h-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800
+                                                class="w-8 h-8 flex items-center
+                                                justify-center bg-gray-50 dark:bg-gray-800
                                                        text-gray-600 dark:text-gray-400
                                                        hover:bg-gray-100 dark:hover:bg-gray-700
                                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed

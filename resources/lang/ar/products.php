@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 return [
     'activate' => 'تفعيل',
@@ -33,6 +33,11 @@ return [
     'compare_price_label' => 'سعر المقارنة',
     'cost' => 'التكلفة',
     'cost_price' => 'سعر التكلفة',
+    'min_order_qty' => 'الحد الأدنى للطلب',
+    'max_order_qty' => 'الحد الأقصى للطلب',
+    'min_order_qty_hint' => 'اتركه فارغاً لاستخدام افتراضي المتجر',
+    'max_order_qty_hint' => 'اتركه فارغاً لاستخدام افتراضي المتجر',
+    'unlimited' => 'غير محدود',
     'cost_price_label' => 'سعر التكلفة',
     'created' => 'تاريخ الإنشاء',
     'deactivate' => 'تعطيل',

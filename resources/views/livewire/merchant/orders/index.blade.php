@@ -63,6 +63,10 @@ state([
     'formProductSearch' => '',
     'formProductResults' => [],
 
+    // Confirmation-time shipping assignment (carrier + desk)
+    'editProviders' => [],
+    'editDesks' => [],
+
     // Status change
     'statusChangeOrderId' => null,
     'statusChangeValue' => '',
@@ -455,6 +459,8 @@ $openEditModal = function (string $orderId): void {
         'payment_method' => $order->payment_method,
         'notes' => $order->notes ?? '',
         'weight_kg' => $order->weight_kg ?? '',
+        'shipping_provider_id' => $order->shipping_provider_id ?? '',
+        'stopdesk_point_id' => $order->stopdesk_point_id ?? '',
         'items' => $order->items
             ->map(
                 fn($i) => [
@@ -474,6 +480,14 @@ $openEditModal = function (string $orderId): void {
     if ($order->state_id) {
         $this->allCities = City::where('state_id', $order->state_id)->orderBy('name')->get()->toArray();
     }
+
+    // Confirmation-time shipping assignment data (carrier + desk).
+    $this->editProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)->orderBy('name')->get(['id', 'name'])->toArray();
+    $this->editDesks = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
+        ->where('is_active', true)->orderBy('name')
+        ->get(['id', 'name', 'address', 'state_id', 'city_id', 'shipping_provider_id'])
+        ->toArray();
 };
 
 $submitEdit = function (): void {
@@ -498,9 +512,21 @@ $submitEdit = function (): void {
         'delivery_type' => 'required|in:home,stopdesk',
         'shipment_type' => 'required|in:delivery,exchange,pickup',
         'payment_method' => 'required|in:cod',
+        'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
+        'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
     ])->validate();
 
     $storeId = currentStoreId();
+
+    // Both assignments must belong to this store.
+    foreach (['shipping_provider_id', 'stopdesk_point_id'] as $shipField) {
+        if (filled($this->form[$shipField] ?? null)) {
+            $model = $shipField === 'stopdesk_point_id'
+                ? \App\Domains\Shipping\Models\StopdeskPoint::class
+                : \App\Domains\Shipping\Models\ShippingProvider::class;
+            $model::where('store_id', $storeId)->findOrFail($this->form[$shipField]);
+        }
+    }
 
     $customer = Customer::firstOrCreate(
         ['store_id' => $storeId, 'phone' => $this->form['customer_phone']],
@@ -528,6 +554,11 @@ $submitEdit = function (): void {
         'notes' => $this->form['notes'],
         'phone_secondary' => $this->form['phone_secondary'],
         'weight_kg' => $this->form['weight_kg'] ?: null,
+        'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
+        // Desk only applies to stopdesk deliveries; clear it on home.
+        'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk'
+            ? ($this->form['stopdesk_point_id'] ?: null)
+            : null,
     ]);
 
     // Sync order items
@@ -1194,6 +1225,49 @@ $deleteOrder = function (string $orderId): void {
                             <label class="edz-label">Weight (kg)</label>
                             <input type="number" wire:model="form.weight_kg" step="0.01"
                                 class="edz-input text-sm">
+                        </div>
+                    </div>
+
+                    {{-- Shipping assignment (done at confirmation time):
+                         carrier first, then desks of the same wilaya with
+                         matching commune sorted first. --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                         x-data="{
+                             get desks() {
+                                 const all = {{ \Illuminate\Support\Js::from($editDesks) }};
+                                 const pid = $wire.form.shipping_provider_id || '';
+                                 const sid = $wire.form.state_id || '';
+                                 const sel = $wire.form.stopdesk_point_id || '';
+                                 return all
+                                     .filter(d =>
+                                         d.id === sel ||
+                                         (!pid || d.shipping_provider_id === pid) &&
+                                         (!sid || d.state_id === sid))
+                                     .sort((a, b) =>
+                                         (b.city_id === ($wire.form.city_id || '')) -
+                                         (a.city_id === ($wire.form.city_id || '')));
+                             }
+                         }">
+                        <div>
+                            <label class="edz-label">Shipping Company</label>
+                            <select wire:model="form.shipping_provider_id" class="edz-input text-sm">
+                                <option value="">—</option>
+                                @foreach ($editProviders as $provider)
+                                    <option value="{{ $provider['id'] }}">{{ $provider['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-gray-400 mt-1 block">Assigned at confirmation</span>
+                        </div>
+                        <div>
+                            <label class="edz-label">Pickup Desk</label>
+                            <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
+                                <option value="">—</option>
+                                <template x-for="desk in desks" :key="desk.id">
+                                    <option :value="desk.id"
+                                        x-text="desk.name + ' - ' + (desk.address || '')"></option>
+                                </template>
+                            </select>
+                            <span class="text-xs text-gray-400 mt-1 block">Stopdesk orders only</span>
                         </div>
                     </div>
 
