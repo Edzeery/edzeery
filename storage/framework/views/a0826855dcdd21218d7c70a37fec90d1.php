@@ -652,4 +652,4 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             </div>
         </div>
     </form>
-</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire/merchant/store-settings.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire\merchant\store-settings.blade.php ENDPATH**/ ?>

@@ -18,7 +18,9 @@ state([
 
 mount(function (): void {
     $store = currentStore();
-    if (!$store) { return; }
+    if (!$store) {
+        return;
+    }
     $theme = $store->theme;
     $this->sections = $theme?->homepage_sections ?? ['hero', 'categories', 'social_proof'];
     $this->section_content = $theme?->section_content ?? [];
@@ -26,7 +28,9 @@ mount(function (): void {
 
 $addToCart = function (string $variantId) {
     $storeId = currentStoreId();
-    if (!$storeId) { return; }
+    if (!$storeId) {
+        return;
+    }
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
     $cartService->addItem($storeId, $variantId, 1);
     $this->dispatch('cart-updated');
@@ -36,7 +40,9 @@ $addToCart = function (string $variantId) {
 <div>
     @php
         $store = currentStore();
-        if (!$store) { return; }
+        if (!$store) {
+            return;
+        }
 
         $categories = Category::where('store_id', $store->id)
             ->where('is_active', true)
@@ -73,9 +79,10 @@ $addToCart = function (string $variantId) {
         @php $hero = $this->section_content['hero'] ?? []; @endphp
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                                    <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?? '' ?: $store->name }}</h1>
+                <h1 class="text-3xl sm:text-4xl font-bold mb-4">{{ $hero['title'] ?? '' ?: $store->name }}</h1>
                 <p class="text-lg text-white/80 mb-8">
-                    {{ $hero['description'] ?? '' ?: $store->description ?? __('storefront.browse_our_full_catalog') }}</p>
+                    {{ $hero['description'] ?? '' ?: $store->description ?? __('storefront.browse_our_full_catalog') }}
+                </p>
 
                 {{-- Search --}}
                 <div class="max-w-xl mx-auto">
@@ -89,9 +96,9 @@ $addToCart = function (string $variantId) {
                                  border border-white/30
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
-                                                <x-edz.icon name="magnifying-glass"
-                                            class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none"/>
+                        <x-edz.icon name="magnifying-glass"
+                            class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
+                                text-white/70 text-xl pointer-events-none w-5 h-5" />
                     </div>
                 </div>
             </div>
@@ -104,7 +111,8 @@ $addToCart = function (string $variantId) {
         {{-- Breadcrumb --}}
         <nav class="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="{{ route('storefront.home', ['store' => $store->slug]) }}" class="hover:text-gray-700 dark:hover:text-gray-200 transition">{{ $store->name }}</a></li>
+                <li><a href="{{ route('storefront.home', ['store' => $store->slug]) }}"
+                        class="hover:text-gray-700 dark:hover:text-gray-200 transition">{{ $store->name }}</a></li>
                 <li class="text-gray-300 dark:text-gray-600">/</li>
                 <li class="text-gray-900 dark:text-white font-medium">{{ __('storefront.all_products') }}</li>
             </ol>
@@ -167,10 +175,11 @@ $addToCart = function (string $variantId) {
                                         <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $product->name }}"
                                             class="w-full h-full object-contain p-4 opacity-60">
                                     @endif
-                                    @if($product->is_featured)
-                                        <span class="absolute top-2 {{ isRTL() ? 'end-2' : 'start-2' }} z-10 flex items-center gap-1 store-bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
-                                            <x-edz.icon name="star" class="text-xs"/>
-                                            {{ __('storefront.featured') }}
+                                    @if ($product->is_featured)
+                                        <span
+                                            class="absolute top-2 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
+                                     text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                                            <x-status-badge-wire domain="general" status="featured" set="fa" />
                                         </span>
                                     @endif
                                 </div>
@@ -190,15 +199,21 @@ $addToCart = function (string $variantId) {
                                     @php
                                         $_cardMinPrice = (float) ($product->variants->min('price') ?? $product->price);
                                         $_cardMaxCompare = (float) $product->variants->max('compare_price');
-                                        $_cardDiscount = ($_cardMaxCompare > 0 && $_cardMinPrice > 0 && $_cardMaxCompare > $_cardMinPrice)
-                                            ? (int) round((1 - $_cardMinPrice / $_cardMaxCompare) * 100)
-                                            : 0;
+                                        $_cardDiscount =
+                                            $_cardMaxCompare > 0 &&
+                                            $_cardMinPrice > 0 &&
+                                            $_cardMaxCompare > $_cardMinPrice
+                                                ? (int) round((1 - $_cardMinPrice / $_cardMaxCompare) * 100)
+                                                : 0;
                                     @endphp
                                     <div class="flex items-center gap-2">
-                                        <span class="text-lg font-bold store-text-primary">{{ currency($_cardMinPrice) }}</span>
-                                        @if($_cardDiscount > 0)
-                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($_cardMaxCompare) }}</span>
-                                            <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                        <span
+                                            class="text-lg font-bold store-text-primary">{{ currency($_cardMinPrice) }}</span>
+                                        @if ($_cardDiscount > 0)
+                                            <span
+                                                class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($_cardMaxCompare) }}</span>
+                                            <span
+                                                class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
                                                 -{{ $_cardDiscount }}%
                                             </span>
                                         @endif
@@ -208,12 +223,12 @@ $addToCart = function (string $variantId) {
                                             wire:loading.attr="disabled" wire:loading.class="opacity-50"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm"
                                             title="{{ __('storefront.add_to_cart') }}">
-                                            <x-edz.icon name="shopping-cart"/>
+                                            <x-edz.icon name="shopping-cart" />
                                         </button>
                                     @elseif ($product->variants->count() > 1)
                                         <a href="{{ route('storefront.product', ['store' => $store->slug, 'product' => $product->slug]) }}"
                                             class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
-                                            <x-edz.icon name="adjustments-horizontal"/>
+                                            <x-edz.icon name="adjustments-horizontal" />
                                             {{ __('storefront.view_options') }}
                                         </a>
                                     @endif
@@ -228,7 +243,7 @@ $addToCart = function (string $variantId) {
                 </div>
             @else
                 <div class="text-center py-20">
-                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4"/>
+                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
                     <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
                 </div>
             @endif
@@ -236,25 +251,29 @@ $addToCart = function (string $variantId) {
     </section>
 
     {{-- Social Proof --}}
-    @if(in_array('social_proof', $this->sections ?? []))
+    @if (in_array('social_proof', $this->sections ?? []))
         @php $sp = ($this->section_content ?? [])['social_proof'] ?? []; @endphp
-        @if($sp && !empty($sp['items']))
-        <section class="py-16 bg-gray-50 dark:bg-gray-900">
-            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">{{ $sp['title'] ?? __('storefront.why_customers_love_us') }}</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                    @foreach($sp['items'] as $item)
-                        <div class="flex flex-col items-center">
-                            <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
-                                <x-edz.icon name="{{ $item['icon'] ?? 'shield-check' }}" class="text-2xl store-text-primary"/> 
+        @if ($sp && !empty($sp['items']))
+            <section class="py-16 bg-gray-50 dark:bg-gray-900">
+                <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+                        {{ $sp['title'] ?? __('storefront.why_customers_love_us') }}</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                        @foreach ($sp['items'] as $item)
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
+                                    <x-edz.icon name="{{ $item['icon'] ?? 'shield-check' }}"
+                                        class="text-2xl store-text-primary" />
+                                </div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    {{ $item['description'] ?? '' }}</p>
                             </div>
-                            <h3 class="font-semibold text-gray-900 dark:text-white">{{ $item['title'] ?? '' }}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $item['description'] ?? '' }}</p>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
         @endif
     @endif
 </div>

@@ -220,13 +220,24 @@ class Store extends Model
 
     /**
      * الرابط العام للمتجر (واجهة العميل).
+     *
+     * Derived from APP_URL so scheme/host/port always match the deployed
+     * origin: https://app.example.com -> https://{slug}.example.com.
      */
     public function getPublicUrlAttribute(): string
     {
-        $scheme = request()->secure() ? 'https' : 'http';
-        $domain = config('app.domain');
+        $parts = parse_url((string) config('app.url')) ?: [];
 
-        return "{$scheme}://{$this->slug}.{$domain}";
+        $scheme = $parts['scheme'] ?? 'http';
+        $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+        $host = $parts['host'] ?? request()->getHost();
+
+        // Drop the first label of a subdomained app host (app.example.com ->
+        // example.com); an apex host (example.com) or bare localhost is kept.
+        $labels = explode('.', $host);
+        $base = count($labels) > 2 ? implode('.', array_slice($labels, 1)) : $host;
+
+        return "{$scheme}://{$this->slug}.{$base}{$port}";
     }
 
     /**

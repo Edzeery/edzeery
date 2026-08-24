@@ -99,7 +99,7 @@ $addToCart = function (string $variantId) {
 
                         <x-edz.icon name="magnifying-glass"
                             class="absolute {{ isRTL() ? 'right-5' : 'left-5' }} top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none" />
+                                text-white/70 text-xl pointer-events-none w-5 h-5" />
                     </div>
                 </div>
             </div>

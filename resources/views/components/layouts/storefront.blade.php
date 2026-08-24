@@ -131,6 +131,13 @@
         }
     </style>
 
+    {{-- Lazy-load the merchant-selected Google Font (Inter is already bundled via app.css) --}}
+    @if ($fontUrl = \App\Support\Storefront\StorefrontSections::googleFontUrl($fontFamily))
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="{{ $fontUrl }}">
+    @endif
+
     <script>
         (function() {
             var c = getComputedStyle(document.documentElement).getPropertyValue('--store-primary').trim();

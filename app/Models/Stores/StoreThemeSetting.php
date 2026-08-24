@@ -2,12 +2,11 @@
 
 namespace App\Models\Stores;
 
+use App\Support\Storefront\StorefrontSections;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 
 class StoreThemeSetting extends Model
 {
@@ -33,24 +32,17 @@ class StoreThemeSetting extends Model
 
     protected static function booted(): void
     {
+        // Last-resort guardrail: delegates all rules to the shared
+        // StorefrontSections contract (single source of truth).
         static::saving(function (self $model) {
-            if ($model->isDirty('section_content')) {
-                $content = $model->section_content;
-                if (is_array($content)) {
-                    $allowedSections = ['hero', 'social_proof', 'faq', 'cta', 'categories', 'brands', 'description'];
-                    foreach ($content as $section => $data) {
-                        if (! in_array($section, $allowedSections)) {
-                            throw ValidationException::withMessages([
-                                'section_content' => "Invalid section '{$section}' in section_content",
-                            ]);
-                        }
-                        if (! is_array($data)) {
-                            throw ValidationException::withMessages([
-                                'section_content' => "Section '{$section}' content must be an array",
-                            ]);
-                        }
-                    }
-                }
+            if ($model->isDirty(['primary_color', 'secondary_color', 'font_family', 'homepage_sections', 'section_content'])) {
+                StorefrontSections::assertValidThemeData($model->only([
+                    'primary_color',
+                    'secondary_color',
+                    'font_family',
+                    'homepage_sections',
+                    'section_content',
+                ]));
             }
         });
     }

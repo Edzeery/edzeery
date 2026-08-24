@@ -267,9 +267,11 @@ return [
     ],
     'product' => [
         'active' => 'متوفر',
+        'in_stock' => 'متوفر',
+        'low_stock' => 'كمية منخفضة',
+        'out_of_stock' => 'نفدت الكمية',
         'discontinued' => 'متوقف',
         'inactive' => 'غير مفعّل',
-        'out_of_stock' => 'نفدت الكمية',
     ],
     'role' => [
         'admin' => 'مشرف',

@@ -19,9 +19,15 @@ class ResolveStoreFromRoute
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $store = $request->route('store');
+        $param = $request->route('store');
 
-        if ($store instanceof Store) {
+        // Volt full-page routes receive raw parameters (no implicit model
+        // binding), so {store:slug} may arrive as a plain slug string.
+        $store = $param instanceof Store
+            ? $param
+            : Store::where('slug', (string) $param)->first();
+
+        if ($store) {
             session(['current_store_id' => $store->id]);
             app(StoreContext::class)->set($store);
         }

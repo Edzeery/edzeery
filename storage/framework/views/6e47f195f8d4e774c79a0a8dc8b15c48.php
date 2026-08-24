@@ -131,6 +131,13 @@
         }
     </style>
 
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($fontUrl = \App\Support\Storefront\StorefrontSections::googleFontUrl($fontFamily)): ?>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="<?php echo e($fontUrl); ?>">
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
     <script>
         (function() {
             var c = getComputedStyle(document.documentElement).getPropertyValue('--store-primary').trim();

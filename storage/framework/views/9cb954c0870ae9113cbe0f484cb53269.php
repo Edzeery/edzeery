@@ -11,33 +11,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
-    use Livewire\WithFileUploads;
+    public $product;
 
-    public $name;
+    public $selectedVariant;
 
-    public $description;
+    public $sections;
 
-    public $phone;
-
-    public $logo;
-
-    public $cover;
-
-    public $favicon;
-
-    public $currency;
-
-    public $language;
-
-    public $supported_languages;
-
-    public $guest_checkout;
-
-    public $inventory_tracking;
-
-    public $show_out_of_stock;
-
-    public $allow_backorder;
+    public $section_content;
 
     public function mount(): void
     {
@@ -46,11 +26,18 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
     }
 
-    public function save(): void
+    public function selectVariant(string $variantId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        (new Actions\CallMethod('save'))->execute(...$arguments);
+        (new Actions\CallMethod('selectVariant'))->execute(...$arguments);
+    }
+
+    public function addToCart(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('addToCart'))->execute(...$arguments);
     }
 
 };

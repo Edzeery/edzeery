@@ -8,7 +8,9 @@ use App\Models\Products\Product;
 <div>
     <?php
         $store = currentStore();
-        if (!$store) { return; }
+        if (!$store) {
+            return;
+        }
 
         $categories = Category::where('store_id', $store->id)
             ->where('is_active', true)
@@ -45,9 +47,11 @@ use App\Models\Products\Product;
         <?php $hero = $this->section_content['hero'] ?? []; ?>
         <section class="store-gradient text-white py-16">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                                    <h1 class="text-3xl sm:text-4xl font-bold mb-4"><?php echo e($hero['title'] ?? '' ?: $store->name); ?></h1>
+                <h1 class="text-3xl sm:text-4xl font-bold mb-4"><?php echo e($hero['title'] ?? '' ?: $store->name); ?></h1>
                 <p class="text-lg text-white/80 mb-8">
-                    <?php echo e($hero['description'] ?? '' ?: $store->description ?? __('storefront.browse_our_full_catalog')); ?></p>
+                    <?php echo e($hero['description'] ?? '' ?: $store->description ?? __('storefront.browse_our_full_catalog')); ?>
+
+                </p>
 
                 
                 <div class="max-w-xl mx-auto">
@@ -62,10 +66,10 @@ use App\Models\Products\Product;
                                  border border-white/30
                                  focus:outline-none focus:ring-2 focus:ring-white/50">
 
-                                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'magnifying-glass','class' => 'absolute '.e(isRTL() ? 'right-5' : 'left-5').' top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+                                text-white/70 text-xl pointer-events-none w-5 h-5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
@@ -73,7 +77,7 @@ use App\Models\Products\Product;
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['name' => 'magnifying-glass','class' => 'absolute '.e(isRTL() ? 'right-5' : 'left-5').' top-1/2 -translate-y-1/2
-                                text-white/70 text-xl pointer-events-none']); ?>
+                                text-white/70 text-xl pointer-events-none w-5 h-5']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -96,7 +100,8 @@ use App\Models\Products\Product;
         
         <nav class="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <ol class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-                <li><a href="<?php echo e(route('storefront.home', ['store' => $store->slug])); ?>" class="hover:text-gray-700 dark:hover:text-gray-200 transition"><?php echo e($store->name); ?></a></li>
+                <li><a href="<?php echo e(route('storefront.home', ['store' => $store->slug])); ?>"
+                        class="hover:text-gray-700 dark:hover:text-gray-200 transition"><?php echo e($store->name); ?></a></li>
                 <li class="text-gray-300 dark:text-gray-600">/</li>
                 <li class="text-gray-900 dark:text-white font-medium"><?php echo e(__('storefront.all_products')); ?></li>
             </ol>
@@ -162,29 +167,29 @@ use App\Models\Products\Product;
                                             class="w-full h-full object-contain p-4 opacity-60">
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($product->is_featured): ?>
-                                        <span class="absolute top-2 <?php echo e(isRTL() ? 'end-2' : 'start-2'); ?> z-10 flex items-center gap-1 store-bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow">
-                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'star','class' => 'text-xs']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.icon'); ?>
+                                        <span
+                                            class="absolute top-2 <?php echo e(algin()); ?>-4 z-10 flex items-center gap-1.5 bg-warning-200
+                                     text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                                            <?php if (isset($component)) { $__componentOriginalefcb2882a5f330bfa0dcb7a898acac73 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalefcb2882a5f330bfa0dcb7a898acac73 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'status-kit::components.status-badge-wire','data' => ['domain' => 'general','status' => 'featured','set' => 'fa']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('status-badge-wire'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'star','class' => 'text-xs']); ?>
+<?php $component->withAttributes(['domain' => 'general','status' => 'featured','set' => 'fa']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php if (isset($__attributesOriginalefcb2882a5f330bfa0dcb7a898acac73)): ?>
+<?php $attributes = $__attributesOriginalefcb2882a5f330bfa0dcb7a898acac73; ?>
+<?php unset($__attributesOriginalefcb2882a5f330bfa0dcb7a898acac73); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php if (isset($__componentOriginalefcb2882a5f330bfa0dcb7a898acac73)): ?>
+<?php $component = $__componentOriginalefcb2882a5f330bfa0dcb7a898acac73; ?>
+<?php unset($__componentOriginalefcb2882a5f330bfa0dcb7a898acac73); ?>
 <?php endif; ?>
-                                            <?php echo e(__('storefront.featured')); ?>
-
                                         </span>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </div>
@@ -204,15 +209,21 @@ use App\Models\Products\Product;
                                     <?php
                                         $_cardMinPrice = (float) ($product->variants->min('price') ?? $product->price);
                                         $_cardMaxCompare = (float) $product->variants->max('compare_price');
-                                        $_cardDiscount = ($_cardMaxCompare > 0 && $_cardMinPrice > 0 && $_cardMaxCompare > $_cardMinPrice)
-                                            ? (int) round((1 - $_cardMinPrice / $_cardMaxCompare) * 100)
-                                            : 0;
+                                        $_cardDiscount =
+                                            $_cardMaxCompare > 0 &&
+                                            $_cardMinPrice > 0 &&
+                                            $_cardMaxCompare > $_cardMinPrice
+                                                ? (int) round((1 - $_cardMinPrice / $_cardMaxCompare) * 100)
+                                                : 0;
                                     ?>
                                     <div class="flex items-center gap-2">
-                                        <span class="text-lg font-bold store-text-primary"><?php echo e(currency($_cardMinPrice)); ?></span>
+                                        <span
+                                            class="text-lg font-bold store-text-primary"><?php echo e(currency($_cardMinPrice)); ?></span>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($_cardDiscount > 0): ?>
-                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through"><?php echo e(currency($_cardMaxCompare)); ?></span>
-                                            <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                            <span
+                                                class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through"><?php echo e(currency($_cardMaxCompare)); ?></span>
+                                            <span
+                                                class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
                                                 -<?php echo e($_cardDiscount); ?>%
                                             </span>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -312,14 +323,16 @@ use App\Models\Products\Product;
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('social_proof', $this->sections ?? [])): ?>
         <?php $sp = ($this->section_content ?? [])['social_proof'] ?? []; ?>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sp && !empty($sp['items'])): ?>
-        <section class="py-16 bg-gray-50 dark:bg-gray-900">
-            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8"><?php echo e($sp['title'] ?? __('storefront.why_customers_love_us')); ?></h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $sp['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div class="flex flex-col items-center">
-                            <div class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
-                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+            <section class="py-16 bg-gray-50 dark:bg-gray-900">
+                <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+                        <?php echo e($sp['title'] ?? __('storefront.why_customers_love_us')); ?></h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $sp['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div class="flex flex-col items-center">
+                                <div
+                                    class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
+                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => ''.e($item['icon'] ?? 'shield-check').'','class' => 'text-2xl store-text-primary']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -338,15 +351,16 @@ use App\Models\Products\Product;
 <?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?> 
+<?php endif; ?>
+                                </div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white"><?php echo e($item['title'] ?? ''); ?></h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                    <?php echo e($item['description'] ?? ''); ?></p>
                             </div>
-                            <h3 class="font-semibold text-gray-900 dark:text-white"><?php echo e($item['title'] ?? ''); ?></h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1"><?php echo e($item['description'] ?? ''); ?></p>
-                        </div>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire/storefront/templates/catalog.blade.php ENDPATH**/ ?>

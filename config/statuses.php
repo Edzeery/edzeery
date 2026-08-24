@@ -55,6 +55,9 @@ return [
         'published' => ['variant' => 'success', 'light' => 'text-green-700 bg-green-100',   'dark' => 'dark:text-green-300 dark:bg-green-900/40',  'hex' => '#16a34a', 'icon' => 'published'],
         'unpublished' => ['variant' => 'gray',    'light' => 'text-gray-700 bg-gray-100',      'dark' => 'dark:text-gray-300 dark:bg-gray-800',        'hex' => '#9ca3af', 'icon' => 'unpublished'],
         'archived' => ['variant' => 'gray',    'light' => 'text-gray-700 bg-gray-100',      'dark' => 'dark:text-gray-300 dark:bg-gray-800',        'hex' => '#9ca3af', 'icon' => 'archived'],
+        'low_stock' => ['variant' => 'warning', 'light' => 'text-yellow-700 bg-yellow-100',  'dark' => 'dark:text-yellow-300 dark:bg-yellow-900/40', 'hex' => '#facc15', 'icon' => 'low_stock'],
+        'in_stock' => ['variant' => 'success', 'light' => 'text-green-700 bg-green-100',   'dark' => 'dark:text-green-300 dark:bg-green-900/40',  'hex' => '#16a34a', 'icon' => 'in_stock'],
+        'out_of_stock' => ['variant' => 'danger',  'light' => 'text-red-700 bg-red-100',        'dark' => 'dark:text-red-300 dark:bg-red-900/40',       'hex' => '#dc2626', 'icon' => 'out_of_stock'],
         'default' => ['variant' => 'gray',    'light' => 'text-gray-700 bg-gray-100',      'dark' => 'dark:text-gray-300 dark:bg-gray-800',        'hex' => '#9ca3af', 'icon' => 'default'],
     ],
 
@@ -160,7 +163,9 @@ return [
     'product' => [
         'active' => 'active',
         'inactive' => 'inactive',
-        'out_of_stock' => ['variant' => 'warning', 'light' => 'text-yellow-700 bg-yellow-100', 'dark' => 'dark:text-yellow-300 dark:bg-yellow-900/40', 'hex' => '#facc15', 'icon' => 'out_of_stock'],
+        'low_stock' => 'low_stock',
+        'out_of_stock' => 'out_of_stock',
+        'in_stock' => 'in_stock',
         'discontinued' => ['variant' => 'danger', 'light' => 'text-red-700 bg-red-100', 'dark' => 'dark:text-red-300 dark:bg-red-900/40', 'hex' => '#dc2626', 'icon' => 'discontinued'],
     ],
 

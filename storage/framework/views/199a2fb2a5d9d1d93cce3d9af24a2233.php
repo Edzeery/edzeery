@@ -21,11 +21,7 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $font_family;
 
-    public $showPreview;
-
     public $section_content;
-
-    public $expanded_section;
 
     public function mount(): void
     {
@@ -39,13 +35,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('save'))->execute(...$arguments);
-    }
-
-    public function openPreview(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('openPreview'))->execute(...$arguments);
     }
 
 };

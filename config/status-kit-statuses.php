@@ -162,6 +162,7 @@ return [
         'inactive' => 'inactive',
         'out_of_stock' => ['variant' => 'warning', 'light' => 'text-yellow-700 bg-yellow-100', 'dark' => 'dark:text-yellow-300 dark:bg-yellow-900/40', 'hex' => '#facc15', 'icon' => 'out_of_stock'],
         'discontinued' => ['variant' => 'danger', 'light' => 'text-red-700 bg-red-100', 'dark' => 'dark:text-red-300 dark:bg-red-900/40', 'hex' => '#dc2626', 'icon' => 'discontinued'],
+        'in_stock' => ['variant' => 'success', 'light' => 'text-green-700 bg-green-100', 'dark' => 'dark:text-green-300 dark:bg-green-900/40', 'hex' => '#16a34a', 'icon' => 'in_stock'],
     ],
 
     // ══════════════════════════════════════════════════════════════
@@ -472,7 +473,7 @@ return [
         'unconfirmed_email' => ['icon' => 'unverified'],
         'password_reset' => ['variant' => 'info', 'light' => 'text-blue-700 bg-blue-100', 'dark' => 'dark:text-blue-300 dark:bg-blue-900/40', 'hex' => '#2563eb', 'icon' => 'key'],
         'expanded' => ['icon' => 'chevron-up'],
-        'collapsed' => ['icon' => 'chevron-down'], 
+        'collapsed' => ['icon' => 'chevron-down'],
         'unknown' => ['icon' => 'default'],
     ],
 

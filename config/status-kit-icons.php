@@ -274,6 +274,7 @@ return [
         'processing' => 'bi-gear',
         'completed' => 'bi-check-circle',
         'out_of_stock' => 'bi-box-seam',
+        'in_stock' => 'bi-box-seam',
         'discontinued' => 'bi-slash-circle',
         'email_unverified' => 'bi-envelope',
         'online' => 'bi-circle-fill',
