@@ -37,4 +37,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('save'))->execute(...$arguments);
     }
 
+    public function resetSection(string $key): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('resetSection'))->execute(...$arguments);
+    }
+
 };

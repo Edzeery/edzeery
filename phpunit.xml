@@ -19,6 +19,11 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- MUST stay example.test with force="true": storefront routes are
+             registered from app.domain at boot. A production domain here
+             makes {slug}.edzeery.com requests miss every storefront route
+             and fall through to the generic landing page in tests. -->
+        <env name="APP_DOMAIN" value="example.test" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

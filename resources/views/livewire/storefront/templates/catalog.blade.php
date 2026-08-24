@@ -2,6 +2,8 @@
 
 use App\Models\Category;
 use App\Models\Products\Product;
+use App\Enums\Store\LandingTemplateEnum;
+use App\Support\Storefront\StorefrontSections;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -22,8 +24,10 @@ mount(function (): void {
         return;
     }
     $theme = $store->theme;
-    $this->sections = $theme?->homepage_sections ?? ['hero', 'categories', 'social_proof'];
-    $this->section_content = $theme?->section_content ?? [];
+    $this->sections = is_array($theme?->homepage_sections) && $theme->homepage_sections !== []
+        ? array_values(array_intersect(StorefrontSections::ALL, $theme->homepage_sections))
+        : StorefrontSections::defaultSectionsFor(LandingTemplateEnum::CATALOG->value);
+    $this->section_content = StorefrontSections::normalize($theme?->section_content);
 });
 
 $addToCart = function (string $variantId) {
@@ -34,6 +38,11 @@ $addToCart = function (string $variantId) {
     $cartService = app(\App\Domains\Cart\Services\CartService::class);
     $cartService->addItem($storeId, $variantId, 1);
     $this->dispatch('cart-updated');
+};
+
+$clearFilters = function (): void {
+    $this->search = '';
+    $this->category_id = '';
 };
 ?>
 
@@ -72,6 +81,8 @@ $addToCart = function (string $variantId) {
         };
 
         $products = $query->paginate(12);
+
+        $hasFilters = trim((string) $this->search) !== '' || (string) $this->category_id !== '';
     @endphp
 
     {{-- Hero --}}
@@ -121,20 +132,22 @@ $addToCart = function (string $variantId) {
         @if ($categories->count())
             <section class="py-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        <button x-on:click="$wire.set('category_id', '')"
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button data-category-id=""
+                        x-on:click="$wire.set('category_id', $el.dataset.categoryId)"
+                        class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
+                        {{ empty($this->category_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-[var(--store-primary)]' }}">
+                        {{ __('storefront.all') }}
+                    </button>
+                    @foreach ($categories as $cat)
+                        <button data-category-id="{{ $cat->id }}"
+                            x-on:click="$wire.set('category_id', $el.dataset.categoryId)"
                             class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
-                        {{ empty($this->category_id) ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                            {{ __('storefront.all') }}
+                            {{ (string) $this->category_id === (string) $cat->id ? 'store-bg-primary text-white store-border-primary' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-[var(--store-primary)]' }}">
+                            {{ $cat->name }}
                         </button>
-                        @foreach ($categories as $cat)
-                            <button x-on:click="$wire.set('category_id', '{{ $cat->id }}')"
-                                class="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition
-                            {{ (string) $this->category_id === (string) $cat->id ? 'store-bg-primary text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                                {{ $cat->name }} ({{ $cat->products_count }})
-                            </button>
-                        @endforeach
-                    </div>
+                    @endforeach
+                </div>
                 </div>
             </section>
         @endif
@@ -243,8 +256,17 @@ $addToCart = function (string $variantId) {
                 </div>
             @else
                 <div class="text-center py-20">
-                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
-                    <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
+                    <x-edz.icon name="{{ $hasFilters ? 'magnifying-glass' : 'shopping-bag' }}"
+                        class="text-6xl text-gray-400 dark:text-gray-600 mb-4 w-5 h-5 mx-auto" />
+                    <p class="text-gray-500 dark:text-gray-400">
+                        {{ __($hasFilters ? 'storefront.no_results_found' : 'storefront.no_products_found') }}
+                    </p>
+                    @if ($hasFilters)
+                        <button type="button" data-clear-filters x-on:click="$wire.clearFilters()"
+                            class="mt-5 store-btn-primary px-5 py-2.5 rounded-lg text-sm font-medium text-white transition">
+                            {{ __('storefront.clear_filters') }}
+                        </button>
+                    @endif
                 </div>
             @endif
         </div>

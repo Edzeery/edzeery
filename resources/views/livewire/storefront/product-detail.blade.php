@@ -172,7 +172,7 @@ $decrementQuantity = function (): void {
                                 <span
                                     class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    <x-status-badge-wire domain="general" status="featured" set="fa" />
+                                    <x-status-badge-wire domain="general" status="featured" set="bi" />
                                 </span>
                             @endif
 
@@ -229,7 +229,7 @@ $decrementQuantity = function (): void {
                                 <span
                                     class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    <x-status-badge-wire domain="general" status="featured" set="fa" />
+                                    <x-status-badge-wire domain="general" status="featured" set="bi" />
                                 </span>
                             @endif
                             <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ $this->product->name }}"
@@ -241,7 +241,7 @@ $decrementQuantity = function (): void {
                     <div x-show="lightbox" x-transition.opacity
                         class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center"
                         @click.self="lightbox = false" @keydown.escape.window="lightbox = false"
-                        @keydown.left.window="if(lightbox) prev()" @keydown.right.window="if(lightbox) next()"
+                        @keydown.left.window="lightbox && prev()" @keydown.right.window="lightbox && next()"
                         style="display:none">
                         <button type="button" @click="lightbox = false"
                             class="absolute top-4 right-4 text-white/70 hover:text-white transition" aria-label="Close">
@@ -484,7 +484,7 @@ $decrementQuantity = function (): void {
                                                 class="absolute top-4 {{algin()}}-4 z-10 flex items-center gap-1.5 bg-warning-200
                                      text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
                                                 <x-status-badge-wire domain="general" status="featured"
-                                                    set="fa" />
+                                                    set="bi" />
                                             </span>
                                         @endif
 
@@ -528,18 +528,18 @@ $decrementQuantity = function (): void {
                                                 wire:target="addRelatedToCart('{{ $__rpFirstVariant->id }}')"
                                                 class="store-btn-primary text-white min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition text-sm disabled:cursor-not-allowed"
                                                 title="{{ __('storefront.add_to_cart') }}">
-                                                <x-edz.icon name="shopping-cart" class="" />
+                                                <x-edz.icon name="shopping-cart" class="w-5 h-5" />
                                             </button>
                                         @elseif(!$__rpHasStock)
                                             <span
                                                 class="bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm cursor-not-allowed"
                                                 title="{{ __('storefront.out_of_stock') }}">
-                                                <x-edz.icon name="shopping-cart" />
+                                                <x-edz.icon name="shopping-cart" class="w-5 h-5" />
                                             </span>
                                         @else
                                             <a href="{{ $__rpUrl }}"
                                                 class="store-btn-primary text-white min-h-[44px] flex items-center justify-center px-3 rounded-lg transition text-xs font-medium gap-1">
-                                                <x-edz.icon name="adjustments-horizontal" />
+                                                <x-edz.icon name="adjustments-horizontal" class="w-5 h-5" />
                                                 {{ __('storefront.view_options') }}
                                             </a>
                                         @endif

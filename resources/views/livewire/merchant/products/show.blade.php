@@ -65,7 +65,9 @@ $delete = function (Product $product): void {
             @if ($this->canDelete())
                 <button type="button" class="edz-btn edz-btn--danger"
                         x-data
-                        @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($product->name) }}')) $wire.delete('{{ $product->id }}')"
+                        data-delete-name="{{ $product->name }}"
+                        data-delete-id="{{ $product->id }}"
+                        @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete(Number($el.dataset.deleteId)) })()"
                         >{{ __('products.delete') }}</button>
             @endif
         </div>

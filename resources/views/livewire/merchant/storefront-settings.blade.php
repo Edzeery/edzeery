@@ -102,9 +102,22 @@ $save = function (): void {
     }
 };
 
-?>
+$resetSection = function (string $key): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
-@php
+    // Unknown/stale keys are ignored silently — same philosophy as save().
+    if (! in_array($key, StorefrontSections::ALL, true)) {
+        return;
+    }
+
+    // Replace whole array (never mutate offsets in place) so Livewire
+    // reliably diffs and re-renders the affected editors.
+    $content = $this->section_content;
+    $content[$key] = StorefrontSections::defaults()[$key];
+    $this->section_content = $content;
+};
+
+?>@php
     $store = currentStore();
     $canPreview = $store && $store->isPubliclyActive();
 
@@ -410,6 +423,11 @@ $save = function (): void {
                         {{-- Section toggles --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
                             @foreach ($sectionConfig as $key => $section)
+                                @if ($key === 'hero')
+                                    {{-- single_product ignores hero content entirely;
+                                         hide the toggle so merchants never edit dead fields. --}}
+                                    <div x-show="$wire.template !== 'single_product'">
+                                @endif
                                 <label
                                     class="flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-200 cursor-pointer"
                                     :class="$wire.sections.includes('{{ $key }}') ?
@@ -426,6 +444,9 @@ $save = function (): void {
                                         <p class="text-xs text-ink-400 mt-0.5">{{ $sectionDescriptions[$key] }}</p>
                                     </div>
                                 </label>
+                                @if ($key === 'hero')
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
 
@@ -440,14 +461,20 @@ $save = function (): void {
 
                             <div class="space-y-3">
                                 @foreach ($sectionConfig as $key => $section)
-                                    @include(
-                                        'livewire.merchant.storefront-settings.partials.section-editor',
-                                        [
-                                            'key' => $key,
-                                            'section' => $section,
-                                            'description' => $sectionDescriptions[$key],
-                                        ]
-                                    )
+                                    @if ($key === 'hero')
+                                        <div x-show="$wire.template !== 'single_product'">
+                                        @endif
+                                        @include(
+                                            'livewire.merchant.storefront-settings.partials.section-editor',
+                                            [
+                                                'key' => $key,
+                                                'section' => $section,
+                                                'description' => $sectionDescriptions[$key],
+                                            ]
+                                        )
+                                        @if ($key === 'hero')
+                                        </div>
+                                    @endif
                                 @endforeach
                             </div>
                         </div>

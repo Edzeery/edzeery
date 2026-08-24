@@ -169,7 +169,10 @@ $formatAmount = function (float $amount): string {
                                     @endif
                                     @if ($this->canDelete())
                                         <button x-data
-                                                @click.prevent="if (await EdzSwal.confirmAction('{{ __('finance.delete') }}', '{{ __('finance.confirm_delete') }}')) $wire.delete('{{ $debt->id }}')"
+                                                data-confirm-title="{{ __('finance.delete') }}"
+                                                data-confirm-text="{{ __('finance.confirm_delete') }}"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.delete(Number($el.dataset.deleteId)) })()"
+                                                data-delete-id="{{ $debt->id }}"
                                                 class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
                                             <x-edz.icon name="trash" class="edz-btn__icon" />
                                         </button>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Products\Product;
+use App\Enums\Store\LandingTemplateEnum;
 use App\Support\Storefront\StorefrontSections;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
@@ -21,8 +22,12 @@ mount(function (): void {
         return;
     }
     $theme = $store->theme;
-    $this->sections = $theme?->homepage_sections ?? StorefrontSections::DEFAULT_ENABLED;
-    $this->section_content = $theme?->section_content ?? StorefrontSections::defaults();
+    $this->sections = is_array($theme?->homepage_sections) && $theme->homepage_sections !== []
+        ? array_values(array_intersect(StorefrontSections::ALL, $theme->homepage_sections))
+        : StorefrontSections::defaultSectionsFor(LandingTemplateEnum::SINGLE_PRODUCT->value);
+
+    // Guarantees the full contract shape (legacy/partial rows included).
+    $this->section_content = StorefrontSections::normalize($theme?->section_content);
 
     $this->product = Product::where('store_id', $store->id)
         ->where('is_active', true)
@@ -146,7 +151,8 @@ $addToCart = function (): void {
                                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.options') }}</label>
                                     <div class="flex flex-wrap gap-2">
                                         @foreach ($this->product->variants as $variant)
-                                            <button type="button" wire:click="selectVariant('{{ $variant->id }}')"
+                                            <button type="button" data-variant-id="{{ $variant->id }}"
+                                                x-on:click="$wire.selectVariant($el.dataset.variantId)"
                                                 class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer
                                             {{ $this->selectedVariant?->id === $variant->id
                                                 ? 'store-border-primary store-bg-primary-soft store-text-primary'
@@ -246,7 +252,6 @@ $addToCart = function (): void {
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
                         @foreach ($sp['items'] ?? [] as $item)
                             <div class="flex flex-col items-center">
-                                {{ $item['icon'] ?? 'check' }}
                                 <div
                                     class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
                                     <x-edz.icon name="{{ $item['icon'] ?? 'check' }}"
@@ -263,27 +268,27 @@ $addToCart = function (): void {
             </section>
         @endif
 
-        {{-- FAQ --}}
+        {{-- FAQ: per-item Alpine state, literal-only expressions (no
+             interpolated indexes), one chevron toggled via rotation. --}}
         @if (in_array('faq', $this->sections))
             @php $faq = $this->section_content['faq'] ?? []; @endphp
-            <section class="py-16 bg-white dark:bg-gray-800" x-data="{ openFaq: null }">
+            <section class="py-16 bg-white dark:bg-gray-800">
                 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
                         {{ $faq['title'] ?? __('storefront.faq') }}</h2>
                     <div class="space-y-4">
                         @foreach ($faq['items'] ?? [] as $faqItem)
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
-                                <button
-                                    x-on:click="openFaq = openFaq === {{ $loop->index }} ? null : {{ $loop->index }}"
-                                    :aria-expanded="openFaq === {{ $loop->index }}"
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg"
+                                x-data="{ open: false }">
+                                <button type="button" x-on:click="open = !open" :aria-expanded="open"
                                     class="w-full px-6 py-4 text-start flex items-center justify-between">
                                     <span
                                         class="font-medium text-gray-900 dark:text-white">{{ $faqItem['question'] ?? '' }}</span>
-                                    <x-edz.icon name="openFaq === {{ $loop->index }} ? 'chevron-up' : 'chevron-down'"
-                                        class="text-gray-500 dark:text-gray-400 h-5 w-5" />
-                                    <x-status-icon domain="general" status="expanded" set="bi" />
+                                    <x-edz.icon name="chevron-down"
+                                        class="text-gray-500 dark:text-gray-400 h-5 w-5 transition-transform duration-200 shrink-0 ms-3"
+                                        x-bind:class="open ? 'rotate-180' : ''" />
                                 </button>
-                                <div x-show="openFaq === {{ $loop->index }}" x-transition class="px-6 pb-4">
+                                <div x-show="open" x-transition class="px-6 pb-4">
                                     <p class="text-gray-600 dark:text-gray-300">{{ $faqItem['answer'] ?? '' }}</p>
                                 </div>
                             </div>

@@ -65,6 +65,24 @@ test('deep link without prior session resolves store from slug', function () {
     expect(preg_match('/\s:[a-z-]+="[^"]*\p{Arabic}[^"]*"/u', $html))->toBe(0)
         // Section editors must expose their label as a static (quoted) attribute.
         ->and(substr_count($html, 'role="region" aria-label='))->toBe(7);
+
+    // Hero UI is wrapped (toggle + editor) in a template-conditional reveal:
+    // single_product ignores hero content, so both wrappers must exist.
+    expect(substr_count($html, '$wire.template !== \'single_product\''))->toBe(2);
+});
+
+test('hero editor stays available for templates that consume hero content', function () {
+    [$user, $store] = createDeepLinkMember('owner');
+
+    $store->update(['landing_template' => 'catalog']);
+
+    $html = $this->actingAs($user)
+        ->get(route('merchant.storefront-settings', ['store' => $store->slug]))
+        ->assertOk()
+        ->getContent();
+
+    expect(substr_count($html, '$wire.template !== \'single_product\''))->toBe(2)
+        ->and($html)->toContain('section_content.hero.title');
 });
 
 test('deep link still enforces permission gates for restricted members', function () {

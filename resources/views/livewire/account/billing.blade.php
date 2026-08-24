@@ -339,7 +339,9 @@ $saveBilling = action(function (): void {
                     @if ($subscription->isActive())
                         <button type="button"
                             x-data
-                            @click.prevent="if (await EdzSwal.confirmAction('{{ __('merchant_panel.cancel_subscription') }}', '{{ __('merchant_panel.cancel_subscription_confirm') }}')) $wire.cancelSubscription()"
+                            data-confirm-title="{{ __('merchant_panel.cancel_subscription') }}"
+                            data-confirm-text="{{ __('merchant_panel.cancel_subscription_confirm') }}"
+                            @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.cancelSubscription() })()"
                             class="edz-btn edz-btn--danger edz-btn--sm">
                             {{ __('merchant_panel.cancel_subscription') }}
                         </button>

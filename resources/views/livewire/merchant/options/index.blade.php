@@ -256,7 +256,8 @@ $deleteSelected = function (): void {
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         x-data
-                        @click.prevent="if (await EdzSwal.confirmBulkDelete({{ count($selected) }})) $wire.deleteSelected()">{{ __('buttons.delete') }}</button>
+                        data-confirm-count="{{ count($selected) }}"
+                        @click.prevent="(async () => { if (await EdzSwal.confirmBulkDelete(Number($el.dataset.confirmCount))) await $wire.deleteSelected() })()">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -299,7 +300,9 @@ $deleteSelected = function (): void {
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                                 x-data
-                                                @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($option->name) }}')) $wire.delete('{{ $option->id }}')"
+                                                data-delete-name="{{ $option->name }}"
+                                                data-delete-id="{{ $option->id }}"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete(Number($el.dataset.deleteId)) })()"
                                                 >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
@@ -332,7 +335,9 @@ $deleteSelected = function (): void {
                                                 @if ($this->canDelete() && ! $value->variants()->exists())
                                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700"
                                                             x-data
-                                                            @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($value->value) }}')) $wire.deleteValue('{{ $value->id }}')"
+                                                            data-delete-name="{{ $value->value }}"
+                                                            data-delete-id="{{ $value->id }}"
+                                                            @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.deleteValue(Number($el.dataset.deleteId)) })()"
                                                             ><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                                                 @endif
                                             </span>

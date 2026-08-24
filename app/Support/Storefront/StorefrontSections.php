@@ -33,11 +33,42 @@ final class StorefrontSections
     /** Sections enabled for freshly-created themes. */
     public const DEFAULT_ENABLED = ['hero', 'social_proof', 'faq', 'cta'];
 
+    /**
+     * Sections rendered when a store has no theme row yet, per landing
+     * template. Single source of truth for every storefront template's
+     * fallback so they can never drift apart again.
+     */
+    public static function defaultSectionsFor(string $template): array
+    {
+        return match ($template) {
+            'catalog' => ['hero', 'categories', 'social_proof'],
+            'brand' => ['hero', 'brands', 'social_proof'],
+            default => self::DEFAULT_ENABLED,
+        };
+    }
+
     /** Number of items rendered for list-based sections (social_proof, faq). */
     public const ITEMS_LIMIT = 3;
 
-    /** Max length guards per free-text field family. */
-    private const TEXT_LIMITS = [
+    /**
+     * Icon names merchants may pick for social_proof items.
+     * Every entry must resolve to a glyph in the x-edz.icon component map
+     * (resources/views/components/edz/icon.blade.php); a contract test
+     * guards this invariant. Aliases are intentionally excluded — the
+     * picker stores canonical names only.
+     */
+    public const ICONS = [
+        'shield-check', 'lock-closed', 'banknotes', 'credit-card',
+        'truck', 'refresh', 'star', 'check-badge', 'check-circle', 'check',
+        'package', 'bag', 'cart', 'cube', 'tag', 'ribbon', 'megaphone',
+        'phone', 'map-pin', 'building-store', 'storefront', 'users', 'user',
+        'globe', 'help-circle', 'info-circle',
+    ];
+
+    /** Max length guards per free-text field family. Public: the editor
+     *  partials read these for native maxlength + live char counters so the
+     *  UI can never drift from validation. */
+    public const TEXT_LIMITS = [
         'title' => 120,
         'description' => 500,
         'button_text' => 60,
@@ -157,7 +188,7 @@ final class StorefrontSections
             'section_content.social_proof.items' => ['required', 'array', 'size:' . self::ITEMS_LIMIT],
             'section_content.social_proof.items.*.title' => ['required', 'string', 'max:' . self::TEXT_LIMITS['item_title']],
             'section_content.social_proof.items.*.description' => ['nullable', 'string', 'max:' . self::TEXT_LIMITS['item_description']],
-            'section_content.social_proof.items.*.icon' => ['nullable', 'string', 'max:60'],
+            'section_content.social_proof.items.*.icon' => ['nullable', 'string', 'in:' . implode(',', self::ICONS)],
 
             'section_content.faq.title' => ['nullable', 'string', 'max:' . self::TEXT_LIMITS['title']],
             'section_content.faq.items' => ['required', 'array', 'size:' . self::ITEMS_LIMIT],

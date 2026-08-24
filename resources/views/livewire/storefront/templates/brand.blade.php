@@ -2,6 +2,8 @@
 
 use App\Models\Brand;
 use App\Models\Products\Product;
+use App\Enums\Store\LandingTemplateEnum;
+use App\Support\Storefront\StorefrontSections;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -20,8 +22,10 @@ mount(function (): void {
     $store = currentStore();
     if (!$store) { return; }
     $theme = $store->theme;
-    $this->sections = $theme?->homepage_sections ?? ['hero', 'brands', 'social_proof'];
-    $this->section_content = $theme?->section_content ?? [];
+    $this->sections = is_array($theme?->homepage_sections) && $theme->homepage_sections !== []
+        ? array_values(array_intersect(StorefrontSections::ALL, $theme->homepage_sections))
+        : StorefrontSections::defaultSectionsFor(LandingTemplateEnum::BRAND->value);
+    $this->section_content = StorefrontSections::normalize($theme?->section_content);
 });
 
 $addToCart = function (string $variantId) {
@@ -29,6 +33,11 @@ $addToCart = function (string $variantId) {
     if (!$storeId) { return; }
     app(\App\Domains\Cart\Services\CartService::class)->addItem($storeId, $variantId, 1);
     $this->dispatch('cart-updated');
+};
+
+$clearFilters = function (): void {
+    $this->search = '';
+    $this->brand_id = '';
 };
 ?>
 
@@ -63,6 +72,8 @@ $addToCart = function (string $variantId) {
         };
 
         $products = $query->paginate(12);
+
+        $hasFilters = trim((string) $this->search) !== '' || (string) $this->brand_id !== '';
     @endphp
 
     {{-- Hero / Brand Header --}}
@@ -123,13 +134,15 @@ $addToCart = function (string $variantId) {
                 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
                     {{ $brandsContent['title'] ?? __('storefront.collections') }}</h2>
                 <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    <button x-on:click="$wire.set('brand_id', '')"
+                    <button data-brand-id=""
+                        x-on:click="$wire.set('brand_id', $el.dataset.brandId)"
                         class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
                         {{ empty($this->brand_id) ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                         {{ __('storefront.all_collections') }}
                     </button>
                     @foreach ($brands as $brand)
-                        <button x-on:click="$wire.set('brand_id', '{{ $brand->id }}')"
+                        <button data-brand-id="{{ $brand->id }}"
+                            x-on:click="$wire.set('brand_id', $el.dataset.brandId)"
                             class="shrink-0 px-5 py-2.5 rounded-lg text-sm font-medium transition border
                             {{ (string) $this->brand_id === (string) $brand->id ? 'store-bg-primary text-white store-border-primary' : 'bg-transparent text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-[var(--store-primary)]' }}">
                             {{ $brand->name }}
@@ -190,13 +203,21 @@ $addToCart = function (string $variantId) {
                                     <p class="text-xs store-text-primary font-medium mb-2">{{ $product->brand->name }}
                                     </p>
                                 @endif
+                                @php
+                                    // Product has no min_price/compare_price columns; derive from variants
+                                    // exactly like the catalog template does.
+                                    $cardMinPrice = (float) ($product->variants->min('price') ?? $product->price);
+                                    $cardMaxCompare = (float) $product->variants->max('compare_price');
+                                    $cardDiscount = $cardMaxCompare > 0 && $cardMinPrice > 0 && $cardMaxCompare > $cardMinPrice
+                                        ? (int) round((1 - $cardMinPrice / $cardMaxCompare) * 100)
+                                        : 0;
+                                @endphp
                                 <div class="flex items-center justify-between mt-3">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-lg font-bold store-text-primary">{{ currency($product->min_price ?? $product->price) }}</span>
-                                        @if (($product->compare_price ?? 0) > 0 && ($product->compare_price ?? 0) > ($product->min_price ?? $product->price))
-                                            <span class="text-xs font-medium text-gray-400 dark:text-gray-500 line-through">{{ currency($product->compare_price) }}</span>
+                                        <span class="text-lg font-bold store-text-primary">{{ currency($cardMinPrice) }}</span>
+                                        @if ($cardDiscount > 0)
                                             <span class="text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
-                                                -{{ round((1 - ($product->min_price ?? $product->price) / $product->compare_price) * 100) }}%
+                                                -{{ $cardDiscount }}%
                                             </span>
                                         @endif
                                     </div>
@@ -225,8 +246,17 @@ $addToCart = function (string $variantId) {
                 </div>
             @else
                 <div class="text-center py-20">
-                    <x-edz.icon name="shopping-bag" class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
-                    <p class="text-gray-500 dark:text-gray-400">{{ __('storefront.no_products_found') }}</p>
+                    <x-edz.icon name="{{ $hasFilters ? 'magnifying-glass' : 'shopping-bag' }}"
+                        class="text-6xl text-gray-300 dark:text-gray-600 mb-4" />
+                    <p class="text-gray-500 dark:text-gray-400">
+                        {{ __($hasFilters ? 'storefront.no_results_found' : 'storefront.no_products_found') }}
+                    </p>
+                    @if ($hasFilters)
+                        <button type="button" data-clear-filters x-on:click="$wire.clearFilters()"
+                            class="mt-5 store-btn-primary px-5 py-2.5 rounded-lg text-sm font-medium text-white transition">
+                            {{ __('storefront.clear_filters') }}
+                        </button>
+                    @endif
                 </div>
             @endif
         </div>

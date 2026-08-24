@@ -433,7 +433,10 @@ $allPermissions = computed(function () {
                                         </button>
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                                 x-data
-                                                @click.prevent="if (await EdzSwal.confirmAction('{{ __('teams.remove_member') }}', '{{ __('messages.action_confirm_delete') }}')) $wire.remove('{{ $membership->id }}')"
+                                                data-confirm-title="{{ __('teams.remove_member') }}"
+                                                data-confirm-text="{{ __('messages.action_confirm_delete') }}"
+                                                data-delete-id="{{ $membership->id }}"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.remove(Number($el.dataset.deleteId)) })()"
                                                 >{{ __('buttons.remove') }}</button>
                                     @endif
                                 </div>

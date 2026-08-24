@@ -56,6 +56,8 @@ return [
     'notes' => 'ملاحظات',
     'not_available' => 'غير متاح',
     'no_products_found' => 'لم يتم العثور على منتجات',
+    'no_results_found' => 'لا توجد نتائج مطابقة لبحثك',
+    'clear_filters' => 'مسح الفلاتر',
     'no_product_available' => 'لا يوجد منتج متاح بعد',
     'open_in_new_tab' => 'فتح في تبويب جديد',
     'open_store' => 'فتح المتجر',

@@ -57,6 +57,8 @@ return [
     'notes' => 'Notes',
     'not_available' => 'Not available',
     'no_products_found' => 'No products found',
+    'no_results_found' => 'No results match your search',
+    'clear_filters' => 'Clear filters',
     'no_product_available' => 'No product available yet',
     'open_in_new_tab' => 'Open in new tab',
     'open_store' => 'Open Store',

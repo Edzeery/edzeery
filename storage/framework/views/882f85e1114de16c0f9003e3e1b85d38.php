@@ -1,21 +1,27 @@
-<div>
-    <label class="edz-label" for="hero-title"><?php echo e(__('merchant_panel.hero_title')); ?></label>
-    <input id="hero-title" type="text"
-        wire:model="section_content.hero.title"
-        class="edz-input"
-        placeholder="<?php echo e(__('merchant_panel.hero_title_placeholder')); ?>" />
-</div>
-<div>
-    <label class="edz-label" for="hero-description"><?php echo e(__('merchant_panel.hero_description')); ?></label>
-    <textarea id="hero-description" wire:model="section_content.hero.description"
-        class="edz-input" rows="2"
-        placeholder="<?php echo e(__('merchant_panel.hero_description_placeholder')); ?>"></textarea>
-</div>
-<div>
-    <label class="edz-label" for="hero-button-text"><?php echo e(__('merchant_panel.hero_button_text')); ?></label>
-    <input id="hero-button-text" type="text"
-        wire:model="section_content.hero.button_text"
-        class="edz-input"
-        placeholder="<?php echo e(__('storefront.order_now')); ?>" />
-</div>
+<?php
+    $limits = \App\Support\Storefront\StorefrontSections::TEXT_LIMITS;
+?>
+<?php echo $__env->make('livewire.merchant.storefront-settings.fields.partials.countered-field', [
+    'id' => 'hero-title',
+    'label' => __('merchant_panel.hero_title'),
+    'wirePath' => 'section_content.hero.title',
+    'max' => $limits['title'],
+    'placeholder' => __('merchant_panel.hero_title_placeholder'),
+], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+<?php echo $__env->make('livewire.merchant.storefront-settings.fields.partials.countered-field', [
+    'id' => 'hero-description',
+    'label' => __('merchant_panel.hero_description'),
+    'wirePath' => 'section_content.hero.description',
+    'max' => $limits['description'],
+    'type' => 'textarea',
+    'rows' => 2,
+    'placeholder' => __('merchant_panel.hero_description_placeholder'),
+], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+<?php echo $__env->make('livewire.merchant.storefront-settings.fields.partials.countered-field', [
+    'id' => 'hero-button-text',
+    'label' => __('merchant_panel.hero_button_text'),
+    'wirePath' => 'section_content.hero.button_text',
+    'max' => $limits['button_text'],
+    'placeholder' => __('storefront.order_now'),
+], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 <?php /**PATH C:\laragon\www\edzeery\resources\views/livewire/merchant/storefront-settings/fields/hero.blade.php ENDPATH**/ ?>

@@ -1,7 +1,7 @@
 {{-- Shared single-field editor for title-only sections (categories / brands / description) --}}
-<div>
-    <label class="edz-label" for="{{ $path }}-title">{{ __('merchant_panel.section_title') }}</label>
-    <input id="{{ $path }}-title" type="text"
-        wire:model="{{ $path }}.title"
-        class="edz-input" />
-</div>
+@include('livewire.merchant.storefront-settings.fields.partials.countered-field', [
+    'id' => $id,
+    'label' => __('merchant_panel.section_title'),
+    'wirePath' => $path . '.title',
+    'max' => \App\Support\Storefront\StorefrontSections::TEXT_LIMITS['title'],
+])

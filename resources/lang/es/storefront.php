@@ -57,6 +57,8 @@ return [
     'notes' => 'Notas',
     'not_available' => 'No disponible',
     'no_products_found' => 'No se encontraron productos',
+    'no_results_found' => 'No hay resultados que coincidan con tu búsqueda',
+    'clear_filters' => 'Limpiar filtros',
     'no_product_available' => 'No hay productos disponibles',
     'open_in_new_tab' => 'Abrir en nueva pestaña',
     'open_store' => 'Abrir tienda',

@@ -156,14 +156,19 @@ $updateQty = function (string $variantId, int $qty) {
             </div>
             <div class="flex items-center gap-1">
                 @if ($count > 0)
+                    {{-- Interactivity policy: server values travel via data-* attrs;
+                         the handler is a literal IIFE (valid under Livewire's
+                         expression-wrapping evaluator, unlike a bare `if (...)`). --}}
                     <button x-data
-                            x-on:click.prevent='if (await EdzSwal.confirmAction(@js(__("storefront.clear_cart")), @js(__("storefront.clear_cart_confirm")))) $wire.clearCart()'
+                            data-confirm-title="{{ __('storefront.clear_cart') }}"
+                            data-confirm-text="{{ __('storefront.clear_cart_confirm') }}"
+                            x-on:click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.clearCart() })()"
                             class="w-9 h-9 rounded-full flex items-center justify-center
                                    text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400
                                    hover:bg-red-50 dark:hover:bg-red-900/20
                                    transition-colors duration-150"
                             aria-label="{{ __('storefront.clear_cart') }}">
-                        <x-edz.icon name="trash" class="text-lg" />
+                        <x-edz.icon name="trash" class="text-lg w-5 h-5" />
                     </button>
                 @endif
                 <button x-on:click="open = false"
@@ -172,7 +177,7 @@ $updateQty = function (string $variantId, int $qty) {
                            hover:bg-gray-100 dark:hover:bg-gray-700
                            transition-colors duration-150"
                     aria-label="Close">
-                    <x-edz.icon name="x-mark" class="text-xl" />
+                    <x-edz.icon name="x-mark" class="text-xl w-5 h-5 " />
                 </button>
             </div>
         </div>
@@ -182,7 +187,7 @@ $updateQty = function (string $variantId, int $qty) {
             {{-- Empty State --}}
             <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
                 <div class="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
-                    <x-edz.icon name="shopping-bag" class="text-4xl text-gray-300 dark:text-gray-600" />
+                    <x-edz.icon name="shopping-bag" class="text-4xl text-gray-300 dark:text-gray-600 w-5 h-5" />
                 </div>
                 <p class="text-base font-medium text-gray-900 dark:text-white mb-1.5">
                     {{ __('storefront.your_cart_is_empty') }}
@@ -194,7 +199,7 @@ $updateQty = function (string $variantId, int $qty) {
                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
                            store-btn-primary text-white text-sm font-semibold
                            transition-all duration-150 hover:shadow-lg">
-                    <x-edz.icon name="shopping-bag" class="text-base" />
+                    <x-edz.icon name="shopping-bag" class="text-base w-5 h-5" />
                     {{ __('storefront.back_to_store') }}
                 </button>
             </div>
@@ -233,10 +238,13 @@ $updateQty = function (string $variantId, int $qty) {
                                         @endif
                                     </div>
                                     <button x-data
-                                            x-on:click.prevent='if (await EdzSwal.confirmAction(@js(__("storefront.remove")), @js(__("messages.action_confirm_delete")))) $wire.removeItem("{{ $item['variant_id'] }}")'
+                                            data-confirm-title="{{ __('storefront.remove') }}"
+                                            data-confirm-text="{{ __('messages.action_confirm_delete') }}"
+                                            data-variant-id="{{ $item['variant_id'] }}"
+                                            x-on:click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.removeItem($el.dataset.variantId) })()"
                                             class="shrink-0 p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                             aria-label="{{ __('storefront.remove') }}">
-                                        <x-edz.icon name="trash" class="text-base" />
+                                        <x-edz.icon name="trash" class="text-base w-5 h-5" />
                                     </button>
                                 </div>
 
@@ -296,12 +304,12 @@ $updateQty = function (string $variantId, int $qty) {
                           store-btn-primary text-white font-bold text-sm
                           min-h-[48px] flex items-center justify-center gap-2
                           transition-all duration-150 hover:shadow-lg hover:brightness-110">
-                    <x-edz.icon name="lock-closed" class="text-base" />
+                    <x-edz.icon name="lock-closed" class="text-base w-5 h-5" />
                     {{ __('storefront.checkout') }}
                 </a>
 
                 <p class="text-center text-[11px] text-gray-400 dark:text-gray-500 mt-2.5">
-                    <x-edz.icon name="shield-check" class="align-text-bottom text-xs" />
+                    <x-edz.icon name="shield-check" class="align-text-bottom text-xs w-5 h-5" />
                     {{ __('storefront.secure_checkout') }}
                 </p>
             </div>

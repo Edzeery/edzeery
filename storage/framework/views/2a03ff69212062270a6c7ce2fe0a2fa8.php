@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Products\Product;
+use App\Enums\Store\LandingTemplateEnum;
 use App\Support\Storefront\StorefrontSections;
 
 ?>
@@ -97,7 +98,8 @@ use App\Support\Storefront\StorefrontSections;
                                         class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"><?php echo e(__('storefront.options')); ?></label>
                                     <div class="flex flex-wrap gap-2">
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->product->variants; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $variant): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <button type="button" wire:click="selectVariant('<?php echo e($variant->id); ?>')"
+                                            <button type="button" data-variant-id="<?php echo e($variant->id); ?>"
+                                                x-on:click="$wire.selectVariant($el.dataset.variantId)"
                                                 class="border-2 rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer
                                             <?php echo e($this->selectedVariant?->id === $variant->id
                                                 ? 'store-border-primary store-bg-primary-soft store-text-primary'
@@ -259,8 +261,6 @@ use App\Support\Storefront\StorefrontSections;
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $sp['items'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <div class="flex flex-col items-center">
-                                <?php echo e($item['icon'] ?? 'check'); ?>
-
                                 <div
                                     class="w-12 h-12 store-bg-primary-soft rounded-full flex items-center justify-center mb-4">
                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -298,29 +298,28 @@ use App\Support\Storefront\StorefrontSections;
         
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('faq', $this->sections)): ?>
             <?php $faq = $this->section_content['faq'] ?? []; ?>
-            <section class="py-16 bg-white dark:bg-gray-800" x-data="{ openFaq: null }">
+            <section class="py-16 bg-white dark:bg-gray-800">
                 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
                         <?php echo e($faq['title'] ?? __('storefront.faq')); ?></h2>
                     <div class="space-y-4">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $faq['items'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $faqItem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg">
-                                <button
-                                    x-on:click="openFaq = openFaq === <?php echo e($loop->index); ?> ? null : <?php echo e($loop->index); ?>"
-                                    :aria-expanded="openFaq === <?php echo e($loop->index); ?>"
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-lg"
+                                x-data="{ open: false }">
+                                <button type="button" x-on:click="open = !open" :aria-expanded="open"
                                     class="w-full px-6 py-4 text-start flex items-center justify-between">
                                     <span
                                         class="font-medium text-gray-900 dark:text-white"><?php echo e($faqItem['question'] ?? ''); ?></span>
                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'openFaq === '.e($loop->index).' ? \'chevron-up\' : \'chevron-down\'','class' => 'text-gray-500 dark:text-gray-400 h-5 w-5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'chevron-down','class' => 'text-gray-500 dark:text-gray-400 h-5 w-5 transition-transform duration-200 shrink-0 ms-3','xBind:class' => 'open ? \'rotate-180\' : \'\'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'openFaq === '.e($loop->index).' ? \'chevron-up\' : \'chevron-down\'','class' => 'text-gray-500 dark:text-gray-400 h-5 w-5']); ?>
+<?php $component->withAttributes(['name' => 'chevron-down','class' => 'text-gray-500 dark:text-gray-400 h-5 w-5 transition-transform duration-200 shrink-0 ms-3','x-bind:class' => 'open ? \'rotate-180\' : \'\'']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -331,28 +330,8 @@ use App\Support\Storefront\StorefrontSections;
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                                    <?php if (isset($component)) { $__componentOriginal916418750eca0f0299436c8f1a00baec = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal916418750eca0f0299436c8f1a00baec = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'status-kit::components.status-icon','data' => ['domain' => 'general','status' => 'expanded','set' => 'bi']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('status-icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['domain' => 'general','status' => 'expanded','set' => 'bi']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal916418750eca0f0299436c8f1a00baec)): ?>
-<?php $attributes = $__attributesOriginal916418750eca0f0299436c8f1a00baec; ?>
-<?php unset($__attributesOriginal916418750eca0f0299436c8f1a00baec); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal916418750eca0f0299436c8f1a00baec)): ?>
-<?php $component = $__componentOriginal916418750eca0f0299436c8f1a00baec; ?>
-<?php unset($__componentOriginal916418750eca0f0299436c8f1a00baec); ?>
-<?php endif; ?>
                                 </button>
-                                <div x-show="openFaq === <?php echo e($loop->index); ?>" x-transition class="px-6 pb-4">
+                                <div x-show="open" x-transition class="px-6 pb-4">
                                     <p class="text-gray-600 dark:text-gray-300"><?php echo e($faqItem['answer'] ?? ''); ?></p>
                                 </div>
                             </div>

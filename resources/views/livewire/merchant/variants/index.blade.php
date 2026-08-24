@@ -312,7 +312,8 @@ $deleteSelected = function (): void {
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         x-data
-                        @click.prevent="if (await EdzSwal.confirmBulkDelete({{ count($selected) }})) $wire.deleteSelected()">{{ __('buttons.delete') }}</button>
+                        data-confirm-count="{{ count($selected) }}"
+                        @click.prevent="(async () => { if (await EdzSwal.confirmBulkDelete(Number($el.dataset.confirmCount))) await $wire.deleteSelected() })()">{{ __('buttons.delete') }}</button>
             </div>
         @endif
 
@@ -370,7 +371,9 @@ $deleteSelected = function (): void {
                                     @if ($this->canDelete())
                                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700"
                                                 x-data
-                                                @click.prevent="if (await EdzSwal.confirmDelete('{{ addslashes($variant->sku) }}')) $wire.delete('{{ $variant->id }}')"
+                                                data-delete-name="{{ $variant->sku }}"
+                                                data-delete-id="{{ $variant->id }}"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete(Number($el.dataset.deleteId)) })()"
                                                 >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
