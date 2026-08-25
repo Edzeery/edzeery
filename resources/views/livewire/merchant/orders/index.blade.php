@@ -1593,10 +1593,10 @@ $deleteOrder = function (string $orderId): void {
                 <div class="p-6 space-y-5">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-ink">
-                            {{ $showEditModal ? __('Edit Order') : __('New Order') }}</h3>
+                            {{ $showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order') }}</h3>
                         <div class="flex items-center gap-2">
                             <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">
-                                {{ $showEditModal ? __('Update') : __('Create') }}
+                                {{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}
                             </button>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                 wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
