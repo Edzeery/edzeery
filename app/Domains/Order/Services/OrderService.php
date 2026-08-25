@@ -43,6 +43,12 @@ class OrderService
 
             $order->update(['status_id' => $newStatus->id]);
 
+            // Terminal "not fulfilled" states hand the goods back: restock
+            // every line that this order originally sold. Idempotent.
+            if (in_array($newStatus->key, ['cancelled', 'canceled', 'refunded', 'returned'], true)) {
+                $this->restockReturnedItems($order, $changedBy);
+            }
+
             Order::popTransitionMeta($order->id);
 
             DB::commit();
@@ -51,6 +57,45 @@ class OrderService
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * Restock items sold by an order being cancelled/refunded/returned.
+     * Uses the SALE movements as source of truth: each movement that
+     * has no matching RETURN in this order gets restored exactly once.
+     */
+    private function restockReturnedItems(Order $order, ?StoreMembership $changedBy): void
+    {
+        if (! \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)) {
+            return;
+        }
+
+        $sales = \App\Models\InventoryMovement::query()
+            ->where('source_type', Order::class)
+            ->where('source_id', $order->id)
+            ->where('type', \App\Enums\Store\InventoryMovementType::SALE->value)
+            ->get();
+
+        foreach ($sales as $sale) {
+            $alreadyReturned = \App\Models\InventoryMovement::query()
+                ->where('product_variant_id', $sale->product_variant_id)
+                ->where('source_type', Order::class)
+                ->where('source_id', $order->id)
+                ->where('type', \App\Enums\Store\InventoryMovementType::RETURN->value)
+                ->exists();
+
+            if ($alreadyReturned) {
+                continue;
+            }
+
+            \App\Services\InventoryService::apply(
+                $sale->variant,
+                (int) $sale->quantity,
+                \App\Enums\Store\InventoryMovementType::RETURN,
+                $order,
+                $changedBy?->user,
+            );
         }
     }
 

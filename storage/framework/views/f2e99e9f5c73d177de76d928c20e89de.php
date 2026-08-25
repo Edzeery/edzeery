@@ -17,11 +17,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $filters;
 
-    public $orders;
-
     public $page;
 
     public $visibleColumns;
+
+    public $perPage;
 
     public $allStatuses;
 
@@ -30,6 +30,18 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     public $allStates;
 
     public $allCities;
+
+    public $allProviders;
+
+    public $selectedOrders;
+
+    public $selectAll;
+
+    public $showBulkBar;
+
+    public $bulkAction;
+
+    public $showTrash;
 
     public $showCreateModal;
 
@@ -87,11 +99,12 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('getCurrentMembership'))->execute(...$arguments);
     }
 
-    public function loadOrders(): void
+    #[\Livewire\Attributes\Computed()]
+    public function orders(): array
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        (new Actions\CallMethod('loadOrders'))->execute(...$arguments);
+        return (new Actions\CallMethod('orders'))->execute(...$arguments);
     }
 
     public function loadCities(string $stateId): void
@@ -108,6 +121,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('setPage'))->execute(...$arguments);
     }
 
+    public function setPerPage(int $perPage): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('setPerPage'))->execute(...$arguments);
+    }
+
     public function setFilter(string $key, $value): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -122,11 +142,81 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('clearFilters'))->execute(...$arguments);
     }
 
-    public function getExpandIcon(string $orderId): string
+    public function toggleSelectAll(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        return (new Actions\CallMethod('getExpandIcon'))->execute(...$arguments);
+        (new Actions\CallMethod('toggleSelectAll'))->execute(...$arguments);
+    }
+
+    public function toggleSelectOrder(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleSelectOrder'))->execute(...$arguments);
+    }
+
+    public function clearSelection(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('clearSelection'))->execute(...$arguments);
+    }
+
+    public function bulkAssignAgent(?string $membershipId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('bulkAssignAgent'))->execute(...$arguments);
+    }
+
+    public function bulkSendToCarrier(?string $providerId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('bulkSendToCarrier'))->execute(...$arguments);
+    }
+
+    public function bulkDelete(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('bulkDelete'))->execute(...$arguments);
+    }
+
+    public function toggleTrash(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleTrash'))->execute(...$arguments);
+    }
+
+    public function restoreOrder(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('restoreOrder'))->execute(...$arguments);
+    }
+
+    public function restoreAll(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('restoreAll'))->execute(...$arguments);
+    }
+
+    public function forceDeleteAll(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('forceDeleteAll'))->execute(...$arguments);
+    }
+
+    public function loadFilterCities(string $stateId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('loadFilterCities'))->execute(...$arguments);
     }
 
     public function toggleStatusFilter(string $statusId): void
@@ -204,13 +294,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('submitEdit'))->execute(...$arguments);
-    }
-
-    public function refreshOrders(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('refreshOrders'))->execute(...$arguments);
     }
 
     public function toggleDetail(string $orderId): void

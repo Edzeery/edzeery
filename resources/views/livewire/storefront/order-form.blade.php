@@ -354,7 +354,7 @@ $submitOrder = function () {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.phone') }} *</label>
-                        <input type="text" wire:model="phone"
+                        <input type="text" wire:model="phone" name="phone"
                             placeholder="0XXX XX XX XX"
                             style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
                             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600

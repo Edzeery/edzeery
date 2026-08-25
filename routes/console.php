@@ -23,3 +23,6 @@ Schedule::call(function () {
 Schedule::command('billing:trial-reminders')->dailyAt('09:00');
 
 Schedule::command('subscriptions:check-expired')->daily();
+
+// Release stock locked by orders left pending >48h (common in COD markets).
+Schedule::command('orders:auto-cancel-pending --hours=48')->dailyAt('03:00');
