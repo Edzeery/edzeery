@@ -342,6 +342,8 @@ return [
     'returned_at' => 'Retourné le',
     'back' => 'Retour aux produits',
     'no_products_found' => 'Aucun produit trouvé',
+    'no_options_found' => 'Aucune option trouvée',
+    'search' => 'Rechercher...',
     'order_summary' => 'Résumé de la commande',
     'subtotal' => 'Sous-total',
     'total_weight' => 'Poids total',
@@ -355,4 +357,5 @@ return [
     'product_not_found' => 'Produit non trouvé',
     'out_of_stock' => 'Rupture de stock',
     'left' => 'restant',
+    'in_cart' => 'dans le panier',
 ];

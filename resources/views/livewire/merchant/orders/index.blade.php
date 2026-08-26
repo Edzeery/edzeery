@@ -59,6 +59,8 @@ state([
     // Create/Edit modal
     'showCreateModal' => false,
     'showEditModal' => false,
+    'showProductPickerModal' => false,
+    'showVariantPickerModal' => false,
     'editingOrderId' => null,
     'form' => [
         'customer_name' => '',
@@ -77,10 +79,10 @@ state([
         'weight_kg' => '',
         'items' => [],
     ],
-    'formProductSearch' => '',
     'formProductResults' => [],
     'formProductView' => 'list', // 'list' | 'variants'
     'formSelectedProduct' => null,
+    'formSelectedItems' => [],
 
     // Confirmation-time shipping assignment (carrier + desk)
     'editProviders' => [],
@@ -98,10 +100,6 @@ state([
 updated(['search'], function (): void {
     $this->page = 1;
     $this->loadOrders();
-});
-
-updated(['formProductSearch'], function (): void {
-    $this->searchProducts();
 });
 
 mount(function (): void {
@@ -125,6 +123,13 @@ mount(function (): void {
     $this->loadColumnPreferences();
     $this->loadOrders();
 });
+
+$syncFormSelectedItems = function (): void {
+    $this->formSelectedItems = collect($this->form['items'])
+        ->pluck('quantity', 'product_variant_id')
+        ->toArray();
+    $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
+};
 
 $loadColumnPreferences = function (): void {
     $defaults = ['number', 'customer', 'phone', 'wilaya', 'products', 'amount', 'status', 'assigned_agent', 'created_at'];
@@ -485,7 +490,9 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
 
     $service = app(OrderService::class);
     if (!$service->canTransition($order, $statusKey)) {
-        $this->dispatch('swal', type: 'error', title: __('Invalid status transition'));
+        $this->dispatch('swal', type: 'error', title:
+         __('status_transition.invalid_transition', ['from' => $order->status?->name ?? '—',
+          'to' => $statusKey ?? '—']));
         return;
     }
 
@@ -494,7 +501,8 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $this->page = 1;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('Order status updated'));
+    $this->dispatch('swal', type: 'success', title: __('status_transition.order_status_updated',
+     ['order_number' => $order->number, 'new_status' => $order->status?->name ?? '—']));
 };
 
 // ——— Create Modal ———
@@ -517,75 +525,55 @@ $openCreateModal = function (): void {
         'weight_kg' => '',
         'items' => [],
     ];
-    $this->formProductSearch = '';
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
     $this->loadProducts();
     $this->showCreateModal = true;
 };
 
-$searchProducts = function (): void {
-    $search = $this->formProductSearch;
-    if (strlen($search) < 2) {
-        $this->formProductResults = [];
-        $this->formProductView = 'list';
-        $this->formSelectedProduct = null;
-        $this->loadProducts();
-        return;
-    }
-    $storeId = currentStoreId();
-    $this->formProductView = 'list';
-    $this->formSelectedProduct = null;
-    $this->formProductResults = ProductVariant::with(['product', 'product.primaryImage'])
-        ->whereHas('product', fn($q) => $q->where('store_id', $storeId)->where('is_active', true))
-        ->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('sku', 'like', "%{$search}%")
-                ->orWhere('barcode', 'like', "%{$search}%")
-                ->orWhereHas('product', fn($q2) => $q2->where('name', 'like', "%{$search}%"));
-        })
-        ->limit(20)
-        ->get()
-        ->map(
-            fn($pv) => array_merge($pv->toArray(), [
-                'image_url' => $pv->product?->primaryImage?->path ? Storage::disk('public')->url($pv->product->primaryImage->path) : asset('img/icons/noimg.png'),
-            ]),
-        )
-        ->toArray();
-};
-
 $loadProducts = function (): void {
     $storeId = currentStoreId();
-    $this->formProductResults = Product::with(['primaryImage', 'variants'])
+    $this->formProductResults = Product::with(['primaryImage', 'variants:id,product_id,name,sku,price,stock'])
+        ->select('id', 'name', 'price', 'type')
         ->where('store_id', $storeId)
         ->where('is_active', true)
         ->orderByDesc('sort_order')
         ->orderByDesc('created_at')
-        ->limit(20)
+        ->limit(100)
         ->get()
-        ->map(function ($product) {
+        ->map(function ($product) use ($storeId) {
             $variants = $product->variants;
             $prices = $variants->pluck('price')->filter();
             $imageUrl = $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png');
+            $minPrice = $prices->min() ?? ($product->price ?? 0);
+            $maxPrice = $prices->max() ?? ($product->price ?? 0);
+            $firstVariant = $variants->count() === 1 ? $variants->first() : null;
             return [
-                'id' => $variants->first()?->id ?? null,
+                'id' => $firstVariant?->id ?? null,
                 'product_id' => $product->id,
                 'product_name' => $product->name,
                 'image_url' => $imageUrl,
                 'variant_count' => $variants->count(),
-                'min_price' => $prices->min() ?? ($product->price ?? 0),
-                'max_price' => $prices->max() ?? ($product->price ?? 0),
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
+                'price_range' => $minPrice != $maxPrice
+                    ? currency($minPrice) . ' — ' . currency($maxPrice)
+                    : currency($minPrice),
                 'has_variants' => $product->hasVariants(),
-                'first_variant' =>
-                    $variants->count() === 1
-                        ? [
-                            'id' => $variants->first()->id,
-                            'name' => $variants->first()->name,
-                            'sku' => $variants->first()->sku,
-                            'price' => $variants->first()->price,
-                            'stock' => $variants->first()->stock,
-                        ]
-                        : null,
+                'first_variant' => $firstVariant
+                    ? [
+                        'id' => $firstVariant->id,
+                        'name' => $firstVariant->name,
+                        'sku' => $firstVariant->sku,
+                        'price' => $firstVariant->price,
+                        'price_formatted' => currency($firstVariant->price),
+                        'stock' => $firstVariant->stock,
+                        'stock_status' => $firstVariant->stock <= 0 ? 'out' : ($firstVariant->stock <= 5 ? 'low' : 'ok'),
+                        'stock_text' => $firstVariant->stock <= 0
+                            ? __('merchant_panel.out_of_stock')
+                            : $firstVariant->stock . ' ' . __('merchant_panel.left'),
+                    ]
+                    : null,
             ];
         })
         ->toArray();
@@ -656,11 +644,7 @@ $addFormItem = function (string $variantId): void {
             'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
         ];
     }
-    $this->formProductSearch = '';
-    $this->formProductResults = [];
-    $this->formProductView = 'list';
-    $this->formSelectedProduct = null;
-    $this->loadProducts();
+    $this->syncFormSelectedItems();
 };
 
 $addFormItemByBarcode = function (string $code): void {
@@ -684,6 +668,7 @@ $addFormItemByBarcode = function (string $code): void {
     foreach ($this->form['items'] as $idx => &$item) {
         if ($item['product_variant_id'] === $variant->id) {
             $this->form['items'][$idx]['quantity']++;
+            $this->syncFormSelectedItems();
             return;
         }
     }
@@ -700,11 +685,13 @@ $addFormItemByBarcode = function (string $code): void {
         'weight' => $variant->weight ?? 0,
         'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
     ];
+    $this->syncFormSelectedItems();
 };
 
 $removeFormItem = function (int $index): void {
     unset($this->form['items'][$index]);
     $this->form['items'] = array_values($this->form['items']);
+    $this->syncFormSelectedItems();
 };
 
 $updateFormItemQty = function (int $index, int $qty): void {
@@ -862,7 +849,6 @@ $openEditModal = function (string $orderId): void {
             )
             ->toArray(),
     ];
-    $this->formProductSearch = '';
     $this->formProductResults = [];
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
@@ -1856,9 +1842,10 @@ $refreshOrders = function (): void {
         </div>
     </div>
 
-    {{-- Create / Edit Modal --}}
+    {{-- Create / Edit Modal + Product/Variant Picker Modals --}}
+    <div x-data="orderProductPicker()">
     @if ($showCreateModal || $showEditModal)
-        <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg"
+        <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class="  edz-scroll"
             wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">
             <form wire:submit="{{ $showEditModal ? 'submitEdit' : 'submitCreate' }}">
                 <div class="p-6 space-y-5">
@@ -1999,214 +1986,23 @@ $refreshOrders = function (): void {
                     @endif
 
                     {{-- Products --}}
-                    <div x-data="{
-                        open: false,
-                        popupTop: 0,
-                        popupLeft: 0,
-                        popupWidth: 0,
-                        updatePosition() {
-                            const input = this.$refs.searchInput;
-                            if (!input) return;
-                            const rect = input.getBoundingClientRect();
-                            this.popupTop = rect.bottom + 4;
-                            this.popupLeft = rect.left;
-                            this.popupWidth = rect.width;
-                        },
-                        openPicker() {
-                            this.updatePosition();
-                            this.open = true;
-                        },
-                        closePicker() { this.open = false; },
-                        scheduleClose() { setTimeout(() => this.closePicker(), 180); }
-                    }" class="relative">
+                    <div>
                         <label class="edz-label">{{ __('merchant_panel.products') }}</label>
 
-                        {{-- Search with barcode support --}}
-                        <div class="relative">
-                            <input type="text" wire:model.live.debounce.300ms="formProductSearch"
-                                x-ref="searchInput" placeholder="{{ __('merchant_panel.search_products_barcode') }}"
-                                class="edz-input text-sm pr-10" @focus="openPicker()" @blur="scheduleClose()"
-                                @keydown.escape="closePicker(); $el.blur()"
-                                @keydown.enter.prevent="$wire.addFormItemByBarcode($event.target.value); $event.target.value = ''">
-                            <x-edz.icon name="qr-code"
-                                class="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                        </div>
-
-                        {{-- Product Picker Popup — fixed positioning, no clipping --}}
-                        <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150"
-                            x-transition:enter-start="opacity-0 scale-[0.97]"
-                            x-transition:enter-end="opacity-100 scale-100"
-                            x-transition:leave="transition ease-in duration-100"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-[0.97]" @mousedown.prevent="open = true"
-                            :style="`position:fixed; top:${popupTop}px; left:${popupLeft}px; width:${popupWidth}px; z-index:70;`"
-                            class="bg-surface dark:bg-ink-800 border border-surface-border dark:border-ink-600 rounded-xl shadow-2xl max-h-[50vh] overflow-hidden flex flex-col">
-
-                            {{-- Product list --}}
-                            @if (!empty($formProductResults))
-                                <div class="overflow-y-auto flex-1 divide-y divide-surface-border dark:divide-ink-700">
-                                    @foreach ($formProductResults as $pv)
-                                        @if (isset($pv['product_id']) && isset($pv['has_variants']))
-                                            {{-- Multi-variant product --}}
-                                            @if ($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1)
-                                                <button type="button"
-                                                    wire:click="selectProduct('{{ $pv['product_id'] }}')"
-                                                    class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
-                                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                                        alt=""
-                                                        class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="font-medium text-ink truncate">
-                                                            {{ $pv['product_name'] }}</div>
-                                                        <div class="text-xs text-ink-muted mt-0.5">
-                                                            {{ $pv['variant_count'] }}
-                                                            {{ __('merchant_panel.variants') }}
-                                                        </div>
-                                                    </div>
-                                                    <span class="text-xs text-ink-muted shrink-0">
-                                                        {{ currency($pv['min_price']) }}
-                                                        @if ($pv['min_price'] != $pv['max_price'])
-                                                            — {{ currency($pv['max_price']) }}
-                                                        @endif
-                                                    </span>
-                                                    <x-edz.icon name="chevron-right"
-                                                        class="w-4 h-4 text-ink-muted shrink-0" />
-                                                </button>
-
-                                                {{-- Single variant product --}}
-                                            @elseif ($pv['first_variant'])
-                                                <button type="button"
-                                                    wire:click="addFormItem('{{ $pv['first_variant']['id'] }}')"
-                                                    class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
-                                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                                        alt=""
-                                                        class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="font-medium text-ink truncate">
-                                                            {{ $pv['product_name'] }}</div>
-                                                        <div class="text-xs text-ink-muted mt-0.5">
-                                                            SKU: {{ $pv['first_variant']['sku'] ?? '—' }}
-                                                            @if (($pv['first_variant']['stock'] ?? 0) <= 0)
-                                                                <span
-                                                                    class="text-danger-500 ml-2">{{ __('merchant_panel.out_of_stock') }}</span>
-                                                            @elseif (($pv['first_variant']['stock'] ?? 0) <= 5)
-                                                                <span
-                                                                    class="text-warning-500 ml-2">{{ $pv['first_variant']['stock'] }}
-                                                                    {{ __('merchant_panel.left') }}</span>
-                                                            @else
-                                                                <span
-                                                                    class="text-success-500 ml-2">{{ $pv['first_variant']['stock'] }}
-                                                                    {{ __('merchant_panel.left') }}</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                    <span
-                                                        class="text-ink font-semibold shrink-0">{{ currency($pv['first_variant']['price']) }}</span>
-                                                    <x-edz.icon name="plus"
-                                                        class="w-4 h-4 text-primary-500 shrink-0" />
-                                                </button>
-                                            @endif
-                                        @else
-                                            {{-- Search result: variant card --}}
-                                            <button type="button" wire:click="addFormItem('{{ $pv['id'] }}')"
-                                                class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
-                                                <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                                    alt=""
-                                                    class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="font-medium text-ink truncate">
-                                                        {{ $pv['product']['name'] ?? '' }} — {{ $pv['name'] }}
-                                                    </div>
-                                                    <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-2">
-                                                        <span>SKU: {{ $pv['sku'] ?? '—' }}</span>
-                                                        @if (($pv['stock'] ?? 0) <= 0)
-                                                            <span
-                                                                class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
-                                                        @elseif (($pv['stock'] ?? 0) <= 5)
-                                                            <span
-                                                                class="text-warning-500 font-medium">{{ $pv['stock'] }}
-                                                                {{ __('merchant_panel.left') }}</span>
-                                                        @else
-                                                            <span
-                                                                class="text-success-500 font-medium">{{ $pv['stock'] }}
-                                                                {{ __('merchant_panel.left') }}</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                <span
-                                                    class="text-ink font-semibold shrink-0">{{ currency($pv['price'] ?? 0) }}</span>
-                                                <x-edz.icon name="plus"
-                                                    class="w-4 h-4 text-primary-500 shrink-0" />
-                                            </button>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="px-4 py-6 text-center text-sm text-ink-muted">
-                                    {{ __('merchant_panel.no_products_found') }}
-                                </div>
-                            @endif
-
-                            {{-- Variant picker (inline, below product list) --}}
-                            @if ($formProductView === 'variants' && $formSelectedProduct)
-                                <div class="border-t border-surface-border dark:border-ink-700">
-                                    <div
-                                        class="px-3 py-2 bg-surface-secondary dark:bg-ink-700/50 flex items-center gap-2">
-                                        <img src="{{ $formSelectedProduct['image_url'] }}" alt=""
-                                            class="w-6 h-6 rounded object-cover bg-surface shrink-0">
-                                        <span
-                                            class="text-xs font-bold text-ink truncate flex-1">{{ $formSelectedProduct['name'] }}</span>
-                                        <button type="button" wire:click="backToProducts"
-                                            class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium shrink-0 flex items-center gap-1">
-                                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                    <div
-                                        class="divide-y divide-surface-border dark:divide-ink-700 max-h-40 overflow-y-auto">
-                                        @foreach ($formSelectedProduct['variants'] as $variant)
-                                            <div
-                                                class="px-3 py-2 flex items-center gap-2.5 text-sm
-                                                {{ !$variant['is_active'] || $variant['stock'] <= 0 ? 'opacity-40' : '' }}">
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="font-medium text-ink text-xs truncate">
-                                                        {{ $variant['name'] }}</div>
-                                                    <div
-                                                        class="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5">
-                                                        @if ($variant['option_labels'])
-                                                            <span>{{ $variant['option_labels'] }}</span>
-                                                            <span class="text-surface-border">·</span>
-                                                        @endif
-                                                        <span>SKU: {{ $variant['sku'] ?? '—' }}</span>
-                                                        @if ($variant['stock'] <= 0)
-                                                            <span
-                                                                class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
-                                                        @elseif ($variant['stock'] <= 5)
-                                                            <span
-                                                                class="text-warning-500 font-medium">{{ $variant['stock'] }}
-                                                                {{ __('merchant_panel.left') }}</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                <span
-                                                    class="text-ink font-semibold text-xs shrink-0">{{ currency($variant['price']) }}</span>
-                                                @if ($variant['is_active'] && $variant['stock'] > 0)
-                                                    <button type="button"
-                                                        wire:click="addFormItem('{{ $variant['id'] }}')"
-                                                        class="w-7 h-7 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
-                                                               text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors shrink-0">
-                                                        <x-edz.icon name="plus" class="w-3.5 h-3.5" />
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        </div>
+                        {{-- Trigger to open product picker modal --}}
+                        <button type="button" @click="openProductPicker()"
+                            class="w-full flex items-center gap-3 px-4 py-3 bg-surface-secondary dark:bg-ink-800
+                                   border border-dashed border-surface-border dark:border-ink-600 rounded-xl
+                                   hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10
+                                   transition-colors text-sm text-ink-muted group">
+                            <x-edz.icon name="qr-code" class="w-5 h-5 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                            <span class="flex-1 text-start">{{ __('merchant_panel.search_products_barcode') }}</span>
+                            <x-edz.icon name="plus" class="w-4 h-4 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                        </button>
 
                         {{-- Items list --}}
                         @if (!empty($form['items']))
-                            <div class="mt-3 space-y-2">
+                            <div class="mt-3 space-y-2  overflow-y-auto max-h-[calc(80vh-475px)]  edz-scroll">
                                 @foreach ($form['items'] as $idx => $item)
                                     <div
                                         class="flex items-center gap-3 p-3 bg-surface-secondary dark:bg-ink-800 rounded-lg">
@@ -2411,6 +2207,239 @@ $refreshOrders = function (): void {
             </div>
         </x-edz.modal>
     @endif
+
+    {{-- Product Picker Modal --}}
+    @if ($showProductPickerModal)
+    <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="md">
+        <div class="flex flex-col max-h-[85vh]">
+            {{-- Drag handle (mobile) --}}
+            <div class="edz-modal__handle sm:hidden"></div>
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.products') }}</h3>
+                <button type="button" @click="open = false; closeProductPicker()"
+                    class="edz-modal__close" style="position:static;">
+                    <x-edz.icon name="x-mark" class="w-5 h-5" />
+                </button>
+            </div>
+
+            {{-- Search --}}
+            <div class="px-5 pb-3">
+                <div class="relative">
+                    <input type="text"
+                        @input="onSearchInput($event)"
+                        data-product-search-input
+                        placeholder="{{ __('merchant_panel.search_products_barcode') }}"
+                        class="edz-input text-sm ps-10 pe-10"
+                        @keydown.enter.prevent="selectProductByBarcode($event)">
+                    <x-edz.icon name="magnifying-glass"
+                        class="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                    <x-edz.icon name="qr-code"
+                        class="w-4 h-4 absolute end-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                </div>
+            </div>
+
+            {{-- Counter --}}
+            <div class="px-5 pb-2">
+                <span class="text-xs text-ink-muted"
+                      x-text="(searchTerm && searchTerm.length >= 2 ? visibleCount : {{ count($formProductResults) }}) + ' {{ __('merchant_panel.products') }}'"></span>
+            </div>
+
+            {{-- Product list --}}
+            <div class="min-h-0 flex-1  max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll px-5 pb-5">
+                {{-- Skeleton loading (while loadProducts is executing) --}}
+                <div wire:loading wire:target="loadProducts" class="space-y-3 py-2">
+                    @foreach (range(1, 5) as $i)
+                        <div class="flex items-center gap-3 py-2">
+                            <div class="w-11 h-11 rounded-xl edz-skeleton shrink-0"></div>
+                            <div class="flex-1 space-y-2">
+                                <x-edz.skeleton width="{{ 40 + $i * 10 }}%" height="0.875rem" />
+                                <x-edz.skeleton width="6rem" height="0.75rem" />
+                            </div>
+                            <x-edz.skeleton width="3.5rem" height="1rem" />
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Product items (server-rendered) --}}
+                <div wire:loading.remove wire:target="loadProducts" class="divide-y divide-surface-border dark:divide-ink-700">
+                    @forelse ($formProductResults as $pv)
+                        @php
+                            $searchText = mb_strtolower($pv['product_name'] . ' ' . ($pv['first_variant']['sku'] ?? ''));
+                        @endphp
+                        <div data-search="{{ $searchText }}"
+                             x-show="!searchTerm || searchTerm.length < 2 || $el.dataset.search.includes(searchTerm.toLowerCase())"
+                             class="transition-opacity">
+
+                            {{-- Multi-variant product --}}
+                            @if ($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1)
+                                <button type="button" @click="openVariants('{{ $pv['product_id'] }}')"
+                                    class="w-full text-left py-3 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2">
+                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                        alt="" loading="lazy"
+                                        class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}</div>
+                                        <div class="text-xs text-ink-muted mt-0.5">
+                                            {{ $pv['variant_count'] }} {{ __('merchant_panel.variants') }}
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-ink-muted shrink-0 tabular-nums">{{ $pv['price_range'] }}</span>
+                                    <x-edz.icon name="chevron-left" class="w-4 h-4 text-ink-muted shrink-0 rtl:rotate-180" />
+                                </button>
+
+                            {{-- Single variant product --}}
+                            @elseif ($pv['first_variant'])
+                                @php
+                                    $isProductSelected = isset($formSelectedItems[$pv['first_variant']['id']]);
+                                @endphp
+                                <button type="button"
+                                    @if (!$isProductSelected) @click="selectProduct('{{ $pv['first_variant']['id'] }}')" @endif
+                                    :disabled="isAddingProduct"
+                                    class="w-full text-left py-3 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2
+                                        {{ $isProductSelected
+                                            ? 'bg-success-50/50 dark:bg-success-900/10 border border-success-200/50 dark:border-success-800/30'
+                                            : 'hover:bg-surface-secondary dark:hover:bg-ink-700' }}
+                                        disabled:opacity-50">
+                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                        alt="" loading="lazy"
+                                        class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}</div>
+                                        <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-1.5">
+                                            <span>SKU: {{ $pv['first_variant']['sku'] ?? '—' }}</span>
+                                            @if (($pv['first_variant']['stock_status'] ?? '') === 'out')
+                                                <span class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
+                                            @elseif (($pv['first_variant']['stock_status'] ?? '') === 'low')
+                                                <span class="text-warning-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                            @else
+                                                <span class="text-success-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <span class="text-ink font-semibold shrink-0 tabular-nums">{{ $pv['first_variant']['price_formatted'] }}</span>
+                                    @if ($isProductSelected)
+                                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20 text-success-600 dark:text-success-400 shrink-0">
+                                            <x-edz.icon name="check" class="w-4 h-4" />
+                                        </span>
+                                    @else
+                                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shrink-0">
+                                            <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                            <svg x-show="isAddingProduct" x-cloak class="edz-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                        </span>
+                                    @endif
+                                </button>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="px-4 py-10 text-center">
+                            <x-edz.icon name="magnifying-glass" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                            <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                        </div>
+                    @endforelse
+
+                    {{-- No search results (all items hidden by x-show) --}}
+                    <div x-show="searchTerm && searchTerm.length >= 2 && visibleCount === 0"
+                         class="px-4 py-10 text-center">
+                        <x-edz.icon name="magnifying-glass" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                        <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </x-edz.modal>
+    @endif
+
+    {{-- Variant Picker Modal --}}
+    @if ($showVariantPickerModal)
+    <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="sm">
+        <div class="flex flex-col max-h-[85vh]">
+            {{-- Drag handle (mobile) --}}
+            <div class="edz-modal__handle sm:hidden"></div>
+
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                <div class="flex items-center gap-3 min-w-0">
+                    <button type="button" @click="open = false; closeVariantPicker(); $wire.set('showProductPickerModal', true);"
+                        class="edz-btn edz-btn--ghost edz-btn--sm shrink-0">
+                        <x-edz.icon name="arrow-right" class="w-4 h-4 rtl:rotate-180" />
+                        <span class="hidden sm:inline">{{ __('buttons.back') }}</span>
+                    </button>
+                    @if ($formSelectedProduct)
+                        <div class="flex items-center gap-2 min-w-0">
+                            <img src="{{ $formSelectedProduct['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                alt="" class="w-8 h-8 rounded-lg object-cover bg-surface shrink-0">
+                            <span class="text-sm font-bold text-ink truncate">{{ $formSelectedProduct['name'] }}</span>
+                        </div>
+                    @endif
+                </div>
+                <button type="button" @click="open = false; closeVariantPicker()"
+                    class="edz-modal__close" style="position:static;">
+                    <x-edz.icon name="x-mark" class="w-5 h-5" />
+                </button>
+            </div>
+
+            {{-- Variant list --}}
+            <div class="flex-1 overflow-y-auto px-5 pb-5 max-h-[calc(100vh-475px)]  edz-scroll">
+                @if ($formSelectedProduct && count($formSelectedProduct['variants']) > 0)
+                    <div class="divide-y divide-surface-border dark:divide-ink-700">
+                        @foreach ($formSelectedProduct['variants'] as $variant)
+                            @php
+                                $isVariantSelected = isset($formSelectedItems[$variant['id']]);
+                                $variantQty = $formSelectedItems[$variant['id']] ?? 0;
+                                $isDisabled = !$variant['is_active'] || $variant['stock'] <= 0;
+                            @endphp
+                            <div class="py-3 flex items-center gap-3 text-sm rounded-lg px-2 -mx-2 transition-colors
+                                {{ $isVariantSelected ? 'bg-success-50/50 dark:bg-success-900/10' : '' }}
+                                {{ $isDisabled && !$isVariantSelected ? 'opacity-40' : '' }}">
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-ink text-xs truncate">{{ $variant['name'] }}</div>
+                                    <div class="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                        @if ($variant['option_labels'])
+                                            <span>{{ $variant['option_labels'] }}</span>
+                                            <span class="text-surface-border">·</span>
+                                        @endif
+                                        <span>SKU: {{ $variant['sku'] ?? '—' }}</span>
+                                        @if ($isVariantSelected)
+                                            <span class="text-success-600 dark:text-success-400 font-medium">· {{ $variantQty }} {{ __('merchant_panel.in_cart') }}</span>
+                                        @elseif ($variant['stock'] <= 0)
+                                            <span class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
+                                        @elseif ($variant['stock'] <= 5)
+                                            <span class="text-warning-500 font-medium">{{ $variant['stock'] }} {{ __('merchant_panel.left') }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="text-ink font-semibold text-xs shrink-0 tabular-nums">{{ currency($variant['price']) }}</span>
+                                @if ($isVariantSelected)
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20
+                                           text-success-600 dark:text-success-400 shrink-0">
+                                        <x-edz.icon name="check" class="w-4 h-4" />
+                                    </span>
+                                @elseif ($variant['is_active'] && $variant['stock'] > 0)
+                                    <button type="button" @click="selectVariant('{{ $variant['id'] }}')"
+                                        :disabled="isAddingProduct"
+                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
+                                               text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30
+                                               transition-colors shrink-0 disabled:opacity-50">
+                                        <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                                        <svg x-show="isAddingProduct" x-cloak class="edz-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                    </button>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="px-4 py-10 text-center">
+                        <x-edz.icon name="cube" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                        <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </x-edz.modal>
+    @endif
+    </div>
 
     {{-- Filter Portal — single container, fixed-positioned --}}
     <div x-show="openFilter !== null" x-transition @click.away="openFilter = null"

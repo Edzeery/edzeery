@@ -344,6 +344,8 @@ return [
     'returned_at' => 'Returned At',
     'back' => 'Back to products',
     'no_products_found' => 'No products found',
+    'no_options_found' => 'No options found',
+    'search' => 'Search...',
     'order_summary' => 'Order Summary',
     'subtotal' => 'Subtotal',
     'total_weight' => 'Total Weight',
@@ -357,4 +359,5 @@ return [
     'product_not_found' => 'Product not found',
     'out_of_stock' => 'Out of stock',
     'left' => 'left',
+    'in_cart' => 'in cart',
 ];

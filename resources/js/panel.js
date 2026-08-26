@@ -2,6 +2,8 @@ import "./bootstrap.js";
 import "./swal.js";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
+import edzSelect from "./components/edz-select.js";
+import orderProductPicker from "./components/order-product-picker.js";
 
 window.flatpickr = flatpickr;
 
@@ -122,6 +124,12 @@ document.addEventListener("alpine:init", () => {
             e.returnValue = "";
         }
     });
+
+    // --- edzSelect custom dropdown component ---
+    Alpine.data("edzSelect", edzSelect);
+
+    // --- Order product picker component ---
+    Alpine.data("orderProductPicker", orderProductPicker);
 
     // --- edzDirty Alpine component ---
     Alpine.data("edzDirty", () => ({

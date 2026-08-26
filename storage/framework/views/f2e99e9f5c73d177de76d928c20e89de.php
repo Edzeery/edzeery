@@ -45,17 +45,21 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $showEditModal;
 
+    public $showProductPickerModal;
+
+    public $showVariantPickerModal;
+
     public $editingOrderId;
 
     public $form;
-
-    public $formProductSearch;
 
     public $formProductResults;
 
     public $formProductView;
 
     public $formSelectedProduct;
+
+    public $formSelectedItems;
 
     public $editProviders;
 
@@ -74,6 +78,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
 
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
+    }
+
+    public function syncFormSelectedItems(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('syncFormSelectedItems'))->execute(...$arguments);
     }
 
     public function loadColumnPreferences(): void
@@ -242,13 +253,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('openCreateModal'))->execute(...$arguments);
-    }
-
-    public function searchProducts(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('searchProducts'))->execute(...$arguments);
     }
 
     public function loadProducts(): void

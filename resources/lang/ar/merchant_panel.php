@@ -344,6 +344,8 @@ return [
     'returned_at' => 'تاريخ الإرجاع',
     'back' => 'العودة للمنتجات',
     'no_products_found' => 'لا توجد منتجات',
+    'no_options_found' => 'لا توجد خيارات',
+    'search' => 'بحث...',
     'order_summary' => 'ملخص الطلبية',
     'subtotal' => 'المجموع الفرعي',
     'total_weight' => 'الوزن الكلي',
@@ -357,4 +359,5 @@ return [
     'product_not_found' => 'المنتج غير موجود',
     'out_of_stock' => 'نفدت',
     'left' => 'متبقي',
+    'in_cart' => 'بالسلة',
 ];
