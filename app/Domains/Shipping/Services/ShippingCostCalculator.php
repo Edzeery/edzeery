@@ -24,7 +24,7 @@ class ShippingCostCalculator
                 'cost'           => 0,
                 'is_free'        => false,
                 'provider_name'  => null,
-                'label'          => 'غير متاح',
+                'label'          => __('storefront.shipping_unavailable'),
                 'method'         => 'unavailable',
                 'available'      => false,
             ];
@@ -70,7 +70,7 @@ class ShippingCostCalculator
                 'cost'           => $cost,
                 'is_free'        => false,
                 'provider_name'  => $defaultProvider->name,
-                'label'          => 'رسوم توصيل ثابتة',
+                'label'          => __('storefront.fixed_shipping_fee'),
                 'method'         => 'provider_flat',
                 'available'      => true,
             ];
@@ -81,7 +81,7 @@ class ShippingCostCalculator
             'cost'           => 0,
             'is_free'        => true,
             'provider_name'  => null,
-            'label'          => 'توصيل مجاني',
+            'label'          => __('storefront.free_delivery'),
             'method'         => 'free',
             'available'      => true,
         ];
@@ -94,7 +94,7 @@ class ShippingCostCalculator
                 'cost'           => 0,
                 'is_free'        => true,
                 'provider_name'  => $rate->provider?->name,
-                'label'          => $rate->label ?? 'توصيل مجاني',
+                'label'          => $rate->label ?? __('storefront.free_delivery'),
                 'method'         => 'free',
                 'available'      => true,
             ];
@@ -104,7 +104,7 @@ class ShippingCostCalculator
             'cost'           => (float) $rate->cost,
             'is_free'        => false,
             'provider_name'  => $rate->provider?->name,
-            'label'          => $rate->label ?? 'رسوم توصيل',
+            'label'          => $rate->label ?? __('storefront.shipping_fee'),
             'method'         => 'rate',
             'available'      => true,
         ];

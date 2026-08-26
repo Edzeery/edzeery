@@ -93,36 +93,42 @@ function placeStopdeskOrder(Store $store, ProductVariant $variant, int $qty): Or
     return Order::where('store_id', $store->id)->latest('id')->first();
 }
 
-test('cancelling a confirmed order restores stock with RETURN movements once only', function () {
+test('cancelling a confirmed order restores stock with RELEASE movements once only', function () {
     test()->artisan('db:seed', ['--class' => \Database\Seeders\SystemStatusesSeeder::class, '--force' => true]);
 
     $store = orStore();
     $variant = orVariant($store, orProduct($store, 'CXL'), 6);
 
     $order = placeStopdeskOrder($store, $variant, 2);
+    // pending → no inventory movement yet
     expect($order)->not->toBeNull()
-        ->and($variant->fresh()->stock)->toBe(4);
+        ->and($variant->fresh()->stock)->toBe(6);
 
-    app(OrderService::class)->transition($order, 'cancelled');
+    // confirmed → RESERVE (stock decreases)
+    app(OrderService::class)->transition($order->fresh(), 'confirmed');
+    expect($variant->fresh()->stock)->toBe(4);
+
+    // cancelled → RELEASE (stock restored)
+    app(OrderService::class)->transition($order->fresh(), 'cancelled');
     expect($variant->fresh()->stock)->toBe(6);
 
-    $returns = InventoryMovement::where('product_variant_id', $variant->id)
+    $releases = InventoryMovement::where('product_variant_id', $variant->id)
         ->where('source_type', Order::class)
         ->where('source_id', $order->id)
-        ->where('type', 'return')
+        ->where('type', 'release')
         ->get();
-    expect($returns)->toHaveCount(1)
-        ->and((int) $returns[0]->quantity)->toBe(2)
-        ->and((int) $returns[0]->balance_after)->toBe(6);
+    expect($releases)->toHaveCount(1)
+        ->and((int) $releases[0]->quantity)->toBe(2)
+        ->and((int) $releases[0]->balance_after)->toBe(6);
 
-    // cancelled â†’ pending â†’ cancelled is legal; the guard must keep
-    // the restock at exactly one movement.
+    // cancelled → pending → cancelled is legal; the guard must keep
+    // the restock at exactly one movement (idempotency).
     app(OrderService::class)->transition($order->fresh(), 'pending');
     app(OrderService::class)->transition($order->fresh(), 'cancelled');
 
     expect(InventoryMovement::where('product_variant_id', $variant->id)
         ->where('source_id', $order->id)
-        ->where('type', 'return')
+        ->where('type', 'release')
         ->count())->toBe(1)
         ->and($variant->fresh()->stock)->toBe(6);
 });
@@ -136,7 +142,11 @@ test('orders from stores without inventory tracking are never touched on cancel'
     $order = placeStopdeskOrder($store, $variant, 3);
     expect($variant->fresh()->stock)->toBe(9);
 
-    app(OrderService::class)->transition($order, 'cancelled');
+    // confirmed → no inventory change (tracking off)
+    app(OrderService::class)->transition($order, 'confirmed');
+    expect($variant->fresh()->stock)->toBe(9);
+
+    app(OrderService::class)->transition($order->fresh(), 'cancelled');
 
     expect($variant->fresh()->stock)->toBe(9)
         ->and(InventoryMovement::where('source_id', $order->id)->count())->toBe(0);

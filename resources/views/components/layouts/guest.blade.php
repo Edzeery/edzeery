@@ -45,7 +45,7 @@
         <x-dark-toggle />
     </div>
 
-    <main class="w-full max-w-lg px-4 py-8 animate-fade-up">
+    <main class="w-full max-w-6xl px-4 py-8 animate-fade-up">
 
         {{-- Brand --}}
         <div class="text-center mb-8">

@@ -122,7 +122,7 @@ test('mini-cart quantity updates snap into the min..cap window', function () {
         ->and($cart->takeNotice()['key'])->toBe('order_limit_max');
 });
 
-test('successful checkout decreases variant stock and records a sale movement', function () {
+test('successful checkout creates pending order; confirmation reserves stock', function () {
     $country = Country::create(['name' => 'Testland', 'code' => 'TS', 'is_active' => true]);
     $state = State::create([
         'country_id' => $country->id,
@@ -154,14 +154,21 @@ test('successful checkout decreases variant stock and records a sale movement', 
 
     $order = Order::where('store_id', $store->id)->latest('id')->first();
 
+    // pending → no inventory movement yet
     expect($order)->not->toBeNull()
         ->and($order?->items()->count())->toBe(1)
-        ->and($variant->fresh()->stock)->toBe(7);
+        ->and($variant->fresh()->stock)->toBe(10)
+        ->and(InventoryMovement::where('product_variant_id', $variant->id)->count())->toBe(0);
+
+    // confirm → RESERVE (stock decreases)
+    app(\App\Domains\Order\Services\OrderService::class)->confirm($order);
+
+    expect($variant->fresh()->stock)->toBe(7);
 
     $movement = InventoryMovement::where('product_variant_id', $variant->id)->latest('id')->first();
 
     expect($movement)->not->toBeNull()
-        ->and($movement?->type->value)->toBe('sale')
+        ->and($movement?->type->value)->toBe('reserve')
         ->and($movement?->quantity)->toBe(3)
         ->and((int) $movement?->balance_after)->toBe(7)
         ->and($movement?->source_type)->toBe(Order::class)
@@ -343,7 +350,11 @@ test('stopdesk order with an active point succeeds and is linked', function () {
     expect($order)->not->toBeNull()
         ->and($order?->delivery_type)->toBe('stopdesk')
         ->and((string) $order?->stopdesk_point_id)->toBe((string) $point->id)
-        ->and($variant->fresh()->stock)->toBe(4);
+        ->and($variant->fresh()->stock)->toBe(6);
+
+    // confirm → RESERVE
+    app(\App\Domains\Order\Services\OrderService::class)->confirm($order);
+    expect($variant->fresh()->stock)->toBe(4);
 });
 
 test('desk choice is optional and the list is scoped to the commune with carrier labels', function () {
@@ -433,5 +444,9 @@ test('desk choice is optional and the list is scoped to the commune with carrier
     expect($order?->delivery_type)->toBe('stopdesk')
         ->and($order?->stopdesk_point_id)->toBeNull()
         ->and($order?->shipping_provider_id)->toBeNull()
-        ->and($variant->fresh()->stock)->toBe(2);
+        ->and($variant->fresh()->stock)->toBe(3);
+
+    // confirm → RESERVE
+    app(\App\Domains\Order\Services\OrderService::class)->confirm($order);
+    expect($variant->fresh()->stock)->toBe(2);
 });

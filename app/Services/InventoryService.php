@@ -52,9 +52,14 @@ class InventoryService
 
             $previousStock = $variant->stock;
 
-            $delta = $type->isDecrease()
-                ? -$quantity
-                : $quantity;
+            // SALE = ledger-only (stock already reserved at confirm time)
+            if ($type === InventoryMovementType::SALE) {
+                $delta = 0;
+            } else {
+                $delta = $type->isDecrease()
+                    ? -$quantity
+                    : $quantity;
+            }
 
             $newStock = $variant->stock + $delta;
 
@@ -64,22 +69,23 @@ class InventoryService
                 ]);
             }
 
-            // ✅ Update snapshot stock
-            $variant->update([
-                'stock' => $newStock,
-            ]);
+            // Update stock only if delta is non-zero
+            if ($delta !== 0) {
+                $variant->update([
+                    'stock' => $newStock,
+                ]);
+            }
 
-            // 🧾 Ledger entry
+            // Ledger entry
             InventoryMovement::create([
                 'store_id'           => $variant->product->store_id,
                 'product_variant_id' => $variant->id,
                 'quantity'           => $quantity,
-                'balance_after'      => $newStock,
+                'balance_after'      => $delta !== 0 ? $newStock : $variant->stock,
                 'type'               => $type->value,
                 'user_id'            => $user?->id ?? auth()->id(),
                 'source_type' => $source ? (is_object($source) ? get_class($source) : (string)$source) : null,
                 'source_id'   => is_object($source) && method_exists($source, 'getKey') ? $source->getKey() : null,
-
             ]);
             // 🔔 Low stock notification
             if (

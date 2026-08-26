@@ -9,7 +9,7 @@
             bg-neutral-surface dark:bg-dark-surface
             shadow-card
             p-6 sm:p-8
-            animate-scale-in">
+            animate-scale-in mx-auto">
 
     {{-- Title --}}
     <div class="text-center mb-6">

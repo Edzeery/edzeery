@@ -174,6 +174,7 @@ class Order extends Model
     {
         $lastNumber = self::withTrashed()
             ->where('store_id', $this->store_id)
+            ->lockForUpdate()
             ->max(DB::raw('CAST(number AS UNSIGNED)'));
 
         $nextNumber = $lastNumber ? ((int) $lastNumber + 1) : 1;

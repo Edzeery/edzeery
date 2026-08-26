@@ -212,7 +212,7 @@ class OrderAssignmentService
      */
     private function loadBalance(\Illuminate\Support\Collection $candidates, string $storeId): ?StoreMembership
     {
-        $terminalStatusKeys = ['confirmed', 'cancelled', 'delivered', 'returned', 'completed', 'refunded', 'canceled'];
+        $terminalStatusKeys = ['cancelled', 'delivered', 'returned', 'completed', 'refunded', 'canceled'];
 
         $openOrderCounts = DB::table('orders')
             ->join('statuses', 'orders.status_id', '=', 'statuses.id')

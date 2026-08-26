@@ -20,6 +20,7 @@ mount(function (string $order): void {
     $this->order = Order::with(['items.product', 'items.variant', 'stopdeskPoint', 'customer', 'city', 'state', 'status'])
         ->where('store_id', $store->id)
         ->where('id', $order)
+        ->where('created_at', '>=', now()->subMinutes(30))
         ->first();
 
     if (!$this->order) {

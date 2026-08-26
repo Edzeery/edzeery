@@ -14,7 +14,8 @@
 {{-- No overflow-hidden here: it would clip absolutely-positioned popups
      (icon picker) that extend past the panel edge. --}}
 <div x-data="{ open: false }"
-     x-show="$wire.sections.includes('{{ $key }}')"
+     data-section-key="{{ $key }}"
+     x-show="$wire.sections.includes($el.dataset.sectionKey)"
      class="border border-gray-200 dark:border-gray-700 rounded-xl transition-all">
 
     <button type="button"

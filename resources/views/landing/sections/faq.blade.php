@@ -47,7 +47,8 @@
                         ></ion-icon>
                     </button>
                     <div
-                        x-show="openFaq === '{{ $faq['key'] }}'"
+                        data-faq-key="{{ $faq['key'] }}"
+                        x-show="openFaq === $el.dataset.faqKey"
                         x-collapse
                         class="px-6 pb-4"
                     >

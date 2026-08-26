@@ -1,0 +1,36 @@
+<?php
+
+return [
+    'renew' => 'Renovar suscripción',
+    'grace_subject' => 'Su suscripción ha terminado – Período de gracia activo',
+    'grace_intro' => 'Su suscripción ha terminado. Está en un período de gracia y aún puede acceder a su cuenta.',
+    'grace_expires' => 'Su período de gracia termina el :date. Renove ahora para evitar perder el acceso.',
+    'expiry_reminder_subject' => 'Su suscripción vence pronto',
+    'expiry_reminder_intro' => 'Su suscripción vencerá el :date.',
+    'expiry_reminder_date' => 'Renueve antes del :date para evitar interrupciones.',
+    'cancel_immediate' => 'Cancelar inmediatamente',
+    'cancel_end_of_period' => 'Cancelar al final del período de facturación',
+    'cancel_no_refund' => 'No se emitirá reembolso por cancelación inmediata.',
+    'cancel_scheduled' => 'Su suscripción será cancelada al final del período de facturación actual.',
+    'downgrade_min_days' => 'Solo puede cambiar a un plan inferior después de :days días del inicio de la suscripción.',
+    'downgrade_min_discount' => 'La diferencia de precio entre los dos planes es demasiado pequeña (:current% solamente). El descuento debe ser al menos :min%.',
+    'personal_new_users_only' => 'El plan Personal está disponible solo para cuentas nuevas.',
+    'personal_existing_users' => 'El plan Personal no está disponible para cuentas existentes.',
+    'personal_existing_users_desc' => 'Actualmente tiene un plan de pago. El plan Personal solo está disponible para cuentas nuevas. Contacte soporte si desea cambiar a un plan inferior.',
+    'expiry_alert_title' => 'Su suscripción vence pronto',
+    'expiry_alert_message' => 'Su suscripción vencerá en :days días el :date. Renove ahora para evitar interrupción del servicio.',
+    'expiry_alert_snoozed' => 'Le recordaremos de nuevo mañana.',
+    'expiry_alert_snooze' => 'Recordarme mañana',
+
+    'personal_plan_description' => 'Comience con una prueba gratuita de 30 días — luego desbloquee la gestión financiera premium para individuos.',
+    'business_plan_description' => 'Para pequeñas empresas y equipos que necesitan múltiples espacios de trabajo.',
+    'professional_plan_description' => 'Para profesionales y empresas que necesitan funciones avanzadas y soporte prioritario.',
+    'enterprise_plan_description' => 'Para grandes empresas que necesitan funciones personalizadas y soporte dedicado.',
+    'free_plan_description' => 'Plan gratuito con funciones limitadas para individuos y pequeños equipos.',
+
+    'active' => 'Suscripción activa',
+    'canceled' => 'Cancelada',
+    'pending' => 'Pendiente',
+    'paused' => 'Pausada',
+    'expired' => 'Expirada',
+];

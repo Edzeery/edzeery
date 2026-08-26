@@ -4,157 +4,162 @@
 // ============================================================
 
 .edz-modal {
-  position: fixed;
-  inset: 0;
-  z-index: var(--edz-z-modal);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0;
-  overflow-y: auto;
+    position: fixed;
+    inset: 0;
+    z-index: var(--edz-z-modal);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    overflow-y: auto;
 
-  // Desktop: centered with padding
-  @media (min-width: 640px) {
-    align-items: center;
-    padding: 1.25rem;
-  }
+    // Desktop: centered with padding
+    @media (min-width: 640px) {
+        align-items: center;
+        padding: 1.25rem;
+    }
 }
 
 // --- Backdrop ---
 .edz-modal__backdrop {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgb(3 7 18 / 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(3 7 18 / 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 // --- Panel ---
 .edz-modal__panel {
-  position: relative;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  background-color: rgb(var(--edz-color-surface));
-  box-shadow: var(--edz-shadow-floating);
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background-color: rgb(var(--edz-color-surface));
+    box-shadow: var(--edz-shadow-floating);
+    transition:
+        opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
-  // Mobile: bottom sheet style
-  border-radius: var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;
-  margin: 0;
+    // Mobile: bottom sheet style
+    border-radius: var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;
+    margin: 0;
 
-  // Desktop: centered card
-  @media (min-width: 640px) {
-    border-radius: var(--edz-radius-2xl);
-    max-height: calc(100vh - 2.5rem);
-  }
+    // Desktop: centered card
+    @media (min-width: 640px) {
+        border-radius: var(--edz-radius-2xl);
+        max-height: calc(100vh - 2.5rem);
+    }
 }
 
 // --- Drag handle (mobile bottom sheet indicator) ---
 .edz-modal__handle {
-  display: block;
-  width: 2rem;
-  height: 0.25rem;
-  border-radius: 9999px;
-  background-color: rgb(var(--edz-color-border-strong));
-  margin: 0.75rem auto 0;
+    display: block;
+    width: 2rem;
+    height: 0.25rem;
+    border-radius: 9999px;
+    background-color: rgb(var(--edz-color-border-strong));
+    margin: 0.75rem auto 0;
 
-  @media (min-width: 640px) {
-    display: none;
-  }
+    @media (min-width: 640px) {
+        display: none;
+    }
 }
 
 // --- Close button ---
 .edz-modal__close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--edz-radius-full);
-  background-color: rgb(var(--edz-color-secondary));
-  color: rgb(var(--edz-color-text-muted));
-  transition: all 0.15s var(--edz-ease-out-expo);
-
-  @media (min-width: 640px) {
-    top: 1rem;
-    right: 1rem;
+    top: 1.5rem;
     width: 2rem;
     height: 2rem;
-  }
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--edz-radius-full);
+    background-color: rgb(var(--edz-color-secondary));
+    color: rgb(var(--edz-color-text-danger));
+    transition: all 0.15s var(--edz-ease-out-expo);
 
-  &:hover {
-    background-color: rgb(var(--edz-color-tertiary));
-    color: rgb(var(--edz-color-text));
-    transform: scale(1.08);
-  }
+    @media (min-width: 640px) {
+        top: 1rem;
+        width: 2rem;
+        height: 2rem;
+    }
 
-  &:active {
-    transform: scale(0.95);
-  }
+    &:hover {
+        background-color: rgb(var(--edz-color-tertiary));
+        color: rgb(var(--edz-color-text));
+        transform: scale(1.08);
+    }
+
+    &:active {
+        transform: scale(0.95);
+    }
 }
 
 // --- Size modifiers (desktop only) ---
 .edz-modal__panel--sm {
-  max-width: 24rem;
+    max-width: 24rem;
 }
 
 .edz-modal__panel--md {
-  max-width: 32rem;
+    max-width: 32rem;
 }
 
 .edz-modal__panel--lg {
-  max-width: 40rem;
+    max-width: 40rem;
 }
 
 .edz-modal__panel--xl {
-  max-width: 48rem;
+    max-width: 48rem;
 }
 
 // --- Transitions ---
 .edz-modal-enter {
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition:
+        opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .edz-modal-enter-start {
-  opacity: 0;
-  transform: translateY(16px);
+    opacity: 0;
+    transform: translateY(16px);
 }
 .edz-modal-enter-end {
-  opacity: 1;
-  transform: translateY(0);
+    opacity: 1;
+    transform: translateY(0);
 }
 .edz-modal-leave {
-  transition: opacity 0.15s ease-in, transform 0.15s ease-in;
+    transition:
+        opacity 0.15s ease-in,
+        transform 0.15s ease-in;
 }
 .edz-modal-leave-start {
-  opacity: 1;
-  transform: translateY(0);
+    opacity: 1;
+    transform: translateY(0);
 }
 .edz-modal-leave-end {
-  opacity: 0;
-  transform: translateY(16px);
+    opacity: 0;
+    transform: translateY(16px);
 }
 
 // Desktop transitions use scale instead of slide
 @media (min-width: 640px) {
-  .edz-modal-enter-start {
-    opacity: 0;
-    transform: scale(0.96) translateY(0);
-  }
-  .edz-modal-enter-end {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  .edz-modal-leave-end {
-    opacity: 0;
-    transform: scale(0.96) translateY(0);
-  }
+    .edz-modal-enter-start {
+        opacity: 0;
+        transform: scale(0.96) translateY(0);
+    }
+    .edz-modal-enter-end {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    .edz-modal-leave-end {
+        opacity: 0;
+        transform: scale(0.96) translateY(0);
+    }
 }

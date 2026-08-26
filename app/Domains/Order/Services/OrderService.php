@@ -36,6 +36,12 @@ class OrderService
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
     ): Order {
+        if (! $this->canTransition($order, $newStatus->key)) {
+            throw new \DomainException(
+                "Cannot transition order from [{$order->status?->key}] to [{$newStatus->key}]"
+            );
+        }
+
         DB::beginTransaction();
 
         try {
@@ -43,11 +49,10 @@ class OrderService
 
             $order->update(['status_id' => $newStatus->id]);
 
-            // Terminal "not fulfilled" states hand the goods back: restock
-            // every line that this order originally sold. Idempotent.
-            if (in_array($newStatus->key, ['cancelled', 'canceled', 'refunded', 'returned'], true)) {
-                $this->restockReturnedItems($order, $changedBy);
-            }
+            // Inventory is now handled entirely by OrderObserver::handleStatusChange()
+            // via each status's movement_type (RESERVE at confirm, SALE at deliver,
+            // RELEASE/RETURN at cancel/return). Idempotent per-movement check prevents
+            // double-application.
 
             Order::popTransitionMeta($order->id);
 
@@ -60,53 +65,11 @@ class OrderService
         }
     }
 
-    /**
-     * Restock items sold by an order being cancelled/refunded/returned.
-     * Uses the SALE movements as source of truth: each movement that
-     * has no matching RETURN in this order gets restored exactly once.
-     */
-    private function restockReturnedItems(Order $order, ?StoreMembership $changedBy): void
-    {
-        if (! \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)) {
-            return;
-        }
-
-        $sales = \App\Models\InventoryMovement::query()
-            ->where('source_type', Order::class)
-            ->where('source_id', $order->id)
-            ->where('type', \App\Enums\Store\InventoryMovementType::SALE->value)
-            ->get();
-
-        foreach ($sales as $sale) {
-            $alreadyReturned = \App\Models\InventoryMovement::query()
-                ->where('product_variant_id', $sale->product_variant_id)
-                ->where('source_type', Order::class)
-                ->where('source_id', $order->id)
-                ->where('type', \App\Enums\Store\InventoryMovementType::RETURN->value)
-                ->exists();
-
-            if ($alreadyReturned) {
-                continue;
-            }
-
-            \App\Services\InventoryService::apply(
-                $sale->variant,
-                (int) $sale->quantity,
-                \App\Enums\Store\InventoryMovementType::RETURN,
-                $order,
-                $changedBy?->user,
-            );
-        }
-    }
-
-    /**
-     * Get available transitions for an order.
-     * Returns array of status keys that are legal from the current state.
-     * Merges system statuses with any store-specific custom statuses.
-     */
     public function availableTransitions(Order $order): array
     {
-        $currentKey = $order->status?->key;
+        // Load from DB to avoid caching the relationship on the model,
+        // which would cause OrderObserver::handleStatusChange to see stale data.
+        $currentKey = \App\Models\Status::find($order->status_id)?->key;
 
         $systemTransitions = match ($currentKey) {
             'draft'              => ['pending', 'cancelled'],

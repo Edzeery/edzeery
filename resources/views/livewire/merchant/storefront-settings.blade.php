@@ -81,10 +81,7 @@ $save = function (): void {
         // falls back to automatic — same philosophy as unknown section keys.
         $chosenProductId = (string) ($payload['section_content']['single_product']['product_id'] ?? '');
         if ($chosenProductId !== '') {
-            $ownsChosen = \App\Models\Products\Product::whereKey($chosenProductId)
-                ->where('store_id', $store->id)
-                ->where('is_active', true)
-                ->exists();
+            $ownsChosen = \App\Models\Products\Product::whereKey($chosenProductId)->where('store_id', $store->id)->where('is_active', true)->exists();
 
             if (!$ownsChosen) {
                 $payload['section_content']['single_product']['product_id'] = '';
@@ -123,7 +120,7 @@ $resetSection = function (string $key): void {
     abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
     // Unknown/stale keys are ignored silently — same philosophy as save().
-    if (! in_array($key, StorefrontSections::ALL, true)) {
+    if (!in_array($key, StorefrontSections::ALL, true)) {
         return;
     }
 
@@ -153,9 +150,7 @@ $pickerOptions = computed(function () {
     $query = trim((string) $this->picker_query);
 
     return $this->productsForPicker
-        ->when($query !== '', fn ($c) => $c->filter(
-            fn ($p) => str_contains(mb_strtolower($p->name), mb_strtolower($query))
-        ))
+        ->when($query !== '', fn($c) => $c->filter(fn($p) => str_contains(mb_strtolower($p->name), mb_strtolower($query))))
         ->take(20)
         ->values();
 });
@@ -167,12 +162,11 @@ $chosenPickerProduct = computed(function () {
         return null;
     }
 
-    return \App\Models\Products\Product::query()
-        ->where('store_id', currentStore()?->id)
-        ->find($chosenId);
+    return \App\Models\Products\Product::query()->where('store_id', currentStore()?->id)->find($chosenId);
 });
 
-?>@php
+?>
+@php
     $store = currentStore();
     $canPreview = $store && $store->isPubliclyActive();
 
@@ -219,41 +213,42 @@ $chosenPickerProduct = computed(function () {
      attribute. Server values travel through plain data-* attributes;
      every x-data / x-on expression below is a hand-written literal, so
      translations or URLs can never break attribute quoting again. --}}
-<div
-    x-data="{
-        activeTab: 'template',
-        selectedTemplate: null,
-        previewOpen: false,
+<div x-data="{
+    activeTab: 'template',
+    selectedTemplate: null,
+    previewOpen: false,
 
-        get previewUrl() { return this.$root.dataset.previewUrl || '' },
+    get previewUrl() { return this.$root.dataset.previewUrl || '' },
 
-        selectTemplate(key) {
-            this.selectedTemplate = key;
-            this.$wire.template = key;
-        },
-        openPreview() {
-            if (!this.previewUrl) { return; }
-            this.previewOpen = true;
-        }
-    }"
-    x-init="selectedTemplate = $root.dataset.selectedTemplate"
-    data-selected-template="{{ $template }}"
+    selectTemplate(key) {
+        this.selectedTemplate = key;
+        this.$wire.template = key;
+    },
+    openPreview() {
+        if (!this.previewUrl) { return; }
+        this.previewOpen = true;
+    }
+}" x-init="selectedTemplate = $root.dataset.selectedTemplate" data-selected-template="{{ $template }}"
     data-preview-url="{{ $canPreview ? $store->public_url : '' }}"
     x-effect="document.documentElement.style.overflow = previewOpen ? 'hidden' : ''">
 
     {{-- Clipboard helper: defined once, plain JS, no quoting hazards --}}
     <script>
-        window.edzCopy = window.edzCopy || function (text) {
+        window.edzCopy = window.edzCopy || function(text) {
             if (navigator.clipboard && window.isSecureContext) {
                 return navigator.clipboard.writeText(text);
             }
 
-            return new Promise(function (resolve) {
+            return new Promise(function(resolve) {
                 var helper = document.createElement('textarea');
                 helper.value = text;
                 document.body.appendChild(helper);
                 helper.select();
-                try { document.execCommand('copy'); } finally { helper.remove(); }
+                try {
+                    document.execCommand('copy');
+                } finally {
+                    helper.remove();
+                }
                 resolve();
             });
         };
@@ -280,9 +275,7 @@ $chosenPickerProduct = computed(function () {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button type="button"
-                        data-copy-url="{{ $store->public_url }}"
-                        x-data="{ copied: false }"
+                    <button type="button" data-copy-url="{{ $store->public_url }}" x-data="{ copied: false }"
                         x-on:click="window.edzCopy($el.dataset.copyUrl).then(function () {
                             this.copied = true;
                             setTimeout(function () { this.copied = false }, 2000);
@@ -296,7 +289,8 @@ $chosenPickerProduct = computed(function () {
                         <span x-show="!copied">{{ __('buttons.copy_link') }}</span>
                         <span x-show="copied" x-cloak>{{ __('buttons.copied') }}</span>
                     </button>
-                    <button type="button" x-on:click="openPreview()" data-preview-url="{{ $store->public_url }}" class="edz-btn edz-btn--primary edz-btn--sm">
+                    <button type="button" x-on:click="openPreview()" data-preview-url="{{ $store->public_url }}"
+                        class="edz-btn edz-btn--primary edz-btn--sm">
                         <x-edz.icon name="eye" class="w-4 h-4 me-1" />
                         {{ __('storefront.preview') }} {{ __('merchant_panel.store') }}
                     </button>
@@ -377,7 +371,7 @@ $chosenPickerProduct = computed(function () {
                                             <p class="text-xs text-ink-muted mt-1 leading-relaxed">
                                                 {{ $case->description() }}</p>
                                             @if ($canPreview)
-                                                <a :href="'{{$store->public_url}}?preview_template={{ $key }}'"
+                                                <a :href="'{{ $store->public_url }}?preview_template={{ $key }}'"
                                                     target="_blank" rel="noopener noreferrer" x-on:click.stop
                                                     class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
                                                     <x-edz.icon name="eye" class="w-4 h-4" />
@@ -395,23 +389,24 @@ $chosenPickerProduct = computed(function () {
                              visible (and survives a refresh) immediately —
                              no hidden deferred state, no save surprises. --}}
                         <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
-                            x-show="selectedTemplate === 'single_product'" x-cloak
-                            x-data="{ open: false }" @click.outside="open = false">
+                            x-show="selectedTemplate === 'single_product'" x-cloak x-data="{ open: false }"
+                            @click.outside="open = false">
                             <label class="edz-label">{{ __('merchant_panel.template_product') }}</label>
 
                             @php $chosenPickerProduct = $this->chosenPickerProduct; @endphp
 
                             <div class="relative sm:max-w-md">
-                                <button type="button"
-                                    x-on:click="open = !open"
+                                <button type="button" x-on:click="open = !open"
                                     class="edz-input w-full flex items-center justify-between text-start"
                                     aria-haspopup="listbox" :aria-expanded="open">
                                     <span class="truncate flex items-center gap-2 min-w-0">
                                         @if ($chosenPickerProduct)
-                                            <x-edz.icon name="check-circle" class="w-4 h-4 store-text-primary shrink-0" />
+                                            <x-edz.icon name="check-circle"
+                                                class="w-4 h-4 store-text-primary shrink-0" />
                                             <span class="truncate font-medium">{{ $chosenPickerProduct->name }}</span>
                                         @else
-                                            <span class="text-ink-muted">{{ __('merchant_panel.template_product_auto') }}</span>
+                                            <span
+                                                class="text-ink-muted">{{ __('merchant_panel.template_product_auto') }}</span>
                                         @endif
                                     </span>
                                     <x-edz.icon name="chevron-down"
@@ -419,8 +414,7 @@ $chosenPickerProduct = computed(function () {
                                         x-bind:class="open ? 'rotate-180' : ''" />
                                 </button>
 
-                                <div x-show="open" x-cloak
-                                    x-transition:enter="transition ease-out duration-150"
+                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150"
                                     x-transition:enter-start="opacity-0 -translate-y-1"
                                     x-transition:enter-end="opacity-100 translate-y-0"
                                     class="absolute z-30 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
@@ -436,7 +430,7 @@ $chosenPickerProduct = computed(function () {
                                                 x-on:click="$wire.set('section_content.single_product.product_id', $el.dataset.pickerValue); $wire.set('picker_query', ''); open = false"
                                                 class="w-full text-start px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-between gap-2 {{ $chosenPickerProduct ? '' : 'store-text-primary font-semibold' }}">
                                                 <span>{{ __('merchant_panel.template_product_auto') }}</span>
-                                                @if (! $chosenPickerProduct)
+                                                @if (!$chosenPickerProduct)
                                                     <x-edz.icon name="check" class="w-4 h-4 shrink-0" />
                                                 @endif
                                             </button>
@@ -463,7 +457,8 @@ $chosenPickerProduct = computed(function () {
                                 </div>
                             </div>
 
-                            <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.template_product_hint') }}</p>
+                            <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.template_product_hint') }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -576,71 +571,68 @@ $chosenPickerProduct = computed(function () {
                                     </div>
                                 </label>
                                 @if ($key === 'hero')
-                                    </div>
+                        </div>
+                        @endif
+                        @endforeach
+                    </div>
+
+                    {{-- Section content editors --}}
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <x-edz.icon name="edit" class="w-4 h-4 text-ink-400" />
+                            <h4 class="text-sm font-semibold text-ink">{{ __('merchant_panel.section_content') }}
+                            </h4>
+                        </div>
+                        <p class="text-xs text-ink-400 mb-5">{{ __('merchant_panel.section_content_desc') }}</p>
+
+                        <div class="space-y-3">
+                            @foreach ($sectionConfig as $key => $section)
+                                @if ($key === 'hero')
+                                    <div x-show="$wire.template !== 'single_product'">
                                 @endif
-                            @endforeach
+                                @include('livewire.merchant.storefront-settings.partials.section-editor', [
+                                    'key' => $key,
+                                    'section' => $section,
+                                    'description' => $sectionDescriptions[$key],
+                                ])
+                                @if ($key === 'hero')
                         </div>
-
-                        {{-- Section content editors --}}
-                        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-                            <div class="flex items-center gap-2 mb-4">
-                                <x-edz.icon name="edit" class="w-4 h-4 text-ink-400" />
-                                <h4 class="text-sm font-semibold text-ink">{{ __('merchant_panel.section_content') }}
-                                </h4>
-                            </div>
-                            <p class="text-xs text-ink-400 mb-5">{{ __('merchant_panel.section_content_desc') }}</p>
-
-                            <div class="space-y-3">
-                                @foreach ($sectionConfig as $key => $section)
-                                    @if ($key === 'hero')
-                                        <div x-show="$wire.template !== 'single_product'">
-                                        @endif
-                                        @include(
-                                            'livewire.merchant.storefront-settings.partials.section-editor',
-                                            [
-                                                'key' => $key,
-                                                'section' => $section,
-                                                'description' => $sectionDescriptions[$key],
-                                            ]
-                                        )
-                                        @if ($key === 'hero')
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
+                        @endif
+                        @endforeach
                     </div>
                 </div>
-
             </div>
         </div>
 
-        {{-- Save bar --}}
-        <div
-            class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700/50 z-10">
-            <div class="flex items-center justify-end gap-3">
-                @if ($canPreview)
-                    <a href="{{ $store->public_url }}" target="_blank" rel="noopener noreferrer"
-                        class="edz-btn edz-btn--secondary edz-btn--sm hidden sm:inline-flex">
-                        <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
-                        {{ __('storefront.open_store') }}
-                    </a>
-                @endif
-                <button type="submit" wire:target="save" wire:loading.attr="disabled"
-                    class="edz-btn edz-btn--primary disabled:opacity-60 disabled:cursor-not-allowed">
-                    <span wire:loading.remove wire:target="save" class="inline-flex items-center">
-                        <x-edz.icon name="save" class="w-4 h-4 me-1" />
-                    </span>
-                    <span wire:loading wire:target="save" class="inline-flex items-center">
-                        <x-edz.icon name="arrow-path" class="w-4 h-4 me-1 animate-spin" />
-                    </span>
-                    {{ __('merchant_panel.save_template') }}
-                </button>
-            </div>
-        </div>
-    </form>
+</div>
+</div>
 
-    @if ($canPreview)
-        @include('livewire.merchant.storefront-settings.partials.preview-modal', ['store' => $store])
-    @endif
+{{-- Save bar --}}
+<div
+    class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700/50 z-10">
+    <div class="flex items-center justify-end gap-3">
+        @if ($canPreview)
+            <a href="{{ $store->public_url }}" target="_blank" rel="noopener noreferrer"
+                class="edz-btn edz-btn--secondary edz-btn--sm hidden sm:inline-flex">
+                <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
+                {{ __('storefront.open_store') }}
+            </a>
+        @endif
+        <button type="submit" wire:target="save" wire:loading.attr="disabled"
+            class="edz-btn edz-btn--primary disabled:opacity-60 disabled:cursor-not-allowed">
+            <span wire:loading.remove wire:target="save" class="inline-flex items-center">
+                <x-edz.icon name="save" class="w-4 h-4 me-1" />
+            </span>
+            <span wire:loading wire:target="save" class="inline-flex items-center">
+                <x-edz.icon name="arrow-path" class="w-4 h-4 me-1 animate-spin" />
+            </span>
+            {{ __('merchant_panel.save_template') }}
+        </button>
+    </div>
+</div>
+</form>
+
+@if ($canPreview)
+    @include('livewire.merchant.storefront-settings.partials.preview-modal', ['store' => $store])
+@endif
 </div>

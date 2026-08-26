@@ -65,7 +65,7 @@ $submitOrder = function () {
         'address', 'delivery_type', 'payment_method', 'notes', 'selectedStopdesk',
     ]), [
         'name'          => 'required|string|max:255',
-        'phone'         => 'required|string|max:20',
+        'phone'         => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
         'email'         => 'nullable|email|max:255',
         'state_id'      => 'required|exists:states,id',
         'city_id'       => 'required|exists:cities,id',
@@ -175,28 +175,24 @@ $submitOrder = function () {
                 'product_variant_id'  => $item['variant_id'],
                 'product_id'          => $variant?->product_id,
                 'quantity'            => $item['quantity'],
-                'price'               => $item['price'],
-                'subtotal'            => $item['price'] * $item['quantity'],
+                'price'               => $variant->price,
+                'subtotal'            => $variant->price * $item['quantity'],
             ]);
 
-            // Successful order => decrease stock and record a SALE movement.
-            if ($tracksInventory) {
+            // Stock check only — no movement yet. Movements are created by
+            // the OrderObserver when the status transitions (confirmed → RESERVE).
+            if ($tracksInventory && ! $allowsBackorder) {
                 $available = (int) ($variant->stock ?? 0);
 
-                if ($available >= (int) $item['quantity']) {
-                    \App\Services\InventoryService::apply(
-                        $variant,
-                        (int) $item['quantity'],
-                        \App\Enums\Store\InventoryMovementType::SALE,
-                        $order
-                    );
-                } elseif (! $allowsBackorder) {
-                    // Stock vanished between add-to-cart and checkout.
+                if ($available < (int) $item['quantity']) {
                     throw new \Exception(__('storefront.out_of_stock'));
                 }
-                // Backorder accepted beyond available stock: leave the ledger alone.
             }
         }
+
+        // Recalculate total from DB prices (not session prices)
+        $dbSubtotal = $order->items()->sum('subtotal');
+        $order->update(['total_amount' => $dbSubtotal + $shippingCost]);
 
         $subscription = $store?->user?->latestSubscription();
         if ($subscription && $subscription->plan) {
@@ -295,7 +291,7 @@ $submitOrder = function () {
     <div class="mb-6">
         <a href="{{ route('storefront.home', ['store' => currentStore()?->slug ?? '']) }}"
            class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
-            <x-edz.icon name="arrow-{{$algin}}" class="w-4 h-4 text-base" />
+            <x-edz.icon name="arrow-{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}" class="w-4 h-4 text-base" />
             {{ __('storefront.back_to_store') }}
         </a>
     </div>
@@ -565,7 +561,7 @@ $submitOrder = function () {
                             </div>
                             <div class="text-right shrink-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white tabular-nums">{{ currency($item['price'] * $item['quantity']) }}</p>
-                                <p class="text-xs text-gray-400 dark:text-gray-500">أ— {{ $item['quantity'] }}</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500">&times; {{ $item['quantity'] }}</p>
                             </div>
                         </div>
                     @empty

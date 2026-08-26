@@ -12,7 +12,6 @@ use App\Models\Products\ProductVariant;
 use App\Models\Status;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Facades\Validator;
-use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -40,6 +39,7 @@ state([
         'product' => '',
         'source' => null,
     ],
+    'orders' => [],
     'page' => 1,
     'visibleColumns' => [],
     'perPage' => 50,
@@ -96,6 +96,11 @@ state([
     'reassignMembershipId' => '',
 ]);
 
+updated(['search'], function (): void {
+    $this->page = 1;
+    $this->loadOrders();
+});
+
 updated(['formProductSearch'], function (): void {
     $this->searchProducts();
 });
@@ -119,6 +124,7 @@ mount(function (): void {
         ->toArray();
 
     $this->loadColumnPreferences();
+    $this->loadOrders();
 });
 
 $loadColumnPreferences = function (): void {
@@ -150,7 +156,7 @@ $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
         ->first();
 };
 
-$orders = computed(function (): array {
+$loadOrders = function (): void {
     $storeId = currentStoreId();
     $f = $this->filters;
 
@@ -161,7 +167,14 @@ $orders = computed(function (): array {
         $query->where(function ($q) use ($s) {
             $q->where('number', 'like', "%{$s}%")
                 ->orWhereHas('customer', fn($cq) => $cq->where('name', 'like', "%{$s}%"))
-                ->orWhereHas('customer', fn($cq) => $cq->where('phone', 'like', "%{$s}%"));
+                ->orWhereHas('customer', fn($cq) => $cq->where('phone', 'like', "%{$s}%"))
+                ->orWhere('phone_secondary', 'like', "%{$s}%")
+                ->orWhereHas('items.variant', fn($vq) => $vq->where('name', 'like', "%{$s}%"))
+                ->orWhereHas('items.variant.product', fn($pq) => $pq->where('name', 'like', "%{$s}%"))
+                ->orWhereHas('items.variant', fn($vq) => $vq->where('sku', 'like', "%{$s}%"))
+                ->orWhereHas('items.variant', fn($vq) => $vq->where('barcode', 'like', "%{$s}%"))
+                ->orWhereHas('items.variant.product', fn($pq) => $pq->where('sku', 'like', "%{$s}%"))
+                ->orWhereHas('items.variant.product', fn($pq) => $pq->where('barcode', 'like', "%{$s}%"));
         });
     }
 
@@ -224,8 +237,8 @@ $orders = computed(function (): array {
     $paginated = $query->orderByDesc('created_at')->paginate(min((int) ($this->perPage ?? 50), 50), ['*'], 'page', $this->page);
 
     $service = app(OrderService::class);
-    $result = $paginated->toArray();
-    $result['data'] = $paginated
+    $this->orders = $paginated->toArray();
+    $this->orders['data'] = $paginated
         ->getCollection()
         ->map(function ($order) use ($service) {
             $arr = $order->toArray();
@@ -241,11 +254,9 @@ $orders = computed(function (): array {
         })
         ->toArray();
 
-    $result['filtered_total'] = $paginated->total();
-    $result['filtered_amount'] = $query->clone()->sum('total_amount');
-
-    return $result;
-});
+    $this->orders['filtered_total'] = $paginated->total();
+    $this->orders['filtered_amount'] = $query->clone()->sum('total_amount');
+};
 
 $loadCities = function (string $stateId): void {
     if (empty($stateId)) {
@@ -258,20 +269,36 @@ $loadCities = function (string $stateId): void {
 };
 
 $setPage = function (int $page): void {
-    $this->page = $page;
-
+    $maxPage = $this->orders['last_page'] ?? 1;
+    $this->page = max(1, min($page, $maxPage));
+    $this->loadOrders();
 };
 
 $setPerPage = function (int $perPage): void {
     $this->perPage = min($perPage, 50);
     $this->page = 1;
-
+    $this->loadOrders();
 };
 
+
 $setFilter = function (string $key, $value): void {
+    $intFilters = ['wilaya', 'city', 'assigned_to', 'shipping_provider'];
+    $floatFilters = ['amount_min', 'amount_max'];
+    $arrFilters = ['status'];
+
+    if (in_array($key, $intFilters, true)) {
+        $value = (int) $value;
+    } elseif (in_array($key, $floatFilters, true)) {
+        $value = (float) $value;
+    } elseif (in_array($key, $arrFilters, true)) {
+        $value = is_array($value) ? array_map('intval', $value) : [];
+    } elseif (in_array($key, ['source', 'delivery_type'], true)) {
+        $value = (string) $value;
+    }
+
     $this->filters[$key] = $value;
     $this->page = 1;
-
+    $this->loadOrders();
 };
 
 $clearFilters = function (): void {
@@ -294,7 +321,7 @@ $clearFilters = function (): void {
     ];
     $this->page = 1;
     $this->selectedOrders = [];
-
+    $this->loadOrders();
 };
 
 // --- Bulk selection ---
@@ -335,12 +362,16 @@ $bulkAssignAgent = function (?string $membershipId): void {
         $this->dispatch('swal', type: 'warning', title: __('merchant.no_orders_selected'));
         return;
     }
+    if ($membershipId && !StoreMembership::where('id', $membershipId)->where('store_id', currentStoreId())->exists()) {
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.invalid_agent'));
+        return;
+    }
     Order::where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
         ->update(['assigned_to_membership_id' => $membershipId]);
     $this->dispatch('swal', type: 'success', title: __('merchant.orders_assigned'));
     $this->clearSelection();
-
+    $this->loadOrders();
 };
 
 $bulkSendToCarrier = function (?string $providerId): void {
@@ -359,12 +390,16 @@ $bulkSendToCarrier = function (?string $providerId): void {
                 $service->transition($order, 'shipped', 'Handed to carrier');
                 $sent++;
             } catch (\Exception $e) {
-                // Skip orders that can't transition to shipped.
+                \Illuminate\Support\Facades\Log::warning("bulkSendToCarrier failed for order [{$order->number}]: " . $e->getMessage());
             }
         });
-    $this->dispatch('swal', type: 'success', title: __('merchant.orders_sent'));
+    $failed = count($this->selectedOrders) - $sent;
+    $msg = $failed > 0
+        ? __('merchant.orders_sent') . " ({$sent}/" . count($this->selectedOrders) . " — {$failed} failed)"
+        : __('merchant.orders_sent');
+    $this->dispatch('swal', type: $failed > 0 ? 'warning' : 'success', title: $msg);
     $this->clearSelection();
-
+    $this->loadOrders();
 };
 
 $bulkDelete = function (): void {
@@ -376,7 +411,7 @@ $bulkDelete = function (): void {
     Order::where('store_id', currentStoreId())->whereIn('id', $this->selectedOrders)->delete();
     $this->dispatch('swal', type: 'success', title: __('merchant.orders_deleted'));
     $this->clearSelection();
-
+    $this->loadOrders();
 };
 
 // --- Trash ---
@@ -384,28 +419,28 @@ $toggleTrash = function (): void {
     $this->showTrash = !$this->showTrash;
     $this->page = 1;
     $this->clearSelection();
-
+    $this->loadOrders();
 };
 
 $restoreOrder = function (string $orderId): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
     Order::where('store_id', currentStoreId())->withTrashed()->findOrFail($orderId)->restore();
     $this->dispatch('swal', type: 'success', title: __('merchant.orders_restored'));
-
+    $this->loadOrders();
 };
 
 $restoreAll = function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
     Order::where('store_id', currentStoreId())->onlyTrashed()->restore();
     $this->dispatch('swal', type: 'success', title: __('merchant.orders_restored'));
-
+    $this->loadOrders();
 };
 
 $forceDeleteAll = function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
     Order::where('store_id', currentStoreId())->onlyTrashed()->forceDelete();
     $this->dispatch('swal', type: 'success', title: __('merchant.empty_trash'));
-
+    $this->loadOrders();
 };
 
 // --- Cities loader for filter ---
@@ -421,7 +456,7 @@ $toggleStatusFilter = function (string $statusId): void {
         $this->filters['status'][] = $statusId;
     }
     $this->page = 1;
-
+    $this->loadOrders();
 };
 
 $toggleColumn = function (string $column): void {
@@ -447,6 +482,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $service->transition($order, $statusKey, null, $membership);
 
     $this->page = 1;
+    $this->loadOrders();
 
     $this->dispatch('swal', type: 'success', title: __('Order status updated'));
 };
@@ -489,7 +525,9 @@ $searchProducts = function (): void {
 };
 
 $addFormItem = function (string $variantId): void {
-    $variant = ProductVariant::with('product')->findOrFail($variantId);
+    $variant = ProductVariant::with('product')
+        ->where('store_id', currentStoreId())
+        ->findOrFail($variantId);
     $found = false;
     foreach ($this->form['items'] as $idx => &$item) {
         if ($item['product_variant_id'] === $variantId) {
@@ -529,7 +567,7 @@ $submitCreate = function (): void {
     $storeId = currentStoreId();
 
     \Illuminate\Support\Facades\Validator::make($this->form, [
-        'customer_phone' => 'required|string|max:20',
+        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
         'customer_name' => 'required|string|max:255',
         'items' => 'required|array|min:1',
         'items.*.product_variant_id' => 'required|string',
@@ -543,6 +581,31 @@ $submitCreate = function (): void {
         'weight_kg' => 'nullable|numeric|min:0',
         'notes' => 'nullable|string|max:500',
     ])->validate();
+
+    // C3+C4: Validate prices from DB + check stock
+    $variantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
+    $variantMap = ProductVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+    $store = \App\Models\Stores\Store::find($storeId);
+    $tracksInventory = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
+
+    foreach ($this->form['items'] as $idx => $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        if (!$vid || !$variantMap->has($vid)) continue;
+        $variant = $variantMap[$vid];
+
+        // C3: Always use DB price
+        $this->form['items'][$idx]['price'] = $variant->price ?? $itemData['price'];
+        $this->form['items'][$idx]['product_id'] = $variant->product_id;
+
+        // C4: Check stock
+        if ($tracksInventory) {
+            $available = $variant->quantity - $variant->reserved;
+            if ($available < $itemData['quantity']) {
+                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                return;
+            }
+        }
+    }
 
     $customer = Customer::firstOrCreate(
         ['store_id' => $storeId, 'phone' => $this->form['customer_phone']],
@@ -585,6 +648,7 @@ $submitCreate = function (): void {
 
     $this->showCreateModal = false;
     $this->page = 1;
+    $this->loadOrders();
 
     $this->dispatch('swal', type: 'success', title: __('Order created'));
 };
@@ -658,7 +722,7 @@ $submitEdit = function (): void {
     }
 
     \Illuminate\Support\Facades\Validator::make($this->form, [
-        'customer_phone' => 'required|string|max:20',
+        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
         'customer_name' => 'required|string|max:255',
         'items' => 'required|array|min:1',
         'items.*.product_variant_id' => 'required|string',
@@ -716,6 +780,35 @@ $submitEdit = function (): void {
     $incomingVariantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
     $existingItems = $order->items()->get()->keyBy('product_variant_id');
 
+    // C3+C4: Validate prices from DB + check stock for new/changed items
+    $variantMap = ProductVariant::whereIn('id', $incomingVariantIds)
+        ->get()
+        ->keyBy('id');
+
+    foreach ($this->form['items'] as $idx => $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        if (!$vid || !$variantMap->has($vid)) continue;
+        $variant = $variantMap[$vid];
+
+        // C3: Always use DB price — never trust client-submitted price
+        $this->form['items'][$idx]['price'] = $variant->price ?? $itemData['price'];
+        $this->form['items'][$idx]['product_id'] = $variant->product_id;
+
+        // C4: Check stock for new items or increased quantities
+        $prevQty = 0;
+        if (isset($existingItems[$vid])) {
+            $prevQty = $existingItems[$vid]->quantity;
+        }
+        $delta = $itemData['quantity'] - $prevQty;
+        if ($delta > 0 && \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)) {
+            $available = $variant->quantity - $variant->reserved;
+            if ($available < $delta) {
+                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                return;
+            }
+        }
+    }
+
     // Remove items no longer in form
     foreach ($existingItems as $variantId => $item) {
         if (!in_array($variantId, $incomingVariantIds)) {
@@ -750,6 +843,7 @@ $submitEdit = function (): void {
 
     $this->showEditModal = false;
     $this->editingOrderId = null;
+    $this->loadOrders();
 
     $this->dispatch('swal', type: 'success', title: __('Order updated'));
 };
@@ -788,6 +882,7 @@ $submitReassign = function (): void {
     $service->reassign($order, $targetMembership, $byMembership);
 
     $this->showReassignModal = false;
+    $this->loadOrders();
 
     $this->dispatch('swal', type: 'success', title: __('Order reassigned'));
 };
@@ -799,12 +894,16 @@ $deleteOrder = function (string $orderId): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $order->delete();
 
-
+    $this->loadOrders();
     $this->dispatch('swal', type: 'success', title: __('Order deleted'));
+};
+
+$refreshOrders = function (): void {
+    $this->loadOrders();
 };
 ?>
 
-<div x-data="{ openFilter: null, openColToggle: false }">
+<div x-data="{ openFilter: null, openColToggle: false, filterPos: { top: 0, left: 0 }, positionFilter(e) { let r = e.currentTarget.getBoundingClientRect(); this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) }; } }">
     {{-- Page Header --}}
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <x-edz.page-header title="{{ __('merchant_panel.orders') }}" description="{{ __('merchant_panel.manage_customer_orders') }}">
@@ -823,7 +922,7 @@ $deleteOrder = function (string $orderId): void {
                     {{ __('merchant_panel.new_order') }}
                 </button>
             @endif
-            <button wire:click="$refresh" class="edz-btn edz-btn--ghost edz-btn--sm">
+            <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm">
                 <x-edz.icon name="arrow-path" class="w-4 h-4" />
             </button>
         </div>
@@ -836,9 +935,14 @@ $deleteOrder = function (string $orderId): void {
             {{-- Unified Search --}}
             <div class="relative flex-1 min-w-[200px]">
                 <input type="text" wire:model.live.debounce.300ms="search"
-                    placeholder="{{ __('merchant.search_orders') }}" class="edz-input text-sm ps-9">
+                    placeholder="{{ __('merchant.search_orders') }} — {{ __('merchant_panel.products') }}, SKU, barcode..."
+                    class="edz-input text-sm ps-9 pe-9">
                 <x-edz.icon name="search"
                     class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+                <button wire:click="loadOrders" type="button"
+                    class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition">
+                    <x-edz.icon name="arrow-right" class="w-4 h-4" />
+                </button>
             </div>
 
             {{-- Column Toggle --}}
@@ -861,16 +965,61 @@ $deleteOrder = function (string $orderId): void {
                 </div>
             </div>
 
-            {{-- Advanced Filters Toggle --}}
-            <button x-on:click="$wire.set('showAdvancedFilters', !$wire.get('showAdvancedFilters'))"
-                class="edz-btn edz-btn--ghost edz-btn--sm">
-                <x-edz.icon name="adjustments" class="w-4 h-4" />
-                {{ __('merchant_panel.filters') }}
-                @if (array_filter($this->filters))
-                    <span
-                        class="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-accent-100 text-accent-700">{{ count(array_filter($this->filters)) }}</span>
-                @endif
-            </button>
+            {{-- Source --}}
+            <div x-data="{ open: false }" @click.away="open = false" class="relative">
+                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['source'] ? 'text-accent-600' : '' }}">
+                    <x-edz.icon name="user" class="w-4 h-4" />
+                    {{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant_panel.source')) }}
+                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                </button>
+                <div x-show="open" x-transition
+                    class="absolute z-40 mt-1 w-40 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                    <button wire:click="setFilter('source', null)"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
+                    <button wire:click="setFilter('source', 'store')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant_panel.store') }}</button>
+                    <button wire:click="setFilter('source', 'manual')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant.delivery_man') }}</button>
+                </div>
+            </div>
+
+            {{-- Delivery Type --}}
+            <div x-data="{ open: false }" @click.away="open = false" class="relative">
+                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['delivery_type'] ? 'text-accent-600' : '' }}">
+                    <x-edz.icon name="home" class="w-4 h-4" />
+                    {{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : __('storefront.delivery_type')) }}
+                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                </button>
+                <div x-show="open" x-transition
+                    class="absolute z-40 mt-1 w-44 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                    <button wire:click="setFilter('delivery_type', null)"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
+                    <button wire:click="setFilter('delivery_type', 'home')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.home_delivery') }}</button>
+                    <button wire:click="setFilter('delivery_type', 'stopdesk')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.stop_desk') }}</button>
+                </div>
+            </div>
+
+            {{-- Shipping Provider --}}
+            <div x-data="{ open: false }" @click.away="open = false" class="relative">
+                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['shipping_provider'] ? 'text-accent-600' : '' }}">
+                    <x-edz.icon name="truck" class="w-4 h-4" />
+                    {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? __('merchant.assign_delivery_man') }}
+                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                </button>
+                <div x-show="open" x-transition
+                    class="absolute z-40 mt-1 w-48 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
+                    <button wire:click="setFilter('shipping_provider', null)"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
+                    @foreach ($this->allProviders as $pr)
+                        <button wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
+                            {{ $pr['name'] }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
 
             {{-- Trash Toggle --}}
             <button wire:click="toggleTrash"
@@ -889,234 +1038,51 @@ $deleteOrder = function (string $orderId): void {
             </div>
         </div>
 
-        {{-- Advanced Filters (collapsible) --}}
-        <div x-show="$wire.showAdvancedFilters" x-transition class="mt-3 pt-3 border-t border-surface-border">
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-
-                {{-- Source --}}
-                <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.source') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs">
-                        {{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : '—') }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
-                        <button wire:click="setFilter('source', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        <button wire:click="setFilter('source', 'store')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant_panel.store') }}</button>
-                        <button wire:click="setFilter('source', 'manual')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant.delivery_man') }}</button>
-                    </div>
-                </div>
-
-                {{-- Wilaya --}}
-                <div x-data="{ open: false, q: '' }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.wilaya') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs truncate">
-                        {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? '—' }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
-                        <input type="text" x-model="q" placeholder="Search..."
-                            class="w-full text-xs px-2 py-1 mb-1 rounded border border-surface-border bg-surface dark:bg-ink-700 focus:outline-none">
-                        <button wire:click="setFilter('wilaya', null); $wire.setFilter('city', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        @foreach ($this->allStates as $st)
-                            <button
-                                wire:click="setFilter('wilaya', '{{ $st['id'] }}'); $wire.loadFilterCities('{{ $st['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
-                                x-show="!q || '{{ $st['name'] }}'.toLowerCase().includes(q.toLowerCase())">
-                                {{ $st['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Commune --}}
-                <div x-data="{ open: false, q: '' }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.commune') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs truncate">
-                        {{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? '—' }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
-                        <input type="text" x-model="q" placeholder="Search..."
-                            class="w-full text-xs px-2 py-1 mb-1 rounded border border-surface-border bg-surface dark:bg-ink-700 focus:outline-none">
-                        <button wire:click="setFilter('city', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        @foreach ($this->allCities as $ci)
-                            <button wire:click="setFilter('city', '{{ $ci['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
-                                x-show="!q || '{{ $ci['name'] }}'.toLowerCase().includes(q.toLowerCase())">
-                                {{ $ci['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Status Multi-select --}}
-                <div x-data="{ open: false, q: '' }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.status') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs">
-                        {{ count($this->filters['status'] ?? []) ? count($this->filters['status']) . ' ' . __('merchant.selected') : '—' }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
-                        <input type="text" x-model="q" placeholder="Search..."
-                            class="w-full text-xs px-2 py-1 mb-1 rounded border border-surface-border bg-surface dark:bg-ink-700 focus:outline-none">
-                        @foreach ($this->allStatuses as $s)
-                            <label
-                                class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
-                                x-show="!q || '{{ $s['label'] }}'.toLowerCase().includes(q.toLowerCase())">
-                                <input type="checkbox" value="{{ $s['id'] }}"
-                                    wire:click="toggleStatusFilter('{{ $s['id'] }}')"
-                                    {{ in_array($s['id'], $this->filters['status'] ?? []) ? 'checked' : '' }}
-                                    class="rounded border-gray-300">
-                                <span class="w-2 h-2 rounded-full shrink-0"
-                                    style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
-                                {{ $s['label'] }}
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Product --}}
-                <div>
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.products') }}</label>
-                    <input type="text" wire:model.live.debounce.500ms="filters.product" placeholder="..."
-                        class="edz-input text-xs w-full">
-                </div>
-
-                {{-- Delivery Type --}}
-                <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('storefront.delivery_type') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs">
-                        {{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : '—') }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
-                        <button wire:click="setFilter('delivery_type', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        <button wire:click="setFilter('delivery_type', 'home')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.home_delivery') }}</button>
-                        <button wire:click="setFilter('delivery_type', 'stopdesk')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.stop_desk') }}</button>
-                    </div>
-                </div>
-
-                {{-- Shipping Provider --}}
-                <div x-data="{ open: false, q: '' }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant.assign_delivery_man') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs truncate">
-                        {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? '—' }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
-                        <input type="text" x-model="q" placeholder="Search..."
-                            class="w-full text-xs px-2 py-1 mb-1 rounded border border-surface-border bg-surface dark:bg-ink-700 focus:outline-none">
-                        <button wire:click="setFilter('shipping_provider', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        @foreach ($this->allProviders as $pr)
-                            <button wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
-                                x-show="!q || '{{ $pr['name'] }}'.toLowerCase().includes(q.toLowerCase())">
-                                {{ $pr['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Agent --}}
-                <div x-data="{ open: false, q: '' }" @click.away="open = false" class="relative">
-                    <label
-                        class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.assigned_to') }}</label>
-                    <button @click="open = !open"
-                        class="edz-btn edz-btn--ghost edz-btn--sm w-full justify-between text-xs truncate">
-                        {{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? '—' }}
-                        <x-edz.icon name="chevron-down" class="w-3 h-3 shrink-0" />
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-40 mt-1 w-full bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
-                        <input type="text" x-model="q" placeholder="Search..."
-                            class="w-full text-xs px-2 py-1 mb-1 rounded border border-surface-border bg-surface dark:bg-ink-700 focus:outline-none">
-                        <button wire:click="setFilter('assigned_to', null)"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                        @foreach ($this->allMembers as $m)
-                            <button wire:click="setFilter('assigned_to', '{{ $m['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
-                                x-show="!q || '{{ $m['user']['name'] }}'.toLowerCase().includes(q.toLowerCase())">
-                                {{ $m['user']['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Amount --}}
-                <div class="flex gap-1">
-                    <div class="flex-1">
-                        <label
-                            class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.amount') }}</label>
-                        <input type="number" wire:model.live.debounce.500ms="filters.amount_min" placeholder="Min"
-                            class="edz-input text-xs w-full">
-                    </div>
-                    <div class="flex-1">
-                        <label class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">&nbsp;</label>
-                        <input type="number" wire:model.live.debounce.500ms="filters.amount_max" placeholder="Max"
-                            class="edz-input text-xs w-full">
-                    </div>
-                </div>
-
-                {{-- Date Range --}}
-                <div class="flex gap-1">
-                    <div class="flex-1">
-                        <label
-                            class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">{{ __('merchant_panel.created_at') }}</label>
-                        <input type="text" wire:model="filters.date_from"
-                            class="edz-input text-xs w-full flatpickr-input"
-                            placeholder="YYYY-MM-DD" autocomplete="off">
-                    </div>
-                    <div class="flex-1">
-                        <label class="text-[10px] uppercase font-semibold text-ink-muted mb-1 block">&nbsp;</label>
-                        <input type="text" wire:model="filters.date_to"
-                            class="edz-input text-xs w-full flatpickr-input"
-                            placeholder="YYYY-MM-DD" autocomplete="off">
-                    </div>
-                </div>
-
-            </div>
-
-            {{-- Clear All --}}
-            @if (!empty($this->search) || array_filter($this->filters))
-                <div class="mt-3 flex justify-end">
-                    <button x-on:click="$wire.set('search', ''); $wire.clearFilters()"
-                        class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
-                        <x-edz.icon name="x-circle" class="w-4 h-4" />
-                        {{ __('merchant_panel.clear_filters') }}
-                    </button>
-                </div>
-            @endif
-        </div>
     </div>
+
+    {{-- Active filter summary + Clear --}}
+    @if (array_filter($this->filters))
+        <div class="mb-3 flex items-center gap-2 flex-wrap">
+            @if (!empty($this->filters['wilaya']))
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? '' }}
+                    <button wire:click="setFilter('wilaya', null)" class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['city']))
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? '' }}
+                    <button wire:click="setFilter('city', null)" class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['status']))
+                @foreach ($this->allStatuses as $s)
+                    @if (in_array($s['id'], $this->filters['status']))
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                            {{ $s['label'] }}
+                            <button wire:click="toggleStatusFilter('{{ $s['id'] }}')" class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                        </span>
+                    @endif
+                @endforeach
+            @endif
+            @if (!empty($this->filters['assigned_to']))
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? '' }}
+                    <button wire:click="setFilter('assigned_to', null)" class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['date_from']) || !empty($this->filters['date_to']))
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}
+                    <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)" class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            <button wire:click="clearFilters" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 text-xs">
+                <x-edz.icon name="x-circle" class="w-3 h-3" />
+                {{ __('merchant_panel.clear_filters') }}
+            </button>
+        </div>
+    @endif
 
 
 
@@ -1128,7 +1094,7 @@ $deleteOrder = function (string $orderId): void {
             </span>
             <div class="flex gap-2">
                 <button wire:click="restoreAll" class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant.restore_all') }}</button>
-                <button wire:click="forceDeleteAll" x-data x-on:click.prevent="EdzSwal.confirmDelete(() => { $wire.forceDeleteAll() })" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">{{ __('merchant.empty_trash') }}</button>
+                <button x-data x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.forceDeleteAll() })()" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">{{ __('merchant.empty_trash') }}</button>
             </div>
         </div>
     @elseif (count($this->selectedOrders) > 0)
@@ -1143,7 +1109,7 @@ $deleteOrder = function (string $orderId): void {
                         <x-edz.icon name="user-plus" class="w-4 h-4" />
                         {{ __('merchant.bulk_assign_agent') }}
                     </button>
-                    <div x-show="open" x-transition class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto">
+                    <div x-show="open" x-transition class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
                         @foreach ($this->allMembers as $m)
                             <button wire:click="bulkAssignAgent('{{ $m['id'] }}')"
                                 class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
@@ -1172,7 +1138,7 @@ $deleteOrder = function (string $orderId): void {
                 @endif
 
                 {{-- Delete --}}
-                <button wire:click="bulkDelete" x-data x-on:click.prevent="EdzSwal.confirmDelete(() => { $wire.bulkDelete() })" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">
+                <button x-data x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.bulkDelete() })()" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">
                     <x-edz.icon name="trash" class="w-4 h-4" />
                     {{ __('merchant.bulk_delete') }}
                 </button>
@@ -1190,7 +1156,7 @@ $deleteOrder = function (string $orderId): void {
             {{-- Loading skeleton --}}
             <div wire:loading
                 class="absolute inset-0 z-10 bg-surface/80 backdrop-blur-sm p-4 space-y-3 overflow-hidden"
-                wire:target="filters,loadOrders">
+                wire:target="search,filters">
                 @for ($i = 0; $i < 5; $i++)
                     <div class="flex items-center gap-4 py-2">
                         <x-edz.skeleton width="5rem" height="0.875rem" />
@@ -1205,9 +1171,9 @@ $deleteOrder = function (string $orderId): void {
                 @endfor
             </div>
 
-            <div wire:loading.class="opacity-40 pointer-events-none" wire:target="filters,loadOrders">
+            <div wire:loading.class="opacity-40 pointer-events-none" wire:target="search,filters">
                 @if (!empty($orders['data']))
-                    <div class="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
+                    <div class="overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
                         <table class="w-full text-sm">
                             <thead class="bg-secondary">
                                 <tr>
@@ -1216,69 +1182,120 @@ $deleteOrder = function (string $orderId): void {
                                             class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                     </th>
                                     @if (in_array('number', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.number') }}</th>
                                     @endif
                                     @if (in_array('customer', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.customer') }}</th>
                                     @endif
                                     @if (in_array('phone', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.phone') }}</th>
                                     @endif
                                     @if (in_array('wilaya', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.state') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.state') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'wilaya' ? null : 'wilaya'; if (openFilter === 'wilaya') positionFilter($event)"
+                                                    class="shrink-0 {{ filled($this->filters['wilaya']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['wilaya']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('products', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.products') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.products') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'product' ? null : 'product'; if (openFilter === 'product') positionFilter($event)"
+                                                    class="shrink-0 {{ filled($this->filters['product']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['product']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('amount', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.amount') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.amount') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'amount' ? null : 'amount'; if (openFilter === 'amount') positionFilter($event)"
+                                                    class="shrink-0 {{ filled($this->filters['amount_min']) || filled($this->filters['amount_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['amount_min']) || filled($this->filters['amount_max']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('status', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.status') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.status') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'status' ? null : 'status'; if (openFilter === 'status') positionFilter($event)"
+                                                    class="shrink-0 {{ !empty($this->filters['status']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (!empty($this->filters['status']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('assigned_agent', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.agent') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.agent') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'assigned_to' ? null : 'assigned_to'; if (openFilter === 'assigned_to') positionFilter($event)"
+                                                    class="shrink-0 {{ filled($this->filters['assigned_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['assigned_to']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('created_at', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.date') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group w-[150px]">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.date') }}
+                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'date' ? null : 'date'; if (openFilter === 'date') positionFilter($event)"
+                                                    class="shrink-0 {{ filled($this->filters['date_from']) || filled($this->filters['date_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['date_from']) || filled($this->filters['date_to']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('confirmation_attempts', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.attempts') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.attempts') }}
+                                        </th>
                                     @endif
                                     @if (in_array('last_contact', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.last_contact') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.last_contact') }}
+                                        </th>
                                     @endif
                                     @if (in_array('weight', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.weight') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.weight') }}
+                                        </th>
                                     @endif
                                     @if (in_array('shipment_type', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.shipment') }}</th>
+                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.shipment') }}
+                                        </th>
                                     @endif
                                     <th class="px-4 py-3 text-end text-xs font-semibold text-ink-muted uppercase">
                                         {{ __('merchant_panel.actions') }}</th>
@@ -1352,7 +1369,7 @@ $deleteOrder = function (string $orderId): void {
                                                         <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                     </button>
                                                     <div x-show="open" x-transition x-cloak
-                                                        class="fixed z-[200] w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto"
+                                                        class="fixed z-[200] w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
                                                         :style="'top:' + top + 'px; left:' + Math.min(left, window.innerWidth -
                                                             240) + 'px'">
                                                         @foreach ($this->allStatuses as $s)
@@ -1434,7 +1451,7 @@ $deleteOrder = function (string $orderId): void {
                                                         <button
                                                             class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700 shrink-0"
                                                             x-data
-                                                            x-on:click.prevent="EdzSwal.confirmDelete(() => { $wire.deleteOrder('{{ $orderId }}') })"
+                                                            x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete('{{ $order['number'] ?? '' }}')) await $wire.deleteOrder('{{ $orderId }}') })()"
                                                             title="{{ __('merchant.delete_permanently') }}">
                                                             <x-edz.icon name="trash" class="w-4 h-4 shrink-0" />
                                                         </button>
@@ -1547,34 +1564,8 @@ $deleteOrder = function (string $orderId): void {
                     </div>
 
                     {{-- Pagination --}}
-                    <div class="p-4 border-t border-surface-border">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <span class="text-sm text-ink-muted">
-                                    {{ $orders['from'] ?? 0 }}–{{ $orders['to'] ?? 0 }} / {{ $orders['total'] }}
-                                </span>
+                    <x-edz.pagination :paginator="$orders" method="setPage" />
 
-                            </div>
-                            @if ($orders['last_page'] > 1)
-                                <div class="flex gap-1">
-                                    @if ($orders['current_page'] > 1)
-                                        <button wire:click="setPage({{ $orders['current_page'] - 1 }})"
-                                            class="edz-btn edz-btn--ghost edz-btn--xs">&laquo;</button>
-                                    @endif
-                                    @foreach (range(max(1, $orders['current_page'] - 2), min($orders['last_page'], $orders['current_page'] + 2)) as $pg)
-                                        <button wire:click="setPage({{ $pg }})"
-                                            class="edz-btn edz-btn--xs {{ $pg === $orders['current_page'] ? 'edz-btn--primary' : 'edz-btn--ghost' }}">
-                                            {{ $pg }}
-                                        </button>
-                                    @endforeach
-                                    @if ($orders['current_page'] < $orders['last_page'])
-                                        <button wire:click="setPage({{ $orders['current_page'] + 1 }})"
-                                            class="edz-btn edz-btn--ghost edz-btn--xs">&raquo;</button>
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-                    </div>
                 @else
                     <div class="p-8 text-center text-ink-muted">
                         <x-edz.icon name="cart" class="w-12 h-12 mx-auto mb-3 text-ink-muted opacity-40" />
@@ -1587,7 +1578,7 @@ $deleteOrder = function (string $orderId): void {
 
     {{-- Create / Edit Modal --}}
     @if ($showCreateModal || $showEditModal)
-        <x-edz.modal :isOpen="true" size="lg"
+        <x-edz.modal :isOpen="true" :showCloseButton="false" size="lg"
             wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">
             <form wire:submit="{{ $showEditModal ? 'submitEdit' : 'submitCreate' }}">
                 <div class="p-6 space-y-5">
@@ -1595,7 +1586,8 @@ $deleteOrder = function (string $orderId): void {
                         <h3 class="text-lg font-bold text-ink">
                             {{ $showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order') }}</h3>
                         <div class="flex items-center gap-2">
-                            <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">
+                            <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm"
+                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
                                 {{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}
                             </button>
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
@@ -1608,14 +1600,14 @@ $deleteOrder = function (string $orderId): void {
                     {{-- Customer --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="edz-label">Name *</label>
+                            <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
                             <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
                             @error('form.customer_name')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
                         </div>
                         <div>
-                            <label class="edz-label">Phone *</label>
+                            <label class="edz-label">{{ __('merchant_panel.phone') }} *</label>
                             <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm"
                                 required>
                             @error('form.customer_phone')
@@ -1623,11 +1615,11 @@ $deleteOrder = function (string $orderId): void {
                             @enderror
                         </div>
                         <div>
-                            <label class="edz-label">Phone 2</label>
+                            <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
                             <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
                         </div>
                         <div>
-                            <label class="edz-label">Wilaya</label>
+                            <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                             <select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
                                 class="edz-input text-sm">
                                 <option value="">—</option>
@@ -1640,7 +1632,7 @@ $deleteOrder = function (string $orderId): void {
                             @enderror
                         </div>
                         <div>
-                            <label class="edz-label">City</label>
+                            <label class="edz-label">{{ __('merchant_panel.city') }}</label>
                             <select wire:model="form.city_id" class="edz-input text-sm">
                                 <option value="">—</option>
                                 @foreach ($this->allCities as $city)
@@ -1652,7 +1644,7 @@ $deleteOrder = function (string $orderId): void {
                             @enderror
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="edz-label">Address</label>
+                            <label class="edz-label">{{ __('merchant_panel.address') }}</label>
                             <input type="text" wire:model="form.address" class="edz-input text-sm">
                         </div>
                     </div>
@@ -1660,28 +1652,28 @@ $deleteOrder = function (string $orderId): void {
                     {{-- Order Info --}}
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div>
-                            <label class="edz-label">Delivery</label>
+                            <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
                             <select wire:model="form.delivery_type" class="edz-input text-sm">
-                                <option value="home">Home</option>
-                                <option value="stopdesk">Stop Desk</option>
+                                <option value="home">{{ __('merchant_panel.home_delivery_label') }}</option>
+                                <option value="stopdesk">{{ __('merchant_panel.stop_desk_label') }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="edz-label">Shipment</label>
+                            <label class="edz-label">{{ __('merchant_panel.shipment') }}</label>
                             <select wire:model="form.shipment_type" class="edz-input text-sm">
-                                <option value="delivery">Delivery</option>
-                                <option value="exchange">Exchange</option>
-                                <option value="pickup">Pickup</option>
+                                <option value="delivery">{{ __('merchant_panel.delivery') }}</option>
+                                <option value="exchange">{{ __('merchant_panel.exchange_label') }}</option>
+                                <option value="pickup">{{ __('merchant_panel.pickup_label') }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="edz-label">Payment</label>
+                            <label class="edz-label">{{ __('merchant_panel.payment_method') }}</label>
                             <select wire:model="form.payment_method" class="edz-input text-sm">
-                                <option value="cod">COD</option>
+                                <option value="cod">{{ __('merchant_panel.cod') }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="edz-label">Weight (kg)</label>
+                            <label class="edz-label">{{ __('merchant_panel.weight_kg') }}</label>
                             <input type="number" wire:model="form.weight_kg" step="0.01"
                                 class="edz-input text-sm">
                         </div>
@@ -1707,17 +1699,17 @@ $deleteOrder = function (string $orderId): void {
                         }
                     }">
                         <div>
-                            <label class="edz-label">Shipping Company</label>
+                            <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
                             <select wire:model="form.shipping_provider_id" class="edz-input text-sm">
                                 <option value="">—</option>
                                 @foreach ($editProviders as $provider)
                                     <option value="{{ $provider['id'] }}">{{ $provider['name'] }}</option>
                                 @endforeach
                             </select>
-                            <span class="text-xs text-gray-400 mt-1 block">Assigned at confirmation</span>
+                            <span class="text-xs text-gray-400 mt-1 block">{{ __('merchant_panel.assigned_at_confirmation') }}</span>
                         </div>
                         <div>
-                            <label class="edz-label">Pickup Desk</label>
+                            <label class="edz-label">{{ __('merchant_panel.pickup_desk') }}</label>
                             <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
                                 <option value="">—</option>
                                 <template x-for="desk in desks" :key="desk.id">
@@ -1725,15 +1717,15 @@ $deleteOrder = function (string $orderId): void {
                                     </option>
                                 </template>
                             </select>
-                            <span class="text-xs text-gray-400 mt-1 block">Stopdesk orders only</span>
+                            <span class="text-xs text-gray-400 mt-1 block">{{ __('merchant_panel.stopdesk_orders_only') }}</span>
                         </div>
                     </div>
 
                     {{-- Items --}}
                     <div>
-                        <label class="edz-label">Products</label>
+                        <label class="edz-label">{{ __('merchant_panel.products') }}</label>
                         <input type="text" wire:model.live.debounce.300ms="formProductSearch"
-                            placeholder="Search products..." class="edz-input text-sm mb-2">
+                            placeholder="{{ __('merchant_panel.search_products_placeholder') }}" class="edz-input text-sm mb-2">
                         @if (!empty($formProductResults))
                             <div class="border border-surface-border rounded-lg max-h-40 overflow-y-auto mb-2">
                                 @foreach ($formProductResults as $pv)
@@ -1764,7 +1756,7 @@ $deleteOrder = function (string $orderId): void {
                                     </div>
                                 @endforeach
                                 <div class="text-right font-bold text-ink pt-2 border-t border-surface-border">
-                                    Total:
+                                    {{ __('merchant_panel.total') }}:
                                     {{ currency(collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity'])) }}
                                 </div>
                             </div>
@@ -1773,7 +1765,7 @@ $deleteOrder = function (string $orderId): void {
 
                     {{-- Notes --}}
                     <div>
-                        <label class="edz-label">Notes</label>
+                        <label class="edz-label">{{ __('merchant_panel.notes') }}</label>
                         <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
                     </div>
                 </div>
@@ -1783,13 +1775,13 @@ $deleteOrder = function (string $orderId): void {
 
     {{-- Reassign Modal --}}
     @if ($showReassignModal)
-        <x-edz.modal :isOpen="true" wire:key="order-reassign-modal">
+        <x-edz.modal :isOpen="true" :showCloseButton="false"  wire:key="order-reassign-modal">
             <div class="p-6 space-y-4">
-                <h3 class="text-lg font-bold text-ink">{{ __('Reassign Order') }}</h3>
+                <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.reassign_order') }}</h3>
                 <div>
-                    <label class="edz-label">{{ __('Assign to') }} *</label>
+                    <label class="edz-label">{{ __('merchant_panel.assign_to') }} *</label>
                     <select wire:model="reassignMembershipId" class="edz-input text-sm">
-                        <option value="">— {{ __('Select Agent') }} —</option>
+                        <option value="">— {{ __('merchant_panel.select_agent') }} —</option>
                         @foreach ($allMembers as $m)
                             <option value="{{ $m['id'] }}">{{ $m['user']['name'] ?? $m['id'] }}</option>
                         @endforeach
@@ -1797,11 +1789,110 @@ $deleteOrder = function (string $orderId): void {
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                        wire:click="set('showReassignModal', false)">{{ __('Cancel') }}</button>
+                        wire:click="set('showReassignModal', false)">{{ __('merchant_panel.cancel') }}</button>
                     <button wire:click="submitReassign"
-                        class="edz-btn edz-btn--primary edz-btn--sm">{{ __('Reassign') }}</button>
+                        class="edz-btn edz-btn--primary edz-btn--sm"
+                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">{{ __('merchant_panel.reassign') }}</button>
                 </div>
             </div>
         </x-edz.modal>
     @endif
+
+    {{-- Filter Portal — single container, fixed-positioned --}}
+    <div x-show="openFilter !== null" x-transition @click.away="openFilter = null"
+        :style="`top: ${filterPos.top}px; left: ${filterPos.left}px`"
+        class="fixed z-50 p-2 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg"
+        :class="{
+            'max-h-64 overflow-y-auto edz-scroll': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to',
+            'w-48': openFilter === 'product' || openFilter === 'amount',
+            'w-52': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to' || openFilter === 'date'
+        }">
+
+        {{-- Wilaya --}}
+        @if (in_array('wilaya', $this->visibleColumns))
+            <div x-show="openFilter === 'wilaya'" x-cloak>
+                <button @click="$wire.setFilter('wilaya', null); $wire.setFilter('city', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['wilaya'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                @foreach ($this->allStates as $st)
+                    <button @click="$wire.setFilter('wilaya', '{{ $st['id'] }}'); $wire.loadFilterCities('{{ $st['id'] }}')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                        data-name="{{ $st['name'] }}">
+                        {{ $st['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Product --}}
+        @if (in_array('products', $this->visibleColumns))
+            <div x-show="openFilter === 'product'" x-cloak>
+                <input type="text" wire:model.live.debounce.300ms="filters.product"
+                    placeholder="{{ __('merchant_panel.products') }}..."
+                    class="edz-input text-xs w-full">
+            </div>
+        @endif
+
+        {{-- Amount --}}
+        @if (in_array('amount', $this->visibleColumns))
+            <div x-show="openFilter === 'amount'" x-cloak>
+                <div class="flex gap-1">
+                    <input type="number" wire:model.live.debounce.500ms="filters.amount_min"
+                        placeholder="Min" class="edz-input text-xs flex-1">
+                    <input type="number" wire:model.live.debounce.500ms="filters.amount_max"
+                        placeholder="Max" class="edz-input text-xs flex-1">
+                </div>
+            </div>
+        @endif
+
+        {{-- Status --}}
+        @if (in_array('status', $this->visibleColumns))
+            <div x-show="openFilter === 'status'" x-cloak>
+                @foreach ($this->allStatuses as $s)
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
+                        data-name="{{ $s['label'] }}">
+                        <input type="checkbox" value="{{ $s['id'] }}"
+                            wire:click="toggleStatusFilter('{{ $s['id'] }}')"
+                            {{ in_array($s['id'], $this->filters['status'] ?? []) ? 'checked' : '' }}
+                            class="rounded border-gray-300">
+                        <span class="w-2 h-2 rounded-full shrink-0"
+                            style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
+                        {{ $s['label'] }}
+                    </label>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Assigned Agent --}}
+        @if (in_array('assigned_agent', $this->visibleColumns))
+            <div x-show="openFilter === 'assigned_to'" x-cloak>
+                <button @click="$wire.setFilter('assigned_to', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['assigned_to'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                @foreach ($this->allMembers as $m)
+                    <button @click="$wire.setFilter('assigned_to', '{{ $m['id'] }}')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['assigned_to'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                        data-name="{{ $m['user']['name'] }}">
+                        {{ $m['user']['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Date --}}
+        @if (in_array('created_at', $this->visibleColumns))
+            <div x-show="openFilter === 'date'" x-cloak>
+                <div class="flex flex-col gap-1">
+                    <input type="text" wire:model.blur="filters.date_from"
+                        class="edz-input text-xs w-full flatpickr-input"
+                        placeholder="From" autocomplete="off">
+                    <input type="text" wire:model.blur="filters.date_to"
+                        class="edz-input text-xs w-full flatpickr-input"
+                        placeholder="To" autocomplete="off">
+                </div>
+            </div>
+        @endif
+    </div>
 </div>

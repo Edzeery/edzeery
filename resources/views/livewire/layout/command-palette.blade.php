@@ -53,9 +53,9 @@ new class extends Component {
 
         // Search orders
         $orders = Order::where('store_id', $store->id)
-            ->where('order_number', 'LIKE', "%{$q}%")
+            ->where('number', 'LIKE', "%{$q}%")
             ->limit(5)
-            ->get(['id', 'order_number']);
+            ->get(['id', 'number']);
 
         foreach ($orders as $o) {
             $results[] = [

@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Enums\Store\InventoryMovementType;
+use App\Models\InventoryMovement;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderStatusHistory;
 use App\Models\Status;
@@ -63,6 +64,10 @@ class OrderObserver
             return;
         }
 
+        if (! \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)) {
+            return;
+        }
+
         $movementType = InventoryMovementType::tryFrom($status->movement_type);
         if (! $movementType || ! $movementType->affectsStock()) {
             return;
@@ -79,6 +84,18 @@ class OrderObserver
                 $variant = $item->variant;
 
                 if (! $variant) {
+                    continue;
+                }
+
+                // Idempotency: skip if this exact movement already exists
+                $alreadyApplied = InventoryMovement::query()
+                    ->where('source_type', Order::class)
+                    ->where('source_id', $order->id)
+                    ->where('product_variant_id', $variant->id)
+                    ->where('type', $movementType->value)
+                    ->exists();
+
+                if ($alreadyApplied) {
                     continue;
                 }
 

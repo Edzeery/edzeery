@@ -4,12 +4,12 @@ namespace App\Enums\Store;
 
 enum InventoryMovementType: string
 {
-    case SALE       = 'sale';        // - stock
+    case SALE       = 'sale';        // ledger-only (stock already reserved)
     case RETURN     = 'return';      // + stock
     case PURCHASE   = 'purchase';    // + stock
     case ADJUSTMENT = 'adjustment';  // +/- manual
-    case RESERVE    = 'reserve';     // - available (future)
-    case RELEASE    = 'release';     // + available (future)
+    case RESERVE    = 'reserve';     // - stock (order confirmed)
+    case RELEASE    = 'release';     // + stock (order cancelled before delivery)
 
     /* ===============================
      | Presentation (UI)
@@ -63,6 +63,7 @@ enum InventoryMovementType: string
         return in_array($this, [
             self::RETURN,
             self::PURCHASE,
+            self::RELEASE,
         ], true);
     }
 
@@ -71,10 +72,7 @@ enum InventoryMovementType: string
      */
     public function isDecrease(): bool
     {
-        return in_array($this, [
-            self::SALE,
-            self::RESERVE,
-        ], true);
+        return $this === self::RESERVE;
     }
 
     /**
@@ -87,6 +85,8 @@ enum InventoryMovementType: string
             self::RETURN,
             self::PURCHASE,
             self::ADJUSTMENT,
+            self::RESERVE,
+            self::RELEASE,
         ], true);
     }
 
@@ -96,11 +96,12 @@ enum InventoryMovementType: string
     public function direction(): int
     {
         return match ($this) {
-            self::SALE       => -1,
+            self::SALE       => 0,  // ledger-only: stock already reserved at confirm
             self::RETURN,
-            self::PURCHASE   => 1,
-            self::ADJUSTMENT => 0, // decided by user
-            default          => 0, // reserve/release
+            self::PURCHASE,
+            self::RELEASE    => 1,
+            self::RESERVE    => -1,
+            self::ADJUSTMENT => 0,  // decided by caller
         };
     }
 
