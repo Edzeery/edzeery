@@ -520,27 +520,23 @@ $removeAssignment = function (string $assignmentId): void {
                 <div class="space-y-4">
                     <div class="edz-field">
                         <label class="edz-field__label" for="shift-agent">{{ __('merchant_panel.agent') }} *</label>
-                        <select id="shift-agent" wire:model="shiftForm.membership_id"
-                                class="edz-select @error('shiftForm.membership_id') edz-input--error @enderror">
-                            <option value="">— {{ __('merchant_panel.select_agent') }} —</option>
-                            @foreach($members as $m)
-                                <option value="{{ $m['id'] }}">{{ $m['user']['name'] ?? $m['id'] }}</option>
-                            @endforeach
-                        </select>
-                        @error('shiftForm.membership_id')
-                            <span class="edz-field__error">{{ $message }}</span>
-                        @enderror
+                        <x-edz.select
+                            wire:model="shiftForm.membership_id"
+                            :options="$members"
+                            option-value="id"
+                            option-label="user.name"
+                            placeholder="{{ __('merchant_panel.select_agent') }}"
+                            :error="$errors->first('shiftForm.membership_id')"
+                        />
                     </div>
 
                     <div class="edz-field">
                         <label class="edz-field__label" for="shift-type">{{ __('merchant_panel.shift_type') }}</label>
-                        <select id="shift-type" wire:model="shiftForm.shift_type"
-                                x-on:change="$wire.call('onShiftTypeChange')"
-                                class="edz-select">
-                            @foreach($SHIFT_TYPES as $k => $v)
-                                <option value="{{ $k }}">{{ $v }}</option>
-                            @endforeach
-                        </select>
+                        <x-edz.select
+                            wire:model="shiftForm.shift_type"
+                            wire:change="onShiftTypeChange"
+                            :options="$SHIFT_TYPES"
+                        />
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -601,16 +597,14 @@ $removeAssignment = function (string $assignmentId): void {
                 <div class="space-y-4">
                     <div class="edz-field">
                         <label class="edz-field__label" for="assign-agent">{{ __('merchant_panel.agent') }} *</label>
-                        <select id="assign-agent" wire:model="assignForm.membership_id"
-                                class="edz-select @error('assignForm.membership_id') edz-input--error @enderror">
-                            <option value="">— {{ __('merchant_panel.select_agent') }} —</option>
-                            @foreach($members as $m)
-                                <option value="{{ $m['id'] }}">{{ $m['user']['name'] ?? $m['id'] }}</option>
-                            @endforeach
-                        </select>
-                        @error('assignForm.membership_id')
-                            <span class="edz-field__error">{{ $message }}</span>
-                        @enderror
+                        <x-edz.select
+                            wire:model="assignForm.membership_id"
+                            :options="$members"
+                            option-value="id"
+                            option-label="user.name"
+                            placeholder="{{ __('merchant_panel.select_agent') }}"
+                            :error="$errors->first('assignForm.membership_id')"
+                        />
                     </div>
 
                     <div class="edz-field">

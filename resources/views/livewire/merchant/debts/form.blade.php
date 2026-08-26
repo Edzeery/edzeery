@@ -121,20 +121,18 @@ $save = function (): void {
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                         <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.type') }}</label>
-                        <select wire:model="type" class="edz-select" required>
-                            @foreach(DebtTypeEnum::cases() as $t)
-                                <option value="{{ $t->value }}">{{ $t->label() }}</option>
-                            @endforeach
-                        </select>
+                        <x-edz.select
+                            wire:model="type"
+                            :options="collect(DebtTypeEnum::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->values()->all()"
+                        />
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-ink mb-1">{{ __('finance.status') }}</label>
-                        <select wire:model="status" class="edz-select" required>
-                            @foreach(DebtStatusEnum::cases() as $s)
-                                <option value="{{ $s->value }}">{{ $s->label() }}</option>
-                            @endforeach
-                        </select>
+                        <x-edz.select
+                            wire:model="status"
+                            :options="collect(DebtStatusEnum::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()])->values()->all()"
+                        />
                     </div>
 
                     <div>

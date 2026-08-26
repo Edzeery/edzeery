@@ -27,19 +27,19 @@
 - [x] **M1** `$this->page` — validate bounds, clamp to max page in $setPage
 - [ ] **M2** `filtered_amount` — cache or lazy-load the SUM query
 - [x] **M3** `setFilter` — sanitize input types (int/float/array casts)
-- [ ] **M4** Create form — require address/state/city when delivery_type=home
-- [ ] **M5** `firstOrCreate` customer — add unique index on phone for race safety
-- [ ] **M6** Edit blocked statuses — use status IDs or enum, not hardcoded strings
+- [x] **M4** Create form — require address/state/city when delivery_type=home
+- [x] **M5** `firstOrCreate` customer — unique index already exists on `(store_id, phone)` — no change needed
+- [x] **M6** Edit blocked statuses — replaced hardcoded string array with dynamic `sort_order >= shipped.sort_order`
 - [ ] **M7** `submitEdit` — route through OrderService instead of direct model update
 - [ ] **M8** `positionFilter` — add scroll listener or use Alpine `x-intersect`
 - [x] **M9** Search Enter — removed redundant `wire:keydown.enter` (debounce handles it)
 - [ ] **M10** Loading skeleton — extend to bulk actions, pagination, status transitions
 - [x] **M11** Submit buttons — added `wire:loading` disable state on create/edit + reassign
-- [ ] **M12** `createManual()` — add inventory RESERVE movement
+- [x] **M12** `createManual()` — RESERVE already handled at confirmation via observer — no change needed
 - [x] **M13** `order-form.blade.php:568` — replaced hardcoded `أ—` with `×`
 - [x] **M14** `order-form.blade.php:298` — fixed undefined `$algin` → RTL-aware arrow direction
 - [x] **M15** `order-success.blade.php` — scope order query with `created_at >= 30min` (guest store, no customer auth)
-- [ ] **M16** Checkout — add rate limiting on `submitOrder`
+- [x] **M16** Checkout — added rate limiting (10/min per store+IP) via `RateLimiter::attempt()`
 - [ ] **M17** `SystemStatusesSeeder` — use `__()` for status labels (deferred — requires key→label refactor)
 
 ## LOW (L1-L7)

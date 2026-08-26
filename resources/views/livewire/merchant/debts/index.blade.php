@@ -106,20 +106,18 @@ $formatAmount = function (float $amount): string {
                            class="edz-input" />
                 </div>
                 <div>
-                    <select wire:model.live="type" class="edz-select">
-                        <option value="">{{ __('finance.all_types') }}</option>
-                        @foreach(DebtTypeEnum::cases() as $type)
-                            <option value="{{ $type->value }}">{{ $type->label() }}</option>
-                        @endforeach
-                    </select>
+                    <x-edz.select
+                        wire:model.live="type"
+                        :options="collect(DebtTypeEnum::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->values()->all()"
+                        placeholder="{{ __('finance.all_types') }}"
+                    />
                 </div>
                 <div>
-                    <select wire:model.live="status" class="edz-select">
-                        <option value="">{{ __('finance.all_statuses') }}</option>
-                        @foreach(DebtStatusEnum::cases() as $st)
-                            <option value="{{ $st->value }}">{{ $st->label() }}</option>
-                        @endforeach
-                    </select>
+                    <x-edz.select
+                        wire:model.live="status"
+                        :options="collect(DebtStatusEnum::cases())->map(fn ($s) => ['value' => $s->value, 'label' => $s->label()])->values()->all()"
+                        placeholder="{{ __('finance.all_statuses') }}"
+                    />
                 </div>
             </div>
         </div>

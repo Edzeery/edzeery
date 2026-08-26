@@ -130,26 +130,31 @@ $deactivateSelected = function (): void {
                     wire:model.live.debounce.300ms="search">
             </div>
             <div>
-                <select class="edz-select" wire:model.live="brand_id">
-                    <option value="">{{ __('products.all_brands') }}</option>
-                    @foreach ($this->brands as $id => $name)
-                        <option value="{{ $id }}">{{ $name }}</option>
-                    @endforeach
-                </select>
+                <x-edz.select
+                    wire:model.live="brand_id"
+                    :options="$this->brands"
+                    placeholder="{{ __('products.all_brands') }}"
+                />
             </div>
             <div>
-                <select class="edz-select" wire:model.live="is_active">
-                    <option value="">{{ __('products.all_statuses') }}</option>
-                    <option value="1">{{ __('products.active') }}</option>
-                    <option value="0">{{ __('products.inactive') }}</option>
-                </select>
+                <x-edz.select
+                    wire:model.live="is_active"
+                    :options="[
+                        ['value' => '', 'label' => __('products.all_statuses')],
+                        ['value' => '1', 'label' => __('products.active')],
+                        ['value' => '0', 'label' => __('products.inactive')],
+                    ]"
+                />
             </div>
             <div>
-                <select class="edz-select" wire:model.live="is_featured">
-                    <option value="">{{ __('products.all_featured') }}</option>
-                    <option value="1">{{ __('products.featured') }}</option>
-                    <option value="0">{{ __('products.not_featured') }}</option>
-                </select>
+                <x-edz.select
+                    wire:model.live="is_featured"
+                    :options="[
+                        ['value' => '', 'label' => __('products.all_featured')],
+                        ['value' => '1', 'label' => __('products.featured')],
+                        ['value' => '0', 'label' => __('products.not_featured')],
+                    ]"
+                />
             </div>
             <div>
                 <input type="date" class="edz-input" wire:model.live="created_at">

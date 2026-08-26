@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Validator;
 
 ?>
 
-<div x-data="{ openFilter: null, openColToggle: false, filterPos: { top: 0, left: 0 }, positionFilter(e) { let r = e.currentTarget.getBoundingClientRect(); this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) }; } }">
+<div x-data="{ openFilter: null, openColToggle: false, filterPos: { top: 0, left: 0 }, positionFilter(e) { let r = e.currentTarget.getBoundingClientRect();
+        this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) }; } }">
     
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <?php if (isset($component)) { $__componentOriginal64446345db7363332d7ff2707d878bc4 = $component; } ?>
@@ -43,7 +44,6 @@ use Illuminate\Support\Facades\Validator;
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($orders['filtered_total'])): ?>
             <div class="flex items-center gap-6 px-4 py-2 mb-4 text-sm text-ink-muted">
                 <span><?php echo e($orders['filtered_total']); ?> <?php echo e(__('merchant.orders_count')); ?></span>
-                <span class="font-semibold text-ink"><?php echo e(currency($orders['filtered_amount'] ?? 0)); ?></span>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         <div class="flex items-center gap-2">
@@ -196,7 +196,8 @@ use Illuminate\Support\Facades\Validator;
 
             
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['source'] ? 'text-accent-600' : ''); ?>">
+                <button @click="open = !open"
+                    class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['source'] ? 'text-accent-600' : ''); ?>">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -253,7 +254,8 @@ use Illuminate\Support\Facades\Validator;
 
             
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['delivery_type'] ? 'text-accent-600' : ''); ?>">
+                <button @click="open = !open"
+                    class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['delivery_type'] ? 'text-accent-600' : ''); ?>">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'home','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -310,7 +312,8 @@ use Illuminate\Support\Facades\Validator;
 
             
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['shipping_provider'] ? 'text-accent-600' : ''); ?>">
+                <button @click="open = !open"
+                    class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->filters['shipping_provider'] ? 'text-accent-600' : ''); ?>">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'truck','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -411,7 +414,8 @@ use Illuminate\Support\Facades\Validator;
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(array_filter($this->filters)): ?>
         <div class="mb-3 flex items-center gap-2 flex-wrap">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['wilaya'])): ?>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     <?php echo e(collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? ''); ?>
 
                     <button wire:click="setFilter('wilaya', null)" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -437,7 +441,8 @@ use Illuminate\Support\Facades\Validator;
                 </span>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['city'])): ?>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     <?php echo e(collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? ''); ?>
 
                     <button wire:click="setFilter('city', null)" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -465,10 +470,12 @@ use Illuminate\Support\Facades\Validator;
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['status'])): ?>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStatuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($s['id'], $this->filters['status'])): ?>
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                             <?php echo e($s['label']); ?>
 
-                            <button wire:click="toggleStatusFilter('<?php echo e($s['id']); ?>')" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                            <button wire:click="toggleStatusFilter('<?php echo e($s['id']); ?>')"
+                                class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -493,7 +500,8 @@ use Illuminate\Support\Facades\Validator;
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['assigned_to'])): ?>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     <?php echo e(collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? ''); ?>
 
                     <button wire:click="setFilter('assigned_to', null)" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -519,10 +527,12 @@ use Illuminate\Support\Facades\Validator;
                 </span>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['date_from']) || !empty($this->filters['date_to'])): ?>
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     <?php echo e($this->filters['date_from'] ?? '...'); ?> — <?php echo e($this->filters['date_to'] ?? '...'); ?>
 
-                    <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                    <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
+                        class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -575,18 +585,23 @@ use Illuminate\Support\Facades\Validator;
 
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->showTrash): ?>
-        <div class="mb-4 p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 rounded-xl flex items-center justify-between">
+        <div
+            class="mb-4 p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 rounded-xl flex items-center justify-between">
             <span class="text-sm text-warning-700 dark:text-warning-400 font-medium">
                 <?php echo e(__('merchant.trash_bin')); ?> — <?php echo e($orders['total'] ?? 0); ?>
 
             </span>
             <div class="flex gap-2">
-                <button wire:click="restoreAll" class="edz-btn edz-btn--ghost edz-btn--sm"><?php echo e(__('merchant.restore_all')); ?></button>
-                <button x-data x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.forceDeleteAll() })()" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600"><?php echo e(__('merchant.empty_trash')); ?></button>
+                <button wire:click="restoreAll"
+                    class="edz-btn edz-btn--ghost edz-btn--sm"><?php echo e(__('merchant.restore_all')); ?></button>
+                <button x-data
+                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.forceDeleteAll() })()"
+                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600"><?php echo e(__('merchant.empty_trash')); ?></button>
             </div>
         </div>
     <?php elseif(count($this->selectedOrders) > 0): ?>
-        <div class="mb-4 p-3 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-700 rounded-xl flex items-center justify-between sticky top-0 z-30">
+        <div
+            class="mb-4 p-3 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-700 rounded-xl flex items-center justify-between sticky top-0 z-30">
             <span class="text-sm text-accent-700 dark:text-accent-400 font-medium">
                 <?php echo e(count($this->selectedOrders)); ?> <?php echo e(__('merchant.orders_count')); ?>
 
@@ -618,7 +633,8 @@ use Illuminate\Support\Facades\Validator;
                         <?php echo e(__('merchant.bulk_assign_agent')); ?>
 
                     </button>
-                    <div x-show="open" x-transition class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
+                    <div x-show="open" x-transition
+                        class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allMembers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <button wire:click="bulkAssignAgent('<?php echo e($m['id']); ?>')"
                                 class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
@@ -656,7 +672,8 @@ use Illuminate\Support\Facades\Validator;
                             <?php echo e(__('merchant.bulk_send_carrier')); ?>
 
                         </button>
-                        <div x-show="open" x-transition class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                        <div x-show="open" x-transition
+                            class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allProviders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <button wire:click="bulkSendToCarrier('<?php echo e($pr['id']); ?>')"
                                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
@@ -669,7 +686,9 @@ use Illuminate\Support\Facades\Validator;
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 
-                <button x-data x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.bulkDelete() })()" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">
+                <button x-data
+                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.bulkDelete() })()"
+                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -866,23 +885,28 @@ use Illuminate\Support\Facades\Validator;
                                             class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                     </th>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('number', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.number')); ?></th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('customer', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.customer')); ?></th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('phone', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.phone')); ?></th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('wilaya', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.state')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'wilaya' ? null : 'wilaya'; if (openFilter === 'wilaya') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'wilaya' ? null : 'wilaya'; if (openFilter === 'wilaya') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(filled($this->filters['wilaya']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -906,17 +930,20 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['wilaya'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('products', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.products')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'product' ? null : 'product'; if (openFilter === 'product') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'product' ? null : 'product'; if (openFilter === 'product') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(filled($this->filters['product']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -940,17 +967,20 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['product'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('amount', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.amount')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'amount' ? null : 'amount'; if (openFilter === 'amount') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'amount' ? null : 'amount'; if (openFilter === 'amount') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(filled($this->filters['amount_min']) || filled($this->filters['amount_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -974,17 +1004,20 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['amount_min']) || filled($this->filters['amount_max'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('status', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.status')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'status' ? null : 'status'; if (openFilter === 'status') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'status' ? null : 'status'; if (openFilter === 'status') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(!empty($this->filters['status']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -1008,17 +1041,20 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->filters['status'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('assigned_agent', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.agent')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'assigned_to' ? null : 'assigned_to'; if (openFilter === 'assigned_to') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'assigned_to' ? null : 'assigned_to'; if (openFilter === 'assigned_to') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(filled($this->filters['assigned_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -1042,17 +1078,20 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['assigned_to'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('created_at', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group w-[150px]">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group w-[150px]">
                                             <div class="flex items-center gap-1">
                                                 <?php echo e(__('merchant_panel.date')); ?>
 
-                                                <button data-filter-btn @click.stop="openFilter = openFilter === 'date' ? null : 'date'; if (openFilter === 'date') positionFilter($event)"
+                                                <button data-filter-btn
+                                                    @click.stop="openFilter = openFilter === 'date' ? null : 'date'; if (openFilter === 'date') positionFilter($event)"
                                                     class="shrink-0 <?php echo e(filled($this->filters['date_from']) || filled($this->filters['date_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted'); ?> transition">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -1076,31 +1115,36 @@ use Illuminate\Support\Facades\Validator;
 <?php endif; ?>
                                                 </button>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['date_from']) || filled($this->filters['date_to'])): ?>
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                    <span
+                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('confirmation_attempts', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.attempts')); ?>
 
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('last_contact', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.last_contact')); ?>
 
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('weight', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.weight')); ?>
 
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('shipment_type', $this->visibleColumns)): ?>
-                                        <th class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             <?php echo e(__('merchant_panel.shipment')); ?>
 
                                         </th>
@@ -1115,7 +1159,8 @@ use Illuminate\Support\Facades\Validator;
                                         $transitions = $order['transitions'] ?? [];
                                         $orderId = $order['id'] ?? '';
                                     ?>
-                                    <tr class="hover:bg-surface-50 dark:hover:bg-ink-800/50 <?php echo e(in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : ''); ?>">
+                                    <tr
+                                        class="hover:bg-surface-50 dark:hover:bg-ink-800/50 <?php echo e(in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : ''); ?>">
                                         <td class="px-3 py-3 w-10">
                                             <input type="checkbox" value="<?php echo e($orderId); ?>"
                                                 wire:click="toggleSelectOrder('<?php echo e($orderId); ?>')"
@@ -1176,8 +1221,7 @@ use Illuminate\Support\Facades\Validator;
                                                         open = !open;
                                                     "
                                                         x-ref="trigger"
-                                                        class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80"
-                                                        style="background: <?php echo e(match ($order['status']['color'] ?? 'gray') {'success' => '#dcfce7','info' => '#dbeafe','warning' => '#fef3c7','danger' => '#fecaca',default => '#f3f4f6'}); ?>; color: <?php echo e(match ($order['status']['color'] ?? 'gray') {'success' => '#166534','info' => '#1e40af','warning' => '#92400e','danger' => '#991b1b',default => '#374151'}); ?>;">
+                                                        class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80 <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color()); ?>">
                                                         <?php echo e($order['status']['label'] ?? '—'); ?>
 
                                                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -1212,7 +1256,7 @@ use Illuminate\Support\Facades\Validator;
                                                                     @click="open = false"
                                                                     class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 <?php echo e($s['id'] == $order['status_id'] ? 'font-bold' : ''); ?>">
                                                                     <span class="w-2 h-2 rounded-full shrink-0"
-                                                                        style="background: <?php echo e(match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'}); ?>"></span>
+                                                                        style="background: <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex()); ?>"></span>
                                                                     <?php echo e($s['label']); ?>
 
                                                                 </button>
@@ -1398,7 +1442,8 @@ use Illuminate\Support\Facades\Validator;
                                             <td colspan="99" class="px-4 py-4 bg-surface-50 dark:bg-ink-800/30">
                                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                                                     <div>
-                                                        <h4 class="font-semibold text-ink mb-2"><?php echo e(__('merchant_panel.items')); ?></h4>
+                                                        <h4 class="font-semibold text-ink mb-2">
+                                                            <?php echo e(__('merchant_panel.items')); ?></h4>
                                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $order['items_summary'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                                             <div
                                                                 class="flex justify-between py-1 border-b border-surface-200 dark:border-ink-700">
@@ -1415,7 +1460,8 @@ use Illuminate\Support\Facades\Validator;
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <h4 class="font-semibold text-ink mb-2"><?php echo e(__('merchant_panel.details')); ?></h4>
+                                                        <h4 class="font-semibold text-ink mb-2">
+                                                            <?php echo e(__('merchant_panel.details')); ?></h4>
                                                         <dl class="space-y-1 text-ink-muted">
                                                             <div class="flex justify-between">
                                                                 <dt><?php echo e(__('merchant_panel.delivery')); ?>:</dt>
@@ -1453,7 +1499,8 @@ use Illuminate\Support\Facades\Validator;
                                                         </dl>
                                                     </div>
                                                     <div>
-                                                        <h4 class="font-semibold text-ink mb-2"><?php echo e(__('merchant_panel.assignment')); ?></h4>
+                                                        <h4 class="font-semibold text-ink mb-2">
+                                                            <?php echo e(__('merchant_panel.assignment')); ?></h4>
                                                         <dl class="space-y-1 text-ink-muted">
                                                             <div class="flex justify-between">
                                                                 <dt><?php echo e(__('merchant_panel.agent')); ?>:</dt>
@@ -1493,6 +1540,53 @@ use Illuminate\Support\Facades\Validator;
                                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                                         </dl>
                                                     </div>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order['tracking'] ?? null): ?>
+                                                        <div>
+                                                            <h4 class="font-semibold text-ink mb-2">
+                                                                <?php echo e(__('merchant_panel.tracking')); ?></h4>
+                                                            <dl class="space-y-1 text-ink-muted">
+                                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order['tracking']['shipping_provider']): ?>
+                                                                    <div class="flex justify-between">
+                                                                        <dt><?php echo e(__('merchant_panel.carrier')); ?>:</dt>
+                                                                        <dd class="text-ink">
+                                                                            <?php echo e($order['tracking']['shipping_provider']); ?>
+
+                                                                        </dd>
+                                                                    </div>
+                                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order['tracking']['tracking_number']): ?>
+                                                                    <div class="flex justify-between">
+                                                                        <dt><?php echo e(__('merchant_panel.tracking_number')); ?>:
+                                                                        </dt>
+                                                                        <dd class="text-ink font-mono">
+                                                                            <?php echo e($order['tracking']['tracking_number']); ?>
+
+                                                                        </dd>
+                                                                    </div>
+                                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order['tracking']['shipped_at']): ?>
+                                                                    <div class="flex justify-between">
+                                                                        <dt><?php echo e(__('merchant_panel.shipped_at')); ?>:
+                                                                        </dt>
+                                                                        <dd class="text-ink">
+                                                                            <?php echo e($order['tracking']['shipped_at']); ?>
+
+                                                                        </dd>
+                                                                    </div>
+                                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order['tracking']['delivered_at']): ?>
+                                                                    <div class="flex justify-between">
+                                                                        <dt><?php echo e(__('merchant_panel.delivered_at')); ?>:
+                                                                        </dt>
+                                                                        <dd class="text-ink">
+                                                                            <?php echo e($order['tracking']['delivered_at']); ?>
+
+                                                                        </dd>
+                                                                    </div>
+                                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                            </dl>
+                                                        </div>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1523,7 +1617,6 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f; ?>
 <?php unset($__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f); ?>
 <?php endif; ?>
-
                 <?php else: ?>
                     <div class="p-8 text-center text-ink-muted">
                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -1557,25 +1650,23 @@ use Illuminate\Support\Facades\Validator;
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showCreateModal || $showEditModal): ?>
         <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'showCloseButton' => false,'size' => 'lg','wire:key' => 'order-create-edit-'.e($showCreateModal ? 'create' : 'edit').'-'.e($showEditModal ? $editingOrderId : 'new').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'showCloseButton' => false,'preventClose' => true,'size' => 'lg','wire:key' => 'order-create-edit-'.e($showCreateModal ? 'create' : 'edit').'-'.e($showEditModal ? $editingOrderId : 'new').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['isOpen' => true,'showCloseButton' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false),'size' => 'lg','wire:key' => 'order-create-edit-'.e($showCreateModal ? 'create' : 'edit').'-'.e($showEditModal ? $editingOrderId : 'new').'']); ?>
+<?php $component->withAttributes(['isOpen' => true,'showCloseButton' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(false),'preventClose' => true,'size' => 'lg','wire:key' => 'order-create-edit-'.e($showCreateModal ? 'create' : 'edit').'-'.e($showEditModal ? $editingOrderId : 'new').'']); ?>
             <form wire:submit="<?php echo e($showEditModal ? 'submitEdit' : 'submitCreate'); ?>">
                 <div class="p-6 space-y-5">
+                    
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-ink">
-                            <?php echo e($showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order')); ?></h3>
-                        <div class="flex items-center gap-2">
-                            <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm"
-                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
-                                <?php echo e($showEditModal ? __('merchant_panel.update') : __('merchant_panel.create')); ?>
+                            <?php echo e($showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order')); ?>
 
-                            </button>
+                        </h3>
+                        <div class="flex items-center gap-2">
                             <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                 wire:click="<?php echo e($showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)'); ?>">
                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -1639,13 +1730,26 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         </div>
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.state')); ?></label>
-                            <select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                class="edz-input text-sm">
-                                <option value="">—</option>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $st): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($st['id']); ?>"><?php echo e($st['name']); ?></option>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </select>
+                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => $this->allStates,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allStates),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.state_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -1659,12 +1763,26 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         </div>
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.city')); ?></label>
-                            <select wire:model="form.city_id" class="edz-input text-sm">
-                                <option value="">—</option>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allCities; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $city): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($city['id']); ?>"><?php echo e($city['name']); ?></option>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </select>
+                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.city_id','options' => $this->allCities,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.city_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allCities),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.city_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -1683,27 +1801,121 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     </div>
 
                     
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.delivery')); ?></label>
-                            <select wire:model="form.delivery_type" class="edz-input text-sm">
-                                <option value="home"><?php echo e(__('merchant_panel.home_delivery_label')); ?></option>
-                                <option value="stopdesk"><?php echo e(__('merchant_panel.stop_desk_label')); ?></option>
-                            </select>
+                    <div x-data="{ delivery: $wire.form.delivery_type }" x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
+                        x-effect="delivery = $wire.form.delivery_type">
+                        <label class="edz-label"><?php echo e(__('merchant_panel.delivery')); ?></label>
+                        <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
+                            <button type="button"
+                                :class="delivery === 'home' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                @click="delivery = 'home'" class="px-4 py-2 text-sm font-medium transition-colors">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'home','class' => 'w-4 h-4 inline mr-1']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'home','class' => 'w-4 h-4 inline mr-1']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                <?php echo e(__('merchant_panel.home_delivery_label')); ?>
+
+                            </button>
+                            <button type="button"
+                                :class="delivery === 'stopdesk' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                @click="delivery = 'stopdesk'"
+                                class="px-4 py-2 text-sm font-medium transition-colors">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'building-storefront','class' => 'w-4 h-4 inline mr-1']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'building-storefront','class' => 'w-4 h-4 inline mr-1']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                <?php echo e(__('merchant_panel.stop_desk_label')); ?>
+
+                            </button>
                         </div>
+                    </div>
+
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.shipment')); ?></label>
-                            <select wire:model="form.shipment_type" class="edz-input text-sm">
-                                <option value="delivery"><?php echo e(__('merchant_panel.delivery')); ?></option>
-                                <option value="exchange"><?php echo e(__('merchant_panel.exchange_label')); ?></option>
-                                <option value="pickup"><?php echo e(__('merchant_panel.pickup_label')); ?></option>
-                            </select>
+                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipment_type','options' => [
+                                ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+                                ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
+                                ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
+                            ],'size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.shipment_type','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([
+                                ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+                                ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
+                                ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
+                            ]),'size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
                         </div>
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.payment_method')); ?></label>
-                            <select wire:model="form.payment_method" class="edz-input text-sm">
-                                <option value="cod"><?php echo e(__('merchant_panel.cod')); ?></option>
-                            </select>
+                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.payment_method','options' => [['value' => 'cod', 'label' => __('merchant_panel.cod')]],'size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.payment_method','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([['value' => 'cod', 'label' => __('merchant_panel.cod')]]),'size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
                         </div>
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.weight_kg')); ?></label>
@@ -1713,75 +1925,469 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     </div>
 
                     
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="{
-                        get desks() {
-                            const all = <?php echo e(\Illuminate\Support\Js::from($editDesks)); ?>;
-                            const pid = $wire.form.shipping_provider_id || '';
-                            const sid = $wire.form.state_id || '';
-                            const sel = $wire.form.stopdesk_point_id || '';
-                            return all
-                                .filter(d =>
-                                    d.id === sel ||
-                                    (!pid || d.shipping_provider_id === pid) &&
-                                    (!sid || d.state_id === sid))
-                                .sort((a, b) =>
-                                    (b.city_id === ($wire.form.city_id || '')) -
-                                    (a.city_id === ($wire.form.city_id || '')));
-                        }
-                    }">
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.shipping_company')); ?></label>
-                            <select wire:model="form.shipping_provider_id" class="edz-input text-sm">
-                                <option value="">—</option>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $editProviders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $provider): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <option value="<?php echo e($provider['id']); ?>"><?php echo e($provider['name']); ?></option>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </select>
-                            <span class="text-xs text-gray-400 mt-1 block"><?php echo e(__('merchant_panel.assigned_at_confirmation')); ?></span>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showEditModal): ?>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="{
+                            get desks() {
+                                const all = <?php echo e(\Illuminate\Support\Js::from($editDesks)); ?>;
+                                const pid = $wire.form.shipping_provider_id || '';
+                                const sid = $wire.form.state_id || '';
+                                const sel = $wire.form.stopdesk_point_id || '';
+                                return all
+                                    .filter(d =>
+                                        d.id === sel ||
+                                        (!pid || d.shipping_provider_id === pid) &&
+                                        (!sid || d.state_id === sid))
+                                    .sort((a, b) =>
+                                        (b.city_id === ($wire.form.city_id || '')) -
+                                        (a.city_id === ($wire.form.city_id || '')));
+                            }
+                        }">
+                            <div>
+                                <label class="edz-label"><?php echo e(__('merchant_panel.shipping_company')); ?></label>
+                                <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipping_provider_id','options' => $editProviders,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.shipping_provider_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($editProviders),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+                            </div>
+                            <div>
+                                <label class="edz-label"><?php echo e(__('merchant_panel.pickup_desk')); ?></label>
+                                <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
+                                    <option value="">—</option>
+                                    <template x-for="desk in desks" :key="desk.id">
+                                        <option :value="desk.id"
+                                            x-text="desk.name + ' - ' + (desk.address || '')">
+                                        </option>
+                                    </template>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.pickup_desk')); ?></label>
-                            <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
-                                <option value="">—</option>
-                                <template x-for="desk in desks" :key="desk.id">
-                                    <option :value="desk.id" x-text="desk.name + ' - ' + (desk.address || '')">
-                                    </option>
-                                </template>
-                            </select>
-                            <span class="text-xs text-gray-400 mt-1 block"><?php echo e(__('merchant_panel.stopdesk_orders_only')); ?></span>
-                        </div>
-                    </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     
-                    <div>
+                    <div x-data="{
+                        open: false,
+                        popupTop: 0,
+                        popupLeft: 0,
+                        popupWidth: 0,
+                        updatePosition() {
+                            const input = this.$refs.searchInput;
+                            if (!input) return;
+                            const rect = input.getBoundingClientRect();
+                            this.popupTop = rect.bottom + 4;
+                            this.popupLeft = rect.left;
+                            this.popupWidth = rect.width;
+                        },
+                        openPicker() {
+                            this.updatePosition();
+                            this.open = true;
+                        },
+                        closePicker() { this.open = false; },
+                        scheduleClose() { setTimeout(() => this.closePicker(), 180); }
+                    }" class="relative">
                         <label class="edz-label"><?php echo e(__('merchant_panel.products')); ?></label>
-                        <input type="text" wire:model.live.debounce.300ms="formProductSearch"
-                            placeholder="<?php echo e(__('merchant_panel.search_products_placeholder')); ?>" class="edz-input text-sm mb-2">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($formProductResults)): ?>
-                            <div class="border border-surface-border rounded-lg max-h-40 overflow-y-auto mb-2">
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $formProductResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pv): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <button wire:click="addFormItem('<?php echo e($pv['id']); ?>')"
-                                        class="w-full text-left px-3 py-2 text-sm hover:bg-surface-secondary dark:hover:bg-ink-700 flex justify-between">
-                                        <span><?php echo e($pv['product']['name'] ?? ''); ?> — <?php echo e($pv['name']); ?></span>
-                                        <span class="text-ink-muted"><?php echo e(currency($pv['price'] ?? 0)); ?></span>
-                                    </button>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </div>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
+                        
+                        <div class="relative">
+                            <input type="text" wire:model.live.debounce.300ms="formProductSearch"
+                                x-ref="searchInput" placeholder="<?php echo e(__('merchant_panel.search_products_barcode')); ?>"
+                                class="edz-input text-sm pr-10" @focus="openPicker()" @blur="scheduleClose()"
+                                @keydown.escape="closePicker(); $el.blur()"
+                                @keydown.enter.prevent="$wire.addFormItemByBarcode($event.target.value); $event.target.value = ''">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'qr-code','class' => 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'qr-code','class' => 'w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                        </div>
+
+                        
+                        <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 scale-[0.97]"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-[0.97]" @mousedown.prevent="open = true"
+                            :style="`position:fixed; top:${popupTop}px; left:${popupLeft}px; width:${popupWidth}px; z-index:70;`"
+                            class="bg-surface dark:bg-ink-800 border border-surface-border dark:border-ink-600 rounded-xl shadow-2xl max-h-[50vh] overflow-hidden flex flex-col">
+
+                            
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($formProductResults)): ?>
+                                <div class="overflow-y-auto flex-1 divide-y divide-surface-border dark:divide-ink-700">
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $formProductResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pv): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($pv['product_id']) && isset($pv['has_variants'])): ?>
+                                            
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1): ?>
+                                                <button type="button"
+                                                    wire:click="selectProduct('<?php echo e($pv['product_id']); ?>')"
+                                                    class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
+                                                    <img src="<?php echo e($pv['image_url'] ?? asset('img/icons/noimg.png')); ?>"
+                                                        alt=""
+                                                        class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="font-medium text-ink truncate">
+                                                            <?php echo e($pv['product_name']); ?></div>
+                                                        <div class="text-xs text-ink-muted mt-0.5">
+                                                            <?php echo e($pv['variant_count']); ?>
+
+                                                            <?php echo e(__('merchant_panel.variants')); ?>
+
+                                                        </div>
+                                                    </div>
+                                                    <span class="text-xs text-ink-muted shrink-0">
+                                                        <?php echo e(currency($pv['min_price'])); ?>
+
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($pv['min_price'] != $pv['max_price']): ?>
+                                                            — <?php echo e(currency($pv['max_price'])); ?>
+
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    </span>
+                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'chevron-right','class' => 'w-4 h-4 text-ink-muted shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'chevron-right','class' => 'w-4 h-4 text-ink-muted shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                </button>
+
+                                                
+                                            <?php elseif($pv['first_variant']): ?>
+                                                <button type="button"
+                                                    wire:click="addFormItem('<?php echo e($pv['first_variant']['id']); ?>')"
+                                                    class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
+                                                    <img src="<?php echo e($pv['image_url'] ?? asset('img/icons/noimg.png')); ?>"
+                                                        alt=""
+                                                        class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="font-medium text-ink truncate">
+                                                            <?php echo e($pv['product_name']); ?></div>
+                                                        <div class="text-xs text-ink-muted mt-0.5">
+                                                            SKU: <?php echo e($pv['first_variant']['sku'] ?? '—'); ?>
+
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($pv['first_variant']['stock'] ?? 0) <= 0): ?>
+                                                                <span
+                                                                    class="text-danger-500 ml-2"><?php echo e(__('merchant_panel.out_of_stock')); ?></span>
+                                                            <?php elseif(($pv['first_variant']['stock'] ?? 0) <= 5): ?>
+                                                                <span
+                                                                    class="text-warning-500 ml-2"><?php echo e($pv['first_variant']['stock']); ?>
+
+                                                                    <?php echo e(__('merchant_panel.left')); ?></span>
+                                                            <?php else: ?>
+                                                                <span
+                                                                    class="text-success-500 ml-2"><?php echo e($pv['first_variant']['stock']); ?>
+
+                                                                    <?php echo e(__('merchant_panel.left')); ?></span>
+                                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                    <span
+                                                        class="text-ink font-semibold shrink-0"><?php echo e(currency($pv['first_variant']['price'])); ?></span>
+                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'plus','class' => 'w-4 h-4 text-primary-500 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'plus','class' => 'w-4 h-4 text-primary-500 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                </button>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <?php else: ?>
+                                            
+                                            <button type="button" wire:click="addFormItem('<?php echo e($pv['id']); ?>')"
+                                                class="w-full text-left px-3 py-2.5 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors">
+                                                <img src="<?php echo e($pv['image_url'] ?? asset('img/icons/noimg.png')); ?>"
+                                                    alt=""
+                                                    class="w-10 h-10 rounded-lg object-cover bg-surface-secondary shrink-0">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-medium text-ink truncate">
+                                                        <?php echo e($pv['product']['name'] ?? ''); ?> — <?php echo e($pv['name']); ?>
+
+                                                    </div>
+                                                    <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-2">
+                                                        <span>SKU: <?php echo e($pv['sku'] ?? '—'); ?></span>
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($pv['stock'] ?? 0) <= 0): ?>
+                                                            <span
+                                                                class="text-danger-500 font-medium"><?php echo e(__('merchant_panel.out_of_stock')); ?></span>
+                                                        <?php elseif(($pv['stock'] ?? 0) <= 5): ?>
+                                                            <span
+                                                                class="text-warning-500 font-medium"><?php echo e($pv['stock']); ?>
+
+                                                                <?php echo e(__('merchant_panel.left')); ?></span>
+                                                        <?php else: ?>
+                                                            <span
+                                                                class="text-success-500 font-medium"><?php echo e($pv['stock']); ?>
+
+                                                                <?php echo e(__('merchant_panel.left')); ?></span>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    class="text-ink font-semibold shrink-0"><?php echo e(currency($pv['price'] ?? 0)); ?></span>
+                                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'plus','class' => 'w-4 h-4 text-primary-500 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'plus','class' => 'w-4 h-4 text-primary-500 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                            </button>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="px-4 py-6 text-center text-sm text-ink-muted">
+                                    <?php echo e(__('merchant_panel.no_products_found')); ?>
+
+                                </div>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                            
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($formProductView === 'variants' && $formSelectedProduct): ?>
+                                <div class="border-t border-surface-border dark:border-ink-700">
+                                    <div
+                                        class="px-3 py-2 bg-surface-secondary dark:bg-ink-700/50 flex items-center gap-2">
+                                        <img src="<?php echo e($formSelectedProduct['image_url']); ?>" alt=""
+                                            class="w-6 h-6 rounded object-cover bg-surface shrink-0">
+                                        <span
+                                            class="text-xs font-bold text-ink truncate flex-1"><?php echo e($formSelectedProduct['name']); ?></span>
+                                        <button type="button" wire:click="backToProducts"
+                                            class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 font-medium shrink-0 flex items-center gap-1">
+                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3.5 h-3.5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3.5 h-3.5']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                        </button>
+                                    </div>
+                                    <div
+                                        class="divide-y divide-surface-border dark:divide-ink-700 max-h-40 overflow-y-auto">
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $formSelectedProduct['variants']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $variant): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <div
+                                                class="px-3 py-2 flex items-center gap-2.5 text-sm
+                                                <?php echo e(!$variant['is_active'] || $variant['stock'] <= 0 ? 'opacity-40' : ''); ?>">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-medium text-ink text-xs truncate">
+                                                        <?php echo e($variant['name']); ?></div>
+                                                    <div
+                                                        class="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5">
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($variant['option_labels']): ?>
+                                                            <span><?php echo e($variant['option_labels']); ?></span>
+                                                            <span class="text-surface-border">·</span>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        <span>SKU: <?php echo e($variant['sku'] ?? '—'); ?></span>
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($variant['stock'] <= 0): ?>
+                                                            <span
+                                                                class="text-danger-500 font-medium"><?php echo e(__('merchant_panel.out_of_stock')); ?></span>
+                                                        <?php elseif($variant['stock'] <= 5): ?>
+                                                            <span
+                                                                class="text-warning-500 font-medium"><?php echo e($variant['stock']); ?>
+
+                                                                <?php echo e(__('merchant_panel.left')); ?></span>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    class="text-ink font-semibold text-xs shrink-0"><?php echo e(currency($variant['price'])); ?></span>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($variant['is_active'] && $variant['stock'] > 0): ?>
+                                                    <button type="button"
+                                                        wire:click="addFormItem('<?php echo e($variant['id']); ?>')"
+                                                        class="w-7 h-7 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
+                                                               text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors shrink-0">
+                                                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'plus','class' => 'w-3.5 h-3.5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'plus','class' => 'w-3.5 h-3.5']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                    </button>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+
+                        
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($form['items'])): ?>
-                            <div class="space-y-2 mt-2">
+                            <div class="mt-3 space-y-2">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $form['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $idx => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <div
-                                        class="flex items-center gap-3 p-2 bg-surface-secondary dark:bg-ink-800 rounded-lg text-sm">
-                                        <span class="flex-1 truncate text-ink"><?php echo e($item['name']); ?></span>
-                                        <input type="number" value="<?php echo e($item['quantity']); ?>"
-                                            wire:change="updateFormItemQty(<?php echo e($idx); ?>, parseInt($event.target.value))"
-                                            min="1" class="edz-input text-xs w-16 text-center">
-                                        <span
-                                            class="text-ink-muted w-20 text-right"><?php echo e(currency($item['price'] * $item['quantity'])); ?></span>
-                                        <button wire:click="removeFormItem(<?php echo e($idx); ?>)"
-                                            class="text-danger-400 hover:text-danger-600">
+                                        class="flex items-center gap-3 p-3 bg-surface-secondary dark:bg-ink-800 rounded-lg">
+                                        
+                                        <img src="<?php echo e($item['image_url'] ?? asset('img/icons/noimg.png')); ?>"
+                                            alt=""
+                                            class="w-12 h-12 rounded-lg object-cover bg-surface shrink-0">
+
+                                        
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-sm font-medium text-ink truncate"><?php echo e($item['name']); ?>
+
+                                            </div>
+                                            <div class="text-xs text-ink-muted mt-0.5">
+                                                SKU: <?php echo e($item['sku'] ?? '—'); ?>
+
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($item['stock'] ?? 0) <= 0): ?>
+                                                    <span
+                                                        class="text-danger-500 ml-2"><?php echo e(__('merchant_panel.out_of_stock')); ?></span>
+                                                <?php elseif(($item['stock'] ?? 0) <= 5): ?>
+                                                    <span class="text-warning-500 ml-2"><?php echo e($item['stock']); ?>
+
+                                                        <?php echo e(__('merchant_panel.left')); ?></span>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        
+                                        <div
+                                            class="flex items-center rounded-lg border border-surface-border dark:border-ink-600 overflow-hidden shrink-0">
+                                            <button type="button"
+                                                wire:click="updateFormItemQty(<?php echo e($idx); ?>, <?php echo e(max(1, $item['quantity'] - 1)); ?>)"
+                                                :disabled="<?php echo e($item['quantity'] <= 1 ? 'true' : 'false'); ?>"
+                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
+                                                       text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
+                                                       transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                                                       text-sm font-medium select-none">
+                                                &minus;
+                                            </button>
+                                            <input type="number" value="<?php echo e($item['quantity']); ?>"
+                                                wire:change="updateFormItemQty(<?php echo e($idx); ?>, parseInt($event.target.value))"
+                                                min="1"
+                                                class="w-10 h-8 text-center border-x border-surface-border dark:border-ink-600
+                                                       bg-transparent text-sm font-semibold text-ink
+                                                       focus:outline-none focus:ring-0
+                                                       [appearance:textfield]
+                                                       [&::-webkit-outer-spin-button]:appearance-none
+                                                       [&::-webkit-inner-spin-button]:appearance-none">
+                                            <button type="button"
+                                                wire:click="updateFormItemQty(<?php echo e($idx); ?>, <?php echo e($item['quantity'] + 1); ?>)"
+                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
+                                                       text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
+                                                       transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                                                       text-sm font-medium select-none">
+                                                &plus;
+                                            </button>
+                                        </div>
+
+                                        
+                                        <div class="shrink-0 hidden sm:block">
+                                            <input type="number" value="<?php echo e($item['price']); ?>"
+                                                wire:change="updateFormItemPrice(<?php echo e($idx); ?>, parseFloat($event.target.value))"
+                                                step="10" min="0"
+                                                class="edz-input text-xs w-20 text-center py-1"
+                                                placeholder="<?php echo e(__('merchant_panel.price')); ?>">
+                                        </div>
+
+                                        
+                                        <div class="text-right shrink-0 w-24">
+                                            <div class="text-sm font-bold text-ink tabular-nums">
+                                                <?php echo e(currency($item['price'] * $item['quantity'])); ?></div>
+                                            <div class="text-xs text-ink-muted"><?php echo e($item['quantity']); ?> ×
+                                                <?php echo e(currency($item['price'])); ?></div>
+                                        </div>
+
+                                        
+                                        <button type="button" wire:click="removeFormItem(<?php echo e($idx); ?>)"
+                                            class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors">
                                             <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -1805,19 +2411,130 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                         </button>
                                     </div>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <div class="text-right font-bold text-ink pt-2 border-t border-surface-border">
-                                    <?php echo e(__('merchant_panel.total')); ?>:
-                                    <?php echo e(currency(collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']))); ?>
-
-                                </div>
                             </div>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
                     
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($form['items'])): ?>
+                        <?php
+                            $subtotal = collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
+                            $totalWeight = collect($form['items'])->sum(fn($i) => ($i['weight'] ?? 0) * $i['quantity']);
+                            $discount = 0;
+                            if ($form['discount_type'] && $form['discount_value']) {
+                                $discount =
+                                    $form['discount_type'] === 'amount'
+                                        ? (float) $form['discount_value']
+                                        : round(($subtotal * (float) $form['discount_value']) / 100, 2);
+                            }
+                            $grandTotal = max(0, $subtotal - $discount);
+                        ?>
+                        <div class="bg-surface-secondary dark:bg-ink-800 rounded-lg p-4">
+                            
+                            <div class="flex items-center justify-between gap-4 flex-wrap">
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.items')); ?>:</span>
+                                    <span
+                                        class="font-semibold text-ink"><?php echo e(collect($form['items'])->sum('quantity')); ?></span>
+                                </div>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.subtotal')); ?>:</span>
+                                    <span
+                                        class="font-semibold text-ink tabular-nums"><?php echo e(currency($subtotal)); ?></span>
+                                </div>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($totalWeight > 0): ?>
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <span class="text-ink-muted"><?php echo e(__('merchant_panel.total_weight')); ?>:</span>
+                                        <span
+                                            class="font-medium text-ink tabular-nums"><?php echo e(number_format($totalWeight, 2)); ?>
+
+                                            kg</span>
+                                    </div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <div class="flex items-center gap-4 text-sm">
+                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.delivery_cost')); ?>:</span>
+                                    <span class="text-success-500 font-medium"><?php echo e(__('merchant_panel.free')); ?></span>
+                                </div>
+                            </div>
+
+                            
+                            <div
+                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                <div class="flex items-center gap-2">
+                                    <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.discount_type','options' => [
+                                        ['value' => '', 'label' => __('merchant_panel.discount')],
+                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
+                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
+                                    ],'size' => 'sm','class' => 'w-28']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.discount_type','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([
+                                        ['value' => '', 'label' => __('merchant_panel.discount')],
+                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
+                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
+                                    ]),'size' => 'sm','class' => 'w-28']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($form['discount_type']): ?>
+                                        <input type="number" wire:model="form.discount_value"
+                                            class="edz-input text-xs py-1 w-20" min="0"
+                                            placeholder="<?php echo e($form['discount_type'] === 'percent' ? '%' : 'DZD'); ?>">
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($form['discount_type'] && $form['discount_value']): ?>
+                                        <input type="text" wire:model="form.discount_reason"
+                                            class="edz-input text-xs py-1 flex-1 max-w-xs"
+                                            placeholder="<?php echo e(__('merchant_panel.discount_reason')); ?>">
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                </div>
+                                <span
+                                    class="text-sm font-medium tabular-nums <?php echo e($discount > 0 ? 'text-danger-500' : 'text-ink-muted'); ?>">
+                                    <?php echo e($discount > 0 ? '-' . currency($discount) : '—'); ?>
+
+                                </span>
+                            </div>
+
+                            
+                            <div
+                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                <span class="text-base font-bold text-ink"><?php echo e(__('merchant_panel.total')); ?></span>
+                                <span
+                                    class="text-lg font-bold text-ink tabular-nums"><?php echo e(currency($grandTotal)); ?></span>
+                            </div>
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    
                     <div>
                         <label class="edz-label"><?php echo e(__('merchant_panel.notes')); ?></label>
                         <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
+                    </div>
+
+                    
+                    <div class="flex justify-end gap-2 pt-2 border-t border-surface-border">
+                        <button type="button" class="edz-btn edz-btn--ghost"
+                            wire:click="<?php echo e($showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)'); ?>">
+                            <?php echo e(__('buttons.cancel')); ?>
+
+                        </button>
+                        <button type="submit" class="edz-btn edz-btn--primary" wire:loading.attr="disabled"
+                            wire:loading.class="opacity-50 pointer-events-none">
+                            <?php echo e($showEditModal ? __('merchant_panel.update') : __('merchant_panel.create')); ?>
+
+                        </button>
                     </div>
                 </div>
             </form>
@@ -1849,19 +2566,33 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <h3 class="text-lg font-bold text-ink"><?php echo e(__('merchant_panel.reassign_order')); ?></h3>
                 <div>
                     <label class="edz-label"><?php echo e(__('merchant_panel.assign_to')); ?> *</label>
-                    <select wire:model="reassignMembershipId" class="edz-input text-sm">
-                        <option value="">— <?php echo e(__('merchant_panel.select_agent')); ?> —</option>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $allMembers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <option value="<?php echo e($m['id']); ?>"><?php echo e($m['user']['name'] ?? $m['id']); ?></option>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    </select>
+                    <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'reassignMembershipId','options' => $allMembers,'optionValue' => 'id','optionLabel' => 'user.name','placeholder' => ''.e(__('merchant_panel.select_agent')).'','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'reassignMembershipId','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($allMembers),'option-value' => 'id','option-label' => 'user.name','placeholder' => ''.e(__('merchant_panel.select_agent')).'','size' => 'sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                         wire:click="set('showReassignModal', false)"><?php echo e(__('merchant_panel.cancel')); ?></button>
-                    <button wire:click="submitReassign"
-                        class="edz-btn edz-btn--primary edz-btn--sm"
-                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"><?php echo e(__('merchant_panel.reassign')); ?></button>
+                    <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
+                        wire:loading.attr="disabled"
+                        wire:loading.class="opacity-50 pointer-events-none"><?php echo e(__('merchant_panel.reassign')); ?></button>
                 </div>
             </div>
          <?php echo $__env->renderComponent(); ?>
@@ -1881,9 +2612,11 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         :style="`top: ${filterPos.top}px; left: ${filterPos.left}px`"
         class="fixed z-50 p-2 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg"
         :class="{
-            'max-h-64 overflow-y-auto edz-scroll': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to',
+            'max-h-64 overflow-y-auto edz-scroll': openFilter === 'wilaya' || openFilter === 'status' ||
+                openFilter === 'assigned_to',
             'w-48': openFilter === 'product' || openFilter === 'amount',
-            'w-52': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to' || openFilter === 'date'
+            'w-52': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to' ||
+                openFilter === 'date'
         }">
 
         
@@ -1894,7 +2627,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     —
                 </button>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $st): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click="$wire.setFilter('wilaya', '<?php echo e($st['id']); ?>'); $wire.loadFilterCities('<?php echo e($st['id']); ?>')"
+                    <button
+                        @click="$wire.setFilter('wilaya', '<?php echo e($st['id']); ?>'); $wire.loadFilterCities('<?php echo e($st['id']); ?>')"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : ''); ?>"
                         data-name="<?php echo e($st['name']); ?>">
                         <?php echo e($st['name']); ?>
@@ -1908,8 +2642,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('products', $this->visibleColumns)): ?>
             <div x-show="openFilter === 'product'" x-cloak>
                 <input type="text" wire:model.live.debounce.300ms="filters.product"
-                    placeholder="<?php echo e(__('merchant_panel.products')); ?>..."
-                    class="edz-input text-xs w-full">
+                    placeholder="<?php echo e(__('merchant_panel.products')); ?>..." class="edz-input text-xs w-full">
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -1917,10 +2650,10 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('amount', $this->visibleColumns)): ?>
             <div x-show="openFilter === 'amount'" x-cloak>
                 <div class="flex gap-1">
-                    <input type="number" wire:model.live.debounce.500ms="filters.amount_min"
-                        placeholder="Min" class="edz-input text-xs flex-1">
-                    <input type="number" wire:model.live.debounce.500ms="filters.amount_max"
-                        placeholder="Max" class="edz-input text-xs flex-1">
+                    <input type="number" wire:model.live.debounce.500ms="filters.amount_min" placeholder="Min"
+                        class="edz-input text-xs flex-1">
+                    <input type="number" wire:model.live.debounce.500ms="filters.amount_max" placeholder="Max"
+                        class="edz-input text-xs flex-1">
                 </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -1929,7 +2662,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('status', $this->visibleColumns)): ?>
             <div x-show="openFilter === 'status'" x-cloak>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStatuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
+                    <label
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
                         data-name="<?php echo e($s['label']); ?>">
                         <input type="checkbox" value="<?php echo e($s['id']); ?>"
                             wire:click="toggleStatusFilter('<?php echo e($s['id']); ?>')"
@@ -1968,11 +2702,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             <div x-show="openFilter === 'date'" x-cloak>
                 <div class="flex flex-col gap-1">
                     <input type="text" wire:model.blur="filters.date_from"
-                        class="edz-input text-xs w-full flatpickr-input"
-                        placeholder="From" autocomplete="off">
+                        class="edz-input text-xs w-full flatpickr-input" placeholder="From" autocomplete="off">
                     <input type="text" wire:model.blur="filters.date_to"
-                        class="edz-input text-xs w-full flatpickr-input"
-                        placeholder="To" autocomplete="off">
+                        class="edz-input text-xs w-full flatpickr-input" placeholder="To" autocomplete="off">
                 </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>

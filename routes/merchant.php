@@ -74,6 +74,7 @@ Route::prefix('merchant')
 
         Volt::route('/{store:slug}/teams', 'merchant.teams.index')->name('teams.index');
         Volt::route('/{store:slug}/orders', 'merchant.orders.index')->name('orders.index');
+        Volt::route('/{store:slug}/returns', 'merchant.returns.index')->name('returns.index');
         Volt::route('/{store:slug}/order-settings', 'merchant.order-settings')->name('order-settings');
         Volt::route('/{store:slug}/storefront-settings', 'merchant.storefront-settings')->name('storefront-settings');
         Volt::route('/{store:slug}/settings', 'merchant.store-settings')->name('store-settings');

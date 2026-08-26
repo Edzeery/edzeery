@@ -2,6 +2,7 @@
     'isOpen' => false,
     'showCloseButton' => true,
     'size' => 'md',
+    'preventClose' => false,
 ])
 
 @php
@@ -10,6 +11,7 @@
 
 <div x-data='{
     open: @js($isOpen),
+    preventClose: @js($preventClose),
     init() {
         this.$watch("open", value => {
             if (value) {
@@ -20,12 +22,12 @@
             }
         });
     }
-}' x-show="open" x-cloak @keydown.escape.window="open = false"
+}' x-show="open" x-cloak @keydown.escape.window="if (!preventClose) open = false"
     class="edz-modal"
     {{ $attributes->except('class') }}>
 
     <!-- Backdrop -->
-    <div @click="open = false" class="edz-modal__backdrop"
+    <div @click="if (!preventClose) open = false" class="edz-modal__backdrop"
         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
         x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">

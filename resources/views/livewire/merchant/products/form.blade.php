@@ -590,12 +590,11 @@ $wizardSteps = computed(fn () => [
 
                             <div class="edz-field">
                                 <label class="edz-field__label" for="product-brand">{{ __('products.brand') }}</label>
-                                <select id="product-brand" class="edz-select" wire:model="brand_id">
-                                    <option value="">{{ __('products.no_brand') }}</option>
-                                    @foreach ($this->brands as $id => $brandName)
-                                        <option value="{{ $id }}" @selected((string) $brand_id === (string) $id)>{{ $brandName }}</option>
-                                    @endforeach
-                                </select>
+                                <x-edz.select
+                                    wire:model="brand_id"
+                                    :options="$this->brands"
+                                    placeholder="{{ __('products.no_brand') }}"
+                                />
                             </div>
 
                             <div class="edz-field">

@@ -10,7 +10,7 @@
     'showPerPage' => false,
     'perPageOptions' => [10, 25, 50, 100],
     'perPageMethod'  => 'setPerPage',
-    'perPage'        => null,
+    'perPage'        => 5,
 ])
 
 @php

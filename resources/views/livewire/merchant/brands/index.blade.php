@@ -238,11 +238,14 @@ $deleteSelected = function (): void {
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
-                <select class="edz-select" wire:model.live="is_active">
-                    <option value="">{{ __('brands.all_statuses') }}</option>
-                    <option value="1">{{ __('brands.active') }}</option>
-                    <option value="0">{{ __('brands.inactive') }}</option>
-                </select>
+                <x-edz.select
+                    wire:model.live="is_active"
+                    :options="[
+                        ['value' => '', 'label' => __('brands.all_statuses')],
+                        ['value' => '1', 'label' => __('brands.active')],
+                        ['value' => '0', 'label' => __('brands.inactive')],
+                    ]"
+                />
             </div>
         </div>
 

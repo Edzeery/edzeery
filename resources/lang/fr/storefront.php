@@ -31,6 +31,7 @@ return [
     'call_us' => 'Appelez-nous',
     'cart' => 'Panier',
     'cart_is_empty' => 'Le panier est vide',
+    'rate_limited' => 'Trop de commandes. Veuillez patienter :seconds secondes avant de réessayer.',
     'checkout' => 'Paiement',
     'city' => 'Commune',
     'clear_cart' => 'Vider le panier',

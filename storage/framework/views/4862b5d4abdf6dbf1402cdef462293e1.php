@@ -13,7 +13,7 @@ $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
     'showPerPage' => false,
     'perPageOptions' => [10, 25, 50, 100],
     'perPageMethod'  => 'setPerPage',
-    'perPage'        => null,
+    'perPage'        => 5,
 ]));
 
 foreach ($attributes->all() as $__key => $__value) {
@@ -39,7 +39,7 @@ foreach (array_filter(([
     'showPerPage' => false,
     'perPageOptions' => [10, 25, 50, 100],
     'perPageMethod'  => 'setPerPage',
-    'perPage'        => null,
+    'perPage'        => 5,
 ]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
@@ -220,4 +220,7 @@ unset($__defined_vars, $__key, $__value); ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </nav>
 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+
+
 <?php /**PATH C:\laragon\www\edzeery\resources\views/components/edz/pagination.blade.php ENDPATH**/ ?>

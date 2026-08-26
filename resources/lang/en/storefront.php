@@ -31,6 +31,7 @@ return [
     'call_us' => 'Call us',
     'cart' => 'Cart',
     'cart_is_empty' => 'Cart is empty',
+    'rate_limited' => 'Too many orders. Please wait :seconds seconds before trying again.',
     'checkout' => 'Checkout',
     'city' => 'City',
     'clear_cart' => 'Clear Cart',

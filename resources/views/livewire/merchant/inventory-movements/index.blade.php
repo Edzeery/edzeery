@@ -79,12 +79,11 @@ $clearVariantFilter = function (): void {
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
-                <select class="edz-select" wire:model.live="typeFilter">
-                    <option value="">{{ __('general.all') }}</option>
-                    @foreach ($this->typeOptions as $value => $label)
-                        <option value="{{ $value }}" @selected($typeFilter === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                <x-edz.select
+                    wire:model.live="typeFilter"
+                    :options="$this->typeOptions"
+                    placeholder="{{ __('general.all') }}"
+                />
             </div>
         </div>
 

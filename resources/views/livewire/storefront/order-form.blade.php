@@ -14,6 +14,7 @@ use App\Models\Orders\OrderStatusHistory;
 use App\Models\Products\ProductVariant;
 use App\Models\Status;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
@@ -58,6 +59,15 @@ $paymentMethods = computed(function (): array {
 });
 
 $submitOrder = function () {
+    // Rate limit: 10 orders per minute per store+IP
+    $rateLimitKey = 'storefront-order:' . currentStoreId() . ':' . request()->ip();
+    if (RateLimiter::tooManyAttempts($rateLimitKey, 10)) {
+        $seconds = RateLimiter::availableIn($rateLimitKey);
+        $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.rate_limited', ['seconds' => $seconds]));
+        return;
+    }
+    RateLimiter::hit($rateLimitKey, 60);
+
     $methods = $this->paymentMethods;
 
     $validated = Validator::make($this->only([

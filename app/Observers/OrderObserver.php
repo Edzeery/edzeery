@@ -45,6 +45,10 @@ class OrderObserver
 
     protected function handleStatusChange(Order $order): void
     {
+        // Force a fresh load: $order->status_id was just updated by
+        // transitionToStatus(), but the cached relationship still
+        // points to the previous status.
+        $order->unsetRelation('status');
         $status = $order->status;
 
         if (! $status) {
@@ -59,6 +63,8 @@ class OrderObserver
             'changed_by_membership_id' => $meta['changed_by_membership_id'] ?? null,
             'reason'                   => $meta['reason'] ?? null,
         ]);
+
+        $this->syncTracking($order, $status);
 
         if (! $status->affects_inventory || empty($status->movement_type)) {
             return;
@@ -120,5 +126,17 @@ class OrderObserver
         $nextNumber = $lastNumber ? ((int) $lastNumber + 1) : 1;
 
         return str_pad((string) $nextNumber, 5, '0', STR_PAD_LEFT);
+    }
+
+    protected function syncTracking(Order $order, Status $status): void
+    {
+        $service = app(\App\Domains\Order\Services\OrderTrackingService::class);
+
+        match ($status->key) {
+            'shipped'   => $service->startShipment($order),
+            'delivered' => $service->markDelivered($order),
+            'returned'  => $service->markReturned($order),
+            default     => null,
+        };
     }
 }

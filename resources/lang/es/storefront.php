@@ -31,6 +31,7 @@ return [
     'call_us' => 'Llámanos',
     'cart' => 'Carrito',
     'cart_is_empty' => 'El carrito está vacío',
+    'rate_limited' => 'Demasiados pedidos. Por favor espere :seconds segundos antes de intentar de nuevo.',
     'checkout' => 'Pago',
     'city' => 'Ciudad',
     'clear_cart' => 'Vaciar carrito',

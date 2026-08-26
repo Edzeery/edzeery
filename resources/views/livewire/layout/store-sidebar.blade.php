@@ -20,6 +20,7 @@ if ($store) {
     $withData['canViewInventories'] = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
     $withData['canViewStockAlerts'] = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
     $withData['canViewDebts'] = canStore(StorePermissionEnum::FINANCE_DEBT_VIEW->value);
+    $withData['canViewReturns'] = canStore(StorePermissionEnum::RETURNS_VERIFY_BARCODE->value);
 }
 
 with($withData);
@@ -146,6 +147,14 @@ with($withData);
                 <x-edz.icon name="cart" class="edz-sidebar__icon" />
                 <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
             </a>
+
+            @if ($canViewReturns)
+                <a href="{{ route('merchant.returns.index', $store) }}" wire:navigate
+                   class="edz-sidebar__link @if (request()->routeIs('merchant.returns.*')) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="arrow-uturn-left" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.returns') }}</span>
+                </a>
+            @endif
 
             <a href="{{ route('merchant.order-settings', $store) }}" wire:navigate
                class="edz-sidebar__link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__link--active @endif">

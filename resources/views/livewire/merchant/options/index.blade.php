@@ -216,15 +216,12 @@ $deleteSelected = function (): void {
 
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="option-type">{{ __('product_options.input_type') }}</label>
-                        <select id="option-type" class="edz-select" wire:model="type">
-                            <option value="">{{ __('product_options.select_type') }}</option>
-                            @foreach ($this->typeOptions as $value => $label)
-                                <option value="{{ $value }}" @selected($type === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        @error('type')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model="type"
+                            :options="$this->typeOptions"
+                            placeholder="{{ __('product_options.select_type') }}"
+                            :error="$errors->first('type')"
+                        />
                     </div>
                 </div>
 

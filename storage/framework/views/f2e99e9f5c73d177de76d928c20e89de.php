@@ -13,8 +13,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $search;
 
-    public $showAdvancedFilters;
-
     public $filters;
 
     public $orders;
@@ -41,8 +39,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $showBulkBar;
 
-    public $bulkAction;
-
     public $showTrash;
 
     public $showCreateModal;
@@ -57,13 +53,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $formProductResults;
 
+    public $formProductView;
+
+    public $formSelectedProduct;
+
     public $editProviders;
 
     public $editDesks;
-
-    public $statusChangeOrderId;
-
-    public $statusChangeValue;
 
     public $expandedOrderId;
 
@@ -255,11 +251,39 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('searchProducts'))->execute(...$arguments);
     }
 
+    public function loadProducts(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('loadProducts'))->execute(...$arguments);
+    }
+
+    public function selectProduct(string $productId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('selectProduct'))->execute(...$arguments);
+    }
+
+    public function backToProducts(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('backToProducts'))->execute(...$arguments);
+    }
+
     public function addFormItem(string $variantId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('addFormItem'))->execute(...$arguments);
+    }
+
+    public function addFormItemByBarcode(string $code): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('addFormItemByBarcode'))->execute(...$arguments);
     }
 
     public function removeFormItem(int $index): void
@@ -274,6 +298,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('updateFormItemQty'))->execute(...$arguments);
+    }
+
+    public function updateFormItemPrice(int $index, $price): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('updateFormItemPrice'))->execute(...$arguments);
     }
 
     public function submitCreate(): void

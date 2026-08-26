@@ -54,6 +54,9 @@ class Order extends Model
         'delivery_type',
         'payment_method',
         'shipping_cost',
+        'discount_type',
+        'discount_value',
+        'discount_reason',
         'notes',
         'phone_secondary',
         'assigned_to_membership_id',
@@ -69,6 +72,7 @@ class Order extends Model
     protected $casts = [
         'total_amount'  => 'decimal:2',
         'shipping_cost' => 'decimal:2',
+        'discount_value' => 'decimal:2',
         'weight_kg' => 'decimal:2',
         'assigned_at' => 'datetime',
         'last_contact_at' => 'datetime',
@@ -137,6 +141,16 @@ class Order extends Model
         return $this->hasOne(OrderStatusHistory::class)->latestOfMany('created_at');
     }
 
+    public function trackings(): HasMany
+    {
+        return $this->hasMany(OrderTracking::class);
+    }
+
+    public function latestTracking()
+    {
+        return $this->hasOne(OrderTracking::class)->latestOfMany('created_at');
+    }
+
     /* =========================
      | Accessors
      ========================= */
@@ -153,6 +167,24 @@ class Order extends Model
     public function isStatus(string $key): bool
     {
         return $this->status?->key === $key;
+    }
+
+    public function getDiscountAmountAttribute(): float
+    {
+        if (! $this->discount_type || ! $this->discount_value) {
+            return 0;
+        }
+
+        return match ($this->discount_type) {
+            'amount' => (float) $this->discount_value,
+            'percent' => round((float) $this->total_amount * (float) $this->discount_value / 100, 2),
+            default => 0,
+        };
+    }
+
+    public function getGrandTotalAttribute(): float
+    {
+        return (float) $this->total_amount - $this->discount_amount;
     }
 
     public function createdByMembership()

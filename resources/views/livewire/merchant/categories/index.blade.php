@@ -254,15 +254,12 @@ $deleteSelected = function (): void {
 
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="category-parent">{{ __('categories.parent_category') }}</label>
-                        <select id="category-parent" class="edz-select" wire:model="parent_id">
-                            <option value="">{{ __('categories.no_parent') }}</option>
-                            @foreach ($this->parentOptions as $id => $fullName)
-                                @if ($editingId && (string) $id === (string) $editingId)
-                                    @continue
-                                @endif
-                                <option value="{{ $id }}" @selected((string) $parent_id === (string) $id)>{{ $fullName }}</option>
-                            @endforeach
-                        </select>
+                        <x-edz.select
+                            wire:model="parent_id"
+                            :options="collect($this->parentOptions)->filter(fn ($name, $id) => !$editingId || (string) $id !== (string) $editingId)->all()"
+                            placeholder="{{ __('categories.no_parent') }}"
+                            :error="$errors->first('parent_id')"
+                        />
                         @error('parent_id')
                             <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                         @enderror
@@ -306,11 +303,14 @@ $deleteSelected = function (): void {
                        wire:model.live.debounce.300ms="search">
             </div>
             <div>
-                <select class="edz-select" wire:model.live="is_active">
-                    <option value="">{{ __('categories.all_statuses') }}</option>
-                    <option value="1">{{ __('categories.active') }}</option>
-                    <option value="0">{{ __('categories.inactive') }}</option>
-                </select>
+                <x-edz.select
+                    wire:model.live="is_active"
+                    :options="[
+                        ['value' => '', 'label' => __('categories.all_statuses')],
+                        ['value' => '1', 'label' => __('categories.active')],
+                        ['value' => '0', 'label' => __('categories.inactive')],
+                    ]"
+                />
             </div>
         </div>
 

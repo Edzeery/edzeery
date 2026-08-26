@@ -67,9 +67,9 @@ class OrderService
 
     public function availableTransitions(Order $order): array
     {
-        // Load from DB to avoid caching the relationship on the model,
-        // which would cause OrderObserver::handleStatusChange to see stale data.
-        $currentKey = \App\Models\Status::find($order->status_id)?->key;
+        // Use the relationship (lazy-loads if not eager-loaded).
+        // This eliminates the N+1 when loadOrders() eager-loads 'status'.
+        $currentKey = $order->status?->key;
 
         $systemTransitions = match ($currentKey) {
             'draft'              => ['pending', 'cancelled'],
@@ -89,7 +89,7 @@ class OrderService
             'out_for_delivery'   => ['delivered', 'returned'],
             'delivered'          => ['returned', 'completed'],
             'completed'          => [],
-            'returned'           => ['refunded', 'cancelled'],
+            'returned'           => ['refunded', 'cancelled', 'pending'],
             'refunded'           => [],
             'cancelled'          => ['pending'],
             'canceled'           => ['pending'],

@@ -279,54 +279,44 @@ $allPermissions = computed(function () {
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">{{ __('teams.role') }}</label>
-                        <select id="tm-role" class="edz-select @error('store_role') edz-input--error @enderror" wire:model.live="store_role">
-                            <option value="">{{ __('teams.all_roles') }}</option>
-                            @foreach (collect(StoreRoleEnum::cases())->reject(fn ($r) => $r === StoreRoleEnum::OWNER) as $role)
-                                <option value="{{ $role->value }}">{{ $role->label() }}</option>
-                            @endforeach
-                        </select>
-                        @error('store_role')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model.live="store_role"
+                            :options="collect(StoreRoleEnum::cases())->reject(fn ($r) => $r === StoreRoleEnum::OWNER)->map(fn ($r) => ['value' => $r->value, 'label' => $r->label()])->values()->all()"
+                            placeholder="{{ __('teams.all_roles') }}"
+                            :error="$errors->first('store_role')"
+                        />
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-country">{{ __('teams.country') }}</label>
-                        <select id="tm-country" class="edz-select @error('country_id') edz-input--error @enderror" wire:model.live="country_id">
-                            <option value="">{{ __('teams.select_country') }}</option>
-                            @foreach (countries() as $id => $name)
-                                <option value="{{ $id }}">{{ $name }}</option>
-                            @endforeach
-                        </select>
-                        @error('country_id')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model.live="country_id"
+                            :options="countries()"
+                            placeholder="{{ __('teams.select_country') }}"
+                            :error="$errors->first('country_id')"
+                        />
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-state">{{ __('teams.state') }}</label>
-                        <select id="tm-state" class="edz-select @error('state_id') edz-input--error @enderror" wire:model.live="state_id" {{ empty($this->country_id) ? 'disabled' : '' }}>
-                            <option value="">{{ __('teams.select_state') }}</option>
-                            @foreach ($this->states as $id => $name)
-                                <option value="{{ $id }}">{{ $name }}</option>
-                            @endforeach
-                        </select>
-                        @error('state_id')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model.live="state_id"
+                            :options="$this->states"
+                            placeholder="{{ __('teams.select_state') }}"
+                            :disabled="empty($this->country_id)"
+                            :error="$errors->first('state_id')"
+                        />
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium text-ink" for="tm-city">{{ __('teams.city') }}</label>
-                        <select id="tm-city" class="edz-select @error('city_id') edz-input--error @enderror" wire:model="city_id" {{ empty($this->state_id) ? 'disabled' : '' }}>
-                            <option value="">{{ __('teams.select_city') }}</option>
-                            @foreach ($this->cities as $id => $name)
-                                <option value="{{ $id }}">{{ $name }}</option>
-                            @endforeach
-                        </select>
-                        @error('city_id')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model="city_id"
+                            :options="$this->cities"
+                            placeholder="{{ __('teams.select_city') }}"
+                            :disabled="empty($this->state_id)"
+                            :error="$errors->first('city_id')"
+                        />
                     </div>
                 </div>
 

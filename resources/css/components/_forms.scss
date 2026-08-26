@@ -25,7 +25,7 @@
 }
 
 .edz-input,
-.edz-select,
+select.edz-select,
 .edz-textarea {
   width: 100%;
   padding: 0.5rem 0.75rem;
@@ -70,4 +70,300 @@
 .edz-textarea {
   min-height: 6.5rem;
   resize: vertical;
+}
+
+// ============================================================
+//  EDZ-SELECT — Custom dropdown component (Apple HIG-inspired)
+//  Fixed positioning, keyboard navigation, search, RTL-aware.
+// ============================================================
+
+.edz-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+// --- Trigger button ---
+.edz-select__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: rgb(var(--edz-color-text));
+  background-color: rgb(var(--edz-color-surface));
+  border: 1px solid rgb(var(--edz-color-border-strong));
+  border-radius: var(--edz-radius-md);
+  cursor: pointer;
+  text-align: start;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: rgb(var(--edz-color-gray-400));
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgb(var(--edz-color-brand-600));
+    box-shadow: 0 0 0 3px rgb(var(--edz-color-brand-600), 0.15);
+  }
+
+  &--disabled,
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: rgb(var(--edz-color-secondary));
+  }
+
+  &--open {
+    border-color: rgb(var(--edz-color-brand-600));
+    box-shadow: 0 0 0 3px rgb(var(--edz-color-brand-600), 0.15);
+  }
+}
+
+// --- Text display ---
+.edz-select__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edz-select__placeholder {
+  color: rgb(var(--edz-color-text-muted));
+}
+
+.edz-select__hint {
+  color: rgb(var(--edz-color-text-muted));
+  font-size: 0.8125rem;
+}
+
+// --- Icon ---
+.edz-select__icon {
+  flex-shrink: 0;
+  color: rgb(var(--edz-color-text-muted));
+}
+
+// --- Chevron wrap ---
+.edz-select__chevron-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+
+  &.rotate-180 {
+    transform: rotate(180deg);
+  }
+}
+
+.edz-select__chevron {
+  flex-shrink: 0;
+  color: rgb(var(--edz-color-text-muted));
+}
+
+// --- Dropdown panel ---
+.edz-select__panel {
+  background-color: rgb(var(--edz-color-surface));
+  border: 1px solid rgb(var(--edz-color-border));
+  border-radius: var(--edz-radius-xl);
+  box-shadow: var(--edz-shadow-lg);
+  padding: 0.375rem;
+  max-height: 20rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// --- Search ---
+.edz-select__search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid rgb(var(--edz-color-border));
+}
+
+.edz-select__search-icon {
+  flex-shrink: 0;
+  color: rgb(var(--edz-color-text-muted));
+}
+
+.edz-select__search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgb(var(--edz-color-text));
+  background: none;
+  border: none;
+  outline: none;
+
+  &::placeholder {
+    color: rgb(var(--edz-color-text-muted));
+  }
+}
+
+// --- List ---
+.edz-select__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+}
+
+// --- Option ---
+.edz-select__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--edz-radius-md);
+  font-size: 0.875rem;
+  color: rgb(var(--edz-color-text));
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+
+  &:hover,
+  &--highlighted {
+    background-color: rgb(var(--edz-color-secondary));
+  }
+
+  &--selected {
+    font-weight: 600;
+  }
+}
+
+.edz-select__option-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  flex-shrink: 0;
+  color: rgb(var(--edz-color-brand-600));
+}
+
+.edz-select__option-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.edz-select__option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edz-select__option-hint {
+  font-size: 0.75rem;
+  color: rgb(var(--edz-color-text-muted));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// --- Empty state ---
+.edz-select__empty {
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: rgb(var(--edz-color-text-muted));
+}
+
+// --- Loading state ---
+.edz-select__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  color: rgb(var(--edz-color-text-muted));
+}
+
+.edz-spinner {
+  width: 1rem;
+  height: 1rem;
+  animation: edz-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes edz-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// --- Mobile bottom-sheet mode ---
+@media (max-width: 639px) {
+  .edz-select__panel {
+    border-radius: var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;
+    max-height: 60vh;
+  }
+}
+
+// --- Error ---
+.edz-select__error {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(var(--edz-color-danger-600));
+}
+
+// --- Error state ---
+.edz-select--error .edz-select__trigger {
+  border-color: rgb(var(--edz-color-danger-600));
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgb(var(--edz-color-danger-600), 0.15);
+  }
+}
+
+// --- Size: sm ---
+.edz-select--sm .edz-select__trigger {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+}
+
+.edz-select--sm .edz-select__option {
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+// --- Size: lg ---
+.edz-select--lg .edz-select__trigger {
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+}
+
+// --- Transitions ---
+.edz-select-enter {
+  transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+}
+.edz-select-enter-start {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
+}
+.edz-select-enter-end {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.edz-select-leave {
+  transition: opacity 0.08s ease-in, transform 0.08s ease-in;
+}
+.edz-select-leave-start {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.edz-select-leave-end {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
 }

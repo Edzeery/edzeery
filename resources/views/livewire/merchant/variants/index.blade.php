@@ -235,16 +235,13 @@ $deleteSelected = function (): void {
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <label class="mb-1 block text-sm font-medium text-ink" for="variant-product">{{ __('variants.product') }}</label>
-                        <select id="variant-product" class="edz-select @error('product_id') edz-input--error @enderror"
-                                wire:model="product_id" @disabled($editingId)>
-                            <option value="">{{ __('variants.select_product') }}</option>
-                            @foreach ($this->products as $id => $productName)
-                                <option value="{{ $id }}" @selected((string) $product_id === (string) $id)>{{ $productName }}</option>
-                            @endforeach
-                        </select>
-                        @error('product_id')
-                            <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
-                        @enderror
+                        <x-edz.select
+                            wire:model="product_id"
+                            :options="$this->products"
+                            placeholder="{{ __('variants.select_product') }}"
+                            :disabled="$editingId"
+                            :error="$errors->first('product_id')"
+                        />
                     </div>
 
                     <div>
@@ -394,15 +391,13 @@ $deleteSelected = function (): void {
                                         </div>
                                         <div>
                                             <label class="mb-1 block text-xs font-medium text-ink-soft" for="adjust-type">{{ __('table.type') }}</label>
-                                            <select id="adjust-type" class="edz-select edz-input--sm" wire:model="adjust_type">
-                                                <option value="">{{ __('product_options.select_type') }}</option>
-                                                @foreach ($this->manualTypes as $value => $label)
-                                                    <option value="{{ $value }}" @selected($adjust_type === $value)>{{ $label }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('adjust_type')
-                                                <p class="mt-1 text-xs text-danger-600">{{ $message }}</p>
-                                            @enderror
+                                            <x-edz.select
+                                                wire:model="adjust_type"
+                                                :options="$this->manualTypes"
+                                                placeholder="{{ __('product_options.select_type') }}"
+                                                size="sm"
+                                                :error="$errors->first('adjust_type')"
+                                            />
                                         </div>
                                         <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm">{{ __('buttons.apply') }}</button>
                                         <span class="text-xs text-ink-muted">{{ __('inventories.current_stock', ['count' => $variant->stock]) }}</span>
