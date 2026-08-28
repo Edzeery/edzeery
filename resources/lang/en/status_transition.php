@@ -2,6 +2,6 @@
 
 
 return [
-    'invalid_transition' => 'Invalid transition from :from to :to',
-    'order_status_updated' => 'Order status updated from :from to :to',
+    'invalid_transition' => 'Invalid transition to :to',
+    'order_status_updated' => 'Order status updated to :new_status',
 ];

@@ -21,6 +21,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $visibleColumns;
 
+    public $filterProducts;
+
     public $perPage;
 
     public $allStatuses;
@@ -260,6 +262,27 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('loadProducts'))->execute(...$arguments);
+    }
+
+    public function loadFilterProducts(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('loadFilterProducts'))->execute(...$arguments);
+    }
+
+    public function applyProductNameFilter(string $query): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('applyProductNameFilter'))->execute(...$arguments);
+    }
+
+    public function clearProductFilter(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('clearProductFilter'))->execute(...$arguments);
     }
 
     public function selectProduct(string $productId): void

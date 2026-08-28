@@ -58,6 +58,18 @@ export default function edzSelect(config) {
 
         init() {
             this.selected = this.$refs.hiddenInput?.value || null;
+            this._documentClickHandler = (e) => {
+                if (this.open && !this.$el.contains(e.target)) {
+                    this.open = false;
+                }
+            };
+            document.addEventListener('click', this._documentClickHandler);
+        },
+
+        destroy() {
+            if (this._documentClickHandler) {
+                document.removeEventListener('click', this._documentClickHandler);
+            }
         },
 
         toggle() {

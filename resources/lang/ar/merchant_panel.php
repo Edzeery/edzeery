@@ -345,6 +345,9 @@ return [
     'back' => 'العودة للمنتجات',
     'no_products_found' => 'لا توجد منتجات',
     'no_options_found' => 'لا توجد خيارات',
+    'filter_by_product' => 'تصفية حسب المنتج',
+    'filter_by_full_name' => 'تصفية بهذا الاسم',
+    'clear_filter' => 'مسح التصفية',
     'search' => 'بحث...',
     'order_summary' => 'ملخص الطلبية',
     'subtotal' => 'المجموع الفرعي',
@@ -360,4 +363,5 @@ return [
     'out_of_stock' => 'نفدت',
     'left' => 'متبقي',
     'in_cart' => 'بالسلة',
+    'search_variants' => 'ابحث عن متغير...',
 ];

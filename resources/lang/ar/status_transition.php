@@ -2,6 +2,6 @@
 
 
 return [
-    'invalid_transition' => 'انتقال غير صالح من :from إلى :to',
-    'order_status_updated' => 'تم تحديث حالة الطلب من :from إلى :to',
+    'invalid_transition' => 'انتقال غير صالح إلى :to',
+    'order_status_updated' => 'تم تحديث حالة الطلب إلى :new_status',
 ];

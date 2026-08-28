@@ -2,8 +2,11 @@ export default function orderProductPicker() {
     return {
         isAddingProduct: false,
         isLoadingVariants: false,
+        isLoadingProducts: false,
         searchTerm: '',
         visibleCount: 0,
+        variantQuery: '',
+        variantVisibleCount: 0,
         selectedItems: {},
 
         init() {
@@ -13,10 +16,14 @@ export default function orderProductPicker() {
         },
 
         openProductPicker() {
+            if (this.isLoadingProducts) return;
+            this.isLoadingProducts = true;
             this.searchTerm = '';
             this.visibleCount = 0;
             this.$wire.set('showProductPickerModal', true);
-            this.$wire.loadProducts();
+            this.$wire.loadProducts().then(() => {
+                this.isLoadingProducts = false;
+            });
             setTimeout(() => {
                 const input = document.querySelector('[data-product-search-input]');
                 if (input) input.focus();
@@ -30,6 +37,8 @@ export default function orderProductPicker() {
         },
 
         closeVariantPicker() {
+            this.variantQuery = '';
+            this.variantVisibleCount = 0;
             this.$wire.set('showVariantPickerModal', false);
             this.$wire.set('formProductView', 'list');
             this.$wire.set('formSelectedProduct', null);
@@ -83,6 +92,17 @@ export default function orderProductPicker() {
                     if (el.style.display !== 'none') count++;
                 });
                 this.visibleCount = count;
+            });
+        },
+
+        onVariantSearchInput(event) {
+            this.variantQuery = event.target.value;
+            this.$nextTick(() => {
+                let count = 0;
+                document.querySelectorAll('[data-variant-search]').forEach(el => {
+                    if (el.style.display !== 'none') count++;
+                });
+                this.variantVisibleCount = count;
             });
         },
     };

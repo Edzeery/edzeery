@@ -4,6 +4,7 @@ import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import edzSelect from "./components/edz-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
+import productSelect from "./components/product-select.js";
 
 window.flatpickr = flatpickr;
 
@@ -130,6 +131,9 @@ document.addEventListener("alpine:init", () => {
 
     // --- Order product picker component ---
     Alpine.data("orderProductPicker", orderProductPicker);
+
+    // --- Reusable product select (searchable, up to N products, frontend search) ---
+    Alpine.data("productSelect", productSelect);
 
     // --- edzDirty Alpine component ---
     Alpine.data("edzDirty", () => ({

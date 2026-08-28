@@ -367,3 +367,63 @@ select.edz-select,
   opacity: 0;
   transform: scale(0.96);
 }
+
+// --- Search clear button (product select) ---
+.edz-select__search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  border-radius: var(--edz-radius-sm);
+  color: rgb(var(--edz-color-text-muted));
+  cursor: pointer;
+  transition: color 0.1s ease;
+
+  &:hover {
+    color: rgb(var(--edz-color-brand-600));
+  }
+}
+
+// --- Product thumbnail in option ---
+.edz-product-select__thumb {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--edz-radius-md);
+  overflow: hidden;
+  background-color: rgb(var(--edz-color-secondary));
+}
+
+// --- Action rows (filter by full name / clear) ---
+.edz-product-select__actions {
+  border-top: 1px solid rgb(var(--edz-color-border));
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.edz-product-select__action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--edz-radius-md);
+  font-size: 0.8125rem;
+  color: rgb(var(--edz-color-brand-600));
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  text-align: left;
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+  }
+}
+
+.edz-product-select__action--clear {
+  color: rgb(var(--edz-color-text-muted));
+
+  &:hover {
+    color: rgb(var(--edz-color-danger-600));
+    background-color: rgb(var(--edz-color-secondary));
+  }
+}

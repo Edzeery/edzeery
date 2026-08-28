@@ -343,6 +343,9 @@ return [
     'back' => 'Retour aux produits',
     'no_products_found' => 'Aucun produit trouvé',
     'no_options_found' => 'Aucune option trouvée',
+    'filter_by_product' => 'Filtrer par produit',
+    'filter_by_full_name' => 'Filtrer par ce nom',
+    'clear_filter' => 'Effacer le filtre',
     'search' => 'Rechercher...',
     'order_summary' => 'Résumé de la commande',
     'subtotal' => 'Sous-total',
@@ -358,4 +361,5 @@ return [
     'out_of_stock' => 'Rupture de stock',
     'left' => 'restant',
     'in_cart' => 'dans le panier',
+    'search_variants' => 'Rechercher des variantes...',
 ];

@@ -35,12 +35,14 @@ state([
         'date_to' => null,
         'delivery_type' => null,
         'shipping_provider' => null,
+        'product_id' => null,
         'product' => '',
         'source' => null,
     ],
     'orders' => [],
     'page' => 1,
     'visibleColumns' => [],
+    'filterProducts' => [],
     'perPage' => 15,
     'allStatuses' => [],
     'allMembers' => [],
@@ -97,10 +99,38 @@ state([
     'reassignMembershipId' => '',
 ]);
 
-updated(['search'], function (): void {
+updated(['search' => function (): void {
     $this->page = 1;
     $this->loadOrders();
-});
+}]);
+
+// Reload orders when the product filter (specific product or full-name text) changes.
+updated([
+    'filters.product_id' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.product' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.amount_min' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.amount_max' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.date_from' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.date_to' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+]);
 
 mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
@@ -121,13 +151,12 @@ mount(function (): void {
         ->toArray();
 
     $this->loadColumnPreferences();
+    $this->loadFilterProducts();
     $this->loadOrders();
 });
 
 $syncFormSelectedItems = function (): void {
-    $this->formSelectedItems = collect($this->form['items'])
-        ->pluck('quantity', 'product_variant_id')
-        ->toArray();
+    $this->formSelectedItems = collect($this->form['items'])->pluck('quantity', 'product_variant_id')->toArray();
     $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
 };
 
@@ -208,8 +237,16 @@ $loadOrders = function (): void {
     if (!empty($f['shipping_provider'])) {
         $query->where('shipping_provider_id', $f['shipping_provider']);
     }
-    if (!empty($f['product'])) {
-        $query->whereHas('items.variant', fn($vq) => $vq->whereHas('product', fn($pq) => $pq->where('name', 'like', "%{$f['product']}%")));
+    if (!empty($f['product_id'])) {
+        $query->whereHas('items', function ($iq) use ($f) {
+            $iq->where('product_id', (int) $f['product_id'])
+                ->orWhereHas('variant', fn($vq) => $vq->where('product_id', (int) $f['product_id']));
+        });
+    } elseif (!empty($f['product'])) {
+        $query->whereHas('items', function ($iq) use ($f) {
+            $iq->whereHas('product', fn($pq) => $pq->where('name', 'like', "%{$f['product']}%"))
+                ->orWhereHas('variant.product', fn($pq) => $pq->where('name', 'like', "%{$f['product']}%"));
+        });
     }
     if ($f['source'] === 'manual') {
         $query->whereNotNull('created_by_membership_id');
@@ -489,10 +526,9 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $membership = $this->getCurrentMembership();
 
     $service = app(OrderService::class);
+    $statusKey_translation = __('status.' . $statusKey);
     if (!$service->canTransition($order, $statusKey)) {
-        $this->dispatch('swal', type: 'error', title:
-         __('status_transition.invalid_transition', ['from' => $order->status?->name ?? '—',
-          'to' => $statusKey ?? '—']));
+        $this->dispatch('swal', type: 'error', title: __('status_transition.invalid_transition', ['to' => $statusKey_translation ?? '—']));
         return;
     }
 
@@ -501,8 +537,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $this->page = 1;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('status_transition.order_status_updated',
-     ['order_number' => $order->number, 'new_status' => $order->status?->name ?? '—']));
+    $this->dispatch('swal', type: 'success', title: __('status_transition.order_status_updated', ['new_status' => $statusKey_translation ?? '—']));
 };
 
 // ——— Create Modal ———
@@ -556,9 +591,7 @@ $loadProducts = function (): void {
                 'variant_count' => $variants->count(),
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
-                'price_range' => $minPrice != $maxPrice
-                    ? currency($minPrice) . ' — ' . currency($maxPrice)
-                    : currency($minPrice),
+                'price_range' => $minPrice != $maxPrice ? currency($minPrice) . ' — ' . currency($maxPrice) : currency($minPrice),
                 'has_variants' => $product->hasVariants(),
                 'first_variant' => $firstVariant
                     ? [
@@ -569,14 +602,47 @@ $loadProducts = function (): void {
                         'price_formatted' => currency($firstVariant->price),
                         'stock' => $firstVariant->stock,
                         'stock_status' => $firstVariant->stock <= 0 ? 'out' : ($firstVariant->stock <= 5 ? 'low' : 'ok'),
-                        'stock_text' => $firstVariant->stock <= 0
-                            ? __('merchant_panel.out_of_stock')
-                            : $firstVariant->stock . ' ' . __('merchant_panel.left'),
+                        'stock_text' => $firstVariant->stock <= 0 ? __('merchant_panel.out_of_stock') : $firstVariant->stock . ' ' . __('merchant_panel.left'),
                     ]
                     : null,
             ];
         })
         ->toArray();
+};
+
+$loadFilterProducts = function (): void {
+    $storeId = currentStoreId();
+    $this->filterProducts = Product::with('primaryImage')
+        ->select('id', 'name', 'sku', 'price', 'sort_order', 'created_at')
+        ->where('store_id', $storeId)
+        ->where('is_active', true)
+        ->orderByDesc('sort_order')
+        ->orderByDesc('created_at')
+        ->limit(100)
+        ->get()
+        ->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'image_url' => $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png'),
+            ];
+        })
+        ->toArray();
+};
+
+$applyProductNameFilter = function (string $query): void {
+    $this->filters['product'] = trim($query);
+    $this->filters['product_id'] = null;
+    $this->page = 1;
+    $this->loadOrders();
+};
+
+$clearProductFilter = function (): void {
+    $this->filters['product'] = '';
+    $this->filters['product_id'] = null;
+    $this->page = 1;
+    $this->loadOrders();
 };
 
 $selectProduct = function (string $productId): void {
@@ -1075,8 +1141,15 @@ $refreshOrders = function (): void {
 };
 ?>
 
-<div x-data="{ openFilter: null, openColToggle: false, filterPos: { top: 0, left: 0 }, positionFilter(e) { let r = e.currentTarget.getBoundingClientRect();
-        this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) }; } }">
+<div x-data="{
+    openFilter: null,
+    openColToggle: false,
+    filterPos: { top: 0, left: 0 },
+    positionFilter(e) {
+        let r = e.currentTarget.getBoundingClientRect();
+        this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) };
+    }
+}">
     {{-- Page Header --}}
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <x-edz.page-header title="{{ __('merchant_panel.orders') }}"
@@ -1090,13 +1163,22 @@ $refreshOrders = function (): void {
         @endif
         <div class="flex items-center gap-2">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button wire:click="openCreateModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                    <x-edz.icon name="plus" class="w-4 h-4" />
-                    {{ __('merchant_panel.new_order') }}
-                </button>
+                    <button wire:click="openCreateModal" class="edz-btn edz-btn--primary edz-btn--sm"
+                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                        wire:target="openCreateModal">
+                        <svg x-cloak wire:loading wire:target="openCreateModal" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                        <x-edz.icon name="plus" wire:loading.remove wire:target="openCreateModal" class="w-4 h-4" />
+                        <span wire:loading.remove wire:target="openCreateModal">{{ __('merchant_panel.new_order') }}</span>
+                    </button>
             @endif
-            <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm">
-                <x-edz.icon name="arrow-path" class="w-4 h-4" />
+            <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm"
+                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                wire:target="refreshOrders">
+                <x-edz.icon name="arrow-path"
+                    wire:loading.remove wire:target="refreshOrders" class="w-4 h-4" />
+                <svg x-cloak wire:loading wire:target="refreshOrders" class="edz-spinner"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
             </button>
         </div>
     </div>
@@ -1107,14 +1189,24 @@ $refreshOrders = function (): void {
         <div class="flex flex-wrap items-center gap-3">
             {{-- Unified Search --}}
             <div class="relative flex-1 min-w-[200px]">
-                <input type="text" wire:model.live.debounce.300ms="search"
+                <input type="text" wire:model.live.debounce.600ms="search"
+                    @keydown.enter="$wire.loadOrders()"
                     placeholder="{{ __('merchant.search_orders') }} — {{ __('merchant_panel.products') }}, SKU, barcode..."
                     class="edz-input text-sm ps-9 pe-9">
                 <x-edz.icon name="search"
                     class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+                @if ($this->search !== '')
+                    <button wire:click="$set('search', '')" type="button"
+                        class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition me-7"
+                        aria-label="Clear search">
+                        <x-edz.icon name="x-mark" class="w-4 h-4" />
+                    </button>
+                @endif
                 <button wire:click="loadOrders" type="button"
-                    class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition">
-                    <x-edz.icon name="arrow-right" class="w-4 h-4" />
+                    class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                    wire:loading.attr="disabled" wire:target="loadOrders">
+                    <svg x-cloak wire:loading wire:target="loadOrders" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <x-edz.icon name="arrow-right" wire:loading.remove wire:target="loadOrders" class="w-4 h-4" />
                 </button>
             </div>
 
@@ -1141,10 +1233,12 @@ $refreshOrders = function (): void {
             {{-- Source --}}
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
                 <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['source'] ? 'text-accent-600' : '' }}">
-                    <x-edz.icon name="user" class="w-4 h-4" />
-                    {{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant_panel.source')) }}
-                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['source'] ? 'text-accent-600' : '' }}"
+                    wire:loading.attr="disabled" wire:target="setFilter">
+                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <x-edz.icon name="user" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
+                    <span wire:loading.remove wire:target="setFilter">{{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant_panel.source')) }}</span>
+                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
                     class="absolute z-40 mt-1 w-40 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
@@ -1160,10 +1254,12 @@ $refreshOrders = function (): void {
             {{-- Delivery Type --}}
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
                 <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['delivery_type'] ? 'text-accent-600' : '' }}">
-                    <x-edz.icon name="home" class="w-4 h-4" />
-                    {{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : __('storefront.delivery_type')) }}
-                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['delivery_type'] ? 'text-accent-600' : '' }}"
+                    wire:loading.attr="disabled" wire:target="setFilter">
+                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <x-edz.icon name="home" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
+                    <span wire:loading.remove wire:target="setFilter">{{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : __('storefront.delivery_type')) }}</span>
+                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
                     class="absolute z-40 mt-1 w-44 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
@@ -1179,10 +1275,12 @@ $refreshOrders = function (): void {
             {{-- Shipping Provider --}}
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
                 <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['shipping_provider'] ? 'text-accent-600' : '' }}">
-                    <x-edz.icon name="truck" class="w-4 h-4" />
-                    {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? __('merchant.assign_delivery_man') }}
-                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['shipping_provider'] ? 'text-accent-600' : '' }}"
+                    wire:loading.attr="disabled" wire:target="setFilter">
+                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <x-edz.icon name="truck" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
+                    <span wire:loading.remove wire:target="setFilter">{{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? __('merchant.assign_delivery_man') }}</span>
+                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
                     class="absolute z-40 mt-1 w-48 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
@@ -1199,10 +1297,14 @@ $refreshOrders = function (): void {
 
             {{-- Trash Toggle --}}
             <button wire:click="toggleTrash"
-                class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->showTrash ? 'text-danger-600' : '' }}">
-                <x-edz.icon name="trash" class="w-4 h-4" />
-                {{ __('merchant.trash_bin') }}
+                class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->showTrash ? 'text-danger-600' : '' }}"
+                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
+                <svg x-cloak wire:loading wire:target="toggleTrash" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                <x-edz.icon name="trash" wire:loading.remove wire:target="toggleTrash" class="w-4 h-4" />
+                <span wire:loading.remove wire:target="toggleTrash">{{ $this->showTrash ? __('buttons.close') . ' ' . __('merchant.trash_bin') : __('merchant.trash_bin') }}</span>
             </button>
+
             <div class="flex items-center gap-1 text-xs text-ink-muted" x-data="{ pp: {{ $this->perPage }} }">
                 <span>{{ __('merchant.per_page') }}</span>
                 <select x-model="pp" x-on:change="$wire.setPerPage(parseInt($event.target.value))"
@@ -1223,7 +1325,7 @@ $refreshOrders = function (): void {
                 <span
                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? '' }}
-                    <button wire:click="setFilter('wilaya', null)" class="hover:text-accent-900"><x-edz.icon
+                    <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon
                             name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
@@ -1231,7 +1333,7 @@ $refreshOrders = function (): void {
                 <span
                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     {{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? '' }}
-                    <button wire:click="setFilter('city', null)" class="hover:text-accent-900"><x-edz.icon
+                    <button wire:click="setFilter('city', null)" wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon
                             name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
@@ -1241,7 +1343,7 @@ $refreshOrders = function (): void {
                         <span
                             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                             {{ $s['label'] }}
-                            <button wire:click="toggleStatusFilter('{{ $s['id'] }}')"
+                            <button wire:click="toggleStatusFilter('{{ $s['id'] }}')" wire:loading.attr="disabled"
                                 class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                         </span>
                     @endif
@@ -1251,7 +1353,7 @@ $refreshOrders = function (): void {
                 <span
                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     {{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? '' }}
-                    <button wire:click="setFilter('assigned_to', null)" class="hover:text-accent-900"><x-edz.icon
+                    <button wire:click="setFilter('assigned_to', null)" wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon
                             name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
@@ -1260,10 +1362,12 @@ $refreshOrders = function (): void {
                     class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
                     {{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}
                     <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
+                        wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
-            <button wire:click="clearFilters" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 text-xs">
+            <button wire:click="clearFilters" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 text-xs"
+                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
                 <x-edz.icon name="x-circle" class="w-3 h-3" />
                 {{ __('merchant_panel.clear_filters') }}
             </button>
@@ -1280,11 +1384,18 @@ $refreshOrders = function (): void {
                 {{ __('merchant.trash_bin') }} — {{ $orders['total'] ?? 0 }}
             </span>
             <div class="flex gap-2">
-                <button wire:click="restoreAll"
-                    class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant.restore_all') }}</button>
-                <button x-data
-                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.forceDeleteAll() })()"
-                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">{{ __('merchant.empty_trash') }}</button>
+                <button wire:click="restoreAll" wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                    class="edz-btn edz-btn--ghost edz-btn--sm">
+                    <svg x-cloak wire:loading wire:target="restoreAll" class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <span wire:loading.remove wire:target="restoreAll">{{ __('merchant.restore_all') }}</span>
+                </button>
+                <button x-data="{ isLoading: false }"
+                    x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.forceDeleteAll(); isLoading = false; } })()"
+                    :disabled="isLoading"
+                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 disabled:opacity-50">
+                    <svg x-show="isLoading" x-cloak class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <span x-show="!isLoading">{{ __('merchant.empty_trash') }}</span>
+                </button>
             </div>
         </div>
     @elseif (count($this->selectedOrders) > 0)
@@ -1296,15 +1407,18 @@ $refreshOrders = function (): void {
             <div class="flex gap-2 flex-wrap">
                 {{-- Assign agent --}}
                 <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                    <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm">
-                        <x-edz.icon name="user-plus" class="w-4 h-4" />
-                        {{ __('merchant.bulk_assign_agent') }}
+                    <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
+                        wire:loading.attr="disabled" wire:target="bulkAssignAgent">
+                        <svg x-cloak wire:loading wire:target="bulkAssignAgent" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                        <x-edz.icon name="user-plus" wire:loading.remove wire:target="bulkAssignAgent" class="w-4 h-4" />
+                        <span wire:loading.remove wire:target="bulkAssignAgent">{{ __('merchant.bulk_assign_agent') }}</span>
                     </button>
                     <div x-show="open" x-transition
                         class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
                         @foreach ($this->allMembers as $m)
                             <button wire:click="bulkAssignAgent('{{ $m['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
+                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
+                                wire:loading.attr="disabled" wire:target="bulkAssignAgent">
                                 {{ $m['user']['name'] }}
                             </button>
                         @endforeach
@@ -1314,15 +1428,18 @@ $refreshOrders = function (): void {
                 {{-- Send to carrier --}}
                 @if (count($this->allProviders) > 0)
                     <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                        <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm">
-                            <x-edz.icon name="truck" class="w-4 h-4" />
-                            {{ __('merchant.bulk_send_carrier') }}
+                        <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
+                            wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
+                            <svg x-cloak wire:loading wire:target="bulkSendToCarrier" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                            <x-edz.icon name="truck" wire:loading.remove wire:target="bulkSendToCarrier" class="w-4 h-4" />
+                            <span wire:loading.remove wire:target="bulkSendToCarrier">{{ __('merchant.bulk_send_carrier') }}</span>
                         </button>
                         <div x-show="open" x-transition
                             class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
                             @foreach ($this->allProviders as $pr)
                                 <button wire:click="bulkSendToCarrier('{{ $pr['id'] }}')"
-                                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
+                                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
+                                    wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
                                     {{ $pr['name'] }}
                                 </button>
                             @endforeach
@@ -1331,11 +1448,13 @@ $refreshOrders = function (): void {
                 @endif
 
                 {{-- Delete --}}
-                <button x-data
-                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.bulkDelete() })()"
-                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600">
-                    <x-edz.icon name="trash" class="w-4 h-4" />
-                    {{ __('merchant.bulk_delete') }}
+                <button x-data="{ isLoading: false }"
+                    x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.bulkDelete(); isLoading = false; } })()"
+                    :disabled="isLoading"
+                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 disabled:opacity-50">
+                    <svg x-show="isLoading" x-cloak class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                    <x-edz.icon name="trash" class="w-4 h-4" x-show="!isLoading" />
+                    <span x-show="!isLoading">{{ __('merchant.bulk_delete') }}</span>
                 </button>
 
                 <button wire:click="clearSelection" class="edz-btn edz-btn--ghost edz-btn--sm">
@@ -1594,14 +1713,15 @@ $refreshOrders = function (): void {
                                                             240) + 'px'">
                                                         @foreach ($this->allStatuses as $s)
                                                             @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
-                                                                <button
-                                                                    wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                    @click="open = false"
-                                                                    class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                                                    <span class="w-2 h-2 rounded-full shrink-0"
-                                                                        style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
-                                                                    {{ $s['label'] }}
-                                                                </button>
+                                                                    <button
+                                                                        wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
+                                                                        wire:loading.attr="disabled" @click="open = false"
+                                                                        class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
+                                                                        <svg x-cloak wire:loading wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')" class="edz-spinner w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                                                        <span class="w-2 h-2 rounded-full shrink-0"
+                                                                            style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
+                                                                        {{ $s['label'] }}
+                                                                    </button>
                                                             @endif
                                                         @endforeach
                                                     </div>
@@ -1648,33 +1768,41 @@ $refreshOrders = function (): void {
                                                 </button>
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button wire:click="openEditModal('{{ $orderId }}')"
+                                                        wire:loading.attr="disabled" wire:loading.class="opacity-50"
+                                                        wire:target="openEditModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                         title="{{ __('merchant_panel.edit') }}">
-                                                        <x-edz.icon name="edit" class="w-4 h-4 shrink-0" />
-
+                                                        <svg x-cloak wire:loading wire:target="openEditModal('{{ $orderId }}')" class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                                        <x-edz.icon name="edit" wire:loading.remove wire:target="openEditModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                     </button>
                                                     <button wire:click="openReassignModal('{{ $orderId }}')"
+                                                        wire:loading.attr="disabled" wire:loading.class="opacity-50"
+                                                        wire:target="openReassignModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                         title="{{ __('merchant_panel.reassign') }}">
-                                                        <x-edz.icon name="arrows-right-left"
-                                                            class="w-4 h-4 shrink-0" />
+                                                        <svg x-cloak wire:loading wire:target="openReassignModal('{{ $orderId }}')" class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                                        <x-edz.icon name="arrows-right-left" wire:loading.remove wire:target="openReassignModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                     </button>
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
                                                     @if ($this->showTrash)
                                                         <button wire:click="restoreOrder('{{ $orderId }}')"
+                                                            wire:loading.attr="disabled" wire:loading.class="opacity-50"
+                                                            wire:target="restoreOrder('{{ $orderId }}')"
                                                             class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 text-success-600"
                                                             title="{{ __('merchant.restore_order') }}">
-                                                            <x-edz.icon name="arrow-uturn-left"
-                                                                class="w-4 h-4 shrink-0" />
+                                                            <svg x-cloak wire:loading wire:target="restoreOrder('{{ $orderId }}')" class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                                            <x-edz.icon name="arrow-uturn-left" wire:loading.remove wire:target="restoreOrder('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                         </button>
                                                     @else
                                                         <button
                                                             class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700 shrink-0"
-                                                            x-data
-                                                            x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete('{{ $order['number'] ?? '' }}')) await $wire.deleteOrder('{{ $orderId }}') })()"
+                                                            x-data="{ isLoading: false }"
+                                                            x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete('{{ $order['number'] ?? '' }}')) { isLoading = true; await $wire.deleteOrder('{{ $orderId }}'); isLoading = false; } })()"
+                                                            :disabled="isLoading" :class="isLoading ? 'opacity-50' : ''"
                                                             title="{{ __('merchant.delete_permanently') }}">
-                                                            <x-edz.icon name="trash" class="w-4 h-4 shrink-0" />
+                                                            <svg x-show="isLoading" x-cloak class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                                            <x-edz.icon name="trash" x-show="!isLoading" class="w-4 h-4 shrink-0" />
                                                         </button>
                                                     @endif
                                                 @endif
@@ -1844,601 +1972,687 @@ $refreshOrders = function (): void {
 
     {{-- Create / Edit Modal + Product/Variant Picker Modals --}}
     <div x-data="orderProductPicker()">
-    @if ($showCreateModal || $showEditModal)
-        <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class="  edz-scroll"
-            wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">
-            <form wire:submit="{{ $showEditModal ? 'submitEdit' : 'submitCreate' }}">
-                <div class="p-6 space-y-5">
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-ink">
-                            {{ $showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order') }}
-                        </h3>
-                        <div class="flex items-center gap-2">
-                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                                wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
-                                <x-edz.icon name="x-mark" class="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Customer --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
-                            <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
-                            @error('form.customer_name')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.phone') }} *</label>
-                            <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm"
-                                required>
-                            @error('form.customer_phone')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
-                            <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.state') }}</label>
-                            <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
-                                size="sm" />
-                            @error('form.state_id')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.city') }}</label>
-                            <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
-                                option-label="name" placeholder="—" size="sm" />
-                            @error('form.city_id')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="edz-label">{{ __('merchant_panel.address') }}</label>
-                            <input type="text" wire:model="form.address" class="edz-input text-sm">
-                        </div>
-                    </div>
-
-                    {{-- Delivery Type Toggle --}}
-                    <div x-data="{ delivery: $wire.form.delivery_type }" x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
-                        x-effect="delivery = $wire.form.delivery_type">
-                        <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
-                        <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
-                            <button type="button"
-                                :class="delivery === 'home' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'home'" class="px-4 py-2 text-sm font-medium transition-colors">
-                                <x-edz.icon name="home" class="w-4 h-4 inline mr-1" />
-                                {{ __('merchant_panel.home_delivery_label') }}
-                            </button>
-                            <button type="button"
-                                :class="delivery === 'stopdesk' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'stopdesk'"
-                                class="px-4 py-2 text-sm font-medium transition-colors">
-                                <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
-                                {{ __('merchant_panel.stop_desk_label') }}
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Order Info --}}
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.shipment') }}</label>
-                            <x-edz.select wire:model="form.shipment_type" :options="[
-                                ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
-                                ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
-                                ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
-                            ]" size="sm" />
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.payment_method') }}</label>
-                            <x-edz.select wire:model="form.payment_method" :options="[['value' => 'cod', 'label' => __('merchant_panel.cod')]]" size="sm" />
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.weight_kg') }}</label>
-                            <input type="number" wire:model="form.weight_kg" step="0.01"
-                                class="edz-input text-sm">
-                        </div>
-                    </div>
-
-                    {{-- Shipping assignment (edit only) --}}
-                    @if ($showEditModal)
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="{
-                            get desks() {
-                                const all = {{ \Illuminate\Support\Js::from($editDesks) }};
-                                const pid = $wire.form.shipping_provider_id || '';
-                                const sid = $wire.form.state_id || '';
-                                const sel = $wire.form.stopdesk_point_id || '';
-                                return all
-                                    .filter(d =>
-                                        d.id === sel ||
-                                        (!pid || d.shipping_provider_id === pid) &&
-                                        (!sid || d.state_id === sid))
-                                    .sort((a, b) =>
-                                        (b.city_id === ($wire.form.city_id || '')) -
-                                        (a.city_id === ($wire.form.city_id || '')));
-                            }
-                        }">
-                            <div>
-                                <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                                <x-edz.select wire:model="form.shipping_provider_id" :options="$editProviders"
-                                    option-value="id" option-label="name" placeholder="—" size="sm" />
-                            </div>
-                            <div>
-                                <label class="edz-label">{{ __('merchant_panel.pickup_desk') }}</label>
-                                <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
-                                    <option value="">—</option>
-                                    <template x-for="desk in desks" :key="desk.id">
-                                        <option :value="desk.id"
-                                            x-text="desk.name + ' - ' + (desk.address || '')">
-                                        </option>
-                                    </template>
-                                </select>
+        @if ($showCreateModal || $showEditModal)
+            <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class="  edz-scroll"
+                wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">
+                <form wire:submit="{{ $showEditModal ? 'submitEdit' : 'submitCreate' }}">
+                    <div class="p-6 space-y-5">
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-ink">
+                                {{ $showEditModal ? __('merchant_panel.edit_order') : __('merchant_panel.new_order') }}
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
+                                    <x-edz.icon name="x-mark" class="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
-                    @endif
 
-                    {{-- Products --}}
-                    <div>
-                        <label class="edz-label">{{ __('merchant_panel.products') }}</label>
+                        {{-- Customer --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
+                                <input type="text" wire:model="form.customer_name" class="edz-input text-sm"
+                                    required>
+                                @error('form.customer_name')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.phone') }} *</label>
+                                <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm"
+                                    required>
+                                @error('form.customer_phone')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
+                                <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.state') }}</label>
+                                <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
+                                    :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
+                                    size="sm" />
+                                @error('form.state_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.city') }}</label>
+                                <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
+                                    option-label="name" placeholder="—" size="sm" />
+                                @error('form.city_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="edz-label">{{ __('merchant_panel.address') }}</label>
+                                <input type="text" wire:model="form.address" class="edz-input text-sm">
+                            </div>
+                        </div>
 
-                        {{-- Trigger to open product picker modal --}}
-                        <button type="button" @click="openProductPicker()"
-                            class="w-full flex items-center gap-3 px-4 py-3 bg-surface-secondary dark:bg-ink-800
+                        {{-- Delivery Type Toggle --}}
+                        <div x-data="{ delivery: $wire.form.delivery_type }" x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
+                            x-effect="delivery = $wire.form.delivery_type">
+                            <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
+                            <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
+                                <button type="button"
+                                    :class="delivery === 'home' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                    @click="delivery = 'home'"
+                                    class="px-4 py-2 text-sm font-medium transition-colors">
+                                    <x-edz.icon name="home" class="w-4 h-4 inline mr-1" />
+                                    {{ __('merchant_panel.home_delivery_label') }}
+                                </button>
+                                <button type="button"
+                                    :class="delivery === 'stopdesk' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                    @click="delivery = 'stopdesk'"
+                                    class="px-4 py-2 text-sm font-medium transition-colors">
+                                    <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
+                                    {{ __('merchant_panel.stop_desk_label') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Order Info --}}
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.shipment') }}</label>
+                                <x-edz.select wire:model="form.shipment_type" :options="[
+                                    ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+                                    ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
+                                    ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
+                                ]" size="sm" />
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.payment_method') }}</label>
+                                <x-edz.select wire:model="form.payment_method" :options="[['value' => 'cod', 'label' => __('merchant_panel.cod')]]" size="sm" />
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.weight_kg') }}</label>
+                                <input type="number" wire:model="form.weight_kg" step="0.01"
+                                    class="edz-input text-sm">
+                            </div>
+                        </div>
+
+                        {{-- Shipping assignment (edit only) --}}
+                        @if ($showEditModal)
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="{
+                                get desks() {
+                                    const all = {{ \Illuminate\Support\Js::from($editDesks) }};
+                                    const pid = $wire.form.shipping_provider_id || '';
+                                    const sid = $wire.form.state_id || '';
+                                    const sel = $wire.form.stopdesk_point_id || '';
+                                    return all
+                                        .filter(d =>
+                                            d.id === sel ||
+                                            (!pid || d.shipping_provider_id === pid) &&
+                                            (!sid || d.state_id === sid))
+                                        .sort((a, b) =>
+                                            (b.city_id === ($wire.form.city_id || '')) -
+                                            (a.city_id === ($wire.form.city_id || '')));
+                                }
+                            }">
+                                <div>
+                                    <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
+                                    <x-edz.select wire:model="form.shipping_provider_id" :options="$editProviders"
+                                        option-value="id" option-label="name" placeholder="—" size="sm" />
+                                </div>
+                                <div>
+                                    <label class="edz-label">{{ __('merchant_panel.pickup_desk') }}</label>
+                                    <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
+                                        <option value="">—</option>
+                                        <template x-for="desk in desks" :key="desk.id">
+                                            <option :value="desk.id"
+                                                x-text="desk.name + ' - ' + (desk.address || '')">
+                                            </option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Products --}}
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.products') }}</label>
+
+                            {{-- Trigger to open product picker modal --}}
+                            <button type="button" @click="openProductPicker()" :disabled="isLoadingProducts"
+                                class="w-full flex items-center gap-3 px-4 py-3 bg-surface-secondary dark:bg-ink-800
                                    border border-dashed border-surface-border dark:border-ink-600 rounded-xl
                                    hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10
-                                   transition-colors text-sm text-ink-muted group">
-                            <x-edz.icon name="qr-code" class="w-5 h-5 text-ink-muted group-hover:text-primary-500 transition-colors" />
-                            <span class="flex-1 text-start">{{ __('merchant_panel.search_products_barcode') }}</span>
-                            <x-edz.icon name="plus" class="w-4 h-4 text-ink-muted group-hover:text-primary-500 transition-colors" />
-                        </button>
+                                   transition-colors text-sm text-ink-muted group disabled:opacity-50">
+                                <svg x-show="isLoadingProducts" x-cloak class="edz-spinner w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                <x-edz.icon name="qr-code" x-show="!isLoadingProducts"
+                                    class="w-5 h-5 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                                <span
+                                    class="flex-1 text-start">{{ __('merchant_panel.search_products_barcode') }}</span>
+                                <x-edz.icon name="plus"
+                                    class="w-4 h-4 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                            </button>
 
-                        {{-- Items list --}}
-                        @if (!empty($form['items']))
-                            <div class="mt-3 space-y-2  overflow-y-auto max-h-[calc(80vh-475px)]  edz-scroll">
-                                @foreach ($form['items'] as $idx => $item)
-                                    <div
-                                        class="flex items-center gap-3 p-3 bg-surface-secondary dark:bg-ink-800 rounded-lg">
-                                        {{-- Image --}}
-                                        <img src="{{ $item['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                            alt=""
-                                            class="w-12 h-12 rounded-lg object-cover bg-surface shrink-0">
-
-                                        {{-- Name + SKU --}}
-                                        <div class="flex-1 min-w-0">
-                                            <div class="text-sm font-medium text-ink truncate">{{ $item['name'] }}
-                                            </div>
-                                            <div class="text-xs text-ink-muted mt-0.5">
-                                                SKU: {{ $item['sku'] ?? '—' }}
-                                                @if (($item['stock'] ?? 0) <= 0)
-                                                    <span
-                                                        class="text-danger-500 ml-2">{{ __('merchant_panel.out_of_stock') }}</span>
-                                                @elseif (($item['stock'] ?? 0) <= 5)
-                                                    <span class="text-warning-500 ml-2">{{ $item['stock'] }}
-                                                        {{ __('merchant_panel.left') }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        {{-- Quantity stepper --}}
+                            {{-- Items list --}}
+                            @if (!empty($form['items']))
+                                <div class="mt-3 space-y-2  overflow-y-auto max-h-[calc(80vh-475px)]  edz-scroll">
+                                    @foreach ($form['items'] as $idx => $item)
                                         <div
-                                            class="flex items-center rounded-lg border border-surface-border dark:border-ink-600 overflow-hidden shrink-0">
-                                            <button type="button"
-                                                wire:click="updateFormItemQty({{ $idx }}, {{ max(1, $item['quantity'] - 1) }})"
-                                                :disabled="{{ $item['quantity'] <= 1 ? 'true' : 'false' }}"
-                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
+                                            class="flex items-center gap-3 p-3 bg-surface-secondary dark:bg-ink-800 rounded-lg">
+                                            {{-- Image --}}
+                                            <img src="{{ $item['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                                alt=""
+                                                class="w-12 h-12 rounded-lg object-cover bg-surface shrink-0">
+
+                                            {{-- Name + SKU --}}
+                                            <div class="flex-1 min-w-0">
+                                                <div class="text-sm font-medium text-ink truncate">
+                                                    {{ $item['name'] }}
+                                                </div>
+                                                <div class="text-xs text-ink-muted mt-0.5">
+                                                    SKU: {{ $item['sku'] ?? '—' }}
+                                                    @if (($item['stock'] ?? 0) <= 0)
+                                                        <span
+                                                            class="text-danger-500 ml-2">{{ __('merchant_panel.out_of_stock') }}</span>
+                                                    @elseif (($item['stock'] ?? 0) <= 5)
+                                                        <span class="text-warning-500 ml-2">{{ $item['stock'] }}
+                                                            {{ __('merchant_panel.left') }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            {{-- Quantity stepper --}}
+                                            <div
+                                                class="flex items-center rounded-lg border border-surface-border dark:border-ink-600 overflow-hidden shrink-0">
+                                                <button type="button"
+                                                    wire:click="updateFormItemQty({{ $idx }}, {{ max(1, $item['quantity'] - 1) }})"
+                                                    :disabled="{{ $item['quantity'] <= 1 ? 'true' : 'false' }}"
+                                                    class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
                                                        text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
                                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed
                                                        text-sm font-medium select-none">
-                                                &minus;
-                                            </button>
-                                            <input type="number" value="{{ $item['quantity'] }}"
-                                                wire:change="updateFormItemQty({{ $idx }}, parseInt($event.target.value))"
-                                                min="1"
-                                                class="w-10 h-8 text-center border-x border-surface-border dark:border-ink-600
+                                                    &minus;
+                                                </button>
+                                                <input type="number" value="{{ $item['quantity'] }}"
+                                                    wire:change="updateFormItemQty({{ $idx }}, parseInt($event.target.value))"
+                                                    min="1"
+                                                    class="w-10 h-8 text-center border-x border-surface-border dark:border-ink-600
                                                        bg-transparent text-sm font-semibold text-ink
                                                        focus:outline-none focus:ring-0
                                                        [appearance:textfield]
                                                        [&::-webkit-outer-spin-button]:appearance-none
                                                        [&::-webkit-inner-spin-button]:appearance-none">
-                                            <button type="button"
-                                                wire:click="updateFormItemQty({{ $idx }}, {{ $item['quantity'] + 1 }})"
-                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
+                                                <button type="button"
+                                                    wire:click="updateFormItemQty({{ $idx }}, {{ $item['quantity'] + 1 }})"
+                                                    class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
                                                        text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
                                                        transition-colors disabled:opacity-30 disabled:cursor-not-allowed
                                                        text-sm font-medium select-none">
-                                                &plus;
+                                                    &plus;
+                                                </button>
+                                            </div>
+
+                                            {{-- Unit price (editable) --}}
+                                            <div class="shrink-0 hidden sm:block">
+                                                <input type="number" value="{{ $item['price'] }}"
+                                                    wire:change="updateFormItemPrice({{ $idx }}, parseFloat($event.target.value))"
+                                                    step="10" min="0"
+                                                    class="edz-input text-xs w-20 text-center py-1"
+                                                    placeholder="{{ __('merchant_panel.price') }}">
+                                            </div>
+
+                                            {{-- Line total --}}
+                                            <div class="text-right shrink-0 w-24">
+                                                <div class="text-sm font-bold text-ink tabular-nums">
+                                                    {{ currency($item['price'] * $item['quantity']) }}</div>
+                                                <div class="text-xs text-ink-muted">{{ $item['quantity'] }} ×
+                                                    {{ currency($item['price']) }}</div>
+                                            </div>
+
+                                            {{-- Delete --}}
+                                            <button type="button" wire:click="removeFormItem({{ $idx }})"
+                                                class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors">
+                                                <x-edz.icon name="x-mark" class="w-4 h-4" />
                                             </button>
                                         </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
 
-                                        {{-- Unit price (editable) --}}
-                                        <div class="shrink-0 hidden sm:block">
-                                            <input type="number" value="{{ $item['price'] }}"
-                                                wire:change="updateFormItemPrice({{ $idx }}, parseFloat($event.target.value))"
-                                                step="10" min="0"
-                                                class="edz-input text-xs w-20 text-center py-1"
-                                                placeholder="{{ __('merchant_panel.price') }}">
-                                        </div>
-
-                                        {{-- Line total --}}
-                                        <div class="text-right shrink-0 w-24">
-                                            <div class="text-sm font-bold text-ink tabular-nums">
-                                                {{ currency($item['price'] * $item['quantity']) }}</div>
-                                            <div class="text-xs text-ink-muted">{{ $item['quantity'] }} ×
-                                                {{ currency($item['price']) }}</div>
-                                        </div>
-
-                                        {{-- Delete --}}
-                                        <button type="button" wire:click="removeFormItem({{ $idx }})"
-                                            class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors">
-                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
-                                        </button>
+                        {{-- Order Summary — Horizontal --}}
+                        @if (!empty($form['items']))
+                            @php
+                                $subtotal = collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
+                                $totalWeight = collect($form['items'])->sum(
+                                    fn($i) => ($i['weight'] ?? 0) * $i['quantity'],
+                                );
+                                $discount = 0;
+                                if ($form['discount_type'] && $form['discount_value']) {
+                                    $discount =
+                                        $form['discount_type'] === 'amount'
+                                            ? (float) $form['discount_value']
+                                            : round(($subtotal * (float) $form['discount_value']) / 100, 2);
+                                }
+                                $grandTotal = max(0, $subtotal - $discount);
+                            @endphp
+                            <div class="bg-surface-secondary dark:bg-ink-800 rounded-lg p-4">
+                                {{-- Top row: main stats --}}
+                                <div class="flex items-center justify-between gap-4 flex-wrap">
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <span class="text-ink-muted">{{ __('merchant_panel.items') }}:</span>
+                                        <span
+                                            class="font-semibold text-ink">{{ collect($form['items'])->sum('quantity') }}</span>
                                     </div>
-                                @endforeach
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <span class="text-ink-muted">{{ __('merchant_panel.subtotal') }}:</span>
+                                        <span
+                                            class="font-semibold text-ink tabular-nums">{{ currency($subtotal) }}</span>
+                                    </div>
+                                    @if ($totalWeight > 0)
+                                        <div class="flex items-center gap-4 text-sm">
+                                            <span
+                                                class="text-ink-muted">{{ __('merchant_panel.total_weight') }}:</span>
+                                            <span
+                                                class="font-medium text-ink tabular-nums">{{ number_format($totalWeight, 2) }}
+                                                kg</span>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <span class="text-ink-muted">{{ __('merchant_panel.delivery_cost') }}:</span>
+                                        <span
+                                            class="text-success-500 font-medium">{{ __('merchant_panel.free') }}</span>
+                                    </div>
+                                </div>
+
+                                {{-- Discount row --}}
+                                <div
+                                    class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                    <div class="flex items-center gap-2">
+                                        <x-edz.select wire:model="form.discount_type" :options="[
+                                            ['value' => '', 'label' => __('merchant_panel.discount')],
+                                            ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
+                                            ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
+                                        ]" size="sm"
+                                            class="w-28" />
+                                        @if ($form['discount_type'])
+                                            <input type="number" wire:model="form.discount_value"
+                                                class="edz-input text-xs py-1 w-20" min="0"
+                                                placeholder="{{ $form['discount_type'] === 'percent' ? '%' : 'DZD' }}">
+                                        @endif
+                                        @if ($form['discount_type'] && $form['discount_value'])
+                                            <input type="text" wire:model="form.discount_reason"
+                                                class="edz-input text-xs py-1 flex-1 max-w-xs"
+                                                placeholder="{{ __('merchant_panel.discount_reason') }}">
+                                        @endif
+                                    </div>
+                                    <span
+                                        class="text-sm font-medium tabular-nums {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
+                                        {{ $discount > 0 ? '-' . currency($discount) : '—' }}
+                                    </span>
+                                </div>
+
+                                {{-- Grand total row --}}
+                                <div
+                                    class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                    <span
+                                        class="text-base font-bold text-ink">{{ __('merchant_panel.total') }}</span>
+                                    <span
+                                        class="text-lg font-bold text-ink tabular-nums">{{ currency($grandTotal) }}</span>
+                                </div>
                             </div>
                         @endif
-                    </div>
 
-                    {{-- Order Summary — Horizontal --}}
-                    @if (!empty($form['items']))
-                        @php
-                            $subtotal = collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
-                            $totalWeight = collect($form['items'])->sum(fn($i) => ($i['weight'] ?? 0) * $i['quantity']);
-                            $discount = 0;
-                            if ($form['discount_type'] && $form['discount_value']) {
-                                $discount =
-                                    $form['discount_type'] === 'amount'
-                                        ? (float) $form['discount_value']
-                                        : round(($subtotal * (float) $form['discount_value']) / 100, 2);
-                            }
-                            $grandTotal = max(0, $subtotal - $discount);
-                        @endphp
-                        <div class="bg-surface-secondary dark:bg-ink-800 rounded-lg p-4">
-                            {{-- Top row: main stats --}}
-                            <div class="flex items-center justify-between gap-4 flex-wrap">
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.items') }}:</span>
-                                    <span
-                                        class="font-semibold text-ink">{{ collect($form['items'])->sum('quantity') }}</span>
-                                </div>
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.subtotal') }}:</span>
-                                    <span
-                                        class="font-semibold text-ink tabular-nums">{{ currency($subtotal) }}</span>
-                                </div>
-                                @if ($totalWeight > 0)
-                                    <div class="flex items-center gap-4 text-sm">
-                                        <span class="text-ink-muted">{{ __('merchant_panel.total_weight') }}:</span>
-                                        <span
-                                            class="font-medium text-ink tabular-nums">{{ number_format($totalWeight, 2) }}
-                                            kg</span>
-                                    </div>
-                                @endif
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.delivery_cost') }}:</span>
-                                    <span class="text-success-500 font-medium">{{ __('merchant_panel.free') }}</span>
-                                </div>
-                            </div>
-
-                            {{-- Discount row --}}
-                            <div
-                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
-                                <div class="flex items-center gap-2">
-                                    <x-edz.select wire:model="form.discount_type" :options="[
-                                        ['value' => '', 'label' => __('merchant_panel.discount')],
-                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
-                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
-                                    ]" size="sm"
-                                        class="w-28" />
-                                    @if ($form['discount_type'])
-                                        <input type="number" wire:model="form.discount_value"
-                                            class="edz-input text-xs py-1 w-20" min="0"
-                                            placeholder="{{ $form['discount_type'] === 'percent' ? '%' : 'DZD' }}">
-                                    @endif
-                                    @if ($form['discount_type'] && $form['discount_value'])
-                                        <input type="text" wire:model="form.discount_reason"
-                                            class="edz-input text-xs py-1 flex-1 max-w-xs"
-                                            placeholder="{{ __('merchant_panel.discount_reason') }}">
-                                    @endif
-                                </div>
-                                <span
-                                    class="text-sm font-medium tabular-nums {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
-                                    {{ $discount > 0 ? '-' . currency($discount) : '—' }}
-                                </span>
-                            </div>
-
-                            {{-- Grand total row --}}
-                            <div
-                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
-                                <span class="text-base font-bold text-ink">{{ __('merchant_panel.total') }}</span>
-                                <span
-                                    class="text-lg font-bold text-ink tabular-nums">{{ currency($grandTotal) }}</span>
-                            </div>
+                        {{-- Notes --}}
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.notes') }}</label>
+                            <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
                         </div>
-                    @endif
 
-                    {{-- Notes --}}
+                        {{-- Submit --}}
+                        <div class="flex justify-end gap-2 pt-2 border-t border-surface-border">
+                            <button type="button" class="edz-btn edz-btn--ghost"
+                                wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
+                                {{ __('buttons.cancel') }}
+                            </button>
+                            <button type="submit" class="edz-btn edz-btn--primary" wire:loading.attr="disabled"
+                                wire:loading.class="opacity-50 pointer-events-none"
+                                wire:target="submitCreate,submitEdit">
+                                <svg x-cloak wire:loading wire:target="submitCreate,submitEdit" class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                <span wire:loading.remove wire:target="submitCreate,submitEdit">{{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}</span>
+                                <span class="sr-only">{{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </x-edz.modal>
+        @endif
+
+        {{-- Reassign Modal --}}
+        @if ($showReassignModal)
+            <x-edz.modal :isOpen="true" :showCloseButton="false" wire:key="order-reassign-modal">
+                <div class="p-6 space-y-4">
+                    <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.reassign_order') }}</h3>
                     <div>
-                        <label class="edz-label">{{ __('merchant_panel.notes') }}</label>
-                        <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
+                        <label class="edz-label">{{ __('merchant_panel.assign_to') }} *</label>
+                        <x-edz.select wire:model="reassignMembershipId" :options="$allMembers" option-value="id"
+                            option-label="user.name" placeholder="{{ __('merchant_panel.select_agent') }}"
+                            size="sm" />
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                            wire:click="set('showReassignModal', false)">{{ __('merchant_panel.cancel') }}</button>
+                        <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
+                            wire:loading.attr="disabled"
+                            wire:loading.class="opacity-50 pointer-events-none" wire:target="submitReassign">
+                            <svg x-cloak wire:loading wire:target="submitReassign" class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                            <span wire:loading.remove wire:target="submitReassign">{{ __('merchant_panel.reassign') }}</span>
+                        </button>
+                    </div>
+                </div>
+            </x-edz.modal>
+        @endif
+
+        {{-- Product Picker Modal --}}
+        @if ($showProductPickerModal)
+            <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="md">
+                <div class="flex flex-col max-h-[85vh]">
+                    {{-- Drag handle (mobile) --}}
+                    <div class="edz-modal__handle sm:hidden"></div>
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                        <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.products') }}</h3>
+                        <button type="button" @click="open = false; closeProductPicker()" class="edz-modal__close"
+                            style="position:static;">
+                            <x-edz.icon name="x-mark" class="w-5 h-5" />
+                        </button>
                     </div>
 
-                    {{-- Submit --}}
-                    <div class="flex justify-end gap-2 pt-2 border-t border-surface-border">
-                        <button type="button" class="edz-btn edz-btn--ghost"
-                            wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
-                            {{ __('buttons.cancel') }}
-                        </button>
-                        <button type="submit" class="edz-btn edz-btn--primary" wire:loading.attr="disabled"
-                            wire:loading.class="opacity-50 pointer-events-none">
-                            {{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </x-edz.modal>
-    @endif
-
-    {{-- Reassign Modal --}}
-    @if ($showReassignModal)
-        <x-edz.modal :isOpen="true" :showCloseButton="false" wire:key="order-reassign-modal">
-            <div class="p-6 space-y-4">
-                <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.reassign_order') }}</h3>
-                <div>
-                    <label class="edz-label">{{ __('merchant_panel.assign_to') }} *</label>
-                    <x-edz.select wire:model="reassignMembershipId" :options="$allMembers" option-value="id"
-                        option-label="user.name" placeholder="{{ __('merchant_panel.select_agent') }}"
-                        size="sm" />
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                        wire:click="set('showReassignModal', false)">{{ __('merchant_panel.cancel') }}</button>
-                    <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
-                        wire:loading.attr="disabled"
-                        wire:loading.class="opacity-50 pointer-events-none">{{ __('merchant_panel.reassign') }}</button>
-                </div>
-            </div>
-        </x-edz.modal>
-    @endif
-
-    {{-- Product Picker Modal --}}
-    @if ($showProductPickerModal)
-    <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="md">
-        <div class="flex flex-col max-h-[85vh]">
-            {{-- Drag handle (mobile) --}}
-            <div class="edz-modal__handle sm:hidden"></div>
-
-            {{-- Header --}}
-            <div class="flex items-center justify-between px-5 pt-5 pb-3">
-                <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.products') }}</h3>
-                <button type="button" @click="open = false; closeProductPicker()"
-                    class="edz-modal__close" style="position:static;">
-                    <x-edz.icon name="x-mark" class="w-5 h-5" />
-                </button>
-            </div>
-
-            {{-- Search --}}
-            <div class="px-5 pb-3">
-                <div class="relative">
-                    <input type="text"
-                        @input="onSearchInput($event)"
-                        data-product-search-input
-                        placeholder="{{ __('merchant_panel.search_products_barcode') }}"
-                        class="edz-input text-sm ps-10 pe-10"
-                        @keydown.enter.prevent="selectProductByBarcode($event)">
-                    <x-edz.icon name="magnifying-glass"
-                        class="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                    <x-edz.icon name="qr-code"
-                        class="w-4 h-4 absolute end-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-                </div>
-            </div>
-
-            {{-- Counter --}}
-            <div class="px-5 pb-2">
-                <span class="text-xs text-ink-muted"
-                      x-text="(searchTerm && searchTerm.length >= 2 ? visibleCount : {{ count($formProductResults) }}) + ' {{ __('merchant_panel.products') }}'"></span>
-            </div>
-
-            {{-- Product list --}}
-            <div class="min-h-0 flex-1  max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll px-5 pb-5">
-                {{-- Skeleton loading (while loadProducts is executing) --}}
-                <div wire:loading wire:target="loadProducts" class="space-y-3 py-2">
-                    @foreach (range(1, 5) as $i)
-                        <div class="flex items-center gap-3 py-2">
-                            <div class="w-11 h-11 rounded-xl edz-skeleton shrink-0"></div>
-                            <div class="flex-1 space-y-2">
-                                <x-edz.skeleton width="{{ 40 + $i * 10 }}%" height="0.875rem" />
-                                <x-edz.skeleton width="6rem" height="0.75rem" />
-                            </div>
-                            <x-edz.skeleton width="3.5rem" height="1rem" />
+                    {{-- Search --}}
+                    <div class="px-5 pb-3">
+                        <div class="relative">
+                            <input type="text" @input="onSearchInput($event)" data-product-search-input
+                                placeholder="{{ __('merchant_panel.search_products_barcode') }}"
+                                class="edz-input text-sm ps-10 pe-10"
+                                @keydown.enter.prevent="selectProductByBarcode($event)">
+                            <x-edz.icon name="magnifying-glass"
+                                class="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                            <x-edz.icon name="qr-code"
+                                class="w-4 h-4 absolute end-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                         </div>
-                    @endforeach
-                </div>
+                    </div>
 
-                {{-- Product items (server-rendered) --}}
-                <div wire:loading.remove wire:target="loadProducts" class="divide-y divide-surface-border dark:divide-ink-700">
-                    @forelse ($formProductResults as $pv)
-                        @php
-                            $searchText = mb_strtolower($pv['product_name'] . ' ' . ($pv['first_variant']['sku'] ?? ''));
-                        @endphp
-                        <div data-search="{{ $searchText }}"
-                             x-show="!searchTerm || searchTerm.length < 2 || $el.dataset.search.includes(searchTerm.toLowerCase())"
-                             class="transition-opacity">
+                    {{-- Counter --}}
+                    <div class="px-5 pb-2">
+                        <span class="text-xs text-ink-muted"
+                            x-text="(searchTerm && searchTerm.length >= 2 ? visibleCount : {{ count($formProductResults) }}) + ' {{ __('merchant_panel.products') }}'"></span>
+                    </div>
 
-                            {{-- Multi-variant product --}}
-                            @if ($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1)
-                                <button type="button" @click="openVariants('{{ $pv['product_id'] }}')"
-                                    class="w-full text-left py-3 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2">
-                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                        alt="" loading="lazy"
-                                        class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}</div>
-                                        <div class="text-xs text-ink-muted mt-0.5">
-                                            {{ $pv['variant_count'] }} {{ __('merchant_panel.variants') }}
-                                        </div>
+                    {{-- Product list --}}
+                    <div class="min-h-0 flex-1  max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll px-5 pb-5">
+                        {{-- Skeleton loading (while loadProducts is executing) --}}
+                        <div wire:loading wire:target="loadProducts" class="space-y-3 py-2">
+                            @foreach (range(1, 5) as $i)
+                                <div class="flex items-center gap-3 py-2">
+                                    <div class="w-11 h-11 rounded-xl edz-skeleton shrink-0"></div>
+                                    <div class="flex-1 space-y-2">
+                                        <x-edz.skeleton width="{{ 40 + $i * 10 }}%" height="0.875rem" />
+                                        <x-edz.skeleton width="6rem" height="0.75rem" />
                                     </div>
-                                    <span class="text-xs text-ink-muted shrink-0 tabular-nums">{{ $pv['price_range'] }}</span>
-                                    <x-edz.icon name="chevron-left" class="w-4 h-4 text-ink-muted shrink-0 rtl:rotate-180" />
-                                </button>
+                                    <x-edz.skeleton width="3.5rem" height="1rem" />
+                                </div>
+                            @endforeach
+                        </div>
 
-                            {{-- Single variant product --}}
-                            @elseif ($pv['first_variant'])
+                        {{-- Product items (server-rendered) --}}
+                        <div wire:loading.remove wire:target="loadProducts"
+                            class="divide-y divide-surface-border dark:divide-ink-700">
+                            @forelse ($formProductResults as $pv)
                                 @php
-                                    $isProductSelected = isset($formSelectedItems[$pv['first_variant']['id']]);
+                                    $searchText = mb_strtolower(
+                                        $pv['product_name'] . ' ' . ($pv['first_variant']['sku'] ?? ''),
+                                    );
                                 @endphp
-                                <button type="button"
-                                    @if (!$isProductSelected) @click="selectProduct('{{ $pv['first_variant']['id'] }}')" @endif
-                                    :disabled="isAddingProduct"
-                                    class="w-full text-left py-3 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2
+                                <div data-search="{{ $searchText }}"
+                                    x-show="!searchTerm || searchTerm.length < 2 || $el.dataset.search.includes(searchTerm.toLowerCase())"
+                                    class="transition-opacity">
+
+                                    {{-- Multi-variant product --}}
+                                    @if ($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1)
+                                        <button type="button" @click="openVariants('{{ $pv['product_id'] }}')"
+                                            :disabled="isLoadingVariants"
+                                            class="w-full text-left py-3 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2 disabled:opacity-50">
+                                            <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                                alt="" loading="lazy"
+                                                class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}
+                                                </div>
+                                                <div class="text-xs text-ink-muted mt-0.5">
+                                                    {{ $pv['variant_count'] }} {{ __('merchant_panel.variants') }}
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-xs text-ink-muted shrink-0 tabular-nums">{{ $pv['price_range'] }}</span>
+                                            <svg x-show="isLoadingVariants" x-cloak class="edz-spinner w-4 h-4 text-ink-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                                            <x-edz.icon name="chevron-left" x-show="!isLoadingVariants"
+                                                class="w-4 h-4 text-ink-muted shrink-0 rtl:rotate-180" />
+                                        </button>
+
+                                        {{-- Single variant product --}}
+                                    @elseif ($pv['first_variant'])
+                                        @php
+                                            $isProductSelected = isset($formSelectedItems[$pv['first_variant']['id']]);
+                                        @endphp
+                                        <button type="button"
+                                            @if (!$isProductSelected) @click="selectProduct('{{ $pv['first_variant']['id'] }}')" @endif
+                                            :disabled="isAddingProduct"
+                                            class="w-full text-left py-3 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2
                                         {{ $isProductSelected
                                             ? 'bg-success-50/50 dark:bg-success-900/10 border border-success-200/50 dark:border-success-800/30'
                                             : 'hover:bg-surface-secondary dark:hover:bg-ink-700' }}
                                         disabled:opacity-50">
-                                    <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                        alt="" loading="lazy"
-                                        class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}</div>
-                                        <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-1.5">
-                                            <span>SKU: {{ $pv['first_variant']['sku'] ?? '—' }}</span>
-                                            @if (($pv['first_variant']['stock_status'] ?? '') === 'out')
-                                                <span class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
-                                            @elseif (($pv['first_variant']['stock_status'] ?? '') === 'low')
-                                                <span class="text-warning-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                            <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                                alt="" loading="lazy"
+                                                class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}
+                                                </div>
+                                                <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-1.5">
+                                                    <span>SKU: {{ $pv['first_variant']['sku'] ?? '—' }}</span>
+                                                    @if (($pv['first_variant']['stock_status'] ?? '') === 'out')
+                                                        <span
+                                                            class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
+                                                    @elseif (($pv['first_variant']['stock_status'] ?? '') === 'low')
+                                                        <span
+                                                            class="text-warning-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                                    @else
+                                                        <span
+                                                            class="text-success-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <span
+                                                class="text-ink font-semibold shrink-0 tabular-nums">{{ $pv['first_variant']['price_formatted'] }}</span>
+                                            @if ($isProductSelected)
+                                                <span
+                                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20 text-success-600 dark:text-success-400 shrink-0">
+                                                    <x-edz.icon name="check" class="w-4 h-4" />
+                                                </span>
                                             @else
-                                                <span class="text-success-500 font-medium">{{ $pv['first_variant']['stock_text'] }}</span>
+                                                <span
+                                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shrink-0">
+                                                    <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none"
+                                                        viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M12 4.5v15m7.5-7.5h-15" />
+                                                    </svg>
+                                                    <svg x-show="isAddingProduct" x-cloak class="edz-spinner"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <path
+                                                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                                    </svg>
+                                                </span>
                                             @endif
-                                        </div>
-                                    </div>
-                                    <span class="text-ink font-semibold shrink-0 tabular-nums">{{ $pv['first_variant']['price_formatted'] }}</span>
-                                    @if ($isProductSelected)
-                                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20 text-success-600 dark:text-success-400 shrink-0">
-                                            <x-edz.icon name="check" class="w-4 h-4" />
-                                        </span>
-                                    @else
-                                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shrink-0">
-                                            <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                            <svg x-show="isAddingProduct" x-cloak class="edz-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
-                                        </span>
+                                        </button>
                                     @endif
-                                </button>
+                                </div>
+                            @empty
+                                <div class="px-4 py-10 text-center">
+                                    <x-edz.icon name="magnifying-glass"
+                                        class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                                    <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}
+                                    </p>
+                                </div>
+                            @endforelse
+
+                            {{-- No search results (all items hidden by x-show) --}}
+                            <div x-show="searchTerm && searchTerm.length >= 2 && visibleCount === 0"
+                                class="px-4 py-10 text-center">
+                                <x-edz.icon name="magnifying-glass"
+                                    class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                                <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </x-edz.modal>
+        @endif
+
+        {{-- Variant Picker Modal --}}
+        @if ($showVariantPickerModal)
+            <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="sm">
+                <div class="flex flex-col max-h-[85vh]">
+                    {{-- Drag handle (mobile) --}}
+                    <div class="edz-modal__handle sm:hidden"></div>
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-5 pt-5 pb-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <button type="button"
+                                @click="open = false; closeVariantPicker(); $wire.set('showProductPickerModal', true);"
+                                class="edz-btn edz-btn--ghost edz-btn--sm shrink-0">
+                                <x-edz.icon name="arrow-right" class="w-4 h-4 rtl:rotate-180" />
+                                <span class="hidden sm:inline">{{ __('buttons.back') }}</span>
+                            </button>
+                            @if ($formSelectedProduct)
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <img src="{{ $formSelectedProduct['image_url'] ?? asset('img/icons/noimg.png') }}"
+                                        alt="" class="w-8 h-8 rounded-lg object-cover bg-surface shrink-0">
+                                    <span
+                                        class="text-sm font-bold text-ink truncate">{{ $formSelectedProduct['name'] }}</span>
+                                </div>
                             @endif
                         </div>
-                    @empty
-                        <div class="px-4 py-10 text-center">
-                            <x-edz.icon name="magnifying-glass" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
-                            <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
-                        </div>
-                    @endforelse
-
-                    {{-- No search results (all items hidden by x-show) --}}
-                    <div x-show="searchTerm && searchTerm.length >= 2 && visibleCount === 0"
-                         class="px-4 py-10 text-center">
-                        <x-edz.icon name="magnifying-glass" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
-                        <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                        <button type="button" @click="open = false; closeVariantPicker()" class="edz-modal__close"
+                            style="position:static;">
+                            <x-edz.icon name="x-mark" class="w-5 h-5" />
+                        </button>
                     </div>
-                </div>
-            </div>
-        </div>
-    </x-edz.modal>
-    @endif
 
-    {{-- Variant Picker Modal --}}
-    @if ($showVariantPickerModal)
-    <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="sm">
-        <div class="flex flex-col max-h-[85vh]">
-            {{-- Drag handle (mobile) --}}
-            <div class="edz-modal__handle sm:hidden"></div>
-
-            {{-- Header --}}
-            <div class="flex items-center justify-between px-5 pt-5 pb-3">
-                <div class="flex items-center gap-3 min-w-0">
-                    <button type="button" @click="open = false; closeVariantPicker(); $wire.set('showProductPickerModal', true);"
-                        class="edz-btn edz-btn--ghost edz-btn--sm shrink-0">
-                        <x-edz.icon name="arrow-right" class="w-4 h-4 rtl:rotate-180" />
-                        <span class="hidden sm:inline">{{ __('buttons.back') }}</span>
-                    </button>
-                    @if ($formSelectedProduct)
-                        <div class="flex items-center gap-2 min-w-0">
-                            <img src="{{ $formSelectedProduct['image_url'] ?? asset('img/icons/noimg.png') }}"
-                                alt="" class="w-8 h-8 rounded-lg object-cover bg-surface shrink-0">
-                            <span class="text-sm font-bold text-ink truncate">{{ $formSelectedProduct['name'] }}</span>
+                    {{-- Variant list --}}
+                    <div class="px-5 pb-3">
+                        <div class="relative">
+                            <input type="text" @input="onVariantSearchInput($event)"
+                                data-variant-search-input
+                                placeholder="{{ __('merchant_panel.search_variants') }}"
+                                class="edz-input text-sm ps-10 pe-10">
+                            <x-edz.icon name="magnifying-glass"
+                                class="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                         </div>
-                    @endif
-                </div>
-                <button type="button" @click="open = false; closeVariantPicker()"
-                    class="edz-modal__close" style="position:static;">
-                    <x-edz.icon name="x-mark" class="w-5 h-5" />
-                </button>
-            </div>
+                    </div>
 
-            {{-- Variant list --}}
-            <div class="flex-1 overflow-y-auto px-5 pb-5 max-h-[calc(100vh-475px)]  edz-scroll">
-                @if ($formSelectedProduct && count($formSelectedProduct['variants']) > 0)
-                    <div class="divide-y divide-surface-border dark:divide-ink-700">
-                        @foreach ($formSelectedProduct['variants'] as $variant)
-                            @php
-                                $isVariantSelected = isset($formSelectedItems[$variant['id']]);
-                                $variantQty = $formSelectedItems[$variant['id']] ?? 0;
-                                $isDisabled = !$variant['is_active'] || $variant['stock'] <= 0;
-                            @endphp
-                            <div class="py-3 flex items-center gap-3 text-sm rounded-lg px-2 -mx-2 transition-colors
+                    {{-- Variant list --}}
+                    <div class="flex-1 overflow-y-auto px-5 pb-5 max-h-[calc(100vh-475px)]  edz-scroll">
+                        @if ($formSelectedProduct && count($formSelectedProduct['variants']) > 0)
+                            <div class="divide-y divide-surface-border dark:divide-ink-700">
+                                @foreach ($formSelectedProduct['variants'] as $variant)
+                                    @php
+                                        $isVariantSelected = isset($formSelectedItems[$variant['id']]);
+                                        $variantQty = $formSelectedItems[$variant['id']] ?? 0;
+                                        $isDisabled = !$variant['is_active'] || $variant['stock'] <= 0;
+                                        $variantSearchText = mb_strtolower($variant['name'] . ' ' . ($variant['sku'] ?? '') . ' ' . ($variant['option_labels'] ?? ''));
+                                    @endphp
+                                    <div
+                                        data-variant-search="{{ $variantSearchText }}"
+                                        x-show="!variantQuery || variantQuery.length < 2 || $el.dataset.variantSearch.includes(variantQuery.toLowerCase())"
+                                        class="py-3 flex items-center gap-3 text-sm rounded-lg px-2 -mx-2 transition-colors
                                 {{ $isVariantSelected ? 'bg-success-50/50 dark:bg-success-900/10' : '' }}
                                 {{ $isDisabled && !$isVariantSelected ? 'opacity-40' : '' }}">
-                                <div class="flex-1 min-w-0">
-                                    <div class="font-medium text-ink text-xs truncate">{{ $variant['name'] }}</div>
-                                    <div class="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                        @if ($variant['option_labels'])
-                                            <span>{{ $variant['option_labels'] }}</span>
-                                            <span class="text-surface-border">·</span>
-                                        @endif
-                                        <span>SKU: {{ $variant['sku'] ?? '—' }}</span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-medium text-ink text-xs truncate">{{ $variant['name'] }}
+                                            </div>
+                                            <div
+                                                class="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                                @if ($variant['option_labels'])
+                                                    <span>{{ $variant['option_labels'] }}</span>
+                                                    <span class="text-surface-border">·</span>
+                                                @endif
+                                                <span>SKU: {{ $variant['sku'] ?? '—' }}</span>
+                                                @if ($isVariantSelected)
+                                                    <span class="text-success-600 dark:text-success-400 font-medium">·
+                                                        {{ $variantQty }}
+                                                        {{ __('merchant_panel.in_cart') }}</span>
+                                                @elseif ($variant['stock'] <= 0)
+                                                    <span
+                                                        class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
+                                                @elseif ($variant['stock'] <= 5)
+                                                    <span
+                                                        class="text-warning-500 font-medium">{{ $variant['stock'] }}
+                                                        {{ __('merchant_panel.left') }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <span
+                                            class="text-ink font-semibold text-xs shrink-0 tabular-nums">{{ currency($variant['price']) }}</span>
                                         @if ($isVariantSelected)
-                                            <span class="text-success-600 dark:text-success-400 font-medium">· {{ $variantQty }} {{ __('merchant_panel.in_cart') }}</span>
-                                        @elseif ($variant['stock'] <= 0)
-                                            <span class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
-                                        @elseif ($variant['stock'] <= 5)
-                                            <span class="text-warning-500 font-medium">{{ $variant['stock'] }} {{ __('merchant_panel.left') }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                                <span class="text-ink font-semibold text-xs shrink-0 tabular-nums">{{ currency($variant['price']) }}</span>
-                                @if ($isVariantSelected)
-                                    <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20
+                                            <span
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20
                                            text-success-600 dark:text-success-400 shrink-0">
-                                        <x-edz.icon name="check" class="w-4 h-4" />
-                                    </span>
-                                @elseif ($variant['is_active'] && $variant['stock'] > 0)
-                                    <button type="button" @click="selectVariant('{{ $variant['id'] }}')"
-                                        :disabled="isAddingProduct"
-                                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
+                                                <x-edz.icon name="check" class="w-4 h-4" />
+                                            </span>
+                                        @elseif ($variant['is_active'] && $variant['stock'] > 0)
+                                            <button type="button" @click="selectVariant('{{ $variant['id'] }}')"
+                                                :disabled="isAddingProduct"
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
                                                text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30
                                                transition-colors shrink-0 disabled:opacity-50">
-                                        <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                                        <svg x-show="isAddingProduct" x-cloak class="edz-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
-                                    </button>
-                                @endif
+                                                <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M12 4.5v15m7.5-7.5h-15" />
+                                                </svg>
+                                                <svg x-show="isAddingProduct" x-cloak class="edz-spinner"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path
+                                                        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                                </svg>
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endforeach
                             </div>
-                        @endforeach
+
+                            {{-- No variant search results --}}
+                            <div x-show="variantQuery && variantQuery.length >= 2 && variantVisibleCount === 0"
+                                class="px-4 py-10 text-center">
+                                <x-edz.icon name="magnifying-glass" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                                <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                            </div>
+                        @else
+                            <div class="px-4 py-10 text-center">
+                                <x-edz.icon name="cube" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
+                                <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
+                            </div>
+                        @endif
                     </div>
-                @else
-                    <div class="px-4 py-10 text-center">
-                        <x-edz.icon name="cube" class="w-10 h-10 text-ink-muted/40 mx-auto mb-3" />
-                        <p class="text-sm text-ink-muted">{{ __('merchant_panel.no_products_found') }}</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </x-edz.modal>
-    @endif
+                </div>
+            </x-edz.modal>
+        @endif
     </div>
 
     {{-- Filter Portal — single container, fixed-positioned --}}
@@ -2474,19 +2688,41 @@ $refreshOrders = function (): void {
         {{-- Product --}}
         @if (in_array('products', $this->visibleColumns))
             <div x-show="openFilter === 'product'" x-cloak>
-                <input type="text" wire:model.live.debounce.300ms="filters.product"
-                    placeholder="{{ __('merchant_panel.products') }}..." class="edz-input text-xs w-full">
+                <x-edz.product-select
+                    :options="$filterProducts"
+                    wire:model="filters.product_id"
+                    wire:fullmodel="filters.product"
+                    size="sm"
+                    placeholder="{{ __('merchant_panel.filter_by_product') }}" />
             </div>
         @endif
 
         {{-- Amount --}}
         @if (in_array('amount', $this->visibleColumns))
             <div x-show="openFilter === 'amount'" x-cloak>
-                <div class="flex gap-1">
-                    <input type="number" wire:model.live.debounce.500ms="filters.amount_min" placeholder="Min"
-                        class="edz-input text-xs flex-1">
-                    <input type="number" wire:model.live.debounce.500ms="filters.amount_max" placeholder="Max"
-                        class="edz-input text-xs flex-1">
+                <div class="flex items-center gap-1">
+                    <div class="relative flex-1">
+                        <input type="number" wire:model.live.debounce.600ms="filters.amount_min" placeholder="Min"
+                            class="edz-input text-xs w-full pe-6">
+                        @if ($this->filters['amount_min'] !== null && $this->filters['amount_min'] !== '')
+                            <button wire:click="$set('filters.amount_min', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear min amount">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
+                    <div class="relative flex-1">
+                        <input type="number" wire:model.live.debounce.600ms="filters.amount_max" placeholder="Max"
+                            class="edz-input text-xs w-full pe-6">
+                        @if ($this->filters['amount_max'] !== null && $this->filters['amount_max'] !== '')
+                            <button wire:click="$set('filters.amount_max', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear max amount">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
                 </div>
             </div>
         @endif
@@ -2531,10 +2767,28 @@ $refreshOrders = function (): void {
         @if (in_array('created_at', $this->visibleColumns))
             <div x-show="openFilter === 'date'" x-cloak>
                 <div class="flex flex-col gap-1">
-                    <input type="text" wire:model.blur="filters.date_from"
-                        class="edz-input text-xs w-full flatpickr-input" placeholder="From" autocomplete="off">
-                    <input type="text" wire:model.blur="filters.date_to"
-                        class="edz-input text-xs w-full flatpickr-input" placeholder="To" autocomplete="off">
+                    <div class="relative">
+                        <input type="text" wire:model.blur="filters.date_from"
+                            class="edz-input text-xs w-full flatpickr-input pe-7" placeholder="From" autocomplete="off">
+                        @if (!empty($this->filters['date_from']))
+                            <button wire:click="$set('filters.date_from', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear from date">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
+                    <div class="relative">
+                        <input type="text" wire:model.blur="filters.date_to"
+                            class="edz-input text-xs w-full flatpickr-input pe-7" placeholder="To" autocomplete="off">
+                        @if (!empty($this->filters['date_to']))
+                            <button wire:click="$set('filters.date_to', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear to date">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
                 </div>
             </div>
         @endif

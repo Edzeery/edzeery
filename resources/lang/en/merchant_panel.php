@@ -345,6 +345,9 @@ return [
     'back' => 'Back to products',
     'no_products_found' => 'No products found',
     'no_options_found' => 'No options found',
+    'filter_by_product' => 'Filter by product',
+    'filter_by_full_name' => 'Filter by this name',
+    'clear_filter' => 'Clear filter',
     'search' => 'Search...',
     'order_summary' => 'Order Summary',
     'subtotal' => 'Subtotal',
@@ -360,4 +363,5 @@ return [
     'out_of_stock' => 'Out of stock',
     'left' => 'left',
     'in_cart' => 'in cart',
+    'search_variants' => 'Search variants...',
 ];
