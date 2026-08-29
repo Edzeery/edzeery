@@ -32,9 +32,17 @@ document.addEventListener("alpine:init", () => {
 
     Alpine.store("theme").apply();
 
+    const mediaDesktop = window.matchMedia("(min-width: 1024px)");
+
     Alpine.store("shell", {
         open: false,
         collapsed: localStorage.getItem("edz-sidebar-collapsed") === "1",
+        hovered: false,
+        // Collapsed icon-only rail is only meaningful on desktop; on
+        // small screens the sidebar is an off-canvas drawer.
+        get effectiveCollapsed() {
+            return this.collapsed && mediaDesktop.matches && !this.hovered;
+        },
         toggle() {
             this.open = !this.open;
         },
@@ -43,12 +51,38 @@ document.addEventListener("alpine:init", () => {
         },
         toggleCollapse() {
             this.collapsed = !this.collapsed;
+            this.hovered = false;
             localStorage.setItem(
                 "edz-sidebar-collapsed",
                 this.collapsed ? "1" : "0",
             );
         },
+        setHovered(val) {
+            // Only allow the temporary expand-on-hover behaviour while the
+            // rail is collapsed on desktop — never on mobile.
+            if (mediaDesktop.matches && this.collapsed) {
+                this.hovered = val;
+            } else {
+                this.hovered = false;
+            }
+        },
+        // Force UI back into a known state when the viewport crosses breakpoints.
+        onResize() {
+            if (!mediaDesktop.matches) {
+                this.hovered = false;
+            }
+        },
     });
+
+    if (mediaDesktop.addEventListener) {
+        mediaDesktop.addEventListener("change", () => {
+            Alpine.store("shell").onResize();
+        });
+    } else if (mediaDesktop.addListener) {
+        mediaDesktop.addListener(() => {
+            Alpine.store("shell").onResize();
+        });
+    }
 
     // --- Global dirty state store ---
     Alpine.store("dirty", {

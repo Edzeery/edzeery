@@ -43,30 +43,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $showTrash;
 
-    public $showCreateModal;
-
-    public $showEditModal;
-
-    public $showProductPickerModal;
-
-    public $showVariantPickerModal;
-
-    public $editingOrderId;
-
-    public $form;
-
-    public $formProductResults;
-
-    public $formProductView;
-
-    public $formSelectedProduct;
-
-    public $formSelectedItems;
-
-    public $editProviders;
-
-    public $editDesks;
-
     public $expandedOrderId;
 
     public $showReassignModal;
@@ -80,13 +56,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
 
         (new Actions\CallHook('mount'))->execute(static::$__context, $this, get_defined_vars());
-    }
-
-    public function syncFormSelectedItems(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('syncFormSelectedItems'))->execute(...$arguments);
     }
 
     public function loadColumnPreferences(): void
@@ -115,13 +84,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('loadOrders'))->execute(...$arguments);
-    }
-
-    public function loadCities(string $stateId): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('loadCities'))->execute(...$arguments);
     }
 
     public function setPage(int $page): void
@@ -250,20 +212,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('transitionOrder'))->execute(...$arguments);
     }
 
-    public function openCreateModal(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('openCreateModal'))->execute(...$arguments);
-    }
-
-    public function loadProducts(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('loadProducts'))->execute(...$arguments);
-    }
-
     public function loadFilterProducts(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -283,76 +231,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('clearProductFilter'))->execute(...$arguments);
-    }
-
-    public function selectProduct(string $productId): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('selectProduct'))->execute(...$arguments);
-    }
-
-    public function backToProducts(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('backToProducts'))->execute(...$arguments);
-    }
-
-    public function addFormItem(string $variantId): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('addFormItem'))->execute(...$arguments);
-    }
-
-    public function addFormItemByBarcode(string $code): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('addFormItemByBarcode'))->execute(...$arguments);
-    }
-
-    public function removeFormItem(int $index): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('removeFormItem'))->execute(...$arguments);
-    }
-
-    public function updateFormItemQty(int $index, int $qty): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('updateFormItemQty'))->execute(...$arguments);
-    }
-
-    public function updateFormItemPrice(int $index, $price): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('updateFormItemPrice'))->execute(...$arguments);
-    }
-
-    public function submitCreate(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('submitCreate'))->execute(...$arguments);
-    }
-
-    public function openEditModal(string $orderId): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('openEditModal'))->execute(...$arguments);
-    }
-
-    public function submitEdit(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('submitEdit'))->execute(...$arguments);
     }
 
     public function toggleDetail(string $orderId): void
@@ -383,11 +261,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('deleteOrder'))->execute(...$arguments);
     }
 
-    public function refreshOrders(): void
+    public function refreshOrders()
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        (new Actions\CallMethod('refreshOrders'))->execute(...$arguments);
+        return (new Actions\CallMethod('refreshOrders'))->execute(...$arguments);
     }
 
     public function updated($name)
@@ -395,6 +273,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, array_slice(func_get_args(), 1)];
 
         return (new Actions\CallPropertyHook('updated', $name))->execute(...$arguments);
+    }
+
+    public function getListeners()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\ResolveListeners)->execute(...$arguments);
+    }
+
+    public function ordersRefreshedHandler()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallListener('orders-refreshed'))->execute(...$arguments);
     }
 
 };

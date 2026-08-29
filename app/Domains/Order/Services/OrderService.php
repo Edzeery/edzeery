@@ -190,4 +190,14 @@ class OrderService
             return $order;
         });
     }
+
+    /**
+     * Update an existing order's attributes.
+     */
+    public function updateOrder(Order $order, array $data): Order
+    {
+        $order->update($data);
+
+        return $order;
+    }
 }

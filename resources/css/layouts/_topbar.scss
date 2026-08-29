@@ -48,6 +48,32 @@
     }
 }
 
+// --- Desktop collapse toggle (moves the sidebar between full & icon rail) ---
+.edz-topbar__collapse-toggle {
+    display: none; // on mobile the off-canvas drawer is controlled by the trigger
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--edz-radius-md);
+    color: rgb(var(--edz-color-text-soft));
+    transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
+
+    &:hover {
+        background-color: rgb(var(--edz-color-secondary));
+        color: rgb(var(--edz-color-text));
+        transform: scale(1.04);
+    }
+
+    &:active {
+        transform: scale(0.96);
+    }
+
+    @media (min-width: 1024px) {
+        display: inline-flex;
+    }
+}
+
 .edz-topbar__search {
     display: flex;
     align-items: center;

@@ -88,6 +88,43 @@
   white-space: nowrap;
 }
 
+// --- Collapse toggle (pin in the top-left rail) ---
+.edz-sidebar__collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-inline-start: auto;
+  flex: none;
+  border-radius: var(--edz-radius-md);
+  color: rgb(var(--edz-color-text-soft));
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+    color: rgb(var(--edz-color-text));
+    transform: scale(1.06);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+// When collapsed, keep the icon-only rail tidy: hide the toggle until hover.
+@media (min-width: 1024px) {
+  .edz-shell--collapsed .edz-sidebar__collapse {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    margin-inline-start: 0;
+  }
+}
+
 // --- Navigation ---
 .edz-sidebar__nav {
   flex: 1;
@@ -159,6 +196,107 @@
   width: 1.25rem;
   height: 1.25rem;
   flex: none;
+}
+
+// --- Submenu (collapsible group toggle + children) ---
+.edz-sidebar__sub-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.125rem;
+  border-radius: var(--edz-radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--edz-color-text-soft));
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: start;
+  white-space: nowrap;
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+    color: rgb(var(--edz-color-text));
+    transform: translateX(2px);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  .edz-sidebar__badge {
+    margin-inline-start: auto;
+  }
+
+  &--open {
+    background-color: rgb(var(--edz-color-brand-50));
+    color: rgb(var(--edz-color-brand-700));
+    font-weight: 600;
+    transform: translateX(2px);
+
+    .dark & {
+      background-color: rgb(var(--edz-color-brand-950));
+      color: rgb(var(--edz-color-brand-300));
+    }
+  }
+}
+
+.edz-sidebar__sub-chevron {
+  flex: none;
+  transition: transform var(--edz-duration-fast) var(--edz-ease-spring);
+
+  .edz-sidebar__sub-toggle--open & {
+    transform: rotate(180deg);
+  }
+}
+
+.edz-sidebar__sub {
+  display: flex;
+  flex-direction: column;
+  margin-inline-start: 0.75rem;
+  padding-inline-start: 0.625rem;
+  margin-bottom: 0.125rem;
+  border-inline-start: 1px solid rgb(var(--edz-color-border));
+}
+
+.edz-sidebar__sub-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.75rem;
+  border-radius: var(--edz-radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--edz-color-text-soft));
+  white-space: nowrap;
+  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+    color: rgb(var(--edz-color-text));
+    transform: translateX(2px);
+  }
+
+  &--active {
+    background-color: rgb(var(--edz-color-brand-50));
+    color: rgb(var(--edz-color-brand-700));
+    font-weight: 600;
+
+    .dark & {
+      background-color: rgb(var(--edz-color-brand-950));
+      color: rgb(var(--edz-color-brand-300));
+    }
+  }
+}
+
+.edz-sidebar__sub-icon {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  opacity: 0.85;
 }
 
 // --- Store info (merchant context) ---
@@ -296,7 +434,9 @@
     .edz-sidebar__brand-name,
     .edz-sidebar__group-title,
     .edz-sidebar__label,
-    .edz-sidebar__user-meta {
+    .edz-sidebar__user-meta,
+    .edz-sidebar__store-meta,
+    .edz-sidebar__store-link .edz-sidebar__label {
       display: none;
     }
 
@@ -305,13 +445,86 @@
       padding-inline: 0;
     }
 
+    .edz-sidebar__store,
+    .edz-sidebar__footer {
+      justify-content: center;
+    }
+
     .edz-sidebar__link {
       justify-content: center;
       padding-inline: 0;
+      gap: 0;
     }
 
     .edz-sidebar__link:hover {
       transform: none;
+    }
+
+    .edz-sidebar__badge {
+      display: none;
+    }
+  }
+
+  // While collapsed (and not hovering), keep the rail icon-only and hide any
+  // open submenu so the collapsed rail stays clean.
+  .edz-shell--collapsed .edz-sidebar:not(.edz-sidebar--hover) {
+    .edz-sidebar__sub,
+    .edz-sidebar__sub-chevron {
+      display: none;
+    }
+
+    .edz-sidebar__sub-toggle {
+      justify-content: center;
+      padding-inline: 0;
+      gap: 0;
+    }
+  }
+
+  // --- Temporary expand-on-hover over the content (Apple-style flyout) ---
+  .edz-shell--collapsed .edz-sidebar.edz-sidebar--hover {
+    width: var(--edz-sidebar-width);
+    box-shadow: var(--edz-shadow-floating);
+
+    .edz-sidebar__brand-name,
+    .edz-sidebar__group-title,
+    .edz-sidebar__label,
+    .edz-sidebar__user-meta,
+    .edz-sidebar__store-meta,
+    .edz-sidebar__store-link .edz-sidebar__label {
+      display: inline-flex;
+    }
+
+    .edz-sidebar__brand {
+      justify-content: flex-start;
+      padding-inline: 1.25rem;
+    }
+
+    .edz-sidebar__store,
+    .edz-sidebar__footer {
+      justify-content: flex-start;
+      padding-inline: 1.25rem;
+    }
+
+    .edz-sidebar__link {
+      justify-content: flex-start;
+      padding-inline: 0.75rem;
+      gap: 0.75rem;
+    }
+
+    .edz-sidebar__sub-toggle {
+      justify-content: flex-start;
+      padding-inline: 0.75rem;
+      gap: 0.75rem;
+    }
+
+    .edz-sidebar__badge {
+      display: inline-flex;
+    }
+
+    .edz-sidebar__collapse {
+      // Keep the collapse toggle reachable while flying out.
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 }

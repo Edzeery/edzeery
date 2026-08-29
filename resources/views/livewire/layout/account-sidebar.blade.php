@@ -11,10 +11,23 @@ with([
 ]);
 ?>
 
-<div class="edz-sidebar">
+<div class="edz-sidebar"
+     @mouseenter="$store.shell.setHovered(true)"
+     @mouseleave="$store.shell.setHovered(false)"
+     :class="{ 'edz-sidebar--hover': $store.shell.hovered }">
     <div class="edz-sidebar__brand">
         <span class="edz-sidebar__logo">E</span>
         <span class="edz-sidebar__brand-name">{{ config('app.name') }}</span>
+        <button type="button" class="edz-sidebar__collapse"
+                @click="$store.shell.toggleCollapse()"
+                aria-label="{{ __('buttons.toggle_sidebar_collapse') }}" title="{{ __('buttons.toggle_sidebar_collapse') }}">
+            <x-edz.icon x-show="!$store.shell.collapsed"
+                        :name="app()->getLocale() === 'ar' ? 'chevron-right' : 'chevron-left'"
+                        class="w-5 h-5" />
+            <x-edz.icon x-show="$store.shell.collapsed" x-cloak
+                        :name="app()->getLocale() === 'ar' ? 'chevron-left' : 'chevron-right'"
+                        class="w-5 h-5" />
+        </button>
     </div>
 
     <nav class="edz-sidebar__nav edz-scroll" aria-label="Account">

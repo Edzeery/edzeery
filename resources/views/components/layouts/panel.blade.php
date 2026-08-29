@@ -38,7 +38,10 @@
 
     <div class="edz-shell"
          x-data
-         :class="{ 'edz-shell--open': $store.shell.open, 'edz-shell--collapsed': $store.shell.collapsed }">
+         :class="{
+             'edz-shell--open': $store.shell.open,
+             'edz-shell--collapsed': $store.shell.collapsed
+         }">
 
         @if ($sidebar === 'store')
             <livewire:layout.store-sidebar />

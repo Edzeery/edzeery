@@ -72,7 +72,10 @@ unset($__defined_vars, $__key, $__value); ?>
 
     <div class="edz-shell"
          x-data
-         :class="{ 'edz-shell--open': $store.shell.open, 'edz-shell--collapsed': $store.shell.collapsed }">
+         :class="{
+             'edz-shell--open': $store.shell.open,
+             'edz-shell--collapsed': $store.shell.collapsed
+         }">
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sidebar === 'store'): ?>
             <?php
