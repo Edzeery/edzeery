@@ -60,6 +60,7 @@ return [
     'bulk_assign_agent' => 'تكليف بالمندوب',
     'bulk_send_carrier' => 'إرسال لشركة التوصيل',
     'bulk_delete' => 'حذف المحدد',
+    'bulk_processing' => 'جارٍ المعالجة...',
     'trash_bin' => 'سلة المحذوفات',
     'restore_order' => 'استرجاع',
     'delete_permanently' => 'حذف نهائي',

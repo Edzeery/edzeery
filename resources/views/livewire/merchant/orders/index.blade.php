@@ -11,10 +11,10 @@ use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Status;
 use App\Models\Stores\Team\StoreMembership;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
-use function Livewire\Volt\on;
 use function Livewire\Volt\state;
 use function Livewire\Volt\updated;
 
@@ -66,6 +66,38 @@ state([
     'showReassignModal' => false,
     'reassignOrderId' => null,
     'reassignMembershipId' => '',
+
+    // Order form modal (Phase 9 @include partial — state kept here on the parent instance)
+    'showCreateModal' => false,
+    'showEditModal' => false,
+    'showProductPickerModal' => false,
+    'showVariantPickerModal' => false,
+    'editingOrderId' => null,
+    'form' => [
+        'customer_name' => '',
+        'customer_phone' => '',
+        'phone_secondary' => '',
+        'address' => '',
+        'state_id' => '',
+        'city_id' => '',
+        'delivery_type' => 'home',
+        'shipment_type' => 'delivery',
+        'payment_method' => 'cod',
+        'discount_type' => null,
+        'discount_value' => null,
+        'discount_reason' => '',
+        'notes' => '',
+        'weight_kg' => '',
+        'items' => [],
+    ],
+    'formProductResults' => [],
+    'formProductView' => 'list', // 'list' | 'variants'
+    'formSelectedProduct' => null,
+    'formSelectedItems' => [],
+
+    // Confirmation-time shipping assignment (carrier + desk)
+    'editProviders' => [],
+    'editDesks' => [],
 ]);
 
 updated([
@@ -98,14 +130,6 @@ updated([
         $this->loadOrders();
     },
     'filters.date_to' => function (): void {
-        $this->page = 1;
-        $this->loadOrders();
-    },
-]);
-
-// Reload the list when the create/edit form child component saves.
-on([
-    'orders-refreshed' => function () {
         $this->page = 1;
         $this->loadOrders();
     },
@@ -590,6 +614,535 @@ $deleteOrder = function (string $orderId): void {
 $refreshOrders = function ()  {
     $this->loadOrders();
 };
+
+// ——— Order form modal (Phase 9 @include partial — logic lives here on the parent instance) ———
+
+$syncFormSelectedItems = function (): void {
+    $this->formSelectedItems = collect($this->form['items'])->pluck('quantity', 'product_variant_id')->toArray();
+    $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
+};
+
+$loadCities = function (string $stateId): void {
+    if (empty($stateId)) {
+        $this->allCities = [];
+        $this->form['city_id'] = '';
+        return;
+    }
+    $this->allCities = City::where('state_id', $stateId)->orderBy('name')->get()->toArray();
+    $this->form['city_id'] = '';
+};
+
+// ——— Create Modal ———
+$openCreateModal = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    $this->form = [
+        'customer_name' => '',
+        'customer_phone' => '',
+        'phone_secondary' => '',
+        'address' => '',
+        'state_id' => '',
+        'city_id' => '',
+        'delivery_type' => 'home',
+        'shipment_type' => 'delivery',
+        'payment_method' => 'cod',
+        'discount_type' => null,
+        'discount_value' => null,
+        'discount_reason' => '',
+        'notes' => '',
+        'weight_kg' => '',
+        'items' => [],
+    ];
+    $this->formProductView = 'list';
+    $this->formSelectedProduct = null;
+    $this->loadProducts();
+    $this->showCreateModal = true;
+};
+
+$loadProducts = function (): void {
+    $storeId = currentStoreId();
+    $this->formProductResults = Product::with(['primaryImage', 'variants:id,product_id,name,sku,price,stock'])
+        ->select('id', 'name', 'price', 'type')
+        ->where('store_id', $storeId)
+        ->where('is_active', true)
+        ->orderByDesc('sort_order')
+        ->orderByDesc('created_at')
+        ->limit(100)
+        ->get()
+        ->map(function ($product) use ($storeId) {
+            $variants = $product->variants;
+            $prices = $variants->pluck('price')->filter();
+            $imageUrl = $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png');
+            $minPrice = $prices->min() ?? ($product->price ?? 0);
+            $maxPrice = $prices->max() ?? ($product->price ?? 0);
+            $firstVariant = $variants->count() === 1 ? $variants->first() : null;
+            return [
+                'id' => $firstVariant?->id ?? null,
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'image_url' => $imageUrl,
+                'variant_count' => $variants->count(),
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
+                'price_range' => $minPrice != $maxPrice ? currency($minPrice) . ' — ' . currency($maxPrice) : currency($minPrice),
+                'has_variants' => $product->hasVariants(),
+                'first_variant' => $firstVariant
+                    ? [
+                        'id' => $firstVariant->id,
+                        'name' => $firstVariant->name,
+                        'sku' => $firstVariant->sku,
+                        'price' => $firstVariant->price,
+                        'price_formatted' => currency($firstVariant->price),
+                        'stock' => $firstVariant->stock,
+                        'stock_status' => $firstVariant->stock <= 0 ? 'out' : ($firstVariant->stock <= 5 ? 'low' : 'ok'),
+                        'stock_text' => $firstVariant->stock <= 0 ? __('merchant_panel.out_of_stock') : $firstVariant->stock . ' ' . __('merchant_panel.left'),
+                    ]
+                    : null,
+            ];
+        })
+        ->toArray();
+};
+
+$selectProduct = function (string $productId): void {
+    $product = Product::with(['primaryImage', 'variants.optionValues.option'])
+        ->where('id', $productId)
+        ->where('store_id', currentStoreId())
+        ->first();
+
+    if (!$product) {
+        return;
+    }
+
+    $imageUrl = $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png');
+
+    $this->formSelectedProduct = [
+        'id' => $product->id,
+        'name' => $product->name,
+        'image_url' => $imageUrl,
+        'variants' => $product->variants
+            ->map(function ($v) {
+                $optionLabels = $v->optionValues->map(fn($ov) => ($ov->option?->name ?? '') . ': ' . $ov->value)->implode(', ');
+                return [
+                    'id' => $v->id,
+                    'name' => $v->name,
+                    'option_labels' => $optionLabels,
+                    'sku' => $v->sku,
+                    'price' => $v->price,
+                    'stock' => $v->stock,
+                    'is_active' => $v->is_active,
+                ];
+            })
+            ->toArray(),
+    ];
+    $this->formProductView = 'variants';
+};
+
+$backToProducts = function (): void {
+    $this->formProductView = 'list';
+    $this->formSelectedProduct = null;
+};
+
+$addFormItem = function (string $variantId): void {
+    $variant = ProductVariant::with(['product', 'product.primaryImage'])
+        ->where('store_id', currentStoreId())
+        ->findOrFail($variantId);
+    $found = false;
+    foreach ($this->form['items'] as $idx => &$item) {
+        if ($item['product_variant_id'] === $variantId) {
+            $this->form['items'][$idx]['quantity']++;
+            $found = true;
+            break;
+        }
+    }
+    unset($item);
+    if (!$found) {
+        $this->form['items'][] = [
+            'product_variant_id' => $variant->id,
+            'product_id' => $variant->product_id,
+            'name' => ($variant->product?->name ?? '') . ' — ' . $variant->name,
+            'sku' => $variant->sku ?? '',
+            'price' => $variant->price ?? ($variant->product?->price ?? 0),
+            'quantity' => 1,
+            'stock' => $variant->stock ?? 0,
+            'weight' => $variant->weight ?? 0,
+            'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
+        ];
+    }
+    $this->syncFormSelectedItems();
+};
+
+$addFormItemByBarcode = function (string $code): void {
+    if (strlen($code) < 2) {
+        return;
+    }
+    $storeId = currentStoreId();
+    $variant = ProductVariant::with(['product', 'product.primaryImage'])
+        ->whereHas('product', fn($q) => $q->where('store_id', $storeId))
+        ->where(function ($q) use ($code) {
+            $q->where('barcode', $code)->orWhere('sku', $code);
+        })
+        ->first();
+
+    if (!$variant) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.product_not_found')]);
+        return;
+    }
+
+    // Check if already in items
+    foreach ($this->form['items'] as $idx => &$item) {
+        if ($item['product_variant_id'] === $variant->id) {
+            $this->form['items'][$idx]['quantity']++;
+            $this->syncFormSelectedItems();
+            return;
+        }
+    }
+    unset($item);
+
+    $this->form['items'][] = [
+        'product_variant_id' => $variant->id,
+        'product_id' => $variant->product_id,
+        'name' => ($variant->product?->name ?? '') . ' — ' . $variant->name,
+        'sku' => $variant->sku ?? '',
+        'price' => $variant->price ?? ($variant->product?->price ?? 0),
+        'quantity' => 1,
+        'stock' => $variant->stock ?? 0,
+        'weight' => $variant->weight ?? 0,
+        'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
+    ];
+    $this->syncFormSelectedItems();
+};
+
+$removeFormItem = function (int $index): void {
+    unset($this->form['items'][$index]);
+    $this->form['items'] = array_values($this->form['items']);
+    $this->syncFormSelectedItems();
+};
+
+$updateFormItemQty = function (int $index, int $qty): void {
+    if (isset($this->form['items'][$index])) {
+        $this->form['items'][$index]['quantity'] = max(1, $qty);
+    }
+};
+
+$updateFormItemPrice = function (int $index, $price): void {
+    if (isset($this->form['items'][$index])) {
+        $this->form['items'][$index]['price'] = max(0, (float) $price);
+    }
+};
+
+$submitCreate = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $storeId = currentStoreId();
+
+    \Illuminate\Support\Facades\Validator::make($this->form, [
+        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'customer_name' => 'required|string|max:255',
+        'items' => 'required|array|min:1',
+        'items.*.product_variant_id' => 'required|string',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.price' => 'required|numeric|min:0',
+        'delivery_type' => 'required|in:home,stopdesk',
+        'shipment_type' => 'required|in:delivery,exchange,pickup',
+        'payment_method' => 'required|in:cod',
+        'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
+        'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
+        'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
+        'discount_type' => 'nullable|in:amount,percent',
+        'discount_value' => 'nullable|numeric|min:0',
+        'discount_reason' => 'nullable|string|max:255',
+        'weight_kg' => 'nullable|numeric|min:0',
+        'notes' => 'nullable|string|max:500',
+    ])->validate();
+
+    // C3+C4: Validate prices from DB + check stock
+    $variantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
+    $variantMap = ProductVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+    $store = \App\Models\Stores\Store::find($storeId);
+    $tracksInventory = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
+
+    foreach ($this->form['items'] as $idx => $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        if (!$vid || !$variantMap->has($vid)) {
+            continue;
+        }
+        $variant = $variantMap[$vid];
+
+        // C3: Always use DB price
+        $this->form['items'][$idx]['price'] = $variant->price ?? $itemData['price'];
+        $this->form['items'][$idx]['product_id'] = $variant->product_id;
+
+        // C4: Check stock
+        if ($tracksInventory) {
+            $available = $variant->quantity - $variant->reserved;
+            if ($available < $itemData['quantity']) {
+                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                return;
+            }
+        }
+    }
+
+    $customer = Customer::firstOrCreate(
+        ['store_id' => $storeId, 'phone' => $this->form['customer_phone']],
+        [
+            'name' => $this->form['customer_name'],
+            'phone' => $this->form['customer_phone'],
+            'address' => $this->form['address'],
+            'state_id' => $this->form['state_id'] ?: null,
+            'city_id' => $this->form['city_id'] ?: null,
+            'status' => true,
+        ],
+    );
+
+    $total = collect($this->form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
+
+    $service = app(OrderService::class);
+    $membership = $this->getCurrentMembership();
+
+    $order = $service->createManual(
+        [
+            'customer_id' => $customer->id,
+            'total_amount' => $total,
+            'state_id' => $this->form['state_id'] ?: null,
+            'city_id' => $this->form['city_id'] ?: null,
+            'address' => $this->form['address'],
+            'delivery_type' => $this->form['delivery_type'],
+            'shipment_type' => $this->form['shipment_type'],
+            'payment_method' => $this->form['payment_method'],
+            'discount_type' => $this->form['discount_type'],
+            'discount_value' => $this->form['discount_value'] ?: null,
+            'discount_reason' => $this->form['discount_reason'] ?: null,
+            'notes' => $this->form['notes'],
+            'phone_secondary' => $this->form['phone_secondary'],
+            'weight_kg' => $this->form['weight_kg'] ?: null,
+            'items' => $this->form['items'],
+        ],
+        $membership,
+    );
+
+    // Auto-assign
+    $assignmentService = app(OrderAssignmentService::class);
+    $assignmentService->assign($order);
+
+    $this->showCreateModal = false;
+    $this->page = 1;
+    $this->loadOrders();
+
+    $this->dispatch('swal', type: 'success', title: __('Order created'));
+};
+
+// ——— Edit Modal ———
+$openEditModal = function (string $orderId): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $order = Order::with(['customer', 'items.product', 'items.variant'])
+        ->where('store_id', currentStoreId())
+        ->findOrFail($orderId);
+
+    $this->editingOrderId = $order->id;
+    $this->form = [
+        'customer_name' => $order->customer?->name ?? '',
+        'customer_phone' => $order->customer?->phone ?? '',
+        'phone_secondary' => $order->phone_secondary ?? '',
+        'address' => $order->address ?? '',
+        'state_id' => $order->state_id ?? '',
+        'city_id' => $order->city_id ?? '',
+        'delivery_type' => $order->delivery_type,
+        'shipment_type' => $order->shipment_type ?? 'delivery',
+        'payment_method' => $order->payment_method,
+        'discount_type' => $order->discount_type,
+        'discount_value' => $order->discount_value,
+        'discount_reason' => $order->discount_reason ?? '',
+        'notes' => $order->notes ?? '',
+        'weight_kg' => $order->weight_kg ?? '',
+        'shipping_provider_id' => $order->shipping_provider_id ?? '',
+        'stopdesk_point_id' => $order->stopdesk_point_id ?? '',
+        'items' => $order->items
+            ->map(
+                fn($i) => [
+                    'product_variant_id' => $i->product_variant_id,
+                    'product_id' => $i->product_id,
+                    'name' => ($i->product?->name ?? '') . ' — ' . ($i->variant?->name ?? ''),
+                    'sku' => $i->variant?->sku ?? '',
+                    'price' => $i->price,
+                    'quantity' => $i->quantity,
+                    'stock' => $i->variant?->stock ?? 0,
+                    'weight' => $i->variant?->weight ?? 0,
+                    'image_url' => $i->product?->primaryImage?->path ? Storage::disk('public')->url($i->product->primaryImage->path) : asset('img/icons/noimg.png'),
+                ],
+            )
+            ->toArray(),
+    ];
+    $this->formProductResults = [];
+    $this->formProductView = 'list';
+    $this->formSelectedProduct = null;
+    $this->loadProducts();
+    $this->showEditModal = true;
+
+    if ($order->state_id) {
+        $this->allCities = City::where('state_id', $order->state_id)->orderBy('name')->get()->toArray();
+    }
+
+    // Confirmation-time shipping assignment data (carrier + desk).
+    $this->editProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get(['id', 'name'])
+        ->toArray();
+    $this->editDesks = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get(['id', 'name', 'address', 'state_id', 'city_id', 'shipping_provider_id'])
+        ->toArray();
+};
+
+$submitEdit = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $order = Order::where('store_id', currentStoreId())->findOrFail($this->editingOrderId);
+
+    // Block edit if shipped or later (dynamic: compare sort_order against 'shipped')
+    $shippedSortOrder = \App\Models\Status::where('type', 'order')->where('key', 'shipped')->value('sort_order');
+    if ($order->status && $shippedSortOrder !== null && $order->status->sort_order >= $shippedSortOrder) {
+        $this->dispatch('swal', type: 'error', title: __('Cannot edit shipped/closed orders'));
+        return;
+    }
+
+    \Illuminate\Support\Facades\Validator::make($this->form, [
+        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'customer_name' => 'required|string|max:255',
+        'items' => 'required|array|min:1',
+        'items.*.product_variant_id' => 'required|string',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.price' => 'required|numeric|min:0',
+        'delivery_type' => 'required|in:home,stopdesk',
+        'shipment_type' => 'required|in:delivery,exchange,pickup',
+        'payment_method' => 'required|in:cod',
+        'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
+        'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
+        'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
+        'discount_type' => 'nullable|in:amount,percent',
+        'discount_value' => 'nullable|numeric|min:0',
+        'discount_reason' => 'nullable|string|max:255',
+        'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
+        'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
+    ])->validate();
+
+    $storeId = currentStoreId();
+
+    // Both assignments must belong to this store.
+    foreach (['shipping_provider_id', 'stopdesk_point_id'] as $shipField) {
+        if (filled($this->form[$shipField] ?? null)) {
+            $model = $shipField === 'stopdesk_point_id' ? \App\Domains\Shipping\Models\StopdeskPoint::class : \App\Domains\Shipping\Models\ShippingProvider::class;
+            $model::where('store_id', $storeId)->findOrFail($this->form[$shipField]);
+        }
+    }
+
+    $customer = Customer::firstOrCreate(
+        ['store_id' => $storeId, 'phone' => $this->form['customer_phone']],
+        [
+            'name' => $this->form['customer_name'],
+            'phone' => $this->form['customer_phone'],
+            'address' => $this->form['address'],
+            'state_id' => $this->form['state_id'] ?: null,
+            'city_id' => $this->form['city_id'] ?: null,
+            'status' => true,
+        ],
+    );
+
+    $total = collect($this->form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
+
+    app(OrderService::class)->updateOrder($order, [
+        'customer_id' => $customer->id,
+        'total_amount' => $total,
+        'state_id' => $this->form['state_id'] ?: null,
+        'city_id' => $this->form['city_id'] ?: null,
+        'address' => $this->form['address'],
+        'delivery_type' => $this->form['delivery_type'],
+        'shipment_type' => $this->form['shipment_type'],
+        'payment_method' => $this->form['payment_method'],
+        'discount_type' => $this->form['discount_type'],
+        'discount_value' => $this->form['discount_value'] ?: null,
+        'discount_reason' => $this->form['discount_reason'] ?: null,
+        'notes' => $this->form['notes'],
+        'phone_secondary' => $this->form['phone_secondary'],
+        'weight_kg' => $this->form['weight_kg'] ?: null,
+        'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
+        // Desk only applies to stopdesk deliveries; clear it on home.
+        'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
+    ]);
+
+    // Sync order items
+    $incomingVariantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
+    $existingItems = $order->items()->get()->keyBy('product_variant_id');
+
+    // C3+C4: Validate prices from DB + check stock for new/changed items
+    $variantMap = ProductVariant::whereIn('id', $incomingVariantIds)->get()->keyBy('id');
+
+    foreach ($this->form['items'] as $idx => $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        if (!$vid || !$variantMap->has($vid)) {
+            continue;
+        }
+        $variant = $variantMap[$vid];
+
+        // C3: Always use DB price — never trust client-submitted price
+        $this->form['items'][$idx]['price'] = $variant->price ?? $itemData['price'];
+        $this->form['items'][$idx]['product_id'] = $variant->product_id;
+
+        // C4: Check stock for new items or increased quantities
+        $prevQty = 0;
+        if (isset($existingItems[$vid])) {
+            $prevQty = $existingItems[$vid]->quantity;
+        }
+        $delta = $itemData['quantity'] - $prevQty;
+        if ($delta > 0 && \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)) {
+            $available = $variant->quantity - $variant->reserved;
+            if ($available < $delta) {
+                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                return;
+            }
+        }
+    }
+
+    // Remove items no longer in form
+    foreach ($existingItems as $variantId => $item) {
+        if (!in_array($variantId, $incomingVariantIds)) {
+            $item->delete();
+        }
+    }
+
+    // Add or update items
+    foreach ($this->form['items'] as $itemData) {
+        $existingItem = $order
+            ->items()
+            ->where('product_variant_id', $itemData['product_variant_id'] ?? null)
+            ->first();
+
+        if ($existingItem) {
+            $existingItem->update([
+                'quantity' => $itemData['quantity'],
+                'price' => $itemData['price'],
+                'subtotal' => $itemData['quantity'] * $itemData['price'],
+            ]);
+        } else {
+            $order->items()->create([
+                'store_id' => $storeId,
+                'product_variant_id' => $itemData['product_variant_id'],
+                'product_id' => $itemData['product_id'] ?? null,
+                'quantity' => $itemData['quantity'],
+                'price' => $itemData['price'],
+                'subtotal' => $itemData['quantity'] * $itemData['price'],
+            ]);
+        }
+    }
+
+    $this->showEditModal = false;
+    $this->editingOrderId = null;
+    $this->page = 1;
+    $this->loadOrders();
+
+    $this->dispatch('swal', type: 'success', title: __('Order updated'));
+};
 ?>
 
 <div x-data="{
@@ -614,7 +1167,7 @@ $refreshOrders = function ()  {
         @endif
         <div class="flex items-center gap-2">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button @click="$wire.$dispatch('orders-form-open-create')" class="edz-btn edz-btn--primary edz-btn--sm">
+                <button @click="$wire.openCreateModal()" class="edz-btn edz-btn--primary edz-btn--sm">
                     <x-edz.icon name="plus" class="w-4 h-4" />
                     <span>{{ __('merchant_panel.new_order') }}</span>
                 </button>
@@ -878,85 +1431,7 @@ $refreshOrders = function ()  {
             </div>
         </div>
     @elseif (count($this->selectedOrders) > 0)
-        <div
-            class="mb-4 p-3 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-700 rounded-xl flex items-center justify-between sticky top-0 z-30">
-            <span class="text-sm text-accent-700 dark:text-accent-400 font-medium">
-                {{ count($this->selectedOrders) }} {{ __('merchant.orders_count') }}
-            </span>
-            <div class="flex gap-2 flex-wrap">
-                {{-- Assign agent --}}
-                <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                    <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
-                        wire:loading.attr="disabled" wire:target="bulkAssignAgent">
-                        <svg x-cloak wire:loading wire:target="bulkAssignAgent" class="edz-spinner w-4 h-4"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path
-                                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                        </svg>
-                        <x-edz.icon name="user-plus" wire:loading.remove wire:target="bulkAssignAgent"
-                            class="w-4 h-4" />
-                        <span wire:loading.remove
-                            wire:target="bulkAssignAgent">{{ __('merchant.bulk_assign_agent') }}</span>
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
-                        @foreach ($this->allMembers as $m)
-                            <button wire:click="bulkAssignAgent('{{ $m['id'] }}')"
-                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
-                                wire:loading.attr="disabled" wire:target="bulkAssignAgent">
-                                {{ $m['user']['name'] }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- Send to carrier --}}
-                @if (count($this->allProviders) > 0)
-                    <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                        <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
-                            wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
-                            <svg x-cloak wire:loading wire:target="bulkSendToCarrier" class="edz-spinner w-4 h-4"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path
-                                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                            </svg>
-                            <x-edz.icon name="truck" wire:loading.remove wire:target="bulkSendToCarrier"
-                                class="w-4 h-4" />
-                            <span wire:loading.remove
-                                wire:target="bulkSendToCarrier">{{ __('merchant.bulk_send_carrier') }}</span>
-                        </button>
-                        <div x-show="open" x-transition
-                            class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
-                            @foreach ($this->allProviders as $pr)
-                                <button wire:click="bulkSendToCarrier('{{ $pr['id'] }}')"
-                                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
-                                    wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
-                                    {{ $pr['name'] }}
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Delete --}}
-                <button x-data="{ isLoading: false }"
-                    x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.bulkDelete(); isLoading = false; } })()"
-                    :disabled="isLoading"
-                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 disabled:opacity-50">
-                    <svg x-show="isLoading" x-cloak class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
-                    <x-edz.icon name="trash" class="w-4 h-4" x-show="!isLoading" />
-                    <span x-show="!isLoading">{{ __('merchant.bulk_delete') }}</span>
-                </button>
-
-                <button wire:click="clearSelection" class="edz-btn edz-btn--ghost edz-btn--sm">
-                    <x-edz.icon name="x-mark" class="w-4 h-4" />
-                </button>
-            </div>
-        </div>
+        @include('livewire.merchant.orders.partials.bulk-actions-bar')
     @endif
 
     {{-- Table --}}
@@ -1270,7 +1745,7 @@ $refreshOrders = function ()  {
                                                 </button>
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button
-                                                        @click="$wire.$dispatch('orders-form-open-edit', { orderId: '{{ $orderId }}' })"
+                                                        @click="$wire.openEditModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                         title="{{ __('merchant_panel.edit') }}">
                                                         <x-edz.icon name="edit" class="w-4 h-4 shrink-0" />
@@ -1529,7 +2004,7 @@ $refreshOrders = function ()  {
         @endif
     </div>
 
-    <livewire:merchant.orders.order-form-modal />
+    @include('livewire.merchant.orders.partials.order-form-modal')
 
     {{-- Filter Portal — single container, fixed-positioned --}}
     <div x-show="openFilter !== null" x-transition @click.away="openFilter = null"

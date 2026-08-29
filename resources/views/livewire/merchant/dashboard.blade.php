@@ -39,11 +39,16 @@ with([
     deliveryLabels: {{ json_encode($deliveryTypeBreakdown->pluck('delivery_type')->values()) }},
     deliveryCounts: {{ json_encode($deliveryTypeBreakdown->pluck('count')->values()->map(fn($v) => (int) $v)) }},
     renderCharts() {
-        this.$nextTick(() => {
-            if (typeof window.renderDashboardCharts === 'function') {
+        let tries = 0;
+        const attempt = () => {
+            if (window.Chart && typeof window.renderDashboardCharts === 'function') {
                 window.renderDashboardCharts(this);
+            } else if (tries < 20) {
+                tries++;
+                setTimeout(attempt, 50);
             }
-        });
+        };
+        this.$nextTick(attempt);
     }
 }" x-init="renderCharts()">
 
@@ -333,7 +338,6 @@ with([
     @endif
 
     {{-- Chart.js rendering --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
         window.renderDashboardCharts = function(data) {
             const fontColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-color-text-soft') || '#6b7280';

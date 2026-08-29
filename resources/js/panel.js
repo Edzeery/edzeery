@@ -2,11 +2,13 @@ import "./bootstrap.js";
 import "./swal.js";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
+import Chart from "chart.js/auto";
 import edzSelect from "./components/edz-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 
 window.flatpickr = flatpickr;
+window.Chart = Chart;
 
 document.addEventListener("alpine:init", () => {
     const Alpine = window.Alpine;

@@ -154,9 +154,8 @@
     </script>
 
     @livewireStyles
-    @vite(['resources/css/app.css', 'resources/js/storefront.js'])
+    @vite(['resources/css/app.css', 'resources/js/storefront.js', 'resources/js/edz-loader.js'])
     <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
-    <script nomodule src="{{ asset('vendor/ionicons/ionicons.js') }}"></script>
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased min-h-screen flex flex-col">
@@ -352,6 +351,9 @@
             </div>
         </div>
     </div>
+
+    {{-- Global loader (boot cover / SPA navigation / heavy actions) --}}
+    <x-edz.global-loader />
 
     @livewireScripts
 

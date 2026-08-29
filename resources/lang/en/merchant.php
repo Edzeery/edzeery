@@ -62,6 +62,7 @@ return [
     'bulk_assign_agent' => 'Assign to agent',
     'bulk_send_carrier' => 'Send to carrier',
     'bulk_delete' => 'Delete selected',
+    'bulk_processing' => 'Processing...',
     'trash_bin' => 'Trash',
     'restore_order' => 'Restore',
     'delete_permanently' => 'Delete forever',

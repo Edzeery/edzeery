@@ -31,7 +31,7 @@
         (function(){var t=localStorage.getItem('edz-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()
     </script>
   <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
-    @vite(['resources/css/app.scss', 'resources/js/panel.js'])
+    @vite(['resources/css/app.scss', 'resources/js/panel.js', 'resources/js/edz-loader.js'])
     @livewireStyles
 </head>
 <body class="edz-body">
@@ -97,6 +97,11 @@
             </main>
         </div>
     </div>
+
+    {{-- Global loader: boot cover, Livewire SPA navigation, and opted-in
+         heavy actions. Shared with every layout (auth, marketing, storefront)
+         as <x-edz.global-loader />; JS/CSS come from the edz-loader.js entry. --}}
+    <x-edz.global-loader />
 
     @livewireScripts
 

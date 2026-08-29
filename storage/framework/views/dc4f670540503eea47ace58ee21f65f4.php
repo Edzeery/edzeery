@@ -25,8 +25,9 @@
 
     <button type="button" class="edz-topbar__collapse-toggle"
         @click="$store.shell.toggleCollapse()"
-        aria-label="<?php echo e(__('buttons.toggle_sidebar_collapse')); ?>"
-        title="<?php echo e(__('buttons.toggle_sidebar_collapse')); ?>">
+        :aria-label="$store.shell.collapsed ? '<?php echo e(__('buttons.expand_sidebar')); ?>' : '<?php echo e(__('buttons.collapse_sidebar')); ?>'"
+        :title="$store.shell.collapsed ? '<?php echo e(__('buttons.expand_sidebar')); ?>' : '<?php echo e(__('buttons.collapse_sidebar')); ?>'"
+        aria-label="<?php echo e(__('buttons.toggle_sidebar_collapse')); ?>">
         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['xShow' => '!$store.shell.collapsed','name' => app()->getLocale() === 'ar' ? 'chevron-right' : 'chevron-left','class' => 'w-5 h-5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

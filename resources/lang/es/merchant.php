@@ -60,6 +60,7 @@ return [
     'bulk_assign_agent' => 'Asignar agente',
     'bulk_send_carrier' => 'Enviar al transportista',
     'bulk_delete' => 'Eliminar selección',
+    'bulk_processing' => 'Procesando...',
     'trash_bin' => 'Papelera',
     'restore_order' => 'Restaurar pedido',
     'delete_permanently' => 'Eliminar permanentemente',

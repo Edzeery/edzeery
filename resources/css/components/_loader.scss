@@ -1,0 +1,121 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / GLOBAL LOADER
+//  ------------------------------------------------------------
+//  One self-contained stylesheet used across EVERY layout (panel,
+//  auth/guest, marketing, storefront). It must not depend on the
+//  design-system token file existing on the page, so any token comes
+//  with a literal fallback. Compiled as part of the edz-loader.js
+//  Vite entry (NOT via app.scss) so all pages get it together.
+//
+//  Loading surfaces:
+//    .edz-loader-overlay  — full-viewport cover for app boot, heavy
+//                           action overlays, and SPA navigation.
+//    #nprogress           — Livewire's own SPA navigation bar,
+//                           restyled to the brand and left enabled as
+//                           a per-navigation progress complement.
+//  Tokens first, literal fallbacks second.
+// ============================================================
+
+// --- Livewire SPA navigation bar (NProgress), restyled to the brand ---
+// The plugin's injected styles read `--livewire-progress-bar-color` and
+// mount on <body>, so we only recolor + thin-tune the geometry.
+body {
+  --livewire-progress-bar-color: rgb(var(--edz-color-brand-600, 37 99 235));
+}
+
+#nprogress .bar {
+  height: 3px;
+  box-shadow:
+    0 1px 0 0 rgb(var(--edz-color-brand-600, 37 99 235) / 0.25),
+    0 0 14px 0 rgb(var(--edz-color-brand-600, 37 99 235) / 0.45);
+}
+
+#nprogress .peg {
+  box-shadow:
+    0 0 10px var(--livewire-progress-bar-color),
+    0 0 5px var(--livewire-progress-bar-color);
+}
+
+// --- Full-viewport overlay (boot + heavy actions + SPA navigation) ---
+// Hidden by default (opacity/visibility) so a plain inline script can
+// reveal it at parse time via `data-boot`; Alpine toggles `--visible`.
+.edz-loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--edz-z-loader, 90);
+  display: grid;
+  place-items: center;
+  background-color: rgb(var(--edz-color-surface, 255 255 255) / 0.55);
+  backdrop-filter: blur(var(--edz-blur-md, 14px)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--edz-blur-md, 14px)) saturate(1.35);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 320ms var(--edz-ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    visibility 0s linear 320ms;
+}
+
+.dark .edz-loader-overlay,
+[data-bs-theme='dark'] .edz-loader-overlay {
+  background-color: rgb(var(--edz-color-surface, 11 15 25) / 0.7);
+}
+
+.edz-loader-overlay[data-boot],
+.edz-loader-overlay--visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 320ms var(--edz-ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+// The label is Alpine-driven (x-show) but must stay hidden visually on
+// pages rendered before Alpine boots — self-contained x-cloak rule.
+.edz-loader-overlay__label[x-cloak] {
+  display: none;
+}
+
+// Edzeery monogram — breathes softly while the app is not yet interactive.
+.edz-loader-overlay__mark {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--edz-radius-xl, 14px);
+  background-color: rgb(var(--edz-color-brand-600, 37 99 235));
+  color: rgb(var(--edz-color-inverse, 255 255 255));
+  font-weight: 800;
+  font-size: 1.375rem;
+  letter-spacing: -0.02em;
+  box-shadow:
+    0 16px 40px -12px rgb(var(--edz-color-brand-600, 37 99 235) / 0.55),
+    inset 0 1px 0 rgb(var(--edz-color-inverse, 255 255 255) / 0.25);
+  animation: edz-loader-breathe 1.7s ease-in-out infinite;
+}
+
+@keyframes edz-loader-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.edz-loader-overlay__label {
+  margin-top: 1rem;
+  font-size: var(--edz-font-sm, 0.875rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgb(var(--edz-color-text-soft, 100 116 139));
+}
+
+// Respect prefers-reduced-motion: fade only, no breathe.
+@media (prefers-reduced-motion: reduce) {
+  .edz-loader-overlay__mark {
+    animation: none;
+  }
+}

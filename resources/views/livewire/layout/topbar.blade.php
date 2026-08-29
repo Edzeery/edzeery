@@ -17,8 +17,9 @@ with([
 
     <button type="button" class="edz-topbar__collapse-toggle"
         @click="$store.shell.toggleCollapse()"
-        aria-label="{{ __('buttons.toggle_sidebar_collapse') }}"
-        title="{{ __('buttons.toggle_sidebar_collapse') }}">
+        :aria-label="$store.shell.collapsed ? '{{ __('buttons.expand_sidebar') }}' : '{{ __('buttons.collapse_sidebar') }}'"
+        :title="$store.shell.collapsed ? '{{ __('buttons.expand_sidebar') }}' : '{{ __('buttons.collapse_sidebar') }}'"
+        aria-label="{{ __('buttons.toggle_sidebar_collapse') }}">
         <x-edz.icon x-show="!$store.shell.collapsed"
                     :name="app()->getLocale() === 'ar' ? 'chevron-right' : 'chevron-left'"
                     class="w-5 h-5" />

@@ -88,43 +88,6 @@
   white-space: nowrap;
 }
 
-// --- Collapse toggle (pin in the top-left rail) ---
-.edz-sidebar__collapse {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin-inline-start: auto;
-  flex: none;
-  border-radius: var(--edz-radius-md);
-  color: rgb(var(--edz-color-text-soft));
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: all var(--edz-duration-fast) var(--edz-ease-out-expo);
-
-  &:hover {
-    background-color: rgb(var(--edz-color-secondary));
-    color: rgb(var(--edz-color-text));
-    transform: scale(1.06);
-  }
-
-  &:active {
-    transform: scale(0.94);
-  }
-}
-
-// When collapsed, keep the icon-only rail tidy: hide the toggle until hover.
-@media (min-width: 1024px) {
-  .edz-shell--collapsed .edz-sidebar__collapse {
-    opacity: 0;
-    pointer-events: none;
-    width: 0;
-    margin-inline-start: 0;
-  }
-}
-
 // --- Navigation ---
 .edz-sidebar__nav {
   flex: 1;
@@ -519,12 +482,6 @@
 
     .edz-sidebar__badge {
       display: inline-flex;
-    }
-
-    .edz-sidebar__collapse {
-      // Keep the collapse toggle reachable while flying out.
-      opacity: 1;
-      pointer-events: auto;
     }
   }
 }

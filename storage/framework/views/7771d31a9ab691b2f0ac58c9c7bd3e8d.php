@@ -64,7 +64,7 @@ unset($__defined_vars, $__key, $__value); ?>
         (function(){var t=localStorage.getItem('edz-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()
     </script>
   <link rel="icon" href="<?php echo e(asset('img/icons/newlogo.ico')); ?>" type="image/x-icon" />
-    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.scss', 'resources/js/panel.js']); ?>
+    <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.scss', 'resources/js/panel.js', 'resources/js/edz-loader.js']); ?>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
 
 </head>
@@ -233,6 +233,28 @@ if (isset($__slots)) unset($__slots);
             </main>
         </div>
     </div>
+
+    
+    <?php if (isset($component)) { $__componentOriginaleb2c0285848843393eb73e790b3190b1 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginaleb2c0285848843393eb73e790b3190b1 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.global-loader','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.global-loader'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginaleb2c0285848843393eb73e790b3190b1)): ?>
+<?php $attributes = $__attributesOriginaleb2c0285848843393eb73e790b3190b1; ?>
+<?php unset($__attributesOriginaleb2c0285848843393eb73e790b3190b1); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginaleb2c0285848843393eb73e790b3190b1)): ?>
+<?php $component = $__componentOriginaleb2c0285848843393eb73e790b3190b1; ?>
+<?php unset($__componentOriginaleb2c0285848843393eb73e790b3190b1); ?>
+<?php endif; ?>
 
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
 

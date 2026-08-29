@@ -15,6 +15,8 @@ export default defineConfig({
                 "resources/js/storefront.js",
                 // Storefront + landing builder (Bootstrap, scoped SCSS).
                 "resources/css/storefront.scss",
+                // Global loader — shared by every layout (panel, auth, marketing, storefront).
+                "resources/js/edz-loader.js",
             ],
             refresh: true,
         }),

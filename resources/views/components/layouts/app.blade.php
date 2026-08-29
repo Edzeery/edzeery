@@ -20,9 +20,8 @@ $watch('dark', val => {
         {{ isset($title) ? config('app.name', 'Edzeery') . ' | ' . $title : config('app.name', 'Edzeery') }}
     </title>
   <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/edz-loader.js'])
+    <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
 </head>
 
 <body
@@ -44,6 +43,9 @@ $watch('dark', val => {
         {{-- Footer --}}
         <x-layouts.footer class="mt-0" />
     </main>
+
+    {{-- Global loader (boot cover / SPA navigation / heavy actions) --}}
+    <x-edz.global-loader />
 </body>
 
 </html>
