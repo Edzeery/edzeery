@@ -40,42 +40,49 @@ unset($__defined_vars, $__key, $__value); ?>
 
 <!DOCTYPE html>
 <html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>" dir="<?php echo e(app()->getLocale() === 'ar' ? 'rtl' : 'ltr'); ?>">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
-    <meta name="swal-i18n" content="<?php echo e(json_encode([
-        'confirm_delete_title' => __('messages.action_confirm'),
-        'confirm_delete' => __('messages.action_confirm_delete'),
-        'confirm_delete_named' => __('messages.action_confirm_delete') . ' "{name}"?',
-        'confirm_bulk_delete' => __('messages.ask_delete'),
-        'delete' => __('buttons.delete'),
-        'confirm' => __('buttons.confirm'),
-        'cancel' => __('buttons.cancel'),
-        'unsaved_title' => __('messages.unsaved_changes_title'),
-        'unsaved_text' => __('messages.unsaved_changes_text'),
-        'leave' => __('messages.leave'),
-        'stay' => __('buttons.cancel'),
-    ])); ?>">
+    <meta name="swal-i18n"
+        content="<?php echo e(json_encode([
+            'confirm_delete_title' => __('messages.action_confirm'),
+            'confirm_delete' => __('messages.action_confirm_delete'),
+            'confirm_delete_named' => __('messages.action_confirm_delete') . ' "{name}"?',
+            'confirm_bulk_delete' => __('messages.ask_delete'),
+            'delete' => __('buttons.delete'),
+            'confirm' => __('buttons.confirm'),
+            'cancel' => __('buttons.cancel'),
+            'unsaved_title' => __('messages.unsaved_changes_title'),
+            'unsaved_text' => __('messages.unsaved_changes_text'),
+            'leave' => __('messages.leave'),
+            'stay' => __('buttons.cancel'),
+        ])); ?>">
 
     <title><?php echo e($title ? $title . ' · ' . config('app.name') : config('app.name')); ?></title>
 
     <script>
-        (function(){var t=localStorage.getItem('edz-theme');if(t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}})()
+        (function() {
+            var t = localStorage.getItem('edz-theme');
+            if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches)) {
+                document.documentElement.classList.add('dark')
+            }
+        })()
     </script>
-  <link rel="icon" href="<?php echo e(asset('img/icons/newlogo.ico')); ?>" type="image/x-icon" />
+    <link rel="icon" href="<?php echo e(asset('img/icons/newlogo.ico')); ?>" type="image/x-icon" />
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.scss', 'resources/js/panel.js', 'resources/js/edz-loader.js']); ?>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
 
 </head>
+
 <body class="edz-body">
 
-    <div class="edz-shell"
-         x-data
-         :class="{
-             'edz-shell--open': $store.shell.open,
-             'edz-shell--collapsed': $store.shell.collapsed
-         }">
+    <div class="edz-shell" x-data
+        :class="{
+            'edz-shell--open': $store.shell.open,
+            'edz-shell--collapsed': $store.shell.collapsed
+        }">
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sidebar === 'store'): ?>
             <?php
@@ -145,11 +152,8 @@ if (isset($__slots)) unset($__slots);
 ?>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-        <div class="edz-overlay"
-             @click="$store.shell.close()"
-             x-show="$store.shell.open"
-             x-transition.opacity
-             x-cloak></div>
+        <div class="edz-overlay" @click="$store.shell.close()" x-show="$store.shell.open" x-transition.opacity x-cloak>
+        </div>
 
         <div class="edz-shell__main">
             <?php
@@ -176,8 +180,12 @@ if (isset($__slots)) unset($__slots);
 
             <main class="edz-shell__content">
                 <div class="edz-shell__inner">
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($context === 'store' && user() && ! app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription()): ?>
-                        <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(
+                        $context === 'store' &&
+                            user() &&
+                            !app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription()): ?>
+                        <div
+                            class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
                             <div class="flex items-center gap-3">
                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -201,7 +209,7 @@ if (isset($__slots)) unset($__slots);
 <?php endif; ?>
                                 <span class="flex-1"><?php echo e(__('messages.subscription_expired_text')); ?></span>
                                 <a href="<?php echo e(route('account.billing')); ?>" wire:navigate
-                                   class="edz-btn edz-btn--warning edz-btn--sm flex-shrink-0">
+                                    class="edz-btn edz-btn--warning edz-btn--sm flex-shrink-0">
                                     <?php echo e(__('messages.go_to_billing')); ?>
 
                                 </a>
@@ -282,9 +290,8 @@ if (isset($__slots)) unset($__slots);
 ?>
 
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('swal.type')): ?>
-        <div data-sw="<?php echo e(session('swal.type')); ?>"
-             data-sw-title="<?php echo e(session('swal.title', '')); ?>"
-             data-sw-message="<?php echo e(session('swal.message', '')); ?>" hidden></div>
+        <div data-sw="<?php echo e(session('swal.type')); ?>" data-sw-title="<?php echo e(session('swal.title', '')); ?>"
+            data-sw-message="<?php echo e(session('swal.message', '')); ?>" hidden></div>
     <?php elseif(session('success') || session('merchant.saved')): ?>
         <div data-sw="success" data-sw-message="<?php echo e(session('success') ?: session('merchant.saved')); ?>" hidden></div>
     <?php elseif(session('error') || session('merchant.error')): ?>
@@ -293,5 +300,6 @@ if (isset($__slots)) unset($__slots);
         <div data-sw="success" data-sw-message="<?php echo e(session('status')); ?>" hidden></div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </body>
+
 </html>
 <?php /**PATH C:\laragon\www\edzeery\resources\views/components/layouts/panel.blade.php ENDPATH**/ ?>

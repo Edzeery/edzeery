@@ -193,7 +193,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
         </a>
         <a href="{{ route('account.billing') }}"
            class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface text-xs font-semibold text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-600 transition-all duration-200">
-            <ion-icon name="credit-card-outline" class="text-lg"></ion-icon>
+            <ion-icon name="card-outline" class="text-lg"></ion-icon>
             {{ __('buttons.billing') }}
         </a>
         @if ($this->canCreate)
