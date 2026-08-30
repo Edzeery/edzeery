@@ -48,11 +48,13 @@ final class ResolvedStatus
     {
         $variant = $model->color ?: 'gray';
         $style = self::styleFor($variant);
+        $isSystem = (bool) $model->is_system && empty($model->store_id);
+        $label = $isSystem ? self::systemLabel($model) : $model->label;
 
         return new self(
             domain: $model->type,
             key: $model->key,
-            label: $model->label,
+            label: $label,
             variant: $variant,
             light: $style['light'],
             dark: $style['dark'],
@@ -62,6 +64,19 @@ final class ResolvedStatus
             source: 'db',
             storeId: $model->store_id,
         );
+    }
+
+    /**
+     * الصف النظامي يعرض الترجمة من status-kit إن وُجدت (يحافظ على i18n
+     * عبر اللغات الأربع حتى مع وجود الصف في جدول statuses)،
+     * وإلا يتراجع لـ label مخزون الصف.
+     */
+    private static function systemLabel(StatusModel $model): string
+    {
+        $key = "status-kit::statuses.{$model->type}.{$model->key}";
+        $translated = __($key);
+
+        return $translated === $key ? $model->label : $translated;
     }
 
     public static function fallback(string $domain, string $key): self

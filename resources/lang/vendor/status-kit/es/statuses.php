@@ -250,7 +250,16 @@ return [
         'processing' => 'En traitement',
         'refunded' => 'Remboursé',
         'returned' => 'Retourné',
-        'shipped' => 'Expédié',
+        'shipped' => 'Enviado',
+        'wrong_number' => 'Número equivocado',
+        'undeliverable' => 'No entregable',
+        'unclaimed' => 'No reclamado',
+        'no_answer_1' => 'Sin respuesta (1)',
+        'no_answer_2' => 'Sin respuesta (2)',
+        'no_answer_3' => 'Sin respuesta (3)',
+        'postponed' => 'Aplazado',
+        'duplicate' => 'Duplicado',
+        'out_of_stock' => 'Sin stock',
     ],
     'payment' => [
         'canceled' => 'Annulé',
@@ -346,6 +355,20 @@ return [
         'purchase' => 'Compra',
         'adjustment' => 'Ajuste',
         'reserve' => 'Reserva',
-        'release' => 'Liberación'
-    ]
+        'release' => 'Liberación',
+        'loss' => 'Pérdida',
+        'damage' => 'Daño',
+    ],
+
+    'tracking' => [
+        'shipped' => 'Enviado',
+        'in_transit' => 'En tránsito',
+        'out_for_delivery' => 'En reparto',
+        'delivered' => 'Entregado',
+        'returned' => 'Devuelto',
+        'returning' => 'En devolución',
+        'failed_attempt' => 'Intento de entrega fallido',
+        'lost' => 'Perdido',
+        'damaged' => 'Dañado',
+    ],
 ];

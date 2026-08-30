@@ -263,6 +263,14 @@ return [
         'chevron-up' => 'fa-chevron-up',
         'expand' => 'fa-expand',
         'collapse' => 'fa-compress',
+
+        // ── P7: إتلاف المخزون (loss/damage) + تتبع الشحن ──
+        'loss' => 'fa-circle-exclamation',
+        'damage' => 'fa-fire',
+        'returning' => 'fa-rotate-left',
+        'failed_attempt' => 'fa-circle-exclamation',
+        'lost' => 'fa-circle-exclamation',
+        'damaged' => 'fa-fire',
     ],
 
     // ==========================================================
@@ -458,7 +466,7 @@ return [
         'sale' => 'bi-credit-card-2-back-fill',
         'returned' => 'bi-arrow-return-left',
 
-        // ── P3: مفاتيح منتقاة إضافية ──
+// ── P3: مفاتيح منتقاة إضافية ──
         'low_stock' => 'bi-box-seam',
         'release' => 'bi-unlock-fill',
         'reserve' => 'bi-lock-fill',
@@ -468,6 +476,13 @@ return [
         'expand' => 'bi-arrows-expand',
         'collapse' => 'bi-arrows-collapse',
 
+        // ── P7: إتلاف المخزون (loss/damage) + تتبع الشحن ──
+        'loss' => 'bi-archive',
+        'damage' => 'bi-fire',
+        'returning' => 'bi-arrow-return-right',
+        'failed_attempt' => 'bi-exclamation-circle',
+        'lost' => 'bi-archive',
+        'damaged' => 'bi-fire',
     ],
 
     // ==========================================================
@@ -695,6 +710,14 @@ return [
         'chevron-up' => 'chevron-up-outline',
         'expand' => 'chevron-down-outline',
         'collapse' => 'chevron-up-outline',
+
+        // ── P7: إتلاف المخزون (loss/damage) + تتبع الشحن ──
+        'loss' => 'alert-circle-outline',
+        'damage' => 'flame-outline',
+        'returning' => 'return-down-back-outline',
+        'failed_attempt' => 'alert-circle-outline',
+        'lost' => 'alert-circle-outline',
+        'damaged' => 'flame-outline',
     ],
 
     // ==========================================================
@@ -875,5 +898,13 @@ return [
         'star' => 'star',
         'user-check' => 'user-circle',
         'wallet' => 'currency-dollar',
+
+        // ── P7: إتلاف المخزون (loss/damage) + تتبع الشحن ──
+        'loss' => 'x-circle',
+        'damage' => 'bolt',
+        'returning' => 'backward',
+        'failed_attempt' => 'exclamation-triangle',
+        'lost' => 'x-circle',
+        'damaged' => 'bolt',
     ],
 ];

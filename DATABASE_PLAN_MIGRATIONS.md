@@ -275,6 +275,18 @@ Uniqueness:
 
 ---
 
+### 3.14 order_trackings (سجل الشحنات المستقل)
+**الحالي في المانغريف:** `order_id`, `shipping_provider_id`, `tracking_number`, `shipped_at`, `delivered_at`, `returned_at`, `webhook_token` (`latestTracking` عبر `order_id`).
+
+**أُضيف (ميغريشن 2026_08_30_000001):**
+- `tracking_status` string nullable بعد `carrier_label` — قيمة طبيعية من نطاق `tracking` (`shipped/in_transit/out_for_delivery/delivered/returned/returning/failed_attempt/lost/damaged`) عبر `App\Enums\Store\OrderTrackingStatus`.
+- index(['store_id','tracking_status']) للفلترة حسب الحالة.
+- مفتاح/ترميز طبيعي: قرار عدم إضافة column منفصلة للاندماج مع `delivered_at/returned_at` — الحالة `tracking_status` تبقى المصدر المعياري، والطوابع الحضرية تلاحقها.
+
+> فجوة مستقبلية (P10): عند نتيجة إرجاع `DAMAGED/PARTIAL/LOST` يجب شطب الكمية التالفة/المفقودة بحركة `LOSS`/`DAMAGE` (`inventory_movements`)، لأن حركة `RETURN` فقط ترجع الكمية كاملة سجلًّا.
+
+---
+
 ## 4) Seed / Clone Strategy (مهم للـ Templates)
 عند إنشاء متجر جديد:
 1) انسخ system `statuses` (store_id NULL) إلى `store_id = X`

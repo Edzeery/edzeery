@@ -2,7 +2,7 @@
 
 use App\Domains\Order\Services\OrderService;
 use App\Domains\Order\Services\OrderTrackingService;
-use App\Models\InventoryMovement;
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -10,7 +10,6 @@ use App\Models\Orders\Order;
 use App\Models\Orders\OrderTracking;
 use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
-use App\Domains\Shipping\Models\ShippingProvider;
 use App\Models\Stores\Store;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -22,7 +21,7 @@ function otStore(): Store
     $store = Store::create([
         'user_id' => $user->id,
         'name' => 'Tracking Store',
-        'slug' => 'trk-' . uniqid(),
+        'slug' => 'trk-'.uniqid(),
         'status' => 'active',
         'landing_template' => 'catalog',
     ]);
@@ -91,8 +90,8 @@ test('shipped transition creates one tracking record with correct shipping_provi
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Trk Product',
-        'slug' => 'trk-pr-' . uniqid(),
-        'sku' => 'trk-sku-' . uniqid(),
+        'slug' => 'trk-pr-'.uniqid(),
+        'sku' => 'trk-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -101,7 +100,7 @@ test('shipped transition creates one tracking record with correct shipping_provi
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'trk-v-' . uniqid(),
+        'sku' => 'trk-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -135,8 +134,8 @@ test('delivered after shipped updates same record without creating a new row', f
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Del Product',
-        'slug' => 'del-pr-' . uniqid(),
-        'sku' => 'del-sku-' . uniqid(),
+        'slug' => 'del-pr-'.uniqid(),
+        'sku' => 'del-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -145,7 +144,7 @@ test('delivered after shipped updates same record without creating a new row', f
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'del-v-' . uniqid(),
+        'sku' => 'del-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -170,8 +169,8 @@ test('returned after shipped sets returned_at on the same record', function () {
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Ret Product',
-        'slug' => 'ret-pr-' . uniqid(),
-        'sku' => 'ret-sku-' . uniqid(),
+        'slug' => 'ret-pr-'.uniqid(),
+        'sku' => 'ret-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -180,7 +179,7 @@ test('returned after shipped sets returned_at on the same record', function () {
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'ret-v-' . uniqid(),
+        'sku' => 'ret-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -200,8 +199,8 @@ test('re-ship after return creates a distinct second tracking record', function 
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Reship Product',
-        'slug' => 'rs-pr-' . uniqid(),
-        'sku' => 'rs-sku-' . uniqid(),
+        'slug' => 'rs-pr-'.uniqid(),
+        'sku' => 'rs-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -210,7 +209,7 @@ test('re-ship after return creates a distinct second tracking record', function 
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'rs-v-' . uniqid(),
+        'sku' => 'rs-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -251,8 +250,8 @@ test('markDelivered and markReturned return null gracefully when no tracking exi
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Null Product',
-        'slug' => 'nl-pr-' . uniqid(),
-        'sku' => 'nl-sku-' . uniqid(),
+        'slug' => 'nl-pr-'.uniqid(),
+        'sku' => 'nl-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -261,7 +260,7 @@ test('markDelivered and markReturned return null gracefully when no tracking exi
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'nl-v-' . uniqid(),
+        'sku' => 'nl-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -278,8 +277,8 @@ test('Order::trackings returns all historical records in creation order', functi
     $product = Product::create([
         'store_id' => $store->id,
         'name' => 'Hist Product',
-        'slug' => 'hi-pr-' . uniqid(),
-        'sku' => 'hi-sku-' . uniqid(),
+        'slug' => 'hi-pr-'.uniqid(),
+        'sku' => 'hi-sku-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -288,7 +287,7 @@ test('Order::trackings returns all historical records in creation order', functi
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'hi-v-' . uniqid(),
+        'sku' => 'hi-v-'.uniqid(),
         'price' => 500,
         'stock' => 10,
     ]);
@@ -317,4 +316,72 @@ test('Order::trackings returns all historical records in creation order', functi
     $latest = $order->fresh()->latestTracking;
     expect($latest)->not->toBeNull()
         ->and($latest->delivered_at)->toBeNull();
+});
+
+test('tracking_status is normalised through the shipment lifecycle', function () {
+    $store = otStore();
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => 'Norm Product',
+        'slug' => 'nm-pr-'.uniqid(),
+        'sku' => 'nm-sku-'.uniqid(),
+        'type' => 'variable',
+        'price' => 500,
+        'is_active' => true,
+    ]);
+    $variant = ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'Default',
+        'sku' => 'nm-v-'.uniqid(),
+        'price' => 500,
+        'stock' => 10,
+    ]);
+
+    $order = otOrder($store, $variant, 'preparing');
+
+    app(OrderService::class)->transition($order->fresh(), 'shipped');
+    $tracking = OrderTracking::where('order_id', $order->id)->first();
+
+    expect($tracking->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::SHIPPED->value);
+
+    app(OrderService::class)->transition($order->fresh(), 'delivered');
+
+    expect($tracking->fresh()->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::DELIVERED->value);
+});
+
+test('terminal helpers mark the open tracking record', function () {
+    $store = otStore();
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => 'Term Product',
+        'slug' => 'tm-pr-'.uniqid(),
+        'sku' => 'tm-sku-'.uniqid(),
+        'type' => 'variable',
+        'price' => 500,
+        'is_active' => true,
+    ]);
+    $variant = ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'Default',
+        'sku' => 'tm-v-'.uniqid(),
+        'price' => 500,
+        'stock' => 10,
+    ]);
+
+    $order = otOrder($store, $variant, 'preparing');
+    $service = app(OrderTrackingService::class);
+
+    $service->startShipment($order);
+    expect($service->markFailedAttempt($order)->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::FAILED_ATTEMPT->value);
+
+    $service->markReturning($order);
+    expect($order->fresh()->trackings()->first()->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::RETURNING->value);
+
+    // The returning record is closed (returned_at set): a re-ship opens a new record.
+    $service->startShipment($order);
+    expect($service->markLost($order)->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::LOST->value);
+
+    expect($service->markDamaged($order)->tracking_status)->toBe(\App\Enums\Store\OrderTrackingStatus::DAMAGED->value);
 });

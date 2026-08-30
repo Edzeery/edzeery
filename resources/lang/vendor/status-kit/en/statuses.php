@@ -254,6 +254,12 @@ return [
         'unclaimed' => 'Unclaimed',
         'undeliverable' => 'Undeliverable',
         'wrong_number' => 'Wrong Number',
+        'no_answer_1' => 'No Answer (1st)',
+        'no_answer_2' => 'No Answer (2nd)',
+        'no_answer_3' => 'No Answer (3rd)',
+        'postponed' => 'Postponed',
+        'duplicate' => 'Duplicate',
+        'out_of_stock' => 'Out of Stock',
     ],
     'payment' => [
         'canceled' => 'Canceled',
@@ -342,13 +348,27 @@ return [
         'low_stock' => 'Low Stock',
     ],
 
-    'inventorymovementtype' =>[
-         'sale' => 'Sale',
-         'return' => 'Returned',
-         'purchase'=> 'Purchase',
-         'adjustment' => 'Adjustment',
-         'reserve'=> 'Reserved',
-         'release' => 'Released'
+'inventorymovementtype' =>[
+        'sale' => 'Sale',
+        'return' => 'Returned',
+        'purchase'=> 'Purchase',
+        'adjustment' => 'Adjustment',
+        'reserve'=> 'Reserved',
+        'release' => 'Released',
+        'loss' => 'Loss',
+        'damage' => 'Damage',
+    ],
+
+    'tracking' => [
+        'shipped' => 'Shipped',
+        'in_transit' => 'In Transit',
+        'out_for_delivery' => 'Out for Delivery',
+        'delivered' => 'Delivered',
+        'returned' => 'Returned',
+        'returning' => 'Returning',
+        'failed_attempt' => 'Failed Delivery Attempt',
+        'lost' => 'Lost',
+        'damaged' => 'Damaged',
     ]
 
 ];

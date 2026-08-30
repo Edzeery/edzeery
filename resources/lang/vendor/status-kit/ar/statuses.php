@@ -251,6 +251,15 @@ return [
         'refunded' => 'مسترجع',
         'returned' => 'مُعاد',
         'shipped' => 'تم الشحن',
+        'wrong_number' => 'رقم خاطئ',
+        'undeliverable' => 'غير قابل للتوصيل',
+        'unclaimed' => 'غير مستلم',
+        'no_answer_1' => 'لا يوجد رد (1)',
+        'no_answer_2' => 'لا يوجد رد (2)',
+        'no_answer_3' => 'لا يوجد رد (3)',
+        'postponed' => 'مؤجل',
+        'duplicate' => 'مكرر',
+        'out_of_stock' => 'نفدت الكمية',
     ],
     'payment' => [
         'canceled' => 'ملغى',
@@ -350,11 +359,26 @@ return [
 
     'inventorymovementtype' => [
         'sold' => 'تم البيع',
+        'sale' => 'تم البيع',
         'return' => 'عاد',
         'purchase' => 'شراء',
         'adjustment' => 'تعديل',
         'reserve' => 'محجوز',
         'release' => 'تم الإفراج عنه',
+        'loss' => 'ضياع',
+        'damage' => 'تلف',
+    ],
+
+    'tracking' => [
+        'shipped' => 'تم الشحن',
+        'in_transit' => 'قيد النقل',
+        'out_for_delivery' => 'خارج للتوصيل',
+        'delivered' => 'تم التوصيل',
+        'returned' => 'مُعاد',
+        'returning' => 'في طريق العودة',
+        'failed_attempt' => 'محاولة توصيل فاشلة',
+        'lost' => 'ضائع',
+        'damaged' => 'تالف',
     ],
 
 ];

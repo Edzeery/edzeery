@@ -415,6 +415,22 @@ return array (
       'hex' => '#16a34a',
       'icon' => 'release',
     ),
+    'loss' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'loss',
+    ),
+    'damage' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'damage',
+    ),
   ),
   'subscription' => 
   array (
@@ -566,6 +582,78 @@ return array (
       'dark' => 'dark:text-info-300 dark:bg-info-900/40',
       'hex' => '#2563eb',
       'icon' => 'active',
+    ),
+    'wrong_number' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'x-circle',
+    ),
+    'undeliverable' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'x-circle',
+    ),
+    'unclaimed' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'clock',
+    ),
+    'no_answer_1' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'clock',
+    ),
+    'no_answer_2' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'clock',
+    ),
+    'no_answer_3' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'x-circle',
+    ),
+    'postponed' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'clock',
+    ),
+    'duplicate' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'x-mark',
+    ),
+    'out_of_stock' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'out_of_stock',
     ),
   ),
   'product' => 
@@ -1716,6 +1804,81 @@ return array (
     'unknown' => 
     array (
       'icon' => 'default',
+    ),
+  ),
+  'tracking' => 
+  array (
+    'shipped' => 
+    array (
+      'variant' => 'info',
+      'light' => 'text-info-700 bg-info-100',
+      'dark' => 'dark:text-info-300 dark:bg-info-900/40',
+      'hex' => '#2563eb',
+      'icon' => 'shipped',
+    ),
+    'in_transit' => 
+    array (
+      'variant' => 'info',
+      'light' => 'text-info-700 bg-info-100',
+      'dark' => 'dark:text-info-300 dark:bg-info-900/40',
+      'hex' => '#2563eb',
+      'icon' => 'in_transit',
+    ),
+    'out_for_delivery' => 
+    array (
+      'variant' => 'info',
+      'light' => 'text-info-700 bg-info-100',
+      'dark' => 'dark:text-info-300 dark:bg-info-900/40',
+      'hex' => '#2563eb',
+      'icon' => 'out_for_delivery',
+    ),
+    'delivered' => 
+    array (
+      'variant' => 'success',
+      'light' => 'text-success-700 bg-success-100',
+      'dark' => 'dark:text-success-300 dark:bg-success-900/40',
+      'hex' => '#16a34a',
+      'icon' => 'delivered',
+    ),
+    'returned' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'returned',
+    ),
+    'returning' => 
+    array (
+      'variant' => 'info',
+      'light' => 'text-info-700 bg-info-100',
+      'dark' => 'dark:text-info-300 dark:bg-info-900/40',
+      'hex' => '#2563eb',
+      'icon' => 'returning',
+    ),
+    'failed_attempt' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'failed_attempt',
+    ),
+    'lost' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'lost',
+    ),
+    'damaged' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'damaged',
     ),
   ),
 );

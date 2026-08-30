@@ -10,6 +10,8 @@ enum InventoryMovementType: string
     case ADJUSTMENT = 'adjustment';  // +/- manual
     case RESERVE = 'reserve';     // - stock (order confirmed)
     case RELEASE = 'release';     // + stock (order cancelled before delivery)
+    case LOSS = 'loss';            // - stock (stock write-off: lost items)
+    case DAMAGE = 'damage';        // - stock (stock write-off: damaged items)
 
     /* ===============================
      | Presentation (UI)
@@ -25,6 +27,8 @@ enum InventoryMovementType: string
             self::ADJUSTMENT => status_label('inventorymovementtype', 'adjustment'),
             self::RESERVE => status_label('inventorymovementtype', 'reserve'),
             self::RELEASE => status_label('inventorymovementtype', 'release'),
+            self::LOSS => status_label('inventorymovementtype', 'loss'),
+            self::DAMAGE => status_label('inventorymovementtype', 'damage'),
         };
     }
 
@@ -37,6 +41,8 @@ enum InventoryMovementType: string
             self::ADJUSTMENT => status_color('inventorymovementtype', 'adjustment'),
             self::RESERVE => status_color('inventorymovementtype', 'reserve'),
             self::RELEASE => status_color('inventorymovementtype', 'release'),
+            self::LOSS => status_color('inventorymovementtype', 'loss'),
+            self::DAMAGE => status_color('inventorymovementtype', 'damage'),
         };
     }
 
@@ -49,6 +55,8 @@ enum InventoryMovementType: string
             self::ADJUSTMENT => status_icon('inventorymovementtype', 'adjustment'),
             self::RESERVE => status_icon('inventorymovementtype', 'reserve'),
             self::RELEASE => status_icon('inventorymovementtype', 'release'),
+            self::LOSS => status_icon('inventorymovementtype', 'loss'),
+            self::DAMAGE => status_icon('inventorymovementtype', 'damage'),
         };
     }
 
@@ -73,7 +81,11 @@ enum InventoryMovementType: string
      */
     public function isDecrease(): bool
     {
-        return $this === self::RESERVE;
+        return in_array($this, [
+            self::RESERVE,
+            self::LOSS,
+            self::DAMAGE,
+        ], true);
     }
 
     /**
@@ -88,6 +100,8 @@ enum InventoryMovementType: string
             self::ADJUSTMENT,
             self::RESERVE,
             self::RELEASE,
+            self::LOSS,
+            self::DAMAGE,
         ], true);
     }
 
@@ -101,7 +115,9 @@ enum InventoryMovementType: string
             self::RETURN,
             self::PURCHASE,
             self::RELEASE => 1,
-            self::RESERVE => -1,
+            self::RESERVE,
+            self::LOSS,
+            self::DAMAGE => -1,
             self::ADJUSTMENT => 0,  // decided by caller
         };
     }
@@ -115,6 +131,8 @@ enum InventoryMovementType: string
             self::PURCHASE,
             self::RETURN,
             self::ADJUSTMENT,
+            self::LOSS,
+            self::DAMAGE,
         ], true);
     }
 

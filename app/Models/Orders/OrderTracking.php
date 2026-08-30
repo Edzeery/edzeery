@@ -3,6 +3,7 @@
 namespace App\Models\Orders;
 
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Stores\Store;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,7 @@ class OrderTracking extends Model
         'tracking_number',
         'carrier_status',
         'carrier_label',
+        'tracking_status',
         'shipped_at',
         'delivered_at',
         'returned_at',
@@ -101,5 +103,13 @@ class OrderTracking extends Model
     public function isRequeued(): bool
     {
         return $this->requeued_at !== null;
+    }
+
+    /** حالة التتبع الطبيعية (إن وُجدت). */
+    public function trackingStatus(): ?OrderTrackingStatus
+    {
+        return $this->tracking_status
+            ? OrderTrackingStatus::tryFrom($this->tracking_status)
+            : null;
     }
 }
