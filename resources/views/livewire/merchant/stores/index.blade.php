@@ -54,8 +54,8 @@ mount(function (GetStoreCardsAction $action): void {
                                 <div>
                                     <p class="font-semibold text-ink text-lg">{{ $store['store_name'] }}</p>
                                     <div class="flex items-center gap-2 mt-1">
-                                        <x-merchant.status domain="roles" :status="$store['membership_role']" />
-                                        <x-merchant.status domain="store" :status="$store['store_status']" />
+                                        <x-merchant.status domain="role" :status="$store['membership_role']" :store-id="$store['store_id']" />
+                                        <x-merchant.status domain="stores" :status="$store['store_status']" :store-id="$store['store_id']" />
                                     </div>
                                 </div>
                             </div>

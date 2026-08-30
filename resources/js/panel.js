@@ -6,12 +6,18 @@ import Chart from "chart.js/auto";
 import edzSelect from "./components/edz-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
+import dropdownPosition from "./components/dropdown-position.js";
+import orderRowActions from "./components/order-row-actions.js";
 
 window.flatpickr = flatpickr;
 window.Chart = Chart;
 
-document.addEventListener("alpine:init", () => {
+function registerEdzPanel() {
+    if (window.__edzPanelRegistered) return;
+    window.__edzPanelRegistered = true;
+
     const Alpine = window.Alpine;
+    if (!Alpine) return;
 
     Alpine.store("theme", {
         theme:
@@ -164,9 +170,13 @@ document.addEventListener("alpine:init", () => {
 
     // --- edzSelect custom dropdown component ---
     Alpine.data("edzSelect", edzSelect);
+    Alpine.data("dropdownPosition", dropdownPosition);
 
     // --- Order product picker component ---
     Alpine.data("orderProductPicker", orderProductPicker);
+
+    // --- Order table row actions (status menu + delete confirm) ---
+    Alpine.data("orderRowActions", orderRowActions);
 
     // --- Reusable product select (searchable, up to N products, frontend search) ---
     Alpine.data("productSelect", productSelect);
@@ -232,7 +242,13 @@ document.addEventListener("alpine:init", () => {
             this._syncStore();
         },
     }));
-});
+}
+
+if (window.Alpine) {
+    registerEdzPanel();
+} else {
+    document.addEventListener("alpine:init", registerEdzPanel, { once: true });
+}
 
 // Auto-initialize flatpickr on elements with .flatpickr-input class
 document.addEventListener('DOMContentLoaded', () => {

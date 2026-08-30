@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use App\Models\Stores\Store;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Status extends Model
 {
     use HasUlids;
+
     protected $fillable = [
         'store_id',
         'type',
@@ -21,6 +21,8 @@ class Status extends Model
         'is_system',
         'affects_inventory',
         'movement_type',
+        'icon',
+        'display_mode',
         'sort_order',
     ];
 
@@ -37,6 +39,7 @@ class Status extends Model
     {
         return $this->belongsTo(Store::class, 'store_id');
     }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);

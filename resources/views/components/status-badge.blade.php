@@ -1,37 +1,22 @@
-@props(['status', 'dark' => false, 'iconOnly' => false])
+@props(['status', 'dark' => true, 'domain' => null, 'set' => null, 'iconOnly' => false, 'storeId' => null])
 
 @php
-
-    $color = $status->color($dark);
-    $icon = $status->value;
-
+    $resolved = $status instanceof \App\Domains\Status\Support\ResolvedStatus
+        ? $status
+        : ($status instanceof \BackedEnum
+            ? $status->resolved($storeId)
+            : \App\Domains\Status\StatusResolver::resolve($domain, (string) $status, $storeId));
 @endphp
-<style>
-    .fi-icon {
-        width: calc(var(--spacing) * 4);
-        height: calc(var(--spacing) * 4);
-    }
-</style>
 
-
-<span class="inline-flex items-center gap-1 px-2 py-0.5
-rounded-full text-sm {{ $color }}">
-
-    @if ($status->icon())
-        @if (Str::contains($status->icon(), 'heroicon'))
-            <x-filament::badge :icon="$status->icon()" class="inline-flex items-center gap-1 ">
-                @if (!$iconOnly)
-                    {{ $status->label() }}
-                @endif
-            </x-filament::badge>
-        @else
-            {!! App\Support\Status\IconManager::get($icon) !!}
-        @endif
-    @endif
-    @if (!$iconOnly)
-        @if (!Str::contains($status->icon(), 'heroicon'))
-            {{ $status->label() }}
-        @endif
+<span {{ $attributes->merge([
+    'class' => 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm '.trim($resolved->classes($dark)),
+    'title' => $iconOnly ? $resolved->label : null,
+]) }}>
+    @if ($resolved->icon)
+        {!! $resolved->renderIcon($set, 'w-4 h-4') !!}
     @endif
 
+    @if (! $iconOnly)
+        <span>{{ $resolved->label }}</span>
+    @endif
 </span>

@@ -512,7 +512,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $membership = $this->getCurrentMembership();
 
     $service = app(OrderService::class);
-    $statusKey_translation = __('status.' . $statusKey);
+    $statusKey_translation = status_label('order', $statusKey) ?: __('status.' . $statusKey);
     if (!$service->canTransition($order, $statusKey)) {
         $this->dispatch('swal', type: 'error', title: __('status_transition.invalid_transition', ['to' => $statusKey_translation ?? '—']));
         return;
@@ -1146,13 +1146,7 @@ $submitEdit = function (): void {
 ?>
 
 <div x-data="{
-    openFilter: null,
     openColToggle: false,
-    filterPos: { top: 0, left: 0 },
-    positionFilter(e) {
-        let r = e.currentTarget.getBoundingClientRect();
-        this.filterPos = { top: r.bottom + 4, left: Math.max(8, r.left) };
-    }
 }">
     {{-- Page Header --}}
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -1175,11 +1169,7 @@ $submitEdit = function (): void {
             <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
                 wire:loading.class="opacity-50 pointer-events-none" wire:target="refreshOrders">
                 <x-edz.icon name="arrow-path" wire:loading.remove wire:target="refreshOrders" class="w-4 h-4" />
-                <svg x-cloak wire:loading wire:target="refreshOrders" class="edz-spinner" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
+                <x-edz.spinner wire:target="refreshOrders" class="w-4 h-4" />
             </button>
         </div>
     </div>
@@ -1205,11 +1195,7 @@ $submitEdit = function (): void {
                 <button wire:click="loadOrders" type="button"
                     class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
                     wire:loading.attr="disabled" wire:target="loadOrders">
-                    <svg x-cloak wire:loading wire:target="loadOrders" class="edz-spinner w-4 h-4" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="loadOrders" class="w-4 h-4" />
                     <x-edz.icon name="arrow-right" wire:loading.remove wire:target="loadOrders" class="w-4 h-4" />
                 </button>
             </div>
@@ -1239,11 +1225,7 @@ $submitEdit = function (): void {
                 <button @click="open = !open"
                     class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['source'] ? 'text-accent-600' : '' }}"
                     wire:loading.attr="disabled" wire:target="setFilter">
-                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
                     <x-edz.icon name="user" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
                     <span wire:loading.remove
                         wire:target="setFilter">{{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant_panel.source')) }}</span>
@@ -1265,11 +1247,7 @@ $submitEdit = function (): void {
                 <button @click="open = !open"
                     class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['delivery_type'] ? 'text-accent-600' : '' }}"
                     wire:loading.attr="disabled" wire:target="setFilter">
-                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
                     <x-edz.icon name="home" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
                     <span wire:loading.remove
                         wire:target="setFilter">{{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : __('storefront.delivery_type')) }}</span>
@@ -1291,11 +1269,7 @@ $submitEdit = function (): void {
                 <button @click="open = !open"
                     class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['shipping_provider'] ? 'text-accent-600' : '' }}"
                     wire:loading.attr="disabled" wire:target="setFilter">
-                    <svg x-cloak wire:loading wire:target="setFilter" class="edz-spinner w-4 h-4" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
                     <x-edz.icon name="truck" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
                     <span wire:loading.remove
                         wire:target="setFilter">{{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? __('merchant.assign_delivery_man') }}</span>
@@ -1318,11 +1292,7 @@ $submitEdit = function (): void {
             <button wire:click="toggleTrash"
                 class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->showTrash ? 'text-danger-600' : '' }}"
                 wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
-                <svg x-cloak wire:loading wire:target="toggleTrash" class="edz-spinner w-4 h-4" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
+                <x-edz.spinner wire:target="toggleTrash" class="w-4 h-4" />
                 <x-edz.icon name="trash" wire:loading.remove wire:target="toggleTrash" class="w-4 h-4" />
                 <span wire:loading.remove
                     wire:target="toggleTrash">{{ $this->showTrash ? __('buttons.close') . ' ' . __('merchant.trash_bin') : __('merchant.trash_bin') }}</span>
@@ -1410,22 +1380,14 @@ $submitEdit = function (): void {
             <div class="flex gap-2">
                 <button wire:click="restoreAll" wire:loading.attr="disabled"
                     wire:loading.class="opacity-50 pointer-events-none" class="edz-btn edz-btn--ghost edz-btn--sm">
-                    <svg x-cloak wire:loading wire:target="restoreAll" class="edz-spinner w-3.5 h-3.5"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="restoreAll" class="w-3.5 h-3.5" />
                     <span wire:loading.remove wire:target="restoreAll">{{ __('merchant.restore_all') }}</span>
                 </button>
                 <button x-data="{ isLoading: false }"
                     x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.forceDeleteAll(); isLoading = false; } })()"
                     :disabled="isLoading"
                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 disabled:opacity-50">
-                    <svg x-show="isLoading" x-cloak class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner show="isLoading" class="w-3.5 h-3.5" />
                     <span x-show="!isLoading">{{ __('merchant.empty_trash') }}</span>
                 </button>
             </div>
@@ -1457,7 +1419,7 @@ $submitEdit = function (): void {
 
             <div wire:loading.class="opacity-40 pointer-events-none" wire:target="search,filters">
                 @if (!empty($orders['data']))
-                    <div class="overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
+                    <div class="hidden lg:block overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
                         <table class="w-full text-sm">
                             <thead class="bg-secondary">
                                 <tr>
@@ -1486,7 +1448,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.state') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'wilaya' ? null : 'wilaya'; if (openFilter === 'wilaya') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'wilaya', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['wilaya']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1503,7 +1465,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.products') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'product' ? null : 'product'; if (openFilter === 'product') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'product', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['product']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1520,7 +1482,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.amount') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'amount' ? null : 'amount'; if (openFilter === 'amount') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'amount', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['amount_min']) || filled($this->filters['amount_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1537,7 +1499,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.status') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'status' ? null : 'status'; if (openFilter === 'status') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'status', el: $event.currentTarget })"
                                                     class="shrink-0 {{ !empty($this->filters['status']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1554,7 +1516,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.agent') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'assigned_to' ? null : 'assigned_to'; if (openFilter === 'assigned_to') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'assigned_to', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['assigned_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1571,7 +1533,7 @@ $submitEdit = function (): void {
                                             <div class="flex items-center gap-1">
                                                 {{ __('merchant_panel.date') }}
                                                 <button data-filter-btn
-                                                    @click.stop="openFilter = openFilter === 'date' ? null : 'date'; if (openFilter === 'date') positionFilter($event)"
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'date', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['date_from']) || filled($this->filters['date_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
                                                     <x-edz.icon name="filter" class="w-3 h-3" />
                                                 </button>
@@ -1616,7 +1578,7 @@ $submitEdit = function (): void {
                                         $transitions = $order['transitions'] ?? [];
                                         $orderId = $order['id'] ?? '';
                                     @endphp
-                                    <tr
+                                    <tr x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
                                         class="hover:bg-surface-50 dark:hover:bg-ink-800/50 {{ in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : '' }}">
                                         <td class="px-3 py-3 w-10">
                                             <input type="checkbox" value="{{ $orderId }}"
@@ -1662,16 +1624,10 @@ $submitEdit = function (): void {
                                         @endif
                                         @if (in_array('status', $this->visibleColumns))
                                             <td class="px-4 py-3">
-                                                <div class="relative" x-data="{ open: false, top: 0, left: 0 }"
+                                                <div class="relative"
                                                     @click.away="open = false">
                                                     <button
-                                                        @click="
-                                                        const r = $refs.trigger.getBoundingClientRect();
-                                                        top = r.bottom + 4;
-                                                        left = r.left;
-                                                        if (top + 260 > window.innerHeight) top = r.top - 260;
-                                                        open = !open;
-                                                    "
+                                                        @click="openStatusMenu()"
                                                         x-ref="trigger"
                                                         class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
                                                         {{ $order['status']['label'] ?? '—' }}
@@ -1679,22 +1635,16 @@ $submitEdit = function (): void {
                                                     </button>
                                                     <div x-show="open" x-transition x-cloak
                                                         class="fixed z-[200] w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
-                                                        :style="'top:' + top + 'px; left:' + Math.min(left, window.innerWidth -
-                                                            240) + 'px'">
+                                                        :style="'top:' + top + 'px; left:' + left + 'px'">
                                                         @foreach ($this->allStatuses as $s)
                                                             @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
                                                                 <button
                                                                     wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                     wire:loading.attr="disabled" @click="open = false"
                                                                     class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                                                    <svg x-cloak wire:loading
+                                                                    <x-edz.spinner
                                                                         wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                        class="edz-spinner w-3 h-3"
-                                                                        viewBox="0 0 24 24" fill="none"
-                                                                        stroke="currentColor" stroke-width="2">
-                                                                        <path
-                                                                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                                                    </svg>
+                                                                        class="w-3 h-3" />
                                                                     <span class="w-2 h-2 rounded-full shrink-0"
                                                                         style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
                                                                     {{ $s['label'] }}
@@ -1755,13 +1705,9 @@ $submitEdit = function (): void {
                                                         wire:target="openReassignModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                         title="{{ __('merchant_panel.reassign') }}">
-                                                        <svg x-cloak wire:loading
+                                                        <x-edz.spinner
                                                             wire:target="openReassignModal('{{ $orderId }}')"
-                                                            class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24"
-                                                            fill="none" stroke="currentColor" stroke-width="2">
-                                                            <path
-                                                                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                                        </svg>
+                                                            class="w-3.5 h-3.5" />
                                                         <x-edz.icon name="arrows-right-left" wire:loading.remove
                                                             wire:target="openReassignModal('{{ $orderId }}')"
                                                             class="w-4 h-4 shrink-0" />
@@ -1775,14 +1721,9 @@ $submitEdit = function (): void {
                                                             wire:target="restoreOrder('{{ $orderId }}')"
                                                             class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 text-success-600"
                                                             title="{{ __('merchant.restore_order') }}">
-                                                            <svg x-cloak wire:loading
+                                                            <x-edz.spinner
                                                                 wire:target="restoreOrder('{{ $orderId }}')"
-                                                                class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-width="2">
-                                                                <path
-                                                                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                                            </svg>
+                                                                class="w-3.5 h-3.5" />
                                                             <x-edz.icon name="arrow-uturn-left" wire:loading.remove
                                                                 wire:target="restoreOrder('{{ $orderId }}')"
                                                                 class="w-4 h-4 shrink-0" />
@@ -1790,19 +1731,12 @@ $submitEdit = function (): void {
                                                     @else
                                                         <button
                                                             class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700 shrink-0"
-                                                            x-data="{ isLoading: false }"
-                                                            x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete('{{ $order['number'] ?? '' }}')) { isLoading = true; await $wire.deleteOrder('{{ $orderId }}'); isLoading = false; } })()"
-                                                            :disabled="isLoading"
-                                                            :class="isLoading ? 'opacity-50' : ''"
+                                                            x-on:click.prevent="confirmDelete()"
+                                                            :disabled="deleteLoading"
+                                                            :class="deleteLoading ? 'opacity-50' : ''"
                                                             title="{{ __('merchant.delete_permanently') }}">
-                                                            <svg x-show="isLoading" x-cloak
-                                                                class="edz-spinner w-3.5 h-3.5" viewBox="0 0 24 24"
-                                                                fill="none" stroke="currentColor"
-                                                                stroke-width="2">
-                                                                <path
-                                                                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                                            </svg>
-                                                            <x-edz.icon name="trash" x-show="!isLoading"
+                                                            <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
+                                                            <x-edz.icon name="trash" x-show="!deleteLoading"
                                                                 class="w-4 h-4 shrink-0" />
                                                         </button>
                                                     @endif
@@ -1959,6 +1893,75 @@ $submitEdit = function (): void {
                         </table>
                     </div>
 
+                    {{-- Mobile cards (Apple Adaptive Layout): below lg only --}}
+                    <div class="lg:hidden divide-y divide-surface-100 dark:divide-ink-800">
+                        @foreach ($orders['data'] as $order)
+                            @php
+                                $orderId = $order['id'] ?? '';
+                            @endphp
+                            <div x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
+                                class="px-4 py-4 {{ in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : '' }}">
+                                <div class="flex items-start gap-3">
+                                    <input type="checkbox" value="{{ $orderId }}"
+                                        wire:click="toggleSelectOrder('{{ $orderId }}')"
+                                        {{ in_array($orderId, $this->selectedOrders) ? 'checked' : '' }}
+                                        class="mt-1 rounded border-gray-300 text-accent-600 focus:ring-accent-500 shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-mono font-semibold text-ink">#{{ $order['number'] }}</span>
+                                            <span class="text-xs text-ink-muted shrink-0">{{ \Carbon\Carbon::parse($order['created_at'])->format('M d, Y') }}</span>
+                                        </div>
+                                        <div class="mt-1 text-sm font-medium text-ink truncate">{{ $order['customer']['name'] ?? '-' }}</div>
+                                        <div class="text-xs text-ink-muted" dir="ltr">{{ $order['customer']['phone'] ?? '-' }}</div>
+                                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                                            <span class="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">{{ $order['status']['label'] ?? '—' }}</span>
+                                            @if (in_array('wilaya', $this->visibleColumns))
+                                                <span class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
+                                            @endif
+                                            @if (in_array('amount', $this->visibleColumns))
+                                                <span class="text-sm font-semibold text-ink ms-auto">{{ currency($order['total_amount']) }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                            <x-edz.spinner wire:target="transitionOrder('{{ $orderId }}')"
+                                                class="w-3.5 h-3.5 text-ink-muted" />
+                                            <button wire:click="toggleDetail('{{ $orderId }}')"
+                                                class="edz-btn edz-btn--ghost edz-btn--xs" title="{{ __('merchant.order_details') }}">
+                                                <x-edz.icon name="chevron-right" class="w-4 h-4 transition-transform duration-200 {{ $this->expandedOrderId === $orderId ? 'rotate-90' : '' }}" />
+                                            </button>
+                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                <button @click="$wire.openEditModal('{{ $orderId }}')"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs" title="{{ __('merchant_panel.edit') }}">
+                                                    <x-edz.icon name="edit" class="w-4 h-4" />
+                                                </button>
+                                                <button wire:click="openReassignModal('{{ $orderId }}')"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs" title="{{ __('merchant_panel.reassign') }}">
+                                                    <x-edz.icon name="arrows-right-left" class="w-4 h-4" />
+                                                </button>
+                                            @endif
+                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
+                                                <button x-on:click.prevent="confirmDelete()" :disabled="deleteLoading"
+                                                    :class="deleteLoading ? 'opacity-50' : ''"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600" title="{{ __('merchant.delete_permanently') }}">
+                                                    <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
+                                                    <x-edz.icon name="trash" x-show="!deleteLoading" class="w-4 h-4" />
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                @if ($this->expandedOrderId === $orderId)
+                                    <div class="mt-3 pt-3 border-t border-surface-200 dark:border-ink-700 text-sm space-y-1 text-ink-muted">
+                                        <div class="flex justify-between"><span>{{ __('merchant_panel.items') }}:</span><span class="text-ink">{{ collect($order['items_summary'] ?? [])->map(fn($i) => $i['name'] . ' ×' . $i['qty'])->implode(', ') }}</span></div>
+                                        <div class="flex justify-between"><span>{{ __('merchant_panel.delivery') }}:</span><span class="text-ink capitalize">{{ $order['delivery_type'] ?? '—' }}</span></div>
+                                        <div class="flex justify-between"><span>{{ __('merchant_panel.agent') }}:</span><span class="text-ink">{{ $order['assigned_membership']['user']['name'] ?? '—' }}</span></div>
+                                        <div class="flex justify-between"><span>{{ __('merchant_panel.total') }}:</span><span class="font-semibold text-ink">{{ currency($order['total_amount']) }}</span></div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+
                     {{-- Pagination --}}
                     <x-edz.pagination :paginator="$orders" method="setPage" />
                 @else
@@ -1990,13 +1993,8 @@ $submitEdit = function (): void {
                         <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
                             wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
                             wire:target="submitReassign">
-                            <svg x-cloak wire:loading wire:target="submitReassign" class="edz-spinner w-3.5 h-3.5"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path
-                                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                            </svg>
-                            <span wire:loading.remove
-                                wire:target="submitReassign">{{ __('merchant_panel.reassign') }}</span>
+                            <x-edz.spinner wire:target="submitReassign" class="w-3.5 h-3.5" />
+                            <span wire:loading.remove wire:target="submitReassign">{{ __('merchant_panel.reassign') }}</span>
                         </button>
                     </div>
                 </div>
@@ -2007,20 +2005,21 @@ $submitEdit = function (): void {
     @include('livewire.merchant.orders.partials.order-form-modal')
 
     {{-- Filter Portal — single container, fixed-positioned --}}
-    <div x-show="openFilter !== null" x-transition @click.away="openFilter = null"
-        :style="`top: ${filterPos.top}px; left: ${filterPos.left}px`"
+    <div x-data="dropdownPosition()" x-show="open" x-transition @click.away="close()"
+        @edz-filter-open.window="$event.detail && toggle($event, $event.detail)"
+        :style="`top: ${top}px; left: ${left}px`"
         class="fixed z-50 p-2 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg"
         :class="{
-            'max-h-64 overflow-y-auto edz-scroll': openFilter === 'wilaya' || openFilter === 'status' ||
-                openFilter === 'assigned_to',
-            'w-48': openFilter === 'product' || openFilter === 'amount',
-            'w-52': openFilter === 'wilaya' || openFilter === 'status' || openFilter === 'assigned_to' ||
-                openFilter === 'date'
+            'max-h-64 overflow-y-auto edz-scroll': open === 'wilaya' || open === 'status' ||
+                open === 'assigned_to',
+            'w-48': open === 'product' || open === 'amount',
+            'w-52': open === 'wilaya' || open === 'status' || open === 'assigned_to' ||
+                open === 'date'
         }">
 
         {{-- Wilaya --}}
         @if (in_array('wilaya', $this->visibleColumns))
-            <div x-show="openFilter === 'wilaya'" x-cloak>
+            <div x-show="open === 'wilaya'" x-cloak>
                 <button @click="$wire.setFilter('wilaya', null); $wire.setFilter('city', null)"
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['wilaya'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
@@ -2038,7 +2037,7 @@ $submitEdit = function (): void {
 
         {{-- Product --}}
         @if (in_array('products', $this->visibleColumns))
-            <div x-show="openFilter === 'product'" x-cloak>
+            <div x-show="open === 'product'" x-cloak>
                 <x-edz.product-select :options="$filterProducts" wire:model="filters.product_id"
                     wire:fullmodel="filters.product" size="sm"
                     placeholder="{{ __('merchant_panel.filter_by_product') }}" />
@@ -2047,7 +2046,7 @@ $submitEdit = function (): void {
 
         {{-- Amount --}}
         @if (in_array('amount', $this->visibleColumns))
-            <div x-show="openFilter === 'amount'" x-cloak>
+            <div x-show="open === 'amount'" x-cloak>
                 <div class="flex items-center gap-1">
                     <div class="relative flex-1">
                         <input type="number" wire:model.live.debounce.600ms="filters.amount_min" placeholder="Min"
@@ -2077,7 +2076,7 @@ $submitEdit = function (): void {
 
         {{-- Status --}}
         @if (in_array('status', $this->visibleColumns))
-            <div x-show="openFilter === 'status'" x-cloak>
+            <div x-show="open === 'status'" x-cloak>
                 @foreach ($this->allStatuses as $s)
                     <label
                         class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
@@ -2096,7 +2095,7 @@ $submitEdit = function (): void {
 
         {{-- Assigned Agent --}}
         @if (in_array('assigned_agent', $this->visibleColumns))
-            <div x-show="openFilter === 'assigned_to'" x-cloak>
+            <div x-show="open === 'assigned_to'" x-cloak>
                 <button @click="$wire.setFilter('assigned_to', null)"
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['assigned_to'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
@@ -2113,7 +2112,7 @@ $submitEdit = function (): void {
 
         {{-- Date --}}
         @if (in_array('created_at', $this->visibleColumns))
-            <div x-show="openFilter === 'date'" x-cloak>
+            <div x-show="open === 'date'" x-cloak>
                 <div class="flex flex-col gap-1">
                     <div class="relative">
                         <input type="text" wire:model.blur="filters.date_from"

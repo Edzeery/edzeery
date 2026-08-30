@@ -251,6 +251,9 @@ return [
         'refunded' => 'Refunded',
         'returned' => 'Returned',
         'shipped' => 'Shipped',
+        'unclaimed' => 'Unclaimed',
+        'undeliverable' => 'Undeliverable',
+        'wrong_number' => 'Wrong Number',
     ],
     'payment' => [
         'canceled' => 'Canceled',
@@ -263,6 +266,7 @@ return [
         'failed' => 'Failed',
         'paid' => 'Paid',
         'pending' => 'Pending',
+        'pending_review' => 'Pending Review',
         'refunded' => 'Refunded',
     ],
     'product' => [
@@ -331,4 +335,20 @@ return [
         'pending' => 'Pending',
         'suspended' => 'Suspended',
     ],
+
+    'inventory' => [
+        'in_stock' => 'In Stock',
+        'out_of_stock' => 'Out of Stock',
+        'low_stock' => 'Low Stock',
+    ],
+
+    'inventorymovementtype' =>[
+         'sale' => 'Sale',
+         'return' => 'Returned',
+         'purchase'=> 'Purchase',
+         'adjustment' => 'Adjustment',
+         'reserve'=> 'Reserved',
+         'release' => 'Released'
+    ]
+
 ];

@@ -13,7 +13,7 @@
 
 return [
 
-    'default_framework' => 'bootstrap', // bootstrap | tailwind
+    'default_framework' => 'tailwind', // bootstrap | tailwind
 
     // ==========================================================
     // خريطة variant → كلاس Bootstrap 5 (badge/text/bg موحّد بكلاس واحد)
@@ -32,7 +32,7 @@ return [
     // ==========================================================
     'badge_base' => [
         'bootstrap' => 'badge d-inline-flex align-items-center gap-1',
-        'tailwind' => 'status-badge inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium',
+        'tailwind' => 'status-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap',
     ],
 
     // ==========================================================
@@ -64,14 +64,14 @@ return [
         'tailwind' => [
             'container' => '',
             'wrapper' => 'inline-flex items-center',
-            'trigger' => 'flex items-center justify-between w-full text-start bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100',
-            'trigger_sm' => 'flex items-center justify-between w-full text-start bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-xs text-gray-900 dark:text-gray-100',
-            'trigger_lg' => 'flex items-center justify-between w-full text-start bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-base text-gray-900 dark:text-gray-100',
-            'input' => 'w-full border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100',
+            'trigger' => 'flex items-center justify-between w-full text-start bg-surface dark:bg-gray-900 border border-surface-border dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-ink dark:text-gray-100',
+            'trigger_sm' => 'flex items-center justify-between w-full text-start bg-surface dark:bg-gray-900 border border-surface-border dark:border-gray-600 rounded-md px-2 py-1 text-xs text-ink dark:text-gray-100',
+            'trigger_lg' => 'flex items-center justify-between w-full text-start bg-surface dark:bg-gray-900 border border-surface-border dark:border-gray-600 rounded-lg px-4 py-3 text-base text-ink dark:text-gray-100',
+            'input' => 'w-full border border-surface-border dark:border-gray-600 rounded-md px-2 py-1 text-sm bg-surface dark:bg-gray-900 text-ink dark:text-gray-100',
             'menu' => 'list-none mb-0',
             'option' => 'flex items-center gap-2',
             'text_truncate' => 'truncate',
-            'text_muted' => 'text-gray-400 dark:text-gray-500',
+            'text_muted' => 'text-ink-muted dark:text-gray-500',
             'check_icon' => 'bi bi-check-lg',
             'hidden_input' => '',
             'overflow' => 'overflow-hidden',

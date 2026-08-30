@@ -4,16 +4,12 @@ namespace App\Filament\SuperAdmin\Resources\Users\Tables;
 
 use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\StoreRoleEnum;
-use App\Enums\Store\StoreStatusEnum;
-use App\Models\Stores\Store;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Colors\Color;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\SelectColumn;
-use Filament\Tables\Columns\TagsColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
@@ -25,12 +21,9 @@ class UsersTable
         return $table
             ->columns([
 
-
                 TextColumn::make('name')
                     ->searchable()
                     ->color('primary'),
-
-
 
                 TextColumn::make('email')
                     ->label('Email address')
@@ -51,14 +44,13 @@ class UsersTable
                     ->badge()
                     ->formatStateUsing(
 
-                        fn($state) =>   in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->label() :  StoreRoleEnum::from($state)?->label()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->label() : StoreRoleEnum::from($state)?->label()
                     )
                     ->color(
-                        fn($state) => in_array($state, UserRoleEnum::values()) ?  UserRoleEnum::from($state)?->filamentColor() :  StoreRoleEnum::from($state)?->filamentColor()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->filamentColor() : StoreRoleEnum::from($state)?->filamentColor()
                     )
                     ->icon(
-                        fn($state) =>
-                        in_array($state, UserRoleEnum::values()) ?  UserRoleEnum::from($state)?->icon() :  StoreRoleEnum::from($state)?->icon()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->filamentIcon() : StoreRoleEnum::from($state)?->filamentIcon()
 
                     ),
 
@@ -67,17 +59,15 @@ class UsersTable
                     ->listWithLineBreaks()
                     ->formatStateUsing(
 
-                        fn($state) =>   in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->label() :  StoreRoleEnum::from($state)?->label()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->label() : StoreRoleEnum::from($state)?->label()
                     )
                     ->color(
-                        fn($state) => in_array($state, UserRoleEnum::values()) ?  UserRoleEnum::from($state)?->filamentColor() :  StoreRoleEnum::from($state)?->filamentColor()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->filamentColor() : StoreRoleEnum::from($state)?->filamentColor()
                     )
                     ->icon(
-                        fn($state) =>
-                        in_array($state, UserRoleEnum::values()) ?  UserRoleEnum::from($state)?->icon() :  StoreRoleEnum::from($state)?->icon()
+                        fn ($state) => in_array($state, UserRoleEnum::values()) ? UserRoleEnum::from($state)?->filamentIcon() : StoreRoleEnum::from($state)?->filamentIcon()
 
                     ),
-
 
                 TextColumn::make('country.name')
 

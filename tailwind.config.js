@@ -24,6 +24,24 @@ export default {
             `dark:text-${c}-300`,
             `dark:bg-${c}-900/40`,
         ]),
+        // P5 — semantic token families (success/warning/danger/info/gray) used by
+        // every status definition in config/status-kit-statuses.php.
+        ...["success", "warning", "danger", "info", "gray"].flatMap((c) => [
+            `text-${c}-600`, `text-${c}-700`, `text-${c}-800`,
+            `bg-${c}-100`, `bg-${c}-200`,
+            `dark:text-${c}-300`, `dark:text-${c}-400`,
+            `dark:bg-${c}-900/40`, `dark:bg-${c}-950`,
+        ]),
+        // status-kit select + badge classes that only exist in config files.
+        "bg-surface",
+        "dark:bg-gray-900",
+        "dark:bg-gray-800",
+        "dark:border-gray-600",
+        "border-surface-border",
+        "text-ink",
+        "text-ink-muted",
+        "px-2.5", "py-0.5",
+        "whitespace-nowrap",
         "text-red-800", "bg-red-200", "dark:text-red-400", "dark:bg-red-950",
         "text-blue-600", "text-blue-400", "dark:bg-blue-950",
         "text-green-400", "dark:bg-green-950",

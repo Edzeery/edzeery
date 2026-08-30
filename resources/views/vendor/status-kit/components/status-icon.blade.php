@@ -1,12 +1,14 @@
 @props([
     'domain',
     'status',
+    'storeId' => null,
     'set'   => null,
     'class' => '',
 ])
 
 @php
-    $result = \Edzeery\MyStatusKit\Facades\Status::for($domain, $status);
+    $statusKey = $status instanceof \BackedEnum ? $status->value : (string) $status;
+    $result = \App\Domains\Status\StatusResolver::resolve($domain, $statusKey, $storeId ?? currentStoreId());
 @endphp
 
-<span role="img" aria-label="{{ $result->label() }}">{!! $result->icon($set, $class ? $class : null) !!}</span>
+<span role="img" aria-label="{{ $result->label }}">{!! $result->renderIcon($set, $class ? $class : null) !!}</span>

@@ -14,6 +14,8 @@ return [
     'new_quantity' => 'Nueva cantidad',
     'no_inventory' => 'No se encontró inventario',
     'out_of_stock' => 'Sin stock',
+    'inventory' => 'Inventario',
+    'in_stock' => 'En stock',
     'product' => 'Producto',
     'reason' => 'Razón',
     'reason_placeholder' => 'Opcional',

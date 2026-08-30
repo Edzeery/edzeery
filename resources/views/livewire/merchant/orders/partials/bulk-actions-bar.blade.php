@@ -30,11 +30,7 @@
         <div x-data="{ open: false }" @click.away="open = false" class="relative">
             <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
                 wire:loading.attr="disabled" wire:target="bulkAssignAgent">
-                <svg x-cloak wire:loading wire:target="bulkAssignAgent" class="edz-spinner w-4 h-4"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                </svg>
+                <x-edz.spinner wire:target="bulkAssignAgent" class="w-4 h-4" />
                 <x-edz.icon name="user-plus" wire:loading.remove wire:target="bulkAssignAgent" class="w-4 h-4" />
                 <span wire:loading.remove wire:target="bulkAssignAgent">{{ __('merchant.bulk_assign_agent') }}</span>
             </button>
@@ -55,11 +51,7 @@
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
                 <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
                     wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
-                    <svg x-cloak wire:loading wire:target="bulkSendToCarrier" class="edz-spinner w-4 h-4"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path
-                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                    </svg>
+                    <x-edz.spinner wire:target="bulkSendToCarrier" class="w-4 h-4" />
                     <x-edz.icon name="truck" wire:loading.remove wire:target="bulkSendToCarrier" class="w-4 h-4" />
                     <span wire:loading.remove wire:target="bulkSendToCarrier">{{ __('merchant.bulk_send_carrier') }}</span>
                 </button>
@@ -81,11 +73,7 @@
             x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.bulkDelete(); isLoading = false; } })()"
             :disabled="isLoading"
             class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 disabled:opacity-50">
-            <svg x-show="isLoading" x-cloak class="edz-spinner w-4 h-4" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2">
-                <path
-                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
+            <x-edz.spinner show="isLoading" class="w-4 h-4" />
             <x-edz.icon name="trash" class="w-4 h-4" x-show="!isLoading" />
             <span x-show="!isLoading">{{ __('merchant.bulk_delete') }}</span>
         </button>

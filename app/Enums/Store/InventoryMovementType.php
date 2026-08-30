@@ -4,12 +4,12 @@ namespace App\Enums\Store;
 
 enum InventoryMovementType: string
 {
-    case SALE       = 'sale';        // ledger-only (stock already reserved)
-    case RETURN     = 'return';      // + stock
-    case PURCHASE   = 'purchase';    // + stock
+    case SALE = 'sale';        // ledger-only (stock already reserved)
+    case RETURN = 'return';      // + stock
+    case PURCHASE = 'purchase';    // + stock
     case ADJUSTMENT = 'adjustment';  // +/- manual
-    case RESERVE    = 'reserve';     // - stock (order confirmed)
-    case RELEASE    = 'release';     // + stock (order cancelled before delivery)
+    case RESERVE = 'reserve';     // - stock (order confirmed)
+    case RELEASE = 'release';     // + stock (order cancelled before delivery)
 
     /* ===============================
      | Presentation (UI)
@@ -17,37 +17,38 @@ enum InventoryMovementType: string
 
     public function label(): string
     {
+
         return match ($this) {
-            self::SALE       => 'Sale',
-            self::RETURN     => 'Return',
-            self::PURCHASE   => 'Purchase',
-            self::ADJUSTMENT => 'Adjustment',
-            self::RESERVE    => 'Reserved',
-            self::RELEASE    => 'Released',
+            self::SALE => status_label('inventorymovementtype', 'sale'),
+            self::RETURN => status_label('inventorymovementtype', 'return'),
+            self::PURCHASE => status_label('inventorymovementtype', 'purchase'),
+            self::ADJUSTMENT => status_label('inventorymovementtype', 'adjustment'),
+            self::RESERVE => status_label('inventorymovementtype', 'reserve'),
+            self::RELEASE => status_label('inventorymovementtype', 'release'),
         };
     }
 
     public function color(): string
     {
         return match ($this) {
-            self::SALE       => 'danger',
-            self::RETURN,
-            self::PURCHASE   => 'success',
-            self::ADJUSTMENT => 'warning',
-            self::RESERVE    => 'gray',
-            self::RELEASE    => 'info',
+            self::SALE => status_color('inventorymovementtype', 'sale'),
+            self::RETURN => status_color('inventorymovementtype', 'return'),
+            self::PURCHASE => status_color('inventorymovementtype', 'purchase'),
+            self::ADJUSTMENT => status_color('inventorymovementtype', 'adjustment'),
+            self::RESERVE => status_color('inventorymovementtype', 'reserve'),
+            self::RELEASE => status_color('inventorymovementtype', 'release'),
         };
     }
 
     public function icon(): string
     {
         return match ($this) {
-            self::SALE       => 'heroicon-o-arrow-trending-down',
-            self::RETURN     => 'heroicon-o-arrow-uturn-left',
-            self::PURCHASE   => 'heroicon-o-arrow-trending-up',
-            self::ADJUSTMENT => 'heroicon-o-adjustments-horizontal',
-            self::RESERVE    => 'heroicon-o-lock-closed',
-            self::RELEASE    => 'heroicon-o-lock-open',
+            self::SALE => status_icon('inventorymovementtype', 'sale'),
+            self::RETURN => status_icon('inventorymovementtype', 'return'),
+            self::PURCHASE => status_icon('inventorymovementtype', 'purchase'),
+            self::ADJUSTMENT => status_icon('inventorymovementtype', 'adjustment'),
+            self::RESERVE => status_icon('inventorymovementtype', 'reserve'),
+            self::RELEASE => status_icon('inventorymovementtype', 'release'),
         };
     }
 
@@ -96,11 +97,11 @@ enum InventoryMovementType: string
     public function direction(): int
     {
         return match ($this) {
-            self::SALE       => 0,  // ledger-only: stock already reserved at confirm
+            self::SALE => 0,  // ledger-only: stock already reserved at confirm
             self::RETURN,
             self::PURCHASE,
-            self::RELEASE    => 1,
-            self::RESERVE    => -1,
+            self::RELEASE => 1,
+            self::RESERVE => -1,
             self::ADJUSTMENT => 0,  // decided by caller
         };
     }

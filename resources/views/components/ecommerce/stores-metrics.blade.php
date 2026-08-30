@@ -41,7 +41,7 @@
 
                             </div>
 
-                            <x-status-badge domain="store" :status="$store['store_status']" />
+                            <x-status-badge domain="stores" :status="$store['store_status']" />
                         </div>
                     </div>
 

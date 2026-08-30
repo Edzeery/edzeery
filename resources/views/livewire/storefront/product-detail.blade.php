@@ -196,11 +196,8 @@ $decrementQuantity = function (): void {
 
                             {{-- Featured Badge --}}
                             @if ($this->product->is_featured)
-                                <span
-                                    class="absolute top-4 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
-                                     text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    <x-status-badge-wire domain="general" status="featured" set="bi" />
-                                </span>
+                                <x-status-badge-wire domain="general" status="featured" set="bi"
+                                    class="absolute top-4 {{ algin() }}-4 z-10 shadow-lg" />
                             @endif
 
                             {{-- Discount Badge --}}
@@ -522,12 +519,8 @@ $decrementQuantity = function (): void {
                                         @endif
 
                                         @if ($rp->is_featured)
-                                            <span
-                                                class="absolute top-4 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
-                                     text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                                <x-status-badge-wire domain="general" status="featured"
-                                                    set="bi" />
-                                            </span>
+                                            <x-status-badge-wire domain="general" status="featured" set="bi"
+                                                class="absolute top-4 {{ algin() }}-4 z-10 shadow-lg" />
                                         @endif
 
                                         @if (!$__rpHasStock)

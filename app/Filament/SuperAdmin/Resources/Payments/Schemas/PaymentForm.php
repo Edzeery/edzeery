@@ -2,7 +2,7 @@
 
 namespace App\Filament\SuperAdmin\Resources\Payments\Schemas;
 
-use App\Domains\Billing\Enums\PaymentStatusEnum;
+use App\Enums\SubscriptionPayment\StatusPaymentEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -20,7 +20,7 @@ class PaymentForm
                 TextInput::make('amount')->numeric()->required(),
 
                 Select::make('status')
-                    ->options(PaymentStatusEnum::options())
+                    ->options(StatusPaymentEnum::options())
                     ->required(),
 
                 TextInput::make('gateway')->default('manual'),

@@ -1,6 +1,7 @@
 @props([
     'domain',
     'status',
+    'storeId' => null,
     'value'  => 100,
     'size'   => 'md', // sm | md | lg
     'showLabel' => true,
@@ -8,7 +9,8 @@
 ])
 
 @php
-    $result = \Edzeery\MyStatusKit\Facades\Status::for($domain, $status);
+    $statusKey = $status instanceof \BackedEnum ? $status->value : (string) $status;
+    $result = \App\Domains\Status\StatusResolver::resolve($domain, $statusKey, $storeId ?? currentStoreId());
     $sizeClass = match($size) {
         'sm' => 'h-1',
         'lg' => 'h-4',
@@ -22,15 +24,15 @@
     aria-valuenow="{{ $clampedValue }}"
     aria-valuemin="0"
     aria-valuemax="100"
-    aria-label="{{ $result->label() }}"
+    aria-label="{{ $result->label }}"
     {{ $attributes->merge(['class' => trim("w-full rounded-full overflow-hidden $sizeClass $class")]) }}
-    style="background-color: {{ $result->hex() }}20;"
+    style="background-color: {{ $result->hex }}20;"
 >
     <div
         class="{{ $sizeClass }} rounded-full transition-all duration-300"
-        style="width: {{ $clampedValue }}%; background-color: {{ $result->hex() }};"
+        style="width: {{ $clampedValue }}%; background-color: {{ $result->hex }};"
     ></div>
     @if($showLabel)
-        <span class="sr-only">{{ $result->label() }}: {{ $clampedValue }}%</span>
+        <span class="sr-only">{{ $result->label }}: {{ $clampedValue }}%</span>
     @endif
 </div>

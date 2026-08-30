@@ -2,6 +2,7 @@
     'domain',
     'name'        => null,
     'selected'    => null,
+    'storeId'     => null,
     'set'         => null,
     'placeholder' => null,
     'disabled'    => false,
@@ -11,19 +12,21 @@
 ])
 
 @php
-    $statusManager = app(\Edzeery\MyStatusKit\StatusManager::class);
-    $items = $statusManager->domain($domain);
+    $storeId = $storeId ?? currentStoreId();
+    $resolvedItems = \App\Domains\Status\StatusResolver::domain($domain, $storeId);
 
     $iconSet = $set
         ?? config('status-kit-theme.select.default_set')
         ?? config('status-kit-icons.default_set', 'ion');
 
-    $jsOptions = collect($items)->map(fn ($result, $key) => [
-        'value' => $key,
-        'label' => $result->label(),
-        'icon'  => $result->icon($iconSet),
-        'hex'   => $result->hex(),
-    ])->values()->all();
+    $jsOptions = collect($resolvedItems)->map(function ($resolved, $key) use ($iconSet) {
+        return [
+            'value' => $key,
+            'label' => $resolved->label,
+            'icon'  => $resolved->renderIcon($iconSet),
+            'hex'   => $resolved->hex,
+        ];
+    })->values()->all();
 
     $framework = config('status-kit-theme.default_framework', 'bootstrap');
     $classes = config("status-kit-theme.select_classes.{$framework}", config('status-kit-theme.select_classes.bootstrap'));

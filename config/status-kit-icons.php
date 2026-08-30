@@ -3,7 +3,8 @@
 return [
 
     // المجموعة الافتراضية عند عدم تحديد $set صراحة
-    'default_set' => 'bi', // ion | fa | bi | heroicon | svg
+    // heroicon = حزمة inline SVG بلا اعتماد على خطوط أيقونات (تعمل على اللوحة و الواجهة)
+    'default_set' => 'heroicon', // ion | fa | bi | heroicon | svg
 
     // الحجم الافتراضي (width/height) المحقون في أيقونات SVG/heroicon التي ماعندهاش
     // حجم محدد في الملف الأصلي — يمنع ظهورها بحجم كبير جدًا بلا CSS إضافي.
@@ -97,6 +98,14 @@ return [
         'email_unverified' => 'fa-envelope',
         'archived' => 'fa-box-archive',
         'available' => 'fa-check-circle',
+
+        'adjustment' => 'fa-sliders',
+        'purchase' => 'fa-shopping-cart',
+        'reserved' => 'fa-lock',
+        'released' => 'fa-lock-open',
+        'returned' => 'fa-rotate-left',
+        'sale' => 'fa-arrow-trend-down',
+
         'unavailable' => 'fa-times-circle',
 
         // ── أيقونات عامة ──
@@ -243,6 +252,17 @@ return [
         'unconfirmed_email' => 'fa-envelope',
         'password_reset' => 'fa-key',
         'unknown' => 'fa-question-circle',
+
+        // ── P3: مفاتيح منتقاة إضافية ──
+        'in_stock' => 'fa-boxes-stacked',
+        'low_stock' => 'fa-boxes-stacked',
+        'release' => 'fa-lock-open',
+        'reserve' => 'fa-lock',
+        'return' => 'fa-rotate-left',
+        'chevron-down' => 'fa-chevron-down',
+        'chevron-up' => 'fa-chevron-up',
+        'expand' => 'fa-expand',
+        'collapse' => 'fa-compress',
     ],
 
     // ==========================================================
@@ -430,6 +450,24 @@ return [
         'unconfirmed_email' => 'bi-envelope',
         'password_reset' => 'bi-key-fill',
         'unknown' => 'bi-question-circle',
+
+        'purchase' => 'bi-cart3',
+        'adjustment' => 'bi-sliders',
+        'reserved' => 'bi-lock-fill',
+        'released' => 'bi-unlock-fill',
+        'sale' => 'bi-credit-card-2-back-fill',
+        'returned' => 'bi-arrow-return-left',
+
+        // ── P3: مفاتيح منتقاة إضافية ──
+        'low_stock' => 'bi-box-seam',
+        'release' => 'bi-unlock-fill',
+        'reserve' => 'bi-lock-fill',
+        'return' => 'bi-arrow-return-left',
+        'chevron-down' => 'bi-chevron-down',
+        'chevron-up' => 'bi-chevron-up',
+        'expand' => 'bi-arrows-expand',
+        'collapse' => 'bi-arrows-collapse',
+
     ],
 
     // ==========================================================
@@ -472,6 +510,7 @@ return [
         'unavailable' => 'close-circle-outline',
 
         // ── أيقونات عامة ──
+
         'wallet' => 'wallet-outline',
         'card' => 'card-outline',
         'cash' => 'cash-outline',
@@ -638,6 +677,24 @@ return [
         'unconfirmed_email' => 'mail-outline',
         'password_reset' => 'key-outline',
         'unknown' => 'help-circle-outline',
+
+        'purchase' => 'cart-outline',
+        'adjustment' => 'options-outline',
+        'reserved' => 'lock-closed-outline',
+        'released' => 'lock-open-outline',
+        'sale' => 'trending-down-outline',
+        'returned' => 'return-down-back-outline',
+
+        // ── P3: مفاتيح منتقاة إضافية ──
+        'in_stock' => 'cube-outline',
+        'low_stock' => 'cube-outline',
+        'release' => 'lock-open-outline',
+        'reserve' => 'lock-closed-outline',
+        'return' => 'return-down-back-outline',
+        'chevron-down' => 'chevron-down-outline',
+        'chevron-up' => 'chevron-up-outline',
+        'expand' => 'chevron-down-outline',
+        'collapse' => 'chevron-up-outline',
     ],
 
     // ==========================================================
@@ -768,6 +825,7 @@ return [
         'confirmed' => 'check-circle',
         'preparing' => 'cog',
         'shipped' => 'arrow-path',
+        'purchase' => 'shopping-cart',
         'delivered' => 'check-circle',
         'returned' => 'backward',
         'in_transit' => 'arrow-path',
@@ -791,5 +849,31 @@ return [
         'unconfirmed_email' => 'envelope',
         'password_reset' => 'key',
         'unknown' => 'question-mark-circle',
+
+        // ── P3: مفاتيح منتقاة إضافية (أفضل مكافئ متوفر في resources/svg/heroicons) ──
+        'adjustment' => 'cog',
+        'beaker' => 'bolt',
+        'chart' => 'arrow-path',
+        'chevron-down' => 'ellipsis-horizontal-circle',
+        'chevron-up' => 'ellipsis-horizontal-circle',
+        'collapse' => 'minus',
+        'credit-card' => 'currency-dollar',
+        'expand' => 'plus',
+        'flag' => 'flag',
+        'gold' => 'star',
+        'headset' => 'chat-bubble-left-right',
+        'home' => 'building-storefront',
+        'in_stock' => 'check-circle',
+        'low_stock' => 'exclamation-triangle',
+        'pencil-square' => 'wrench-screwdriver',
+        'release' => 'lock-open',
+        'reserve' => 'lock-closed',
+        'return' => 'backward',
+        'sale' => 'exclamation-triangle',
+        'server' => 'archive-box',
+        'shuffle' => 'arrow-path',
+        'star' => 'star',
+        'user-check' => 'user-circle',
+        'wallet' => 'currency-dollar',
     ],
 ];

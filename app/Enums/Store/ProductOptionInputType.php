@@ -4,10 +4,10 @@ namespace App\Enums\Store;
 
 enum ProductOptionInputType: string
 {
-    case SELECT   = 'select';
-    case RADIO    = 'radio';
+    case SELECT = 'select';
+    case RADIO = 'radio';
     case CHECKBOX = 'checkbox';
-    case TEXT     = 'text';
+    case TEXT = 'text';
 
     // public function label(): string
     // {
@@ -22,15 +22,14 @@ enum ProductOptionInputType: string
     public function label(): string
     {
         return __(
-             'productoption.' . $this->value
+            'productoption.'.$this->value
         );
     }
-
 
     public static function options(): array
     {
         return collect(self::cases())
-            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+            ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
             ->toArray();
     }
 }

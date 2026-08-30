@@ -3,7 +3,7 @@
 namespace App\Filament\SuperAdmin\Resources\Subscriptions\Tables;
 
 use App\Domains\Billing\Actions\ActivateSubscriptionAction;
-use App\Domains\Billing\Enums\SubscriptionStatusEnum;
+use App\Enums\SubscriptionPayment\StatusSubscriptionEnum as SubscriptionStatusEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -24,7 +24,7 @@ class SubscriptionsTable
 
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn($state) => $state->filamentColor()),
+                    ->color(fn ($state) => $state->filamentColor()),
 
                 TextColumn::make('starts_at')->date(),
                 TextColumn::make('ends_at')->date(),
@@ -36,27 +36,25 @@ class SubscriptionsTable
             ])
             ->recordActions([
                 Action::make('activate')
-                    ->visible(fn($record) => $record->status !== SubscriptionStatusEnum::ACTIVE)
+                    ->visible(fn ($record) => $record->status !== SubscriptionStatusEnum::ACTIVE)
                     ->action(
-                        fn($record) =>
-                        app(ActivateSubscriptionAction::class)->execute($record)
+                        fn ($record) => app(ActivateSubscriptionAction::class)->execute($record)
                     ),
                 Action::make('cancel')
                     ->color('danger')
                     ->action(
-                        fn($record) =>
-                        $record->update([
+                        fn ($record) => $record->update([
                             'status' => 'canceled',
-                            'canceled_at' => now()
+                            'canceled_at' => now(),
                         ])
                     ),
                 Action::make('extend')
                     ->form([
-                        TextInput::make('days')->numeric()->required()
+                        TextInput::make('days')->numeric()->required(),
                     ])
                     ->action(function ($record, $data) {
                         $record->update([
-                            'ends_at' => $record->ends_at->addDays($data['days'])
+                            'ends_at' => $record->ends_at->addDays($data['days']),
                         ]);
                     }),
                 EditAction::make(),

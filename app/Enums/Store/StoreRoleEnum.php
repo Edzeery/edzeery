@@ -2,24 +2,25 @@
 
 namespace App\Enums\Store;
 
-use App\Enums\Concerns\InteractsWithRolePresentation;
+use App\Enums\Concerns\InteractsWithStatusKit;
 
 enum StoreRoleEnum: string
 {
-    use InteractsWithRolePresentation; // Auto Detect Group
+    use InteractsWithStatusKit; // Auto Detect Group
 
     protected const GROUP = 'roles';
 
-    case OWNER   = 'owner';   // التاجر نفسه (نائب عنه)
-    case ADMIN   = 'admin';   // نائب التاجر (صلاحيات كبيرة)
-    case MANAGER = 'manager'; // يسير فرق (Confirm / Track)
-    case STAFF   = 'staff';   // موظف تنفيذ
+    protected const STATUS_KIT_GROUP = 'role';
 
+    case OWNER = 'owner';   // التاجر نفسه (نائب عنه)
+    case ADMIN = 'admin';   // نائب التاجر (صلاحيات كبيرة)
+    case MANAGER = 'manager'; // يسير فرق (Confirm / Track)
+    case STAFF = 'staff';   // موظف تنفيذ
 
     public static function options(): array
     {
         return collect(self::cases())
-            ->mapWithKeys(fn($role) => [$role->value => $role->label()])
+            ->mapWithKeys(fn ($role) => [$role->value => $role->label()])
             ->toArray();
     }
 

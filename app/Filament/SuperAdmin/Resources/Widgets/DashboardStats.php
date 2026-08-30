@@ -7,12 +7,13 @@ use App\Models\Products\Product;
 use App\Models\Stores\Store;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Filament\Facades\Filament;
 
 class DashboardStats extends StatsOverviewWidget
 {
     protected static ?int $sort = -3;
+
     protected static bool $isLazy = true;
+
     protected function getStats(): array
     {
         return [
@@ -20,18 +21,18 @@ class DashboardStats extends StatsOverviewWidget
                 'ACTIVED Stores',
                 Store::where('status', StoreStatusEnum::ACTIVE)->count()
             )
-                ->color("success")
-                ->icon(StoreStatusEnum::ACTIVE->icon()),
+                ->color('success')
+                ->icon(StoreStatusEnum::ACTIVE->filamentIcon()),
             Stat::make(
                 'PENDING Stores',
                 Store::where('status', StoreStatusEnum::PENDING)->count()
             )
-                ->color("worning"),
+                ->color('worning'),
             Stat::make(
                 'PENDING Stores',
                 Store::where('status', StoreStatusEnum::CLOSED)->count()
             )
-                ->color("success"),
+                ->color('success'),
             Stat::make(
                 'All Stores',
                 Store::all()->count()

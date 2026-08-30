@@ -1,18 +1,20 @@
 @props([
     'domain',
     'status',
+    'storeId' => null,
     'set'   => null,
     'icon'  => true,
     'class' => '',
 ])
 
 @php
-    $result = \Edzeery\MyStatusKit\Facades\Status::for($domain, $status);
+    $statusKey = $status instanceof \BackedEnum ? $status->value : (string) $status;
+    $result = \App\Domains\Status\StatusResolver::resolve($domain, $statusKey, $storeId ?? currentStoreId());
 @endphp
 
-<span role="status" aria-label="{{ $result->label() }}" {{ $attributes->merge(['class' => $result->badgeClasses($class)]) }}>
+<span role="status" aria-label="{{ $result->label }}" {{ $attributes->merge(['class' => $result->badgeClasses($class)]) }}>
     @if($icon)
-        {!! $result->icon($set) !!}
+        {!! $result->renderIcon($set) !!}
     @endif
-    <span>{{ $result->label() }}</span>
+    <span>{{ $result->label }}</span>
 </span>

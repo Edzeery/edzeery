@@ -263,6 +263,7 @@ return [
         'failed' => 'Échoué',
         'paid' => 'Payé',
         'pending' => 'En attente',
+        'pending_review' => 'En attente de vérification',
         'refunded' => 'Remboursé',
     ],
     'product' => [

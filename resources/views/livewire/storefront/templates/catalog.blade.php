@@ -195,11 +195,8 @@ $clearFilters = function (): void {
                                             class="w-full h-full object-contain p-4 opacity-60">
                                     @endif
                                     @if ($product->is_featured)
-                                        <span
-                                            class="absolute top-2 {{ algin() }}-4 z-10 flex items-center gap-1.5 bg-warning-200
-                                     text-warning-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                            <x-status-badge-wire domain="general" status="featured" set="fa" />
-                                        </span>
+                                        <x-status-badge-wire domain="general" status="featured" set="fa"
+                                            class="absolute top-2 {{ algin() }}-4 z-10 shadow-lg" />
                                     @endif
                                 </div>
                             </a>

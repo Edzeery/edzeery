@@ -14,6 +14,8 @@ return [
     'new_quantity' => 'New quantity',
     'no_inventory' => 'No inventory found',
     'out_of_stock' => 'Out of stock',
+    'inventory' => 'Inventory',
+    'in_stock' => 'In stock',
     'product' => 'Product',
     'reason' => 'Reason',
     'reason_placeholder' => 'Optional',

@@ -25,8 +25,7 @@ class SubscriptionForm
 
                 Select::make('plan_price_id')
                     ->options(
-                        fn($get) =>
-                        \App\Models\Plans\PlanPrice::where('plan_id', $get('plan_id'))
+                        fn ($get) => \App\Models\Plans\PlanPrice::where('plan_id', $get('plan_id'))
                             ->pluck('billing_period', 'id')
                     )
                     ->required(),
@@ -38,7 +37,7 @@ class SubscriptionForm
                 DateTimePicker::make('ends_at'),
 
                 Select::make('status')
-                    ->options(\App\Domains\Billing\Enums\SubscriptionStatusEnum::options())
+                    ->options(\App\Enums\SubscriptionPayment\StatusSubscriptionEnum::options()),
             ]);
     }
 }

@@ -3,21 +3,21 @@
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
+use App\Models\Setting;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
-use App\Models\Setting;
-use Illuminate\Support\Facades\Auth;
 use App\Support\StoreResolver;
+use Illuminate\Support\Facades\Auth;
 
-if (!function_exists('user')) {
+if (! function_exists('user')) {
     function user(): ?\App\Models\User
     {
         return Auth::check() ? auth()->user() : null;
     }
 }
 
-if (!function_exists('currentGuard')) {
+if (! function_exists('currentGuard')) {
 
     function currentGuard(): string
     {
@@ -29,8 +29,7 @@ if (!function_exists('currentGuard')) {
     }
 }
 
-
-if (!function_exists('userHasStoreAccess')) {
+if (! function_exists('userHasStoreAccess')) {
     function userHasStoreAccess(User $user, Store $store): bool
     {
         return $user->stores()
@@ -40,7 +39,7 @@ if (!function_exists('userHasStoreAccess')) {
 }
 
 // 🔹 هل المستخدم داخل متجر حاليًا؟
-if (!function_exists('hasStoreContext')) {
+if (! function_exists('hasStoreContext')) {
     function hasStoreContext(): bool
     {
         return currentStore() !== null;
@@ -48,7 +47,7 @@ if (!function_exists('hasStoreContext')) {
 }
 
 // 🔹 هل المستخدم عضو في المتجر الحالي؟
-if (!function_exists('isStoreMember')) {
+if (! function_exists('isStoreMember')) {
     function isStoreMember(?User $user = null): bool
     {
         $user ??= user();
@@ -61,8 +60,8 @@ if (!function_exists('isStoreMember')) {
     }
 }
 // 🔹 هل لديه دور متجر معيّن؟
-if (!function_exists('hasStoreRole')) {
-    function hasStoreRole(string | StoreRoleEnum $role, ?User $user = null): bool
+if (! function_exists('hasStoreRole')) {
+    function hasStoreRole(string|StoreRoleEnum $role, ?User $user = null): bool
     {
         $user ??= user();
 
@@ -74,28 +73,28 @@ if (!function_exists('hasStoreRole')) {
     }
 }
 
-if (!function_exists('isStoreOwner')) {
+if (! function_exists('isStoreOwner')) {
     function isStoreOwner(?User $user = null): bool
     {
         return hasStoreRole(\App\Enums\Store\StoreRoleEnum::OWNER->value, $user);
     }
 }
 
-if (!function_exists('isStoreAdmin')) {
+if (! function_exists('isStoreAdmin')) {
     function isStoreAdmin(?User $user = null): bool
     {
         return hasStoreRole(\App\Enums\Store\StoreRoleEnum::ADMIN->value, $user);
     }
 }
 
-if (!function_exists('isStoreManager')) {
+if (! function_exists('isStoreManager')) {
     function isStoreManager(?User $user = null): bool
     {
         return hasStoreRole(\App\Enums\Store\StoreRoleEnum::MANAGER->value, $user);
     }
 }
 
-if (!function_exists('isStoreStaff')) {
+if (! function_exists('isStoreStaff')) {
     function isStoreStaff(?User $user = null): bool
     {
         return hasStoreRole(\App\Enums\Store\StoreRoleEnum::STAFF->value, $user);
@@ -103,7 +102,7 @@ if (!function_exists('isStoreStaff')) {
 }
 
 // 🔥 هل يملك صلاحية داخل المتجر الحالي؟
-if (!function_exists('canStore')) {
+if (! function_exists('canStore')) {
     function canStore(string $permission, ?User $user = null): bool
     {
         $user ??= user();
@@ -121,7 +120,7 @@ if (!function_exists('canStore')) {
     }
 }
 
-if (!function_exists('storeCan')) {
+if (! function_exists('storeCan')) {
     function storeCan(string $permission): bool
     {
         return canStore($permission);
@@ -134,7 +133,7 @@ if (!function_exists('storeCan')) {
 
 // 🔹 هل يدير هذا العضو؟
 
-if (!function_exists('managesMember')) {
+if (! function_exists('managesMember')) {
     function managesMember(StoreMembership $targetMembership, ?User $actor = null): bool
     {
         $actor ??= user();
@@ -169,9 +168,9 @@ if (!function_exists('managesMember')) {
 /**
  * 5️⃣ Helpers جاهزة للـ Policies (تختصر الدنيا)
  */
-//🔹 إدارة الفريق
+// 🔹 إدارة الفريق
 
-if (!function_exists('canManageTeam')) {
+if (! function_exists('canManageTeam')) {
     function canManageTeam(): bool
     {
         return
@@ -181,8 +180,8 @@ if (!function_exists('canManageTeam')) {
     }
 }
 
-//🔹 حذف / تعديل عضو
-if (!function_exists('canModifyMember')) {
+// 🔹 حذف / تعديل عضو
+if (! function_exists('canModifyMember')) {
     function canModifyMember(StoreMembership $membership): bool
     {
         // لا أحد يلمس OWNER
@@ -197,110 +196,114 @@ if (!function_exists('canModifyMember')) {
  * 6️⃣ Helpers للـ UI (Filament)
  */
 
-//🔹 عرض أو إخفاء Tabs / Actions
-if (!function_exists('showIfStoreCan')) {
+// 🔹 عرض أو إخفاء Tabs / Actions
+if (! function_exists('showIfStoreCan')) {
     function showIfStoreCan(string $permission): bool
     {
         return hasStoreContext() && canStore($permission);
     }
 }
 
-
-if (!function_exists('currentStore')) {
+if (! function_exists('currentStore')) {
     function currentStore(): ?Store
     {
         return StoreResolver::resolve();
     }
 }
 
-if (!function_exists('currentStoreId')) {
+if (! function_exists('currentStoreId')) {
     function currentStoreId(): ?string
     {
         return currentStore()?->id;
     }
 }
 
-if (!function_exists('currentMembership')) {
+if (! function_exists('currentMembership')) {
     function currentMembership(): ?StoreMembership
     {
         $store = currentStore();
         $user = auth()->user();
+
         return $user && $store ? $user->storeMembership($store) : null;
     }
 }
 
-if (!function_exists('membership')) {
+if (! function_exists('membership')) {
     function membership(?\App\Models\User $user = null): ?StoreMembership
     {
         $user ??= Auth::user();
+
         return $user ? currentMembership() : null;
     }
 }
 
-if (!function_exists('currentMembershipStore')) {
+if (! function_exists('currentMembershipStore')) {
     function currentMembershipStore(): ?Store
     {
         return currentMembership()?->store;
     }
 }
 
-if (!function_exists('generatecode')) {
+if (! function_exists('generatecode')) {
     function generatecode($prefix = 'PRO-', $suffix = null): string
     {
-        return $prefix . uniqid() . $suffix;
+        return $prefix.uniqid().$suffix;
     }
 }
 
-if (!function_exists('uploadPath')) {
+if (! function_exists('uploadPath')) {
     function uploadPath($value): ?string
     {
         return is_array($value) ? ($value[0] ?? null) : $value;
     }
 }
 
-if (!function_exists('countries')) {
+if (! function_exists('countries')) {
     function countries(string $name = 'name'): array
     {
         return Country::pluck($name, 'id')->toArray();
     }
 }
 
-if (!function_exists('country')) {
+if (! function_exists('country')) {
     function country($id)
     {
         return Country::findOrFail($id);
     }
 }
 
-if (!function_exists('states')) {
+if (! function_exists('states')) {
     function states(string $name = 'name'): array
     {
         if (isRTL()) {
             $name = 'ar_name';
         }
+
         return State::pluck($name, 'id')->toArray();
     }
 }
 
-if (!function_exists('state')) {
+if (! function_exists('state')) {
     function state($id)
     {
         return State::findOrFail($id);
     }
 }
 
-if (!function_exists('canDo')) {
+if (! function_exists('canDo')) {
     function canDo(string $permission): bool
     {
         return auth()->check() && auth()->user()->can($permission);
     }
 }
 
-if (!function_exists('userRole')) {
+if (! function_exists('userRole')) {
     function userRole(): ?string
     {
         $user = user();
-        if (! $user) return null;
+        if (! $user) {
+            return null;
+        }
 
         // استخدام Spatie Roles
         $roles = $user->getRoleNames();
@@ -314,7 +317,7 @@ if (!function_exists('userRole')) {
     }
 }
 
-if (!function_exists('generateBreadcrumb')) {
+if (! function_exists('generateBreadcrumb')) {
     function generateBreadcrumb(): array
     {
         $segments = request()->segments();
@@ -349,7 +352,7 @@ if (!function_exists('generateBreadcrumb')) {
         return $breadcrumbs;
     }
 }
-if (!function_exists('system_setting')) {
+if (! function_exists('system_setting')) {
     function system_setting($key = null, $default = null)
     {
         static $cache = null;
@@ -366,12 +369,7 @@ if (!function_exists('system_setting')) {
     }
 }
 
-
-
-
-
-require __DIR__ . '/IconHelper.php';
-require __DIR__ . '/Language_Translation.php';
-require __DIR__ . '/subscription.php';
-require __DIR__ . '/userHelper.php';
-require __DIR__ . '/cart_notice.php';
+require __DIR__.'/Language_Translation.php';
+require __DIR__.'/subscription.php';
+require __DIR__.'/userHelper.php';
+require __DIR__.'/cart_notice.php';

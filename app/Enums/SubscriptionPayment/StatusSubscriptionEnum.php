@@ -2,21 +2,19 @@
 
 namespace App\Enums\SubscriptionPayment;
 
-use App\Enums\Concerns\HasFilamentPresentation;
 use App\Enums\Concerns\InteractsWithStatusKit;
 use Filament\Support\Contracts\HasLabel;
 
 enum StatusSubscriptionEnum: string implements HasLabel
 {
-    use HasFilamentPresentation;
     use InteractsWithStatusKit;
 
     protected const GROUP = 'subscription';
 
-    case ACTIVE    = 'active';
-    case PENDING   = 'pending';
-    case EXPIRED   = 'expired';
-    case CANCELED  = 'canceled';
+    case ACTIVE = 'active';
+    case PENDING = 'pending';
+    case EXPIRED = 'expired';
+    case CANCELED = 'canceled';
     case SUSPENDED = 'suspended';
 
     public function getLabel(): string
@@ -24,10 +22,11 @@ enum StatusSubscriptionEnum: string implements HasLabel
         return $this->label();
         // return __('status.' . $this->value);
     }
+
     public static function options(): array
     {
         return collect(self::cases())
-            ->mapWithKeys(fn($case) => [
+            ->mapWithKeys(fn ($case) => [
                 $case->value => $case->getLabel(),
             ])
             ->toArray();
@@ -39,13 +38,14 @@ enum StatusSubscriptionEnum: string implements HasLabel
             'value' => $this->value,
             'label' => $this->getLabel(),
             'color' => $this->color(),
-            'icon'  => $this->icon(),
+            'icon' => $this->icon(),
         ];
     }
+
     public static function api(): array
     {
         return array_map(
-            fn($case) => $case->toArray(),
+            fn ($case) => $case->toArray(),
             self::cases()
         );
     }

@@ -404,7 +404,7 @@ $allPermissions = computed(function () {
                             <td class="px-4 py-3 font-medium text-ink">{{ $membership->user?->name }}</td>
                             <td class="px-4 py-3 text-ink-soft">{{ $membership->user?->email }}</td>
                             <td class="px-4 py-3">
-                                <x-merchant.status domain="roles" :status="$roleName" />
+                                <x-merchant.status domain="role" :status="$roleName" />
                             </td>
                             <td class="px-4 py-3 text-xs text-ink-muted">
                                 {{ $membership->user?->city?->name }}, {{ $membership->user?->state?->name }}

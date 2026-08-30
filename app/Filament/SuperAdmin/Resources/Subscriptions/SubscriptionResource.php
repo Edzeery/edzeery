@@ -22,7 +22,9 @@ class SubscriptionResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected static ?string $recordTitleAttribute = 'plan_id';
-  protected static string|UnitEnum|null $navigationGroup = 'Billing Management';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Billing Management';
+
     public static function form(Schema $schema): Schema
     {
         return SubscriptionForm::configure($schema);

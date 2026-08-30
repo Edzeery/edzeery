@@ -263,6 +263,7 @@ return [
         'failed' => 'فشلت العملية',
         'paid' => 'مدفوع',
         'pending' => 'قيد الانتظار',
+        'pending_review' => 'قيد المراجعة',
         'refunded' => 'مسترجع',
     ],
     'product' => [
@@ -333,4 +334,27 @@ return [
         'pending' => 'قيد الانتظار',
         'suspended' => 'موقوف',
     ],
+
+    'inventory' => [
+        'in_stock' => 'في المخزن',
+        'out_of_stock' => 'نفدت الكمية',
+        'low_stock' => 'كمية منخفضة',
+        'no_inventory' => 'لا يوجد مخزن',
+        'adjust_stock' => 'تعديل المخزن',
+        'current_stock' => 'الكمية الحالية: :count',
+        'threshold' => 'الحد الأدنى: :count',
+        'movements' => 'الحركات',
+        'transfer' => 'نقل',
+        'damaged' => 'تالف',
+    ],
+
+    'inventorymovementtype' => [
+        'sold' => 'تم البيع',
+        'return' => 'عاد',
+        'purchase' => 'شراء',
+        'adjustment' => 'تعديل',
+        'reserve' => 'محجوز',
+        'release' => 'تم الإفراج عنه',
+    ],
+
 ];
