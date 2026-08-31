@@ -47,6 +47,11 @@ if ($store) {
     $withData['canViewStockAlerts'] = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
     $withData['canViewDebts'] = canStore(StorePermissionEnum::FINANCE_DEBT_VIEW->value);
     $withData['canViewReturns'] = canStore(StorePermissionEnum::RETURNS_VERIFY_BARCODE->value);
+    $withData['canViewTeam'] = canStore(StorePermissionEnum::TEAM_VIEW->value);
+    $withData['canViewOrders'] = canStore(StorePermissionEnum::ORDER_VIEW->value);
+    $withData['canViewOrderSettings'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
+    $withData['canViewStoreSettings'] = canStore(StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value);
+    $withData['canViewStorefront'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
 }
 
 with($withData);
@@ -212,99 +217,113 @@ with($withData);
             </div>
         @endif
 
-        <div class="edz-sidebar__group">
-            <button type="button"
-                    @click="openGroups.operations = !openGroups.operations"
-                    class="edz-sidebar__sub-toggle"
-                    :class="{ 'edz-sidebar__sub-toggle--open': openGroups.operations }"
-                    :aria-expanded="openGroups.operations.toString()"
-                    aria-controls="edz-sub-operations"
-                    aria-label="{{ __('merchant_panel.operations_group') }}">
-                <x-edz.icon name="cart" class="edz-sidebar__icon" />
-                <span class="edz-sidebar__label">{{ __('merchant_panel.operations_group') }}</span>
-                <x-edz.icon name="chevron-down" class="edz-sidebar__sub-chevron w-4 h-4" />
-            </button>
+        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts)
+            <div class="edz-sidebar__group">
+                <button type="button"
+                        @click="openGroups.operations = !openGroups.operations"
+                        class="edz-sidebar__sub-toggle"
+                        :class="{ 'edz-sidebar__sub-toggle--open': openGroups.operations }"
+                        :aria-expanded="openGroups.operations.toString()"
+                        aria-controls="edz-sub-operations"
+                        aria-label="{{ __('merchant_panel.operations_group') }}">
+                    <x-edz.icon name="cart" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.operations_group') }}</span>
+                    <x-edz.icon name="chevron-down" class="edz-sidebar__sub-chevron w-4 h-4" />
+                </button>
 
-            <div id="edz-sub-operations" class="edz-sidebar__sub" x-show="openGroups.operations" x-cloak
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 transform -translate-y-1"
-                 x-transition:enter-end="opacity-100 transform translate-y-0"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100 transform translate-y-0"
-                 x-transition:leave-end="opacity-0 transform -translate-y-1">
-                <a href="{{ route('merchant.orders.index', $store) }}" wire:navigate
-                   class="edz-sidebar__sub-link @if (request()->routeIs('merchant.orders.*')) edz-sidebar__sub-link--active @endif">
-                    <x-edz.icon name="cart" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                    <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
-                </a>
+                <div id="edz-sub-operations" class="edz-sidebar__sub" x-show="openGroups.operations" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 transform -translate-y-1"
+                     x-transition:enter-end="opacity-100 transform translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 transform translate-y-0"
+                     x-transition:leave-end="opacity-0 transform -translate-y-1">
+                    @if ($canViewOrders)
+                        <a href="{{ route('merchant.orders.index', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.orders.*')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="cart" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.orders') }}</span>
+                        </a>
+                    @endif
 
-                @if ($canViewReturns)
-                    <a href="{{ route('merchant.returns.index', $store) }}" wire:navigate
-                       class="edz-sidebar__sub-link @if (request()->routeIs('merchant.returns.*')) edz-sidebar__sub-link--active @endif">
-                        <x-edz.icon name="arrow-uturn-left" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                        <span class="edz-sidebar__label">{{ __('merchant_panel.returns') }}</span>
-                    </a>
-                @endif
+                    @if ($canViewReturns)
+                        <a href="{{ route('merchant.returns.index', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.returns.*')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="arrow-uturn-left" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.returns') }}</span>
+                        </a>
+                    @endif
 
-                <a href="{{ route('merchant.order-settings', $store) }}" wire:navigate
-                   class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__sub-link--active @endif">
-                    <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                    <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
-                </a>
+                    @if ($canViewOrderSettings)
+                        <a href="{{ route('merchant.order-settings', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
+                        </a>
+                    @endif
 
-                @if ($canViewDebts)
-                    <a href="{{ route('merchant.debts.index', $store) }}" wire:navigate
-                       class="edz-sidebar__sub-link @if (request()->routeIs('merchant.debts.*')) edz-sidebar__sub-link--active @endif">
-                        <x-edz.icon name="credit-card" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                        <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>
-                    </a>
-                @endif
+                    @if ($canViewDebts)
+                        <a href="{{ route('merchant.debts.index', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.debts.*')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="credit-card" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>
+                        </a>
+                    @endif
+                </div>
             </div>
-        </div>
+        @endif
 
-        <div class="edz-sidebar__group">
-            <p class="edz-sidebar__group-title">{{ __('merchant_panel.team_group') }}</p>
+        @if ($canViewTeam)
+            <div class="edz-sidebar__group">
+                <p class="edz-sidebar__group-title">{{ __('merchant_panel.team_group') }}</p>
 
-            <a href="{{ route('merchant.teams.index', $store) }}" wire:navigate
-               class="edz-sidebar__link @if (request()->routeIs('merchant.teams.*')) edz-sidebar__link--active @endif">
-                <x-edz.icon name="users" class="edz-sidebar__icon" />
-                <span class="edz-sidebar__label">{{ __('merchant_panel.my_teams') }}</span>
-            </a>
-        </div>
-
-        <div class="edz-sidebar__group">
-            <button type="button"
-                    @click="openGroups.store = !openGroups.store"
-                    class="edz-sidebar__sub-toggle"
-                    :class="{ 'edz-sidebar__sub-toggle--open': openGroups.store }"
-                    :aria-expanded="openGroups.store.toString()"
-                    aria-controls="edz-sub-store"
-                    aria-label="{{ __('merchant_panel.store_group') }}">
-                <x-edz.icon name="storefront" class="edz-sidebar__icon" />
-                <span class="edz-sidebar__label">{{ __('merchant_panel.store_group') }}</span>
-                <x-edz.icon name="chevron-down" class="edz-sidebar__sub-chevron w-4 h-4" />
-            </button>
-
-            <div id="edz-sub-store" class="edz-sidebar__sub" x-show="openGroups.store" x-cloak
-                 x-transition:enter="transition ease-out duration-200"
-                 x-transition:enter-start="opacity-0 transform -translate-y-1"
-                 x-transition:enter-end="opacity-100 transform translate-y-0"
-                 x-transition:leave="transition ease-in duration-150"
-                 x-transition:leave-start="opacity-100 transform translate-y-0"
-                 x-transition:leave-end="opacity-0 transform -translate-y-1">
-                <a href="{{ route('merchant.store-settings', $store) }}" wire:navigate
-                   class="edz-sidebar__sub-link @if (request()->routeIs('merchant.store-settings')) edz-sidebar__sub-link--active @endif">
-                    <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                    <span class="edz-sidebar__label">{{ __('merchant_panel.settings') }}</span>
-                </a>
-
-                <a href="{{ route('merchant.storefront-settings', $store) }}" wire:navigate
-                   class="edz-sidebar__sub-link @if (request()->routeIs('merchant.storefront-settings')) edz-sidebar__sub-link--active @endif">
-                    <x-edz.icon name="storefront" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                    <span class="edz-sidebar__label">{{ __('merchant_panel.storefront') }}</span>
+                <a href="{{ route('merchant.teams.index', $store) }}" wire:navigate
+                   class="edz-sidebar__link @if (request()->routeIs('merchant.teams.*')) edz-sidebar__link--active @endif">
+                    <x-edz.icon name="users" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.my_teams') }}</span>
                 </a>
             </div>
-        </div>
+        @endif
+
+        @if ($canViewStoreSettings || $canViewStorefront)
+            <div class="edz-sidebar__group">
+                <button type="button"
+                        @click="openGroups.store = !openGroups.store"
+                        class="edz-sidebar__sub-toggle"
+                        :class="{ 'edz-sidebar__sub-toggle--open': openGroups.store }"
+                        :aria-expanded="openGroups.store.toString()"
+                        aria-controls="edz-sub-store"
+                        aria-label="{{ __('merchant_panel.store_group') }}">
+                    <x-edz.icon name="storefront" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.store_group') }}</span>
+                    <x-edz.icon name="chevron-down" class="edz-sidebar__sub-chevron w-4 h-4" />
+                </button>
+
+                <div id="edz-sub-store" class="edz-sidebar__sub" x-show="openGroups.store" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 transform -translate-y-1"
+                     x-transition:enter-end="opacity-100 transform translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 transform translate-y-0"
+                     x-transition:leave-end="opacity-0 transform -translate-y-1">
+                    @if ($canViewStoreSettings)
+                        <a href="{{ route('merchant.store-settings', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.store-settings')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.settings') }}</span>
+                        </a>
+                    @endif
+
+                    @if ($canViewStorefront)
+                        <a href="{{ route('merchant.storefront-settings', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.storefront-settings')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="storefront" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.storefront') }}</span>
+                        </a>
+                    @endif
+                </div>
+            </div>
+        @endif
     </nav>
 
     <div class="edz-sidebar__footer">

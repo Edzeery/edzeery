@@ -2,6 +2,7 @@
 
 use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\User\Services\SubscriptionGuardService;
+use App\Enums\Store\StorePermissionEnum;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
@@ -10,19 +11,30 @@ layout('components.layouts.store');
 $analytics = app(StoreDashboardAnalyticsService::class);
 $subscriptionGuard = app(SubscriptionGuardService::class);
 
+$canTopKpis     = canStore(StorePermissionEnum::STATS_TOP_KPIS->value);
+$canStatsDelivery = canStore(StorePermissionEnum::STATS_DELIVERY->value);
+$canConfirm     = canStore(StorePermissionEnum::ORDER_CONFIRM->value) || canStore(StorePermissionEnum::CRM_ORDER_CONFIRMATION->value);
+$canInventory   = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
+$canTopProducts = canStore(StorePermissionEnum::PRODUCT_VIEW->value);
+
 with([
-    'summary'               => $analytics->summary(),
-    'salesByDay'            => $analytics->salesByDay(),
-    'ordersByStatus'        => $analytics->ordersByStatus(),
-    'ordersByState'         => $analytics->ordersByState(),
-    'deliveryTypeBreakdown' => $analytics->deliveryTypeBreakdown(),
-    'pendingOrders'         => $analytics->pendingConfirmationOrders(),
-    'topProducts'           => $analytics->topSellingProducts(),
-    'lowStockVariants'      => $analytics->lowStockVariants(),
+    'summary'               => $canTopKpis ? $analytics->summary() : collect(),
+    'salesByDay'            => $canStatsDelivery ? $analytics->salesByDay() : collect(),
+    'ordersByStatus'        => $canStatsDelivery ? $analytics->ordersByStatus() : collect(),
+    'ordersByState'         => $canStatsDelivery ? $analytics->ordersByState() : collect(),
+    'deliveryTypeBreakdown' => $canStatsDelivery ? $analytics->deliveryTypeBreakdown() : collect(),
+    'pendingOrders'         => $canConfirm ? $analytics->pendingConfirmationOrders() : collect(),
+    'topProducts'           => $canTopProducts ? $analytics->topSellingProducts() : collect(),
+    'lowStockVariants'      => $canInventory ? $analytics->lowStockVariants() : collect(),
     'subscription'          => $subscriptionGuard->getSubscription(),
     'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
     'subscriptionStatus'    => $subscriptionGuard->statusLabel(),
     'daysRemaining'         => $subscriptionGuard->daysRemaining(),
+    'canTopKpis'            => $canTopKpis,
+    'canStatsDelivery'      => $canStatsDelivery,
+    'canConfirm'            => $canConfirm,
+    'canInventory'          => $canInventory,
+    'canTopProducts'        => $canTopProducts,
 ]);
 ?>
 
@@ -53,6 +65,7 @@ with([
 }" x-init="renderCharts()">
 
     {{-- KPI Cards — Apple-style large numbers with negative tracking --}}
+    @if ($canTopKpis)
     <div class="edz-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {{-- Total Orders --}}
         <div class="edz-card edz-card--padded group">
@@ -131,6 +144,7 @@ with([
             <p class="mt-2 text-2xl font-bold tracking-tighter text-ink">{{ $summary['total_members'] }}</p>
         </div>
     </div>
+    @endif
 
     {{-- Store Link --}}
     <div class="edz-card edz-card--padded mb-6">
@@ -164,6 +178,7 @@ with([
     </div>
 
     {{-- Charts Row --}}
+    @if ($canStatsDelivery)
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
         {{-- Sales Trend --}}
         <div class="lg:col-span-2 edz-card edz-card--padded">
@@ -242,10 +257,12 @@ with([
             @endif
         </div>
     </div>
+    @endif
 
     {{-- Tables Row --}}
-    <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
+    <div class="edz-stagger grid grid-cols-1 gap-6 mb-6 {{ ($canConfirm && $canTopProducts) ? 'lg:grid-cols-2' : 'lg:grid-cols-1' }}">
         {{-- Pending Orders --}}
+        @if ($canConfirm)
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.pending_confirmation') }}</h3>
@@ -278,8 +295,10 @@ with([
                 </div>
             @endif
         </div>
+        @endif
 
         {{-- Top Selling Products --}}
+        @if ($canTopProducts)
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.top_products') }}</h3>
@@ -307,10 +326,11 @@ with([
                 </div>
             @endif
         </div>
+        @endif
     </div>
 
     {{-- Stock Alerts --}}
-    @if ($lowStockVariants->isNotEmpty())
+    @if ($canInventory && $lowStockVariants->isNotEmpty())
         <div class="edz-card edz-card--padded mb-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('titles.stock_alerts') }}</h3>

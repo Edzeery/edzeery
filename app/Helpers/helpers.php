@@ -69,7 +69,15 @@ if (! function_exists('hasStoreRole')) {
             return false;
         }
 
-        return $user->hasRole($role instanceof StoreRoleEnum ? $role->value : $role, 'merchant');
+        $value = $role instanceof StoreRoleEnum ? $role->value : $role;
+        $membership = currentMembership();
+
+        // Decision #6: membership-scoped role takes precedence (per-store isolation)
+        if ($membership && $membership->role) {
+            return $membership->role === $value;
+        }
+
+        return $user->hasRole($value, 'merchant');
     }
 }
 
@@ -114,6 +122,18 @@ if (! function_exists('canStore')) {
         // Super Admin / Platform Admin bypass
         if ($user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web')) {
             return true;
+        }
+
+        $membership = currentMembership();
+
+        // Decision #6: membership-scoped custom permissions take precedence.
+        // If the membership has explicitly stored permissions (non-empty set),
+        // only those apply — isolation across stores is guaranteed.
+        if ($membership) {
+            $stored = $membership->permissionNames();
+            if (! empty($stored)) {
+                return in_array($permission, $stored, true);
+            }
         }
 
         return $user->can($permission, 'merchant');

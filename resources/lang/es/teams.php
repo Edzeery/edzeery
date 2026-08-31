@@ -7,6 +7,7 @@ return [
     'cannot_add_platform_staff' => 'Las cuentas de la plataforma no pueden ser agregadas al equipo de la tienda.',
     'city' => 'Ciudad',
     'country' => 'País',
+    'custom_badge' => 'Personalizado',
     'email' => 'Email',
     'guest' => 'Invitado',
     'invite_member' => 'Invitar miembro',

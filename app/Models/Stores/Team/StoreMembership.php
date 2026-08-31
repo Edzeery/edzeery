@@ -26,6 +26,7 @@ class StoreMembership extends Model
         'invited_at',
         'accepted_at',
         'is_active',
+        'role',
     ];
 
     protected $casts = [
@@ -55,6 +56,13 @@ class StoreMembership extends Model
 
     public function hasRole(String| StoreRoleEnum $role) :bool
     {
+        $value = $role instanceof StoreRoleEnum ? $role->value : $role;
+
+        // Decision #6: the role stored on this membership is authoritative.
+        if ($this->role) {
+            return $this->role === $value;
+        }
+
         return hasStoreRole($role, $this->user);
     }
 
@@ -78,14 +86,55 @@ class StoreMembership extends Model
         return $this->hasRole(StoreRoleEnum::MANAGER);
     }
     /**
-     * تحقق من صلاحية معينة باستخدام Spatie
+     * تحقق من صلاحية معينة داخل هذه العضوية (Decision #6).
+     * الصلاحيات المخصصة المخزنة على العضوية لها الأولوية.
      */
     public function can(string|StorePermissionEnum $permission): bool
     {
-        return $this->user->hasPermissionTo(
-            $permission instanceof StorePermissionEnum ? $permission->value : $permission,
-            'merchant'
-        );
+        $permission = $permission instanceof StorePermissionEnum ? $permission->value : $permission;
+
+        $stored = $this->permissionNames();
+        if (! empty($stored)) {
+            return in_array($permission, $stored, true);
+        }
+
+        return $this->user->hasPermissionTo($permission, 'merchant');
+    }
+
+    /**
+     * الصلاحيات المخصصة المخزنة على هذه العضوية (داخل متجر محدد).
+     */
+    public function permissions(): HasMany
+    {
+        return $this->hasMany(StoreMembershipPermission::class, 'membership_id');
+    }
+
+    public function permissionNames(): array
+    {
+        return $this->permissions()->pluck('permission')->all();
+    }
+
+    public function hasPermission(string|StorePermissionEnum $permission): bool
+    {
+        $permission = $permission instanceof StorePermissionEnum ? $permission->value : $permission;
+
+        return $this->permissions()->where('permission', $permission)->exists();
+    }
+
+    /**
+     * مزامنة الصلاحيات المخصصة على هذه العضوية (استبدال كامل).
+     */
+    public function syncPermissions(iterable $permissions): self
+    {
+        $this->permissions()->delete();
+        foreach ($permissions as $permission) {
+            $p = $permission instanceof StorePermissionEnum ? $permission->value : $permission;
+            if ($p) {
+                $this->permissions()->create(['permission' => $p]);
+            }
+        }
+
+        return $this;
     }
 
     public function confirmationShifts(): HasMany

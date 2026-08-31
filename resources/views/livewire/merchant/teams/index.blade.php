@@ -104,8 +104,10 @@ $openEdit = function (StoreMembership $membership): void {
     $this->city_id = $user->city_id ?? '';
     $this->store_role = $role?->name ?? '';
     $this->isActive = (bool) $membership->is_active;
-    $user->guard_name = 'merchant';
-    $this->permissions = $user->getAllPermissions()->pluck('name')->toArray();
+    // Decision #6 — load the membership-scoped permissions (falls back to the
+    // role template so the matrix reflects what this member can actually do).
+    $this->permissions = $membership->permissionNames()
+        ?: \App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role));
     $this->creating = false;
 };
 
@@ -226,6 +228,22 @@ $allPermissions = computed(function () {
 
     return collect($all)->groupBy(fn ($p) => explode('.', $p)[0]);
 });
+
+// Template permissions for the currently selected role, used to flag any
+// custom permission granted outside the role template (decision #6 / #8A).
+$roleTemplatePermissions = computed(function (): array {
+    if (! $this->store_role) {
+        return [];
+    }
+
+    try {
+        $role = StoreRoleEnum::from($this->store_role);
+    } catch (\ValueError) {
+        return [];
+    }
+
+    return \App\Support\StoreRoles::permissions($role);
+});
 ?>
 
 <div>
@@ -327,7 +345,7 @@ $allPermissions = computed(function () {
                     </label>
                 </div>
 
-                @if ($this->store_role && $this->store_role !== 'staff' && $this->allPermissions->isNotEmpty())
+                @if ($this->store_role && $this->allPermissions->isNotEmpty())
                     <div class="border-t border-surface-border pt-4">
                         <div class="mb-3 flex items-center gap-2">
                             <span class="text-sm font-medium text-ink">{{ __('titles.permissions') }}</span>
@@ -349,6 +367,9 @@ $allPermissions = computed(function () {
                                         <label class="flex items-center gap-2 py-0.5 text-sm text-ink">
                                             <input type="checkbox" wire:model="permissions" value="{{ $perm }}" class="h-3.5 w-3.5 rounded border-surface-border">
                                             {{ __("permissions.{$perm}") }}
+                                            @if (! in_array($perm, $this->roleTemplatePermissions, true))
+                                                <span class="edz-badge edz-badge--neutral !text-[10px]">{{ __('teams.custom_badge') }}</span>
+                                            @endif
                                         </label>
                                     @endforeach
                                 </div>

@@ -161,6 +161,15 @@
 
 **تطبيقًا على جداولك الحالية:** أنت قريب جدًا من هذا بالفعل (لأنك علّقت store_id في store_roles).
 
+> **نفّذ (أغسطس 2026) — القرار #6 (هجين membership-scoped):**
+> بدل تفعيل Spatie Teams حرفيًا (معطّل لأن `stores.id`/`users.id` ULID بينما teams migration يستخدم `unsignedBigInteger`)، طُبّقت عزل per-store على **store_memberships** مباشرة:
+> - عمود `store_memberships.role` (قيمة من `StoreRoleEnum`).
+> - جدول `store_membership_permissions` (pivot: `membership_id` + `permission`) للصلاحيات المخصصة per member.
+> - `canStore()`/`hasStoreRole()` (في `app/Helpers/helpers.php`) تفحص العضوية الحالية أولًا مع fallback إلى Spatie global للتوافق.
+> - `StoreMembership::can/hasRole/permissionNames/syncPermissions` scoped؛ `StoreTeamService` يخزّن role+perms على العضوية.
+> تأكيد الطلبات (COD) والمخزون (ATP) وFilament SuperAdmin لم تُمس (حسب نطاق البرومت).
+
+
 ---
 
 ## 7) profiles One-to-One (نهائي)

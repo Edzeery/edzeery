@@ -136,11 +136,12 @@ class StoreRolesAndPermissionsSeeder extends Seeder
         string $invitedBy,
         StoreRoleEnum $role,
     ): void {
-        StoreMembership::firstOrCreate(
+        $membership = StoreMembership::firstOrCreate(
             ['store_id' => $store->id, 'user_id' => $user->id],
             [
                 'invited_by' => $invitedBy,
                 'is_active'  => true,
+                'role'       => $role->value,
             ]
         );
 
@@ -148,5 +149,9 @@ class StoreRolesAndPermissionsSeeder extends Seeder
         if (!$user->hasRole($roleObj)) {
             $user->assignRole($roleObj);
         }
+
+        // Decision #6 — populate the membership-scoped permissions from the
+        // role template so per-store isolation works from the start.
+        $membership->syncPermissions(StoreRoles::permissions($role));
     }
 }

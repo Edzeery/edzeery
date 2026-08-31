@@ -56,10 +56,14 @@ class StoreTeamService
                 'user_id'   => $member_user->id,
                 'invited_by' => user()->id,
                 'is_active' => $data['is_active'] ?? true,
+                'role'      => StoreRoleEnum::from($data['store_role'])->value,
             ]);
 
             $role = StoreRoleEnum::from($data['store_role']);
 
+            // Decision #6 — hybrid: keep the global merchant role for platform
+            // compatibility, but store the scoped role + custom permissions on
+            // THIS membership so multiple stores stay isolated.
             $member_user->guard_name = 'merchant';
             $existingRoles = $member_user->getRoleNames('merchant');
             if ($existingRoles->isEmpty()) {
@@ -67,7 +71,7 @@ class StoreTeamService
             }
 
             $permissions = $data['permissions'] ?? \App\Support\StoreRoles::permissions($role);
-            $member_user->syncPermissions($permissions);
+            $member->syncPermissions($permissions);
 
             $this->consumeStaffQuota($store);
 
@@ -101,7 +105,11 @@ class StoreTeamService
 
             if (! empty($data['store_role'])) {
                 $role = StoreRoleEnum::from($data['store_role']);
+                $membership->update(['role' => $role->value]);
 
+                // Decision #6 — hybrid: keep the global role synced for platform
+                // compatibility, while the membership-level role/permissions hold
+                // the authoritative, store-isolated scope.
                 $user->guard_name = 'merchant';
                 $user->syncRoles([$role->value]);
             }
@@ -109,6 +117,7 @@ class StoreTeamService
             if (isset($data['permissions']) && is_array($data['permissions'])) {
                 $user->guard_name = 'merchant';
                 $user->syncPermissions($data['permissions']);
+                $membership->syncPermissions($data['permissions']);
             }
 
             return $membership->refresh();
@@ -121,6 +130,9 @@ class StoreTeamService
     {
         DB::transaction(function () use ($membership): void {
             $user = $membership->user;
+
+            // Decision #6 — drop the membership-scoped custom permissions first.
+            $membership->syncPermissions([]);
 
             $membership->delete();
 

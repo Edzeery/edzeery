@@ -7,6 +7,7 @@ return [
     'cannot_add_platform_staff' => 'Platform accounts cannot be added to a store team.',
     'city' => 'City',
     'country' => 'Country',
+    'custom_badge' => 'Custom',
     'email' => 'Email',
     'guest' => 'Guest',
     'invite_member' => 'Invite member',

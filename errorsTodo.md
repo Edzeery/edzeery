@@ -1,6 +1,29 @@
 # Frontend Audit — errorsTodo.md
 
-> Last updated: 2026-08-20 (Session 4)
+> Last updated: 2026-08-31 (Session 5 — Roles & Permissions RBAC)
+
+---
+
+## ✅ Session 5 — Store Roles & Permissions (RBAC, per-store isolation)
+
+### Core RBAC (decision #6 — hybrid membership-scoped)
+- [x] **Per-store role** — `store_memberships.role` via new migration `2026_08_31_205611_add_role_to_store_memberships_table`
+- [x] **Per-store custom permissions** — new `store_membership_permissions` pivot table (`2026_08_31_205445`)
+- [x] **`StoreMembership`** — `role` fillable/cast + scoped `can/hasRole/isOwner/isAdmin/isManager/permissionNames/hasPermission/syncPermissions/permissions()`
+- [x] **`StoreTeamService`** — `addMember`/`updateMember` store role + sync permissions per membership; `removeMember` cleans the pivot
+- [x] **`helpers.php`** — `canStore()`/`hasStoreRole()` check current membership first, fallback to Spatie global
+- [x] **Tests** — `tests/Feature/Merchant/RoleScopingTest.php` (2 tests, per-store isolation + confirm-only staff)
+
+### UI per role
+- [x] **Sidebar (R2)** — permission flags (`canViewTeam/canViewOrders/canViewOrderSettings/canViewStoreSettings/canViewStorefront`) + hide empty groups
+- [x] **Dashboard (R3)** — widgets gated by `STATS_TOP_KPIS/STATS_DELIVERY/ORDER_CONFIRM/CRM_ORDER_CONFIRMATION/INVENTORY_VIEW/PRODUCT_VIEW`; tables row collapses to one column
+- [x] **Team matrix (R4)** — STAFF role now shows the permissions matrix; adds a "custom" badge for perms outside the role template
+
+### Bug fixed
+- [x] **Blade `$__empty_-1` compile error** in `storefront/order-form.blade.php` — caused by an unbalanced `@forelse`/`@empty`/`@if` directive in an editor view; resolved after reconstruction, all views compile clean under `view:cache`
+
+### N+1
+- [x] **`lowStockVariants()`** — eager-load `optionValues` (was lazy-loaded per variant inside the dashboard loop)
 
 ---
 

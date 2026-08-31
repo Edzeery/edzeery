@@ -176,7 +176,7 @@ class StoreDashboardAnalyticsService
             ->where('store_id', $this->storeId)
             ->where('stock', '>', 0)
             ->whereColumn('stock', '<=', 'low_stock_threshold')
-            ->with('product')
+            ->with('product', 'optionValues')
             ->orderBy('stock')
             ->take($limit)
             ->get();

@@ -7,6 +7,7 @@ return [
     'cannot_add_platform_staff' => 'لا يمكن إضافة حسابات المنصة إلى فريق المتجر.',
     'city' => 'المدينة',
     'country' => 'الدولة',
+    'custom_badge' => 'مخصصة',
     'email' => 'البريد الإلكتروني',
     'guest' => 'ضيف',
     'invite_member' => 'دعوة عضو',
