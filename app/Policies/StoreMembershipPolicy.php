@@ -48,18 +48,28 @@ class StoreMembershipPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->actor()?->can(StorePermissionEnum::TEAM_VIEW) ?? false;
+        $actor = $this->actor();
+
+        return $actor && (
+            $actor->can(StorePermissionEnum::TEAM_VIEW)
+            || $actor->can(StorePermissionEnum::TEAM_VIEW_OWN)
+        );
     }
 
     public function view(User $user, StoreMembership $membership): bool
     {
         return $this->sameStore($membership)
-            && $this->actor()?->can(StorePermissionEnum::TEAM_VIEW);
+            && $this->viewAny($user);
     }
 
     public function create(User $user): bool
     {
-        return $this->actor()?->can(StorePermissionEnum::TEAM_INVITE) ?? false;
+        $actor = $this->actor();
+
+        return $actor && (
+            $actor->can(StorePermissionEnum::TEAM_INVITE)
+            || $actor->can(StorePermissionEnum::TEAM_MANAGE_OWN)
+        );
     }
 
     public function update(User $user, StoreMembership $membership): bool

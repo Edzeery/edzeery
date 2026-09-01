@@ -33,7 +33,7 @@ state([
 ]);
 
 mount(function (): void {
-    abort_unless(canStore(StorePermissionEnum::TEAM_VIEW->value), 403);
+    abort_unless(canStore(StorePermissionEnum::TEAM_VIEW->value) || canStore(StorePermissionEnum::TEAM_VIEW_OWN->value), 403);
     abort_unless(canManageTeam(), 403);
 });
 
@@ -366,7 +366,7 @@ $roleTemplatePermissions = computed(function (): array {
                                     @foreach ($perms as $perm)
                                         <label class="flex items-center gap-2 py-0.5 text-sm text-ink">
                                             <input type="checkbox" wire:model="permissions" value="{{ $perm }}" class="h-3.5 w-3.5 rounded border-surface-border">
-                                            {{ __("permissions.{$perm}") }}
+                                            {{ is_string($permLabel = __("permissions.{$perm}")) ? $permLabel : $perm }}
                                             @if (! in_array($perm, $this->roleTemplatePermissions, true))
                                                 <span class="edz-badge edz-badge--neutral !text-[10px]">{{ __('teams.custom_badge') }}</span>
                                             @endif
@@ -377,7 +377,6 @@ $roleTemplatePermissions = computed(function (): array {
                         </div>
                     </div>
                 @endif
-
                 <div class="flex items-center gap-2">
                     <button type="submit" class="edz-btn edz-btn--primary edz-btn--sm" wire:loading.attr="disabled" wire:loading.class="opacity-50">
                         <span wire:loading.remove wire:target="saveNew,saveEdit">{{ __('buttons.save') }}</span>

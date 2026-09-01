@@ -196,7 +196,8 @@ if (! function_exists('canManageTeam')) {
         return
             isStoreOwner() ||
             isStoreAdmin() ||
-            canStore(\App\Enums\Store\StorePermissionEnum::STORE_TEAM_MANAGE->value);
+            canStore(\App\Enums\Store\StorePermissionEnum::STORE_TEAM_MANAGE->value) ||
+            canStore(\App\Enums\Store\StorePermissionEnum::TEAM_MANAGE_OWN->value);
     }
 }
 

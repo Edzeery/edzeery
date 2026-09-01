@@ -1,6 +1,48 @@
 # Frontend Audit — errorsTodo.md
 
-> Last updated: 2026-08-31 (Session 5 — Roles & Permissions RBAC)
+> Last updated: 2026-08-31 (Session 6 — Fine-grained authorization enforcement P1–P3)
+
+---
+
+## ✅ Session 6 — Fine-grained Authorization Enforcement (P1–P3)
+
+Closes the coarse-permission gaps: gated a business action only by the state machine, or by
+the wrong permission, instead of the permission that actually governs the action.
+
+### P1 — Order status transitions (`$transitionOrder`)
+- [x] **`orders/index.blade.php`** — `$transitionOrder` now gated by
+      `abort_unless(canStore(StoreOrderPermissions::forStatus($statusKey)), 403)`
+      (previously only the state-machine `canTransition` check ran → any page-viewer could ship).
+- [x] **`app/Support/StoreOrderPermissions.php`** (new) — `forStatus()` maps:
+      confirm bucket (`confirmed`, `preparing`, `on_hold`) → `order.confirm`;
+      cancel bucket (`cancelled`, `rejected`, `no_answer_1/2/3`, `wrong_number`,
+      `out_of_stock`, `duplicate`, `postponed`) → `order.cancel`;
+      everything else (ship/deliver/return-followup) → `order.manage`.
+- [x] **`$bulkAssignAgent`** — guard switched from `order.manage` → `order.assign`.
+
+### P2 — MANAGER access to the teams page
+- [x] **`teams/index.blade.php`** — `mount()` accepts `TEAM_VIEW` **or** `TEAM_VIEW_OWN`.
+- [x] **`helpers.php`** — `canManageTeam()` also accepts `TEAM_MANAGE_OWN`.
+- [x] **`StoreMembershipPolicy`** — `viewAny`/`view` accept `TEAM_VIEW_OWN`; `create` accepts `TEAM_MANAGE_OWN`.
+- [x] Result: MANAGER opens the page and manages only their own team (`invited_by`).
+
+### P3 — Role templates (`StoreRoles.php`)
+- [x] **STAFF** — removed `order.manage`; added `order.cancel`, `crm.orders.confirm`,
+      `returns.verify.barcode`, `stats.confirmation` (10 perms).
+- [x] **MANAGER** — added `returns.verify.barcode`, `returns.process`, `stats.confirmation`,
+      `stats.delivery`; kept `order.manage`, `order.assign`, `store.update` (28 perms).
+- [x] **ADMIN** — unchanged: keeps the four sovereignty exclusions (36 of 40 perms).
+
+### Verification
+- [x] `Seeder` re-run: owner 40 / admin 36 / manager 28 / staff 10; only demo `default-store`
+      memberships re-synced — custom perms on other stores are not wiped.
+- [x] `tests/Feature/Merchant/StoreAuthorizationGatesTest.php` (5 tests, 18 assertions) green.
+- [x] `RoleScopingTest` + order/return/storefront suites green (44 tests this pass).
+
+### Deferred (not in scope this pass)
+- **P4 — Tracking feature** → separate session. `STATS_TOP_KPIS`/`STATS_DELIVERY` dashboard
+  guards remain unassigned to roles (no UI change here). `blade-interactivity` policy test
+  still fails on pre-existing `@js` in the orders blade (unchanged file region).
 
 ---
 

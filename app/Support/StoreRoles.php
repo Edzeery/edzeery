@@ -70,6 +70,10 @@ class StoreRoles
                 StorePermissionEnum::CRM_INVENTORY_TRACKING->value,
                 StorePermissionEnum::CRM_INVENTORY_MANAGE->value,
 
+                // Returns
+                StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,
+                StorePermissionEnum::RETURNS_PROCESS->value,
+
                 // Delivery & Accounting
                 StorePermissionEnum::DELIVERY_PRICING_MANAGE->value,
 
@@ -80,25 +84,39 @@ class StoreRoles
 
                 // Analytics
                 StorePermissionEnum::STATS_TEAM_VIEW->value,
+                StorePermissionEnum::STATS_CONFIRMATION->value,
+                StorePermissionEnum::STATS_DELIVERY->value,
             ],
 
             /*
             |--------------------------------------------------------------------------
-            | STAFF – تنفيذ فقط
+            | STAFF – تأكيد + تتبع فقط (دون إدارة كاملة)
             |--------------------------------------------------------------------------
             */
             StoreRoleEnum::STAFF => [
+                // Store
                 StorePermissionEnum::STORE_VIEW->value,
 
+                // Products
                 StorePermissionEnum::PRODUCT_VIEW->value,
 
+                // Orders (تأكيد/إلغاء فقط، بلا إدارة)
                 StorePermissionEnum::ORDER_VIEW->value,
-                StorePermissionEnum::ORDER_MANAGE->value,
                 StorePermissionEnum::ORDER_CONFIRM->value,
+                StorePermissionEnum::ORDER_CANCEL->value,
 
+                // CRM / Operations
+                StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
+                StorePermissionEnum::CRM_ORDER_TRACKING->value,
+
+                // Returns
+                StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,
+
+                // Inventory
                 StorePermissionEnum::INVENTORY_VIEW->value,
 
-                StorePermissionEnum::CRM_ORDER_TRACKING->value,
+                // Analytics
+                StorePermissionEnum::STATS_CONFIRMATION->value,
             ],
         };
     }

@@ -15,8 +15,10 @@ use App\Models\Products\ProductVariant;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
+use App\Support\StoreRoles;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class DemoStoreSeeder extends Seeder
 {
@@ -25,10 +27,16 @@ class DemoStoreSeeder extends Seeder
         $user = User::firstOrCreate(
             ['email' => 'demo@edzeery.com'],
             [
-                'name'     => 'Demo Merchant',
-                'password' => Hash::make('password'),
+                'name'              => 'Demo Merchant',
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
             ]
         );
+
+        // The demo account may already exist (e.g. created in an earlier
+        // session without email_verified_at) — force-verify so the merchant
+        // 'verified' middleware never bounces the tester to an inbox.
+        $user->forceFill(['email_verified_at' => $user->email_verified_at ?? now()])->save();
 
         if (! $user->hasRole(UserRoleEnum::MERCHANT)) {
             $user->assignRole(UserRoleEnum::MERCHANT);
@@ -70,16 +78,93 @@ class DemoStoreSeeder extends Seeder
             [
                 'invited_by' => $user->id,
                 'is_active'  => true,
+                'role'       => StoreRoleEnum::OWNER->value,
             ]
         );
 
+        // Decision #6 — make sure the owner's membership carries its scoped
+        // permissions so per-store isolation works from the start (mirrors
+        // StoreRolesAndPermissionsSeeder::ensureMembership).
         if (! $user->merchant()->hasRole(StoreRoleEnum::OWNER)) {
             $user->merchant()->assignRole(StoreRoleEnum::OWNER);
         }
+        $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
+
+        // Demo team members — one per role on THIS demo store, so a tester can
+        // log in as each role and see the scoped/matrix behaviour. Separate
+        // demo.* emails keep them isolated from the default-store members
+        // created by StoreRolesAndPermissionsSeeder (admin@edzeery.com, ...).
+        $demoMembers = [
+            ['email' => 'demo.admin@edzeery.com',   'name' => 'Demo Admin',   'role' => StoreRoleEnum::ADMIN],
+            ['email' => 'demo.manager@edzeery.com', 'name' => 'Demo Manager', 'role' => StoreRoleEnum::MANAGER],
+            ['email' => 'demo.staff@edzeery.com',   'name' => 'Demo Staff',   'role' => StoreRoleEnum::STAFF],
+        ];
+
+        foreach ($demoMembers as $member) {
+            $memberUser = $this->createUser($member['email'], $member['name'], UserRoleEnum::MERCHANT, $member['role']);
+
+            $memberMembership = StoreMembership::firstOrCreate(
+                ['store_id' => $store->id, 'user_id' => $memberUser->id],
+                [
+                    'invited_by' => $user->id,
+                    'is_active'  => true,
+                    'role'       => $member['role']->value,
+                ]
+            );
+
+            $memberMembership->syncPermissions(StoreRoles::permissions($member['role']));
+        }
+
+        $this->seedDemoCustomer($user);
 
         $this->seedBrands($store);
         $this->seedCategories($store);
         $this->seedProducts($store);
+    }
+
+    private function createUser(string $email, string $name, UserRoleEnum $platformRole, StoreRoleEnum $storeRole): User
+    {
+        $user = User::firstOrCreate(
+            ['email' => $email],
+            [
+                'name'              => $name,
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+
+        // Force-verify existing accounts too (see owner note above).
+        $user->forceFill(['email_verified_at' => $user->email_verified_at ?? now()])->save();
+
+        $platformRoleObj = Role::findByName($platformRole->value, 'web');
+        if ($platformRoleObj && ! $user->hasRole($platformRoleObj)) {
+            $user->assignRole($platformRoleObj);
+        }
+
+        $storeRoleObj = Role::findByName($storeRole->value, 'merchant');
+        if ($storeRoleObj && ! $user->hasRole($storeRoleObj)) {
+            $user->assignRole($storeRoleObj);
+        }
+
+        return $user;
+    }
+
+    private function seedDemoCustomer(User $owner): void
+    {
+        // A public storefront shopper so checkout can be tested end-to-end.
+        $customer = User::firstOrCreate(
+            ['email' => 'customer@edzeery.com'],
+            [
+                'name'              => 'Demo Customer',
+                'password'          => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $roleObj = Role::findByName(UserRoleEnum::USER->value, 'web');
+        if ($roleObj && ! $customer->hasRole($roleObj)) {
+            $customer->assignRole($roleObj);
+        }
     }
 
     private function seedBrands(Store $store): void

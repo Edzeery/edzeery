@@ -394,7 +394,7 @@ $clearSelection = function (): void {
 
 // --- Bulk actions ---
 $bulkAssignAgent = function (?string $membershipId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    abort_unless(canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);
     if (empty($this->selectedOrders)) {
         $this->dispatch('swal', type: 'warning', title: __('merchant.no_orders_selected'));
         return;
@@ -507,9 +507,17 @@ $toggleColumn = function (string $column): void {
 };
 
 // ——— Status Transition ———
+
+// Authorization (Phase P1): gate each transition by the fine-grained permission
+// for the target status (see App\Support\StoreOrderPermissions::forStatus).
+// Confirmation → order.confirm, cancellation → order.cancel, everything else
+// (ship / deliver / prepare / return-followup…) → order.manage. This closes the
+// gap where $transitionOrder was only checked against the state machine.
 $transitionOrder = function (string $orderId, string $statusKey): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $membership = $this->getCurrentMembership();
+
+    abort_unless(canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey)), 403);
 
     $service = app(OrderService::class);
     $statusKey_translation = status_label('order', $statusKey) ?: __('status.' . $statusKey);
