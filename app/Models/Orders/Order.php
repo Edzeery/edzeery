@@ -2,6 +2,9 @@
 
 namespace App\Models\Orders;
 
+use App\Domains\Shipping\Models\DeliveryRider;
+use App\Domains\Shipping\Models\ShippingProvider;
+use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
@@ -12,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -50,6 +54,7 @@ class Order extends Model
         'city_id',
         'stopdesk_point_id',
         'shipping_provider_id',
+        'delivery_rider_id',
         'address',
         'delivery_type',
         'payment_method',
@@ -67,6 +72,8 @@ class Order extends Model
         'last_contact_at',
         'weight_kg',
         'shipment_type',
+        'meta',
+        'send_from_carrier_warehouse',
     ];
 
     protected $casts = [
@@ -77,6 +84,8 @@ class Order extends Model
         'assigned_at' => 'datetime',
         'last_contact_at' => 'datetime',
         'confirmation_attempts' => 'integer',
+        'meta' => 'array',
+        'send_from_carrier_warehouse' => 'boolean',
     ];
 
     const DELIVERY_HOME    = 'home';
@@ -123,12 +132,17 @@ class Order extends Model
 
     public function stopdeskPoint(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\Shipping\Models\StopdeskPoint::class);
+        return $this->belongsTo(StopdeskPoint::class);
     }
 
     public function shippingProvider(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\Shipping\Models\ShippingProvider::class);
+        return $this->belongsTo(ShippingProvider::class);
+    }
+
+    public function deliveryRider(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryRider::class);
     }
 
     public function statusHistories(): HasMany
@@ -149,6 +163,13 @@ class Order extends Model
     public function latestTracking()
     {
         return $this->hasOne(OrderTracking::class)->latestOfMany('created_at');
+    }
+
+    public function confirmedByHistory(): HasOne
+    {
+        return $this->hasOne(OrderStatusHistory::class)
+            ->whereHas('status', fn ($q) => $q->where('key', 'confirmed'))
+            ->latestOfMany('created_at');
     }
 
     /* =========================

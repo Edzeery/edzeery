@@ -18,10 +18,14 @@ class ShippingProvider extends Model
         'store_id',
         'name',
         'code',
+        'carrier_platform_id',
+        'carrier_id',
         'credentials',
         'is_active',
         'is_default',
         'flat_rate',
+        'rider_name',
+        'rider_phone',
     ];
 
     protected $casts = [
@@ -43,6 +47,21 @@ class ShippingProvider extends Model
     public function rates(): HasMany
     {
         return $this->hasMany(ShippingRate::class);
+    }
+
+    public function deliveryRates(): HasMany
+    {
+        return $this->hasMany(DeliveryRate::class, 'shipping_provider_id');
+    }
+
+    public function carrierPlatform(): BelongsTo
+    {
+        return $this->belongsTo(CarrierPlatform::class, 'carrier_platform_id');
+    }
+
+    public function carrier(): BelongsTo
+    {
+        return $this->belongsTo(Carrier::class, 'carrier_id');
     }
 
     public function stopdeskPoints(): HasMany

@@ -31,7 +31,8 @@ if ($store) {
         'merchant.orders.*',
         'merchant.returns.*',
         'merchant.order-settings',
-        'merchant.debts.*'
+        'merchant.debts.*',
+        'merchant.delivery'
     );
     $withData['storeOpen'] = request()->routeIs(
         'merchant.store-settings',
@@ -52,6 +53,8 @@ if ($store) {
     $withData['canViewOrderSettings'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewStoreSettings'] = canStore(StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value);
     $withData['canViewStorefront'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
+    $withData['canViewDelivery'] = canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value)
+        || canStore(StorePermissionEnum::STORE_UPDATE->value);
 }
 
 with($withData);
@@ -217,7 +220,7 @@ with($withData);
             </div>
         @endif
 
-        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts)
+        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts || $canViewDelivery)
             <div class="edz-sidebar__group">
                 <button type="button"
                         @click="openGroups.operations = !openGroups.operations"
@@ -259,6 +262,14 @@ with($withData);
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__sub-link--active @endif">
                             <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                             <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
+                        </a>
+                    @endif
+
+                    @if ($canViewDelivery)
+                        <a href="{{ route('merchant.delivery', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="truck" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.delivery_settings') }}</span>
                         </a>
                     @endif
 

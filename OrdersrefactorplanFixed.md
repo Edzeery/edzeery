@@ -9,6 +9,8 @@
 > **الحالة عند الدمج (2026-08-28):** Phases 1–8, 12–18 و R1–R7 منفَّذة فعليًا (✅ تم التحقق بفحص مباشر للكود).
 > Phases 9–11 لم تبدأ بعد (تحقّق: لا توجد أي ملفات فرعية تحت `resources/views/livewire/merchant/orders/` عدا `index.blade.php` نفسه، 2796 سطرًا).
 >
+> **آخر تحديث (2026-09-01):** Phases 9, 10, 11, 19, 20, 21, 22, 23 مكتملة ومنفَّذة فعليًا (تحقّق: 56 اختبار Order ناجحة، `view:cache` و`npm run build` سليمة). تفاصيل التنفيذ في أقسام كل Phase أدناه.
+>
 > **ملاحظة معمارية حاسمة (أُضيفت 2026-08-29، تؤثر في الأداء مباشرة، وليست مسألة تنظيم كود فقط):**
 > كلمة "sub-component" في Phases 9/10/11 تعني **`@include` Blade partial ضمن نفس نسخة الـ Volt component ونفس `wire:id`** —
 > **وليس** مكوّن Livewire منفصل (`<livewire:merchant.orders.xxx />`). الدليل: النمط المعتمد فعليًا في المشروع
@@ -30,14 +32,17 @@
 | Phase | العنوان | الحالة | ملاحظة الدمج |
 |---|---|---|---|
 | 1–8 | تتبّع الشحن + إصلاحات N+1/dead state/mystatuskit | ✅ DONE | — |
-| 9 | استخراج مودال الإنشاء/التعديل | ⬜ TODO | + M7 من errorTofix (submitEdit لا يمر عبر OrderService) + توحيد الـ spinner |
-| 10 | استخراج شريط الإجراءات الجماعية (Bulk Actions) | ⬜ TODO | + M10 من errorTofix (loading skeleton) |
-| 11 | استخراج بوابة الفلاتر (Filter Portal) | ⬜ TODO | + M8 من errorTofix (positionFilter اليدوي) |
+| 9 | استخراج مودال الإنشاء/التعديل | ✅ DONE | + M7 (submitEdit عبر OrderService) + وحدة `<x-edz.spinner>` — تنفيذ `@include` وليس مكوّن Livewire منفصل |
+| 10 | استخراج شريط الإجراءات الجماعية (Bulk Actions) | ✅ DONE | + M10 (إعاقة الأزرار أثناء التنفيذ) — النقل عبر `@include` مع بقاء الحالة في الأب |
+| 11 | استخراج بوابة الفلاتر (Filter Portal) | ✅ DONE | + M8 (استبدال `positionFilter` بـ `Alpine.data('dropdownPosition')` + تعميد `edz-filter-open` من أزرار الفلاتر) — البوابة تبقى في `index.blade.php` عبر `@include` وليس مكوّنًا منفصلًا |
 | 12–18 | tracking UI + bulkSendToCarrier + مودال الإنشاء الجديد | ✅ DONE | — |
 | R1–R7 | وحدة التحقق من المرتجعات | ✅ DONE | — |
 | — | M2 (errorTofix): تخزين مؤقت لـ `filtered_amount` | ✅ محلول ضمنيًا | تمت إزالة `filtered_amount` بالكامل في Phase 6 — لا حاجة لتخزين مؤقت لشيء غير موجود |
-| **19** | **أداء صفوف الجدول + إزالة كود JS المحقون** | ⬜ TODO جديد | من التدقيق الحالي (2026-08-28) |
-| **20** | **تجاوب الشاشات + تنظيف رموز الوضع الليلي (Apple HIG)** | ⬜ TODO جديد | من التدقيق الحالي (2026-08-28) |
+| **19** | **أداء صفوف الجدول + إزالة كود JS المحقون** | ✅ DONE | `orderRowActions.js` (`Alpine.data`) + تقليص حمولة `orders` شرطيًا حسب الأعمدة المفعّلة |
+| **20** | **تجاوب الشاشات + تنظيف رموز الوضع الليلي (Apple HIG)** | ✅ DONE | عرض بطاقات `lg:hidden` للجوال + جدول `hidden lg:block`؛ تنظيف `dark:` اقتصر على المواضع التي لا تُغيّر المظهر (الحالات الدلالية المتبادلة تلقائيًا أُبقيَت) |
+| **21** | **تسجيل الأعمدة الممتد + إضافات السكيما** | ✅ DONE | سجل 23 عمودًا (13 افتراضيًا + 10 جديدًا) + migration `meta`/`send_from_carrier_warehouse` + لوحة Customize Columns مجمّعة (Apple-style) + عرض الأعمدة الجديدة read-only + ترجمات ar/en/es/fr |
+| **22** | **إعدادات الجدول: مودال + حفظ صريح + ستايلات** | ✅ DONE | مودال `x-edz.modal` (تبويبا أعمدة/ستايل) + حفظ صريح عبر مسودات + قفل الأعمدة الأساسية الـ 13 + ستايل ثانٍ يلوّن الصفوف حسب الحالة (5 كلاسات SCSS) + migration `table_style` |
+| **23** | **تفاصيل الطلب: مودال متجاوب + إزالة التكرار + ترجمة الحالات** | ✅ DONE | استبدال التوسيع المضمّن بمودال `x-edz.modal` متجاوب + إخفاء حقول الأعمدة المفعّلة + ترجمة الحالات بكل المواضع (badge/select/مينيو/فلاتر) عبر mystatuskit بالأيقونات |
 
 ### بنود errorTofix.md المتبقية خارج نطاق هذا الملف (لم تُطوَ ضمن أي Phase أعلاه، تبقى مرجعًا منفصلاً)
 - L1: حذف حالة `canceled` المكرّرة (تحتاج ترحيل بيانات) — مؤجّل
@@ -172,3 +177,105 @@
 - [ ] الصفحة قابلة للاستخدام كاملاً على عرض 375px (iPhone SE) دون تمرير أفقي مفروض
 - [ ] لا يوجد أي `dark:` زائد على توكن دلالي متبدّل تلقائيًا (تحقّق: `grep -c "dark:" index.blade.php` ينخفض من 52 إلى ما يقارب الصفر باستثناء الحالات المستثناة صراحة)
 - [ ] لا فرق بصري في الوضعين الفاتح/الداكن عن الحالة قبل التعديل
+
+---
+
+## Phase 21 — تسجيل الأعمدة الممتد + إضافات السكيما (جديد)
+
+**الهدف:** إضافة نظام تسجيل مركزي للأعمدة (Column Registry)، توسيع أعمدة الجدول بـ 13 عمودًا جديدًا قابلًا للتفعيل (تُقرأ فقط بالمرحلة الحالية)، مع إضافتي سكيما (`meta` json، `send_from_carrier_warehouse` bool) وترجمات كاملة. الفلاتر والتعديل المضمّن وتغييرات بطاقات الموبايل **خارج النطاق** هنا.
+
+**الحالة: ✅ DONE (2026-09-01)** — تحقّق: 56 اختبار Order ناجحة، `view:cache` + `php -l` سليمة، `npm run build` ناجح، محاذاة thead/tbody مؤكَّدة برمجيًا، غيت نظيف عدا الملفات المقصودة.
+
+**الملفات:**
+- جديد: `database/migrations/2026_09_01_000001_add_meta_and_carrier_warehouse_to_orders_table.php` (`meta` json nullable بعد `notes`؛ `send_from_carrier_warehouse` bool default false بعد `shipment_type`؛ down يدمج الاثنين)
+- تعديل: `app/Models/Orders/Order.php` (fillable + casts `meta=>array`/`send_from_carrier_warehouse=>boolean` + `confirmedByHistory(): HasOne` عبر `whereHas(status,key=confirmed)->latestOfMany('created_at')`)
+- تعديل: `resources/views/livewire/merchant/orders/index.blade.php` (سجل الأعمدة، `loadColumnPreferences` مع تحقق، `toggleColumn`/`resetColumns`، eager-loads شرطية، لوحة مجمّعة، عرض 10 أعمدة جديدة read-only)
+- تعديل: `resources/lang/{ar,en,es,fr}/merchant_panel.php` (11 مفتاح أعمدة + 4 تسميات مجموعات + `reset_columns`)
+
+**المفاهيم المعتمدة:**
+1. **سجل 23 عمودًا** (وليس 26 — العدّ الوارد في العنوان الأصلي خطأ مطبعي؛ تعداد الخطة نفسه 23: identity 6 + geography 7 + products_financial 4 + workflow 6). الـ 13 الموجودة سابقًا `default=>true` كلها (قرار المستخدم: "مع 13 افتراضية كما في الخطة حرفيًا" — يغيّر العرض الافتراضي من 9 إلى 13 عمودًا)، والـ 10 الجديدة `default=>false`.
+2. **التحقق من المفاتيح القديمة:** `loadColumnPreferences` يستخدم `array_intersect($stored, $validKeys)` مع fallback للافتراضيات عند الإفراغ — أي مفتاح قديم/متقادم يُتجاهل تلقائيًا.
+3. **eager-loads شرطية:** `confirmedByHistory` + `confirmedByHistory.status` + `confirmedByHistory.changedBy.user` تُضاف فقط عند تفعيل `confirmed_by`؛ و`stopdeskPoint` + `stopdeskPoint.city` فقط عند تفعيل `stopdesk_point`. `latestTracking.shippingProvider` محمّل دائمًا مسبقًا — لا تغيير في عدد الاستعلامات عند عدم تفعيل الأعمدة الجديدة.
+4. **عرض `shipping_provider`:** مسطّح عبر `$order['tracking']['shipping_provider']` (سلسلة) — ليس متداخلًا كما افترضت الخطة.
+5. **لوحة Customize Columns:** مجمّعة (identity/geography/products_financial/workflow)، `w-64 max-h-96 overflow-y-auto edz-scroll`، زر "استعادة الافتراضي" (`resetColumns`)، بدون تغيير نمط خانات الاختيار.
+6. **التسميات:** `assigned_agent` تستخدم مفتاح ترجمة جديد (`merchant_panel.assigned_agent` — عربي: "يديره") وليس `agent` القديم.
+
+**ملاحظات محفوظة للتوثيق:**
+- لا توجد أي `dark:` جديدة عن النمط القائم سوى على زر إعادة التعيين (`dark:text-accent-400 dark:hover:text-accent-300 dark:hover:bg-ink-700`) — مطابقة لنمط `store-settings.blade.php` وضرورية لاتساق الوضع الليلي للوحة المُفعّلة داكنًا أصلًا.
+- Zero raw hex في الإضافات؛ الحقول الجديدة تستخدم توكنز `surface-*`/`ink-*`/`accent-*` و`<x-edz.badge>`.
+- لم يجرِ اختبار المسار الإيجابي لـ `confirmedByHistory` محليًا (لا توجد سجلّات status history في DB المحلية) — تحقّق null/first فقط.
+- خطوط وأرقام أسطر مرجع الخطة (commit 47fb62a) قد لا تطابق الشجرة الحية بسبب التعديلات غير الملتَزمة — الاعتماد دائمًا على الملف الحي.
+
+**Acceptance criteria (مكتملة):**
+- [x] migration up/down سليمة
+- [x] اختبارات الطلبات تمر
+- [x] كل الأعمدة قابلة للتبديل عبر اللوحة مع تحقق من المفاتيح القديمة
+- [x] لا `dark:` على العناصر المضيئة سابقًا / لا hex خام جديد
+- [x] محاذاة thead/tbody مؤكدة (head/body متطابقان برمجيًا)
+- [x] عدد الاستعلامات ثابت عند عدم تفعيل الأعمدة الجديدة
+
+---
+
+## Phase 22 — إعدادات الجدول: مودال + حفظ صريح + ستايلات (جديد)
+
+**الهدف:** تحويل Customize Columns من dropdown بحفظ تلقائي إلى **مودال احترافي (Popup Modal)** مع **حفظ صريح** عبر زر Save، إظهار التحكم في **الأعمدة الثانوية فقط** (الأساسية الـ 13 دائمًا ظاهرة ومقفلة)، وإضافة **تابات لاختيار ستايل الجدول**: ستايل 1 (القياسي الحالي) وستايل 2 (تلوين خلفية الصف ونصّه حسب الحالة). تم التنفيذ بموافقة المستخدم الصريحة.
+
+**الحالة: ✅ DONE (2026-09-01)** — تحقّق: migration نُفّذت (`migrate`)، `php -l` سليم، `view:cache` و`npm run build` ناجحان، كلاسات SCSS الجديدة موجودة في الملف المبني، 56 اختبار Order ناجحة، غيت نظيف عدا الملفات المقصودة.
+
+**الملفات:**
+- جديد: `database/migrations/2026_09_01_000002_add_table_style_to_user_column_preferences_table.php` (إضافة `table_style` string default `'default'` بعد `visible_columns`؛ down تحذف العمود)
+- جديد: `resources/css/components/_status_rows.scss` (5 كلاسات `.edz-table-row--{success|warning|danger|info|gray}` فاتح/داكن + حالة `edz-row-selected` بـ accent)
+- تعديل: `app/Domains/Order/Models/UserColumnPreference.php` (إضافة `table_style` إلى fillable)
+- تعديل: `resources/css/components/_index.scss` (تسجيل `status_rows`)
+- تعديل: `resources/views/livewire/merchant/orders/index.blade.php`
+- تعديل: `resources/lang/{ar,en,es,fr}/merchant_panel.php` (12 مفتاحًا: tabs، أساسية/إضافية، دائمًا ظاهرة، حفظ، اسماء الستايلات + تلميحات، تم الحفظ)
+
+**المفاهيم المعتمدة:**
+1. **فصل مسودة/اعتماد:** خصائص `draftColumns`/`draftStyle` تُملأ عند فتح المودال من الحالة الفعلية (`tableStyle` + `visibleColumns`). تغيير checkboxes/الستايل يعدّل المسودة فقط. **Save** يصدّرها ويدفعها بـ`saveColumnPreferences()` + `loadOrders()` + toast؛ **Cancel/إغلاق/backdrop/ESC** يستدعي `discardTableSettings()` ولا يكتب شيئًا.
+2. **الأساسية مقفلة دومًا:** التمييز عبر `default => true` (الـ 13). `loadColumnPreferences` يفرض `array_merge($primaryKeys, secondaries مفلتّرة)`؛ `saveColumnPreferences` يخزّن **الثانوية فقط** بعد `array_intersect`/`array_diff` ضد الأساسية — حتى لو عُبث بالـ payload لا يمكن إخفاء الأعمدة الأساسية.
+3. **ستايل 2 بلا JS:** `$order['status']['color']` يعطي الدرجة (success/warning/danger/info/gray) → كلاس واحد على `<tr>` (والكارت على الموبايل) → SCSS يطبّق خلفية `{tone}-100`@.5 (light) / `{tone}-900`@.35 (dark) ولون نص `{tone}-700`/`{tone}-300` بكافّة `td`. عند الستايل الملوّن تُحذف كلاسات hover/select بتوكندات Tailwind لتجنّب التعارض وتُدار بالكامل في SCSS (بما فيها `edz-row-selected` بلون accent).
+4. **المودال:** `x-edz.modal size=lg` (bottom-sheet تلقائيًا على الموبايل)، تبويبان بمنظّم segmented (columns/style بدوال `<x-edz.icon>`)، قائمة الأعمدة الأساسية بحرف قفل `lock-closed`، grid `2-col` للثواني، وبطاقتا ستايل بمعاينة حيّة (جدول مصغّر 3 صفوف ملوّنة). إغلاق عبر X/backdrop/ESC يُراقَب بـ`@edz-modal-closed.window` → `discardTableSettings`.
+5. **سلوك الموبايل:** بطاقات `lg:hidden` تطبّق نفس كلاس `edz-table-row--{tone}` (تجانس بصري عبر المقاسات) — الكلاسات عنصر-مستقل (بدون بادئة `tr`).
+
+**ملاحظات محفوظة للتوثيق:**
+- لا `dark:` جديدة فوق المساحات المضيئة سابقًا؛ النمط الملوّن يعتمد على `.dark` ancestor من نفس الـ SCSS (ظل تناسق الوضع الليلي).
+- عدم إعادة كتابة DB عند كل تبديل (حفظ واحد فقط) — تحسين أداء مقصود مقارنة بـ `toggleColumn` القديم.
+- سلوك `body overflow` بعد الحفظ (إلغاء التركيب عبر `@if`) مطابق للسلوك المعتمد في مودالات reassign/create الحالية — لم يُغيَّر تناسقًا مع الكودبيس.
+- ملفات `storage/framework/views/*.php` المتتبَّعة في git قد تعرض نسخًا قديمة من الصفحات — تُعاد ترجمتها تلقائيًا عند التشغيل.
+
+**Acceptance criteria (مكتملة):**
+- [x] migration up/down سليمة والعمود `table_style` موجود بعد `migrate`
+- [x] حفظ صريح فقط (المسودة لا تُكتب قبل Save؛ إلغاء/إغلاق يتجاهلها)
+- [x] الأعمدة الأساسية الـ 13 دائمًا ظاهرة ولا يمكن إخفاؤها من المودال
+- [x] التبديل بين الستايلين يعمل فور الحفظ ويبقى محفوظًا لكل مستخدم
+- [x] كلاسات `edz-table-row--*` موجودة في CSS المبني (app-*.css) وتعمل فاتح/داكن
+- [x] اختبارات الطلبات تمر و`npm run build` سليم
+
+---
+
+## Phase 23 — تفاصيل الطلب: مودال متجاوب + إزالة التكرار + ترجمة الحالات (جديد)
+
+**الهدف:** تحويل تفاصيل الطلب من التوسيع المضمّن (inline expand داخل صف/بطاقة الجوال) إلى **مودال منبثق متجاوب**، **إخفاء البيانات المكررة** (أي حقل له عمود مُفعّل في الجدول لا يُعرض في التفاصيل)، و**ترجمة كاملة بالحالات** عبر mystatuskit بالأيقونات. تم التنفيذ بموافقة المستخدم الصريحة (نفّذ كما هو مقترح / كل المواضع / زر تفاصيل = أيقونة معلومات داخل دائرة `info-circle`).
+
+**الحالة: ✅ DONE (2026-09-01)** — تحقّق: `view:cache` سليم، 56 اختبار Order ناجحة، كل مفاتيح الترجمة والأيقونات المطابقة مؤكَّدة الوجود.
+
+**الملفات:**
+- تعديل: `resources/views/livewire/merchant/orders/index.blade.php` (استبدال `expandedOrderId`/`toggleDetail` وزر chevron بـ `detailsOrderId` + `openOrderDetails`/`closeOrderDetails` + زر `info-circle`؛ حذف صف التوسيع desktop وبطاقة الجوال الموسعة؛ إضافة مودال التفاصيل؛ ترجمة الحالة بكل مواضعها)
+- تعديل: `resources/lang/{ar,en,es,fr}/merchant_panel.php` (3 مفاتيح جديدة: `order_details`, `details_shipping`, `details_contact`) + إصلاح ثغرة es الناقصة (`products`, `payment_method`, `status`)
+
+**المفاهيم المعتمدة:**
+1. **تفاصيل مودال `x-edz.modal size=md`:** يُعرض فقط عند `$this->detailsOrderId` مع بحث `firstWhere('id', ...)` في بيانات الصفحة الحالية (لا طلب إضافي). `@edz-modal-closed.window="$wire.closeOrderDetails()"` وX/backdrop/ESC تغلق وتُصفّر الحالة.
+2. **قاعدة إزالة التكرار:** كل حقل له عمود مُفعّل يُستبعد عبر `!in_array('X', $this->visibleColumns)`. بدون عمود (مثل `payment_method`, `assignment_method`, `created_by`, `confirmed_by`, `tracking_number`, `shipped_at`, `delivered_at`) يُعرض دائمًا. الأقسام تُخفى بالكامل إن كانت كل حقولها مكرّرة.
+3. **بعيد عن الجدول:** 6 حقول تبقي **دائمًا** في التفاصيل حتى لو لم يتوافق/يُخفى: `number`, `customer` (name/phone), `state`, `created_at` (في الرأس) + حقول بلا أعمدة (قائمة أعلاه).
+4. **الأقسام (أيقونات edz):** Items (`bag` + إجمالي)، Shipping & Payment (`credit-card` — delivery/shipment/payment_method/weight/stopdesk/send_from_carrier_warehouse)، Contact & Location (`map-pin` — phone_secondary/city/address/meta)، Assignment (`users` — agent/method/created_by/confirmed_by/attempts/last_contact/notes)، Tracking (`truck` — carrier/tracking_number/shipped_at/delivered_at).
+5. **ترجمة الحالات بالأيقونات (كل المواضع):** خلية الحالة desktop وأزرار/شرائح الفلاتر وبطاقة الجوال وعرض المودال تستخدم `Status::for('order', key)` → `icon()` + `label()` + `color()`. خيارات منيو الانتقال: ترجمة عبر mystatuskit + نقطة لون عبر `Status::for('general', color)->hex()`. أدوات العرض (badge/x-status-select/x-status-icon/dot) جاهزة عند الحاجة.
+6. **استخدام التنسيقات المأخوذة من خلايا الجدول:** `delivery_type` → `stop_desk_label`/`home_delivery_label`، `stopdesk_point` → name (+city)، `send_from_carrier_warehouse` → `<x-edz.badge>` check/x، الوزن `… kg`، address محدود 60، meta مجمّع `k: v`.
+
+**Scope guard:** لا `dark:` على عناصر مضيئة سابقًا، لا hex خام (نقطة اللون فقط عبر `hex()` في المينيو، مطابق للنمط القائم)، توكنز `surface-*/ink-*/accent-*`، خصائص logical RTL، فتحة المودال بنفس ملف المكوّن (لا مكوّن Livewire منفصل).
+
+**Acceptance criteria (مكتملة):**
+- [x] فتح/إغلاق المودال يعمل (زر `info-circle` desktop والجوال، إغلاق عبر X/backdrop/ESC)
+- [x] أي حقل له عمود مُفعّل لا يظهر في التفاصيل حتى بتكرار الأعمدة الافتراضية الـ 13
+- [x] كل مواضع الحالة مترجمة بالأيقونات (خلية/badge/مينيو/فلاتر/مودال)
+- [x] مفاتيح الترجمة الثلاثة + إصلاح es موجودة في اللغات الأربع
+- [x] اختبارات الطلبات تمر و`view:cache` سليم

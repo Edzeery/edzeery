@@ -1,0 +1,72 @@
+﻿// ============================================================
+//  EDZEERY ? COMPONENTS / STATUS ROWS
+//  "Style 2" table rows for the orders table: the row background
+//  follows the order status and text colors are harmonized.
+//  Tones map the status-kit variants (5 tones, no JS needed).
+// ============================================================
+
+@mixin edz-tone-row($tone) {
+    background-color: rgba(var(--edz-color-#{$tone}-100), 0.5);
+    color: rgb(var(--edz-color-#{$tone}-700));
+
+    td {
+        color: rgb(var(--edz-color-#{$tone}-700));
+    }
+
+    &:hover {
+        background-color: rgba(var(--edz-color-#{$tone}-100), 0.75);
+    }
+
+    &.edz-row-selected {
+        background-color: rgba(var(--edz-color-accent-100), 0.55);
+
+        td {
+            color: rgb(var(--edz-color-accent-800));
+        }
+
+        &:hover {
+            background-color: rgba(var(--edz-color-accent-100), 0.8);
+        }
+    }
+
+    .dark & {
+        background-color: rgba(var(--edz-color-#{$tone}-900), 0.35);
+        color: rgb(var(--edz-color-#{$tone}-300));
+
+        td {
+            color: rgb(var(--edz-color-#{$tone}-300));
+        }
+
+        &:hover {
+            background-color: rgba(var(--edz-color-#{$tone}-900), 0.55);
+        }
+
+        &.edz-row-selected {
+            background-color: rgba(var(--edz-color-accent-900), 0.4);
+
+            td {
+                color: rgb(var(--edz-color-accent-300));
+            }
+
+            &:hover {
+                background-color: rgba(var(--edz-color-accent-900), 0.6);
+            }
+        }
+    }
+}
+
+.edz-table-row--success {
+    @include edz-tone-row(success);
+}
+.edz-table-row--warning {
+    @include edz-tone-row(warning);
+}
+.edz-table-row--danger {
+    @include edz-tone-row(danger);
+}
+.edz-table-row--info {
+    @include edz-tone-row(info);
+}
+.edz-table-row--gray {
+    @include edz-tone-row(gray);
+}

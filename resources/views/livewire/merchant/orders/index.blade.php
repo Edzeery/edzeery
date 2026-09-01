@@ -43,6 +43,10 @@ state([
     'orders' => [],
     'page' => 1,
     'visibleColumns' => [],
+    'tableStyle' => 'default',
+    'draftColumns' => [],
+    'draftStyle' => 'default',
+    'showTableSettings' => false,
     'filterProducts' => [],
     'perPage' => 15,
     'allStatuses' => [],
@@ -59,8 +63,8 @@ state([
     // Trash view
     'showTrash' => false,
 
-    // Order detail expand
-    'expandedOrderId' => null,
+    // Order detail modal
+    'detailsOrderId' => null,
 
     // Reassign modal
     'showReassignModal' => false,
@@ -158,18 +162,63 @@ mount(function (): void {
     $this->loadOrders();
 });
 
+$orderColumns = function (): array {
+    return [
+        // identity
+        ['key' => 'number', 'label_key' => 'number', 'group' => 'identity', 'default' => true],
+        ['key' => 'customer', 'label_key' => 'customer', 'group' => 'identity', 'default' => true],
+        ['key' => 'phone', 'label_key' => 'phone', 'group' => 'identity', 'default' => true],
+        ['key' => 'phone_secondary', 'label_key' => 'phone_secondary', 'group' => 'identity', 'default' => false],
+        ['key' => 'notes', 'label_key' => 'notes', 'group' => 'identity', 'default' => false],
+        ['key' => 'meta', 'label_key' => 'meta', 'group' => 'identity', 'default' => false],
+        // geography
+        ['key' => 'wilaya', 'label_key' => 'state', 'group' => 'geography', 'default' => true],
+        ['key' => 'city', 'label_key' => 'city', 'group' => 'geography', 'default' => false],
+        ['key' => 'address', 'label_key' => 'address', 'group' => 'geography', 'default' => false],
+        ['key' => 'delivery_type', 'label_key' => 'delivery_type', 'group' => 'geography', 'default' => false],
+        ['key' => 'shipping_provider', 'label_key' => 'shipping_provider', 'group' => 'geography', 'default' => false],
+        ['key' => 'stopdesk_point', 'label_key' => 'stopdesk_point', 'group' => 'geography', 'default' => false],
+        ['key' => 'send_from_carrier_warehouse', 'label_key' => 'send_from_carrier_warehouse', 'group' => 'geography', 'default' => false],
+        // products_financial
+        ['key' => 'products', 'label_key' => 'products', 'group' => 'products_financial', 'default' => true],
+        ['key' => 'amount', 'label_key' => 'amount', 'group' => 'products_financial', 'default' => true],
+        ['key' => 'weight', 'label_key' => 'weight', 'group' => 'products_financial', 'default' => true],
+        ['key' => 'shipment_type', 'label_key' => 'shipment', 'group' => 'products_financial', 'default' => true],
+        // workflow
+        ['key' => 'status', 'label_key' => 'status', 'group' => 'workflow', 'default' => true],
+        ['key' => 'assigned_agent', 'label_key' => 'assigned_agent', 'group' => 'workflow', 'default' => true],
+        ['key' => 'confirmed_by', 'label_key' => 'confirmed_by', 'group' => 'workflow', 'default' => false],
+        ['key' => 'created_at', 'label_key' => 'date', 'group' => 'workflow', 'default' => true],
+        ['key' => 'confirmation_attempts', 'label_key' => 'attempts', 'group' => 'workflow', 'default' => true],
+        ['key' => 'last_contact', 'label_key' => 'last_contact', 'group' => 'workflow', 'default' => true],
+    ];
+};
+
 $loadColumnPreferences = function (): void {
-    $defaults = ['number', 'customer', 'phone', 'wilaya', 'products', 'amount', 'status', 'assigned_agent', 'created_at'];
+    $registry = $this->orderColumns();
+    $validKeys = collect($registry)->pluck('key')->all();
+    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
+    $defaults = $primaryKeys;
 
     $membership = $this->getCurrentMembership();
     if (!$membership) {
         $this->visibleColumns = $defaults;
+        $this->tableStyle = 'default';
         return;
     }
 
     $pref = UserColumnPreference::where('membership_id', $membership->id)->where('view_key', 'orders_index')->first();
 
-    $this->visibleColumns = $pref->visible_columns ?? $defaults;
+    // Primary columns are always forced; only secondary columns are configurable.
+    $stored = $pref->visible_columns ?? [];
+    if (!is_array($stored)) {
+        $stored = [];
+    }
+    $stored = array_values(array_intersect($stored, $validKeys));
+    $secondaries = array_values(array_diff($stored, $primaryKeys));
+    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+
+    $this->tableStyle = ($pref->table_style === 'status') ? 'status' : 'default';
 };
 
 $saveColumnPreferences = function (): void {
@@ -178,7 +227,17 @@ $saveColumnPreferences = function (): void {
         return;
     }
 
-    UserColumnPreference::updateOrCreate(['membership_id' => $membership->id, 'view_key' => 'orders_index'], ['visible_columns' => $this->visibleColumns]);
+    $registry = $this->orderColumns();
+    $validKeys = collect($registry)->pluck('key')->all();
+    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
+
+    $secondaries = array_values(array_diff(array_values(array_intersect($this->visibleColumns, $validKeys)), $primaryKeys));
+    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+
+    UserColumnPreference::updateOrCreate(
+        ['membership_id' => $membership->id, 'view_key' => 'orders_index'],
+        ['visible_columns' => $secondaries, 'table_style' => $this->tableStyle]
+    );
 };
 
 $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
@@ -191,7 +250,18 @@ $loadOrders = function (): void {
     $storeId = currentStoreId();
     $f = $this->filters;
 
-    $query = Order::where('store_id', $storeId)->with(['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider']);
+    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider'];
+    if (in_array('confirmed_by', $this->visibleColumns, true)) {
+        $with[] = 'confirmedByHistory';
+        $with[] = 'confirmedByHistory.status';
+        $with[] = 'confirmedByHistory.changedBy.user';
+    }
+    if (in_array('stopdesk_point', $this->visibleColumns, true)) {
+        $with[] = 'stopdeskPoint';
+        $with[] = 'stopdeskPoint.city';
+    }
+
+    $query = Order::where('store_id', $storeId)->with($with);
 
     if (!empty($this->search)) {
         $s = $this->search;
@@ -497,13 +567,51 @@ $toggleStatusFilter = function (string $statusId): void {
     $this->loadOrders();
 };
 
-$toggleColumn = function (string $column): void {
-    if (in_array($column, $this->visibleColumns)) {
-        $this->visibleColumns = array_values(array_diff($this->visibleColumns, [$column]));
-    } else {
-        $this->visibleColumns[] = $column;
-    }
+$openTableSettings = function (): void {
+    $this->draftColumns = $this->visibleColumns;
+    $this->draftStyle = $this->tableStyle;
+    $this->showTableSettings = true;
+};
+
+$discardTableSettings = function (): void {
+    $this->showTableSettings = false;
+    $this->draftColumns = [];
+    $this->draftStyle = 'default';
+};
+
+$saveTableSettings = function (): void {
+    $registry = $this->orderColumns();
+    $validKeys = collect($registry)->pluck('key')->all();
+    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
+
+    $draft = array_values(array_intersect($this->draftColumns, $validKeys));
+    $secondaries = array_values(array_diff($draft, $primaryKeys));
+    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+    $this->tableStyle = in_array($this->draftStyle, ['default', 'status'], true) ? $this->draftStyle : 'default';
+
     $this->saveColumnPreferences();
+
+    $this->showTableSettings = false;
+    $this->draftColumns = [];
+    $this->draftStyle = 'default';
+
+    $this->loadColumnPreferences();
+    $this->loadOrders();
+
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant_panel.settings_saved')]);
+};
+
+$toggleDraftColumn = function (string $column): void {
+    if (in_array($column, $this->draftColumns, true)) {
+        $this->draftColumns = array_values(array_diff($this->draftColumns, [$column]));
+    } else {
+        $this->draftColumns[] = $column;
+    }
+};
+
+$resetColumns = function (): void {
+    $this->draftColumns = collect($this->orderColumns())->where('default', true)->pluck('key')->all();
+    $this->draftStyle = 'default';
 };
 
 // ——— Status Transition ———
@@ -569,9 +677,13 @@ $clearProductFilter = function (): void {
     $this->loadOrders();
 };
 
-// ——— Detail Expand ———
-$toggleDetail = function (string $orderId): void {
-    $this->expandedOrderId = $this->expandedOrderId === $orderId ? null : $orderId;
+// ——— Detail Modal ———
+$openOrderDetails = function (string $orderId): void {
+    $this->detailsOrderId = $orderId;
+};
+
+$closeOrderDetails = function (): void {
+    $this->detailsOrderId = null;
 };
 
 // ——— Reassign ———
@@ -1153,9 +1265,7 @@ $submitEdit = function (): void {
 };
 ?>
 
-<div x-data="{
-    openColToggle: false,
-}">
+<div>
     {{-- Page Header --}}
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <x-edz.page-header title="{{ __('merchant_panel.orders') }}"
@@ -1208,25 +1318,11 @@ $submitEdit = function (): void {
                 </button>
             </div>
 
-            {{-- Column Toggle --}}
-            <div class="relative" @click.away="openColToggle = false">
-                <button @click="openColToggle = !openColToggle" class="edz-btn edz-btn--ghost edz-btn--sm">
-                    <x-edz.icon name="view-columns" class="w-4 h-4" />
-                    {{ __('merchant_panel.columns') }}
-                </button>
-                <div x-show="openColToggle" x-transition
-                    class="absolute z-40 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-2 space-y-1">
-                    @foreach (['number' => __('merchant_panel.number'), 'customer' => __('merchant_panel.customer'), 'phone' => __('merchant_panel.phone'), 'wilaya' => __('merchant_panel.state'), 'products' => __('merchant_panel.products'), 'amount' => __('merchant_panel.amount'), 'status' => __('merchant_panel.status'), 'assigned_agent' => __('merchant_panel.agent'), 'created_at' => __('merchant_panel.date'), 'confirmation_attempts' => __('merchant_panel.attempts'), 'last_contact' => __('merchant_panel.last_contact'), 'weight' => __('merchant_panel.weight'), 'shipment_type' => __('merchant_panel.shipment')] as $col => $label)
-                        <label
-                            class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary dark:hover:bg-ink-700 cursor-pointer text-sm">
-                            <input type="checkbox" wire:click="toggleColumn('{{ $col }}')"
-                                {{ in_array($col, $this->visibleColumns) ? 'checked' : '' }}
-                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                            {{ $label }}
-                        </label>
-                    @endforeach
-                </div>
-            </div>
+            {{-- Table Settings --}}
+            <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm">
+                <x-edz.icon name="view-columns" class="w-4 h-4" />
+                {{ __('merchant_panel.columns') }}
+            </button>
 
             {{-- Source --}}
             <div x-data="{ open: false }" @click.away="open = false" class="relative">
@@ -1343,7 +1439,7 @@ $submitEdit = function (): void {
                     @if (in_array($s['id'], $this->filters['status']))
                         <span
                             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
-                            {{ $s['label'] }}
+                            {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
                             <button wire:click="toggleStatusFilter('{{ $s['id'] }}')"
                                 wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
                                     class="w-3 h-3" /></button>
@@ -1450,6 +1546,21 @@ $submitEdit = function (): void {
                                             class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
                                             {{ __('merchant_panel.phone') }}</th>
                                     @endif
+                                    @if (in_array('phone_secondary', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.phone_secondary') }}</th>
+                                    @endif
+                                    @if (in_array('notes', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.notes') }}</th>
+                                    @endif
+                                    @if (in_array('meta', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.meta') }}</th>
+                                    @endif
                                     @if (in_array('wilaya', $this->visibleColumns))
                                         <th
                                             class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
@@ -1466,6 +1577,36 @@ $submitEdit = function (): void {
                                                 @endif
                                             </div>
                                         </th>
+                                    @endif
+                                    @if (in_array('city', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.city') }}</th>
+                                    @endif
+                                    @if (in_array('address', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.address') }}</th>
+                                    @endif
+                                    @if (in_array('delivery_type', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.delivery_type') }}</th>
+                                    @endif
+                                    @if (in_array('shipping_provider', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.shipping_provider') }}</th>
+                                    @endif
+                                    @if (in_array('stopdesk_point', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.stopdesk_point') }}</th>
+                                    @endif
+                                    @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.send_from_carrier_warehouse') }}</th>
                                     @endif
                                     @if (in_array('products', $this->visibleColumns))
                                         <th
@@ -1522,7 +1663,7 @@ $submitEdit = function (): void {
                                         <th
                                             class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
                                             <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.agent') }}
+                                                {{ __('merchant_panel.assigned_agent') }}
                                                 <button data-filter-btn
                                                     @click.stop="$dispatch('edz-filter-open', { key: 'assigned_to', el: $event.currentTarget })"
                                                     class="shrink-0 {{ filled($this->filters['assigned_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
@@ -1533,6 +1674,12 @@ $submitEdit = function (): void {
                                                         class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
                                                 @endif
                                             </div>
+                                        </th>
+                                    @endif
+                                    @if (in_array('confirmed_by', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
+                                            {{ __('merchant_panel.confirmed_by') }}
                                         </th>
                                     @endif
                                     @if (in_array('created_at', $this->visibleColumns))
@@ -1585,9 +1732,13 @@ $submitEdit = function (): void {
                                     @php
                                         $transitions = $order['transitions'] ?? [];
                                         $orderId = $order['id'] ?? '';
+                                        $orderSelected = in_array($orderId, $this->selectedOrders);
+                                        $orderStatusTone = $this->tableStyle === 'status'
+                                            ? 'edz-table-row--' . ($order['status']['color'] ?? 'gray') . ($orderSelected ? ' edz-row-selected' : '')
+                                            : '';
                                     @endphp
                                     <tr x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
-                                        class="hover:bg-surface-50 dark:hover:bg-ink-800/50 {{ in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : '' }}">
+                                        class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-50 dark:hover:bg-ink-800/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-50 dark:bg-accent-900/10 ' : '' }}{{ $orderStatusTone }}">
                                         <td class="px-3 py-3 w-10">
                                             <input type="checkbox" value="{{ $orderId }}"
                                                 wire:click="toggleSelectOrder('{{ $orderId }}')"
@@ -1610,9 +1761,72 @@ $submitEdit = function (): void {
                                                 {{ $order['customer']['phone'] ?? '-' }}
                                             </td>
                                         @endif
+                                        @if (in_array('phone_secondary', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-ink-muted text-xs" dir="ltr">
+                                                {{ $order['phone_secondary'] ?? '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('notes', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
+                                                title="{{ $order['notes'] ?? '' }}">
+                                                {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('meta', $this->visibleColumns))
+                                            @php
+                                                $metaEntries = collect($order['meta'] ?? [])
+                                                    ->map(fn($v, $k) => "{$k}: {$v}")
+                                                    ->implode(', ');
+                                            @endphp
+                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
+                                                title="{{ $metaEntries }}">
+                                                {{ $metaEntries ?: '-' }}
+                                            </td>
+                                        @endif
                                         @if (in_array('wilaya', $this->visibleColumns))
                                             <td class="px-4 py-3 text-ink-muted text-xs">
                                                 {{ $order['state']['name'] ?? '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('city', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-ink-muted text-xs">
+                                                {{ $order['city']['name'] ?? '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('address', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
+                                                title="{{ $order['address'] ?? '' }}">
+                                                {{ $order['address'] ? \Illuminate\Support\Str::limit($order['address'], 40) : '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('delivery_type', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-ink-muted text-xs">
+                                                {{ $order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : ($order['delivery_type'] ?? '-')) }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('shipping_provider', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-ink-muted text-xs">
+                                                {{ $order['tracking']['shipping_provider'] ?? '-' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('stopdesk_point', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-xs text-ink-muted">
+                                                {{ $order['stopdesk_point']['name'] ?? '-' }}@if (!empty($order['stopdesk_point']['city']['name']))
+                                                    ({{ $order['stopdesk_point']['city']['name'] }})
+                                                @endif
+                                            </td>
+                                        @endif
+                                        @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
+                                            <td class="px-4 py-3">
+                                                @if ($order['send_from_carrier_warehouse'] ?? false)
+                                                    <x-edz.badge tone="success" sm>
+                                                        <x-edz.icon name="check" class="w-3 h-3" />
+                                                    </x-edz.badge>
+                                                @else
+                                                    <x-edz.badge tone="neutral" sm>
+                                                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                                                    </x-edz.badge>
+                                                @endif
                                             </td>
                                         @endif
                                         @if (in_array('products', $this->visibleColumns))
@@ -1638,7 +1852,8 @@ $submitEdit = function (): void {
                                                         @click="openStatusMenu()"
                                                         x-ref="trigger"
                                                         class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
-                                                        {{ $order['status']['label'] ?? '—' }}
+                                                        {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
+                                                        {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
                                                         <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                     </button>
                                                     <div x-show="open" x-transition x-cloak
@@ -1653,9 +1868,10 @@ $submitEdit = function (): void {
                                                                     <x-edz.spinner
                                                                         wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                         class="w-3 h-3" />
+                                                                    {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
                                                                     <span class="w-2 h-2 rounded-full shrink-0"
                                                                         style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
-                                                                    {{ $s['label'] }}
+                                                                    {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
                                                                 </button>
                                                             @endif
                                                         @endforeach
@@ -1666,6 +1882,11 @@ $submitEdit = function (): void {
                                         @if (in_array('assigned_agent', $this->visibleColumns))
                                             <td class="px-4 py-3 text-xs text-ink-muted">
                                                 {{ $order['assigned_membership']['user']['name'] ?? '—' }}
+                                            </td>
+                                        @endif
+                                        @if (in_array('confirmed_by', $this->visibleColumns))
+                                            <td class="px-4 py-3 text-xs text-ink-muted">
+                                                {{ $order['confirmed_by_history']['changed_by']['user']['name'] ?? '-' }}
                                             </td>
                                         @endif
                                         @if (in_array('created_at', $this->visibleColumns))
@@ -1695,11 +1916,11 @@ $submitEdit = function (): void {
                                         @endif
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex items-center justify-end gap-1 flex-nowrap">
-                                                <button wire:click="toggleDetail('{{ $orderId }}')"
+                                                <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                     class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                     title="{{ __('merchant.order_details') }}">
-                                                    <x-edz.icon name="chevron-right"
-                                                        class="w-4 h-4 shrink-0 transition-transform duration-200 {{ $this->expandedOrderId === $orderId ? 'rotate-90' : '' }}" />
+                                                    <x-edz.icon name="info-circle"
+                                                        class="w-4 h-4 shrink-0" />
                                                 </button>
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button
@@ -1752,150 +1973,7 @@ $submitEdit = function (): void {
                                             </div>
                                         </td>
                                     </tr>
-                                    @if ($this->expandedOrderId === $orderId)
-                                        <tr>
-                                            <td colspan="99" class="px-4 py-4 bg-surface-50 dark:bg-ink-800/30">
-                                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                                                    <div>
-                                                        <h4 class="font-semibold text-ink mb-2">
-                                                            {{ __('merchant_panel.items') }}</h4>
-                                                        @foreach ($order['items_summary'] ?? [] as $item)
-                                                            <div
-                                                                class="flex justify-between py-1 border-b border-surface-200 dark:border-ink-700">
-                                                                <span class="text-ink-muted">{{ $item['name'] }}
-                                                                    ×{{ $item['qty'] }}</span>
-                                                                <span
-                                                                    class="font-medium text-ink">{{ currency($item['price'] * $item['qty']) }}</span>
-                                                            </div>
-                                                        @endforeach
-                                                        <div class="flex justify-between pt-2 font-bold text-ink">
-                                                            <span>{{ __('merchant_panel.total') }}</span>
-                                                            <span>{{ currency($order['total_amount']) }}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="font-semibold text-ink mb-2">
-                                                            {{ __('merchant_panel.details') }}</h4>
-                                                        <dl class="space-y-1 text-ink-muted">
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.delivery') }}:</dt>
-                                                                <dd class="text-ink capitalize">
-                                                                    {{ $order['delivery_type'] ?? '—' }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.shipment') }}:</dt>
-                                                                <dd class="text-ink capitalize">
-                                                                    {{ $order['shipment_type'] ?? '—' }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.payment_method') }}:</dt>
-                                                                <dd class="text-ink uppercase">
-                                                                    {{ $order['payment_method'] ?? '—' }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.weight') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['weight_kg'] ? $order['weight_kg'] . ' kg' : '—' }}
-                                                                </dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.phone_secondary') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['phone_secondary'] ?? '—' }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.address') }}:</dt>
-                                                                <dd class="text-ink">{{ $order['address'] ?? '—' }}
-                                                                </dd>
-                                                            </div>
-                                                        </dl>
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="font-semibold text-ink mb-2">
-                                                            {{ __('merchant_panel.assignment') }}</h4>
-                                                        <dl class="space-y-1 text-ink-muted">
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.agent') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['assigned_membership']['user']['name'] ?? '—' }}
-                                                                </dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.method') }}:</dt>
-                                                                <dd class="text-ink capitalize">
-                                                                    {{ $order['assignment_method'] ?? '—' }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.created_by') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['created_by_membership_id'] ? $order['created_by_membership']['user']['name'] ?? '—' : '—' }}
-                                                                </dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.attempts') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['confirmation_attempts'] ?? 0 }}</dd>
-                                                            </div>
-                                                            <div class="flex justify-between">
-                                                                <dt>{{ __('merchant_panel.last_contact') }}:</dt>
-                                                                <dd class="text-ink">
-                                                                    {{ $order['last_contact_at'] ? \Carbon\Carbon::parse($order['last_contact_at'])->diffForHumans() : '—' }}
-                                                                </dd>
-                                                            </div>
-                                                            @if (!empty($order['notes']))
-                                                                <div
-                                                                    class="mt-2 p-2 bg-surface-100 dark:bg-ink-700 rounded-lg text-ink-muted italic">
-                                                                    "{{ $order['notes'] }}"</div>
-                                                            @endif
-                                                        </dl>
-                                                    </div>
-                                                    @if ($order['tracking'] ?? null)
-                                                        <div>
-                                                            <h4 class="font-semibold text-ink mb-2">
-                                                                {{ __('merchant_panel.tracking') }}</h4>
-                                                            <dl class="space-y-1 text-ink-muted">
-                                                                @if ($order['tracking']['shipping_provider'])
-                                                                    <div class="flex justify-between">
-                                                                        <dt>{{ __('merchant_panel.carrier') }}:</dt>
-                                                                        <dd class="text-ink">
-                                                                            {{ $order['tracking']['shipping_provider'] }}
-                                                                        </dd>
-                                                                    </div>
-                                                                @endif
-                                                                @if ($order['tracking']['tracking_number'])
-                                                                    <div class="flex justify-between">
-                                                                        <dt>{{ __('merchant_panel.tracking_number') }}:
-                                                                        </dt>
-                                                                        <dd class="text-ink font-mono">
-                                                                            {{ $order['tracking']['tracking_number'] }}
-                                                                        </dd>
-                                                                    </div>
-                                                                @endif
-                                                                @if ($order['tracking']['shipped_at'])
-                                                                    <div class="flex justify-between">
-                                                                        <dt>{{ __('merchant_panel.shipped_at') }}:
-                                                                        </dt>
-                                                                        <dd class="text-ink">
-                                                                            {{ $order['tracking']['shipped_at'] }}
-                                                                        </dd>
-                                                                    </div>
-                                                                @endif
-                                                                @if ($order['tracking']['delivered_at'])
-                                                                    <div class="flex justify-between">
-                                                                        <dt>{{ __('merchant_panel.delivered_at') }}:
-                                                                        </dt>
-                                                                        <dd class="text-ink">
-                                                                            {{ $order['tracking']['delivered_at'] }}
-                                                                        </dd>
-                                                                    </div>
-                                                                @endif
-                                                            </dl>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endif
+                                    
                                 @endforeach
                             </tbody>
                         </table>
@@ -1906,9 +1984,13 @@ $submitEdit = function (): void {
                         @foreach ($orders['data'] as $order)
                             @php
                                 $orderId = $order['id'] ?? '';
+                                $orderSelected = in_array($orderId, $this->selectedOrders);
+                                $orderStatusTone = $this->tableStyle === 'status'
+                                    ? 'edz-table-row--' . ($order['status']['color'] ?? 'gray') . ($orderSelected ? ' edz-row-selected' : '')
+                                    : '';
                             @endphp
                             <div x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
-                                class="px-4 py-4 {{ in_array($orderId, $this->selectedOrders) ? 'bg-accent-50 dark:bg-accent-900/10' : '' }}">
+                                class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-50 dark:bg-accent-900/10' : '' }} {{ $orderStatusTone }}">
                                 <div class="flex items-start gap-3">
                                     <input type="checkbox" value="{{ $orderId }}"
                                         wire:click="toggleSelectOrder('{{ $orderId }}')"
@@ -1922,7 +2004,10 @@ $submitEdit = function (): void {
                                         <div class="mt-1 text-sm font-medium text-ink truncate">{{ $order['customer']['name'] ?? '-' }}</div>
                                         <div class="text-xs text-ink-muted" dir="ltr">{{ $order['customer']['phone'] ?? '-' }}</div>
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                                            <span class="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">{{ $order['status']['label'] ?? '—' }}</span>
+                                            <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
+                                                {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
+                                                {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
+                                            </span>
                                             @if (in_array('wilaya', $this->visibleColumns))
                                                 <span class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
                                             @endif
@@ -1933,9 +2018,9 @@ $submitEdit = function (): void {
                                         <div class="mt-3 flex items-center gap-2 flex-wrap">
                                             <x-edz.spinner wire:target="transitionOrder('{{ $orderId }}')"
                                                 class="w-3.5 h-3.5 text-ink-muted" />
-                                            <button wire:click="toggleDetail('{{ $orderId }}')"
+                                            <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                 class="edz-btn edz-btn--ghost edz-btn--xs" title="{{ __('merchant.order_details') }}">
-                                                <x-edz.icon name="chevron-right" class="w-4 h-4 transition-transform duration-200 {{ $this->expandedOrderId === $orderId ? 'rotate-90' : '' }}" />
+                                                <x-edz.icon name="info-circle" class="w-4 h-4" />
                                             </button>
                                             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                 <button @click="$wire.openEditModal('{{ $orderId }}')"
@@ -1958,14 +2043,7 @@ $submitEdit = function (): void {
                                         </div>
                                     </div>
                                 </div>
-                                @if ($this->expandedOrderId === $orderId)
-                                    <div class="mt-3 pt-3 border-t border-surface-200 dark:border-ink-700 text-sm space-y-1 text-ink-muted">
-                                        <div class="flex justify-between"><span>{{ __('merchant_panel.items') }}:</span><span class="text-ink">{{ collect($order['items_summary'] ?? [])->map(fn($i) => $i['name'] . ' ×' . $i['qty'])->implode(', ') }}</span></div>
-                                        <div class="flex justify-between"><span>{{ __('merchant_panel.delivery') }}:</span><span class="text-ink capitalize">{{ $order['delivery_type'] ?? '—' }}</span></div>
-                                        <div class="flex justify-between"><span>{{ __('merchant_panel.agent') }}:</span><span class="text-ink">{{ $order['assigned_membership']['user']['name'] ?? '—' }}</span></div>
-                                        <div class="flex justify-between"><span>{{ __('merchant_panel.total') }}:</span><span class="font-semibold text-ink">{{ currency($order['total_amount']) }}</span></div>
-                                    </div>
-                                @endif
+                                
                             </div>
                         @endforeach
                     </div>
@@ -2009,6 +2087,432 @@ $submitEdit = function (): void {
             </x-edz.modal>
         @endif
     </div>
+
+    {{-- Table Settings Modal --}}
+    @if ($showTableSettings)
+        <div @edz-modal-closed.window="$wire.discardTableSettings()">
+            <x-edz.modal :isOpen="true" size="lg" wire:key="order-table-settings">
+                <div x-data="{ tab: 'columns' }" class="p-6">
+                    {{-- Header --}}
+                    <div class="mb-5">
+                        <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.table_settings') }}</h3>
+                    </div>
+
+                    {{-- Tabs --}}
+                    <div class="inline-flex w-full sm:w-auto items-center gap-1 p-1 bg-surface-secondary rounded-xl mb-5">
+                        <button @click="tab = 'columns'" type="button"
+                            class="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg transition"
+                            :class="tab === 'columns' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'">
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-edz.icon name="view-columns" class="w-4 h-4" />
+                                {{ __('merchant_panel.tab_columns') }}
+                            </span>
+                        </button>
+                        <button @click="tab = 'style'" type="button"
+                            class="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg transition"
+                            :class="tab === 'style' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'">
+                            <span class="inline-flex items-center gap-1.5">
+                                <x-edz.icon name="color-palette" class="w-4 h-4" />
+                                {{ __('merchant_panel.tab_style') }}
+                            </span>
+                        </button>
+                    </div>
+
+                    {{-- Tab: Columns --}}
+                    <div x-show="tab === 'columns'" x-cloak class="space-y-5">
+                        @php
+                            $settingsColumns = $this->orderColumns();
+                            $settingsPrimaries = collect($settingsColumns)->where('default', true)->all();
+                            $settingsSecondaries = collect($settingsColumns)->where('default', false)->all();
+                        @endphp
+
+                        {{-- Primary (pinned) columns --}}
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+                                    {{ __('merchant_panel.primary_columns') }}</p>
+                                <span class="text-[10px] font-medium text-ink-muted">{{ __('merchant_panel.always_visible') }}</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                @foreach ($settingsPrimaries as $col)
+                                    <div
+                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-surface-secondary/60 border border-surface-border text-sm text-ink">
+                                        <x-edz.icon name="lock-closed" class="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                                        {{ __("merchant_panel.{$col['label_key']}") }}
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="mt-1.5 text-xs text-ink-muted">{{ __('merchant_panel.primary_columns_hint') }}</p>
+                        </div>
+
+                        {{-- Secondary (configurable) columns --}}
+                        <div>
+                            <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+                                {{ __('merchant_panel.secondary_columns') }}</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                @foreach ($settingsSecondaries as $col)
+                                    <label
+                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-surface-border hover:bg-surface-secondary cursor-pointer text-sm">
+                                        <input type="checkbox" wire:click="toggleDraftColumn('{{ $col['key'] }}')"
+                                            {{ in_array($col['key'], $this->draftColumns) ? 'checked' : '' }}
+                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                                        {{ __("merchant_panel.{$col['label_key']}") }}
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Tab: Style --}}
+                    <div x-show="tab === 'style'" x-cloak>
+                        <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
+                            {{ __('merchant_panel.tab_style') }}</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="button" wire:click="$set('draftStyle', 'default')"
+                                class="flex items-start gap-3 text-start p-4 rounded-xl border transition {{ $this->draftStyle === 'default' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50/40' : 'border-surface-border hover:bg-surface-secondary' }}">
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.style_default') }}</p>
+                                    <div class="mt-2 flex items-center gap-1.5 text-[10px]">
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1001</span>
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1002</span>
+                                        <span
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1003</span>
+                                    </div>
+                                </div>
+                                <x-edz.icon name="check"
+                                    class="w-4 h-4 mt-0.5 shrink-0 {{ $this->draftStyle === 'default' ? 'text-accent-600' : 'text-surface-border' }}" />
+                            </button>
+
+                            <button type="button" wire:click="$set('draftStyle', 'status')"
+                                class="flex items-start gap-3 text-start p-4 rounded-xl border transition {{ $this->draftStyle === 'status' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50/40' : 'border-surface-border hover:bg-surface-secondary' }}">
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.style_status') }}</p>
+                                    <p class="mt-0.5 text-xs text-ink-muted">{{ __('merchant_panel.style_status_hint') }}</p>
+                                    <div class="mt-2 rounded-lg overflow-hidden border border-surface-border text-[10px]">
+                                        <table class="w-full">
+                                            <tbody>
+                                                <tr class="edz-table-row--success">
+                                                    <td class="px-2.5 py-1.5 font-semibold">#1001</td>
+                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}</td>
+                                                </tr>
+                                                <tr class="edz-table-row--warning">
+                                                    <td class="px-2.5 py-1.5 font-semibold">#1002</td>
+                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}</td>
+                                                </tr>
+                                                <tr class="edz-table-row--danger">
+                                                    <td class="px-2.5 py-1.5 font-semibold">#1003</td>
+                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <x-edz.icon name="check"
+                                    class="w-4 h-4 mt-0.5 shrink-0 {{ $this->draftStyle === 'status' ? 'text-accent-600' : 'text-surface-border' }}" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-5 mt-6 border-t border-surface-border">
+                        <button type="button" wire:click="resetColumns"
+                            class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant_panel.reset_columns') }}</button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" wire:click="discardTableSettings"
+                                class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant_panel.cancel') }}</button>
+                            <button wire:click="saveTableSettings" class="edz-btn edz-btn--primary edz-btn--sm"
+                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                                wire:target="saveTableSettings">
+                                <x-edz.spinner wire:target="saveTableSettings" class="w-3.5 h-3.5" />
+                                <span wire:loading.remove
+                                    wire:target="saveTableSettings">{{ __('merchant_panel.save_settings') }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </x-edz.modal>
+        </div>
+    @endif
+
+    {{-- Order Details Modal (Phase 23): responsive popup with de-duplicated fields --}}
+    @if ($this->detailsOrderId)
+        @php
+            $detailsOrder = collect($this->orders['data'] ?? [])->firstWhere('id', $this->detailsOrderId);
+        @endphp
+        @if ($detailsOrder)
+            @php
+                $detailsStatus = \Edzeery\MyStatusKit\Facades\Status::for('order', $detailsOrder['status']['key'] ?? 'default');
+                $detailsTracking = $detailsOrder['tracking'] ?? null;
+            @endphp
+            <div @edz-modal-closed.window="$wire.closeOrderDetails()">
+                <x-edz.modal :isOpen="true" size="md" wire:key="order-details-modal">
+                    <div class="p-6">
+                        {{-- Header --}}
+                        <div class="flex items-start gap-3">
+                            <div
+                                class="flex items-center justify-center w-10 h-10 rounded-full bg-accent-50 dark:bg-accent-900/25 text-accent-600 dark:text-accent-300 shrink-0">
+                                <x-edz.icon name="info-circle" class="w-5 h-5" />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <h3 class="text-base sm:text-lg font-bold text-ink">
+                                        {{ $detailsOrder['number'] ? '#' . $detailsOrder['number'] : __('merchant_panel.order_details') }}
+                                    </h3>
+                                    <span
+                                        class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $detailsStatus->color() }}">
+                                        {!! $detailsStatus->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
+                                        <span>{{ $detailsStatus->label() }}</span>
+                                    </span>
+                                </div>
+                                <p class="mt-0.5 text-sm font-medium text-ink truncate">
+                                    {{ $detailsOrder['customer']['name'] ?? '—' }}</p>
+                                <p class="text-xs text-ink-muted truncate" dir="ltr">
+                                    {{ $detailsOrder['customer']['phone'] ?? '—' }}</p>
+                            </div>
+                        </div>
+                        <div
+                            class="mt-3 pt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-surface-border text-xs text-ink-muted">
+                            <span>{{ \Carbon\Carbon::parse($detailsOrder['created_at'])->format('M d, Y') }}</span>
+                            @if (!empty($detailsOrder['state']['name']))
+                                <span class="inline-flex items-center gap-1">
+                                    <x-edz.icon name="map-pin" class="w-3.5 h-3.5" />
+                                    {{ $detailsOrder['state']['name'] }}
+                                </span>
+                            @endif
+                        </div>
+
+                        @php
+                            $showItems = !in_array('products', $this->visibleColumns) || !in_array('amount', $this->visibleColumns);
+                            $showShipping = !in_array('delivery_type', $this->visibleColumns) || !in_array('shipment_type', $this->visibleColumns) || !in_array('weight', $this->visibleColumns) || !in_array('stopdesk_point', $this->visibleColumns) || !in_array('send_from_carrier_warehouse', $this->visibleColumns);
+                            $showContact = !in_array('phone_secondary', $this->visibleColumns) || !in_array('address', $this->visibleColumns) || !in_array('city', $this->visibleColumns) || !in_array('meta', $this->visibleColumns);
+                            $showAssignment = !in_array('assigned_agent', $this->visibleColumns) || !in_array('confirmation_attempts', $this->visibleColumns) || !in_array('last_contact', $this->visibleColumns) || !in_array('notes', $this->visibleColumns) || !in_array('confirmed_by', $this->visibleColumns);
+                        @endphp
+
+                        {{-- Items --}}
+                        @if ($showItems)
+                            <section class="mt-5">
+                                <h4
+                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                                    <x-edz.icon name="bag" class="w-4 h-4" />
+                                    {{ __('merchant_panel.products') }}
+                                </h4>
+                                <div
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    @if (!in_array('products', $this->visibleColumns))
+                                        @forelse ($detailsOrder['items_summary'] ?? [] as $item)
+                                            <div class="flex items-center justify-between gap-3 px-3 py-2">
+                                                <span class="min-w-0 flex-1 truncate text-ink">{{ $item['name'] }}
+                                                    <span class="text-ink-muted">×{{ $item['qty'] }}</span></span>
+                                                <span
+                                                    class="font-medium text-ink shrink-0">{{ currency($item['price'] * $item['qty']) }}</span>
+                                            </div>
+                                        @empty
+                                            <div class="px-3 py-2 text-ink-muted text-xs">
+                                                {{ __('merchant_panel.no_orders_found') }}</div>
+                                        @endforelse
+                                    @endif
+                                    @if (!in_array('amount', $this->visibleColumns))
+                                        <div
+                                            class="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface dark:bg-ink-800 font-bold text-ink">
+                                            <span>{{ __('merchant_panel.total') }}</span>
+                                            <span>{{ currency($detailsOrder['total_amount']) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </section>
+                        @endif
+
+                        {{-- Shipping & Payment --}}
+                        @if ($showShipping)
+                            <section class="mt-5">
+                                <h4
+                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                                    <x-edz.icon name="credit-card" class="w-4 h-4" />
+                                    {{ __('merchant_panel.details_shipping') }}
+                                </h4>
+                                <dl
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    @if (!in_array('delivery_type', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.delivery') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($detailsOrder['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : ($detailsOrder['delivery_type'] ?? '—')) }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('shipment_type', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.shipment') }}</dt>
+                                            <dd class="text-ink text-end capitalize">{{ $detailsOrder['shipment_type'] ?? '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.payment_method') }}</dt>
+                                        <dd class="text-ink text-end uppercase">{{ $detailsOrder['payment_method'] ?? '—' }}</dd>
+                                    </div>
+                                    @if (!in_array('weight', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.weight') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['weight_kg'] ? $detailsOrder['weight_kg'] . ' kg' : '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('stopdesk_point', $this->visibleColumns) && !empty($detailsOrder['stopdesk_point']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.stopdesk_point') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['stopdesk_point']['name'] ?? '—' }}@if (!empty($detailsOrder['stopdesk_point']['city']['name'])) ({{ $detailsOrder['stopdesk_point']['city']['name'] }})@endif</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('send_from_carrier_warehouse', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.send_from_carrier_warehouse') }}</dt>
+                                            <dd class="text-ink text-end">
+                                                @if ($detailsOrder['send_from_carrier_warehouse'] ?? false)
+                                                    <x-edz.badge tone="success" sm>
+                                                        <x-edz.icon name="check" class="w-3 h-3" />
+                                                    </x-edz.badge>
+                                                @else
+                                                    <x-edz.badge tone="neutral" sm>
+                                                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                                                    </x-edz.badge>
+                                                @endif
+                                            </dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                            </section>
+                        @endif
+
+                        {{-- Contact & Location --}}
+                        @if ($showContact)
+                            <section class="mt-5">
+                                <h4
+                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                                    <x-edz.icon name="map-pin" class="w-4 h-4" />
+                                    {{ __('merchant_panel.details_contact') }}
+                                </h4>
+                                <dl
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    @if (!in_array('phone_secondary', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.phone_secondary') }}</dt>
+                                            <dd class="text-ink text-end" dir="ltr">{{ $detailsOrder['phone_secondary'] ?? '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('city', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.city') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['city']['name'] ?? '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('address', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.address') }}</dt>
+                                            <dd class="text-ink text-end min-w-0">{{ $detailsOrder['address'] ? \Illuminate\Support\Str::limit($detailsOrder['address'], 60) : '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('meta', $this->visibleColumns) && !empty($detailsOrder['meta']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.meta') }}</dt>
+                                            <dd class="text-ink text-end min-w-0">{{ collect($detailsOrder['meta'])->map(fn($v, $k) => "{$k}: {$v}")->implode(', ') }}</dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                            </section>
+                        @endif
+
+                        {{-- Assignment --}}
+                        @if ($showAssignment)
+                            <section class="mt-5">
+                                <h4
+                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                                    <x-edz.icon name="users" class="w-4 h-4" />
+                                    {{ __('merchant_panel.assignment') }}
+                                </h4>
+                                <dl
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    @if (!in_array('assigned_agent', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.agent') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['assigned_membership']['user']['name'] ?? '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.method') }}</dt>
+                                        <dd class="text-ink text-end">{{ $detailsOrder['assignment_method'] ? ucfirst($detailsOrder['assignment_method']) : '—' }}</dd>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.created_by') }}</dt>
+                                        <dd class="text-ink text-end">{{ $detailsOrder['created_by_membership_id'] ? ($detailsOrder['created_by_membership']['user']['name'] ?? '—') : '—' }}</dd>
+                                    </div>
+                                    @if (!in_array('confirmed_by', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.confirmed_by') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['confirmed_by_history']['changed_by']['user']['name'] ?? '—' }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('confirmation_attempts', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.attempts') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['confirmation_attempts'] ?? 0 }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!in_array('last_contact', $this->visibleColumns))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.last_contact') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsOrder['last_contact_at'] ? \Carbon\Carbon::parse($detailsOrder['last_contact_at'])->diffForHumans() : '—' }}</dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                                @if (!in_array('notes', $this->visibleColumns) && !empty($detailsOrder['notes']))
+                                    <div class="mt-2 p-2.5 rounded-lg bg-surface-100 dark:bg-ink-700 text-sm text-ink-muted italic">
+                                        "{{ $detailsOrder['notes'] }}"
+                                    </div>
+                                @endif
+                            </section>
+                        @endif
+
+                        {{-- Tracking --}}
+                        @if ($detailsTracking && (!in_array('shipping_provider', $this->visibleColumns) || !empty($detailsTracking['tracking_number']) || !empty($detailsTracking['shipped_at']) || !empty($detailsTracking['delivered_at'])))
+                            <section class="mt-5">
+                                <h4
+                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                                    <x-edz.icon name="truck" class="w-4 h-4" />
+                                    {{ __('merchant_panel.tracking') }}
+                                </h4>
+                                <dl
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    @if (!in_array('shipping_provider', $this->visibleColumns) && !empty($detailsTracking['shipping_provider']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.carrier') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsTracking['shipping_provider'] }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!empty($detailsTracking['tracking_number']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.tracking_number') }}</dt>
+                                            <dd class="text-ink text-end font-mono">{{ $detailsTracking['tracking_number'] }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!empty($detailsTracking['shipped_at']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.shipped_at') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsTracking['shipped_at'] }}</dd>
+                                        </div>
+                                    @endif
+                                    @if (!empty($detailsTracking['delivered_at']))
+                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.delivered_at') }}</dt>
+                                            <dd class="text-ink text-end">{{ $detailsTracking['delivered_at'] }}</dd>
+                                        </div>
+                                    @endif
+                                </dl>
+                            </section>
+                        @endif
+                    </div>
+                </x-edz.modal>
+            </div>
+        @endif
+    @endif
 
     @include('livewire.merchant.orders.partials.order-form-modal')
 
@@ -2095,7 +2599,7 @@ $submitEdit = function (): void {
                             class="rounded border-gray-300">
                         <span class="w-2 h-2 rounded-full shrink-0"
                             style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
-                        {{ $s['label'] }}
+                        {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
                     </label>
                 @endforeach
             </div>
