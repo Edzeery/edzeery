@@ -391,6 +391,8 @@ return [
     'order_details' => 'Detalles del pedido',
     'details_shipping' => 'Envío y pago',
     'details_contact' => 'Contacto y dirección',
+    'select_state_first' => 'Selecciona primero un estado',
+    'select_provider_first' => 'Selecciona primero un transportista',
 
     // ----- Delivery Management -----
     'delivery_settings' => 'Configuración de entrega',

@@ -3,7 +3,7 @@ use App\Domains\Order\Models\UserColumnPreference;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Order\Services\OrderService;
 use App\Enums\Store\StorePermissionEnum;
-use App\Models\Customers\Customer;
+use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
 use App\Models\Orders\Order;
@@ -39,6 +39,15 @@ state([
         'product_id' => null,
         'product' => '',
         'source' => null,
+        'address' => '',
+        'notes' => '',
+        'weight_min' => null,
+        'weight_max' => null,
+        'shipment_type' => null,
+        'stopdesk_point' => null,
+        'send_from_carrier_warehouse' => null,
+        'confirmed_by' => null,
+        'phone_secondary' => '',
     ],
     'orders' => [],
     'page' => 1,
@@ -53,6 +62,7 @@ state([
     'allMembers' => [],
     'allStates' => [],
     'allCities' => [],
+    'allStopdeskPoints' => [],
     'allProviders' => [],
 
     // Bulk operations
@@ -134,6 +144,26 @@ updated([
         $this->loadOrders();
     },
     'filters.date_to' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.address' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.notes' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.phone_secondary' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.weight_min' => function (): void {
+        $this->page = 1;
+        $this->loadOrders();
+    },
+    'filters.weight_max' => function (): void {
         $this->page = 1;
         $this->loadOrders();
     },
@@ -305,6 +335,33 @@ $loadOrders = function (): void {
     if (!empty($f['shipping_provider'])) {
         $query->where('shipping_provider_id', $f['shipping_provider']);
     }
+    if (!empty($f['address'])) {
+        $query->where('address', 'like', "%{$f['address']}%");
+    }
+    if (!empty($f['notes'])) {
+        $query->where('notes', 'like', "%{$f['notes']}%");
+    }
+    if (!empty($f['phone_secondary'])) {
+        $query->where('phone_secondary', 'like', "%{$f['phone_secondary']}%");
+    }
+    if (!empty($f['weight_min'])) {
+        $query->where('weight_kg', '>=', $f['weight_min']);
+    }
+    if (!empty($f['weight_max'])) {
+        $query->where('weight_kg', '<=', $f['weight_max']);
+    }
+    if (!empty($f['shipment_type'])) {
+        $query->where('shipment_type', $f['shipment_type']);
+    }
+    if (!empty($f['stopdesk_point'])) {
+        $query->where('stopdesk_point_id', $f['stopdesk_point']);
+    }
+    if ($f['send_from_carrier_warehouse'] !== null) {
+        $query->where('send_from_carrier_warehouse', (bool) $f['send_from_carrier_warehouse']);
+    }
+    if (!empty($f['confirmed_by'])) {
+        $query->whereHas('confirmedByHistory.changedBy', fn($q) => $q->where('id', $f['confirmed_by']));
+    }
     if (!empty($f['product_id'])) {
         $query->whereHas('items', function ($iq) use ($f) {
             $iq->where('product_id', (int) $f['product_id'])->orWhereHas('variant', fn($vq) => $vq->where('product_id', (int) $f['product_id']));
@@ -390,7 +447,7 @@ $setPerPage = function (int $perPage): void {
 
 $setFilter = function (string $key, $value): void {
     $intFilters = ['wilaya', 'city', 'assigned_to', 'shipping_provider'];
-    $floatFilters = ['amount_min', 'amount_max'];
+    $floatFilters = ['amount_min', 'amount_max', 'weight_min', 'weight_max'];
     $arrFilters = ['status'];
 
     if (in_array($key, $intFilters, true)) {
@@ -399,7 +456,7 @@ $setFilter = function (string $key, $value): void {
         $value = (float) $value;
     } elseif (in_array($key, $arrFilters, true)) {
         $value = is_array($value) ? array_map('intval', $value) : [];
-    } elseif (in_array($key, ['source', 'delivery_type'], true)) {
+    } elseif (in_array($key, ['source', 'delivery_type', 'shipment_type'], true)) {
         $value = (string) $value;
     }
 
@@ -425,6 +482,15 @@ $clearFilters = function (): void {
         'shipping_provider' => null,
         'product' => '',
         'source' => null,
+        'address' => '',
+        'notes' => '',
+        'weight_min' => null,
+        'weight_max' => null,
+        'shipment_type' => null,
+        'stopdesk_point' => null,
+        'send_from_carrier_warehouse' => null,
+        'confirmed_by' => null,
+        'phone_secondary' => '',
     ];
     $this->page = 1;
     $this->selectedOrders = [];
@@ -554,6 +620,16 @@ $forceDeleteAll = function (): void {
 // --- Cities loader for filter ---
 $loadFilterCities = function (string $stateId): void {
     $this->allCities = $stateId ? \App\Models\Locations\City::where('state_id', $stateId)->orderBy('name')->get()->toArray() : [];
+};
+
+// --- Stopdesk points loader for filter (cascades from shipping_provider) ---
+$loadFilterStopdeskPoints = function (?string $providerId): void {
+    $this->allStopdeskPoints = $providerId
+        ? \App\Domains\Shipping\Models\StopdeskPoint::where('shipping_provider_id', $providerId)
+            ->orderBy('name')
+            ->get()
+            ->toArray()
+        : [];
 };
 
 $toggleStatusFilter = function (string $statusId): void {
@@ -1464,6 +1540,103 @@ $submitEdit = function (): void {
                             class="w-3 h-3" /></button>
                 </span>
             @endif
+            @if (!empty($this->filters['delivery_type']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : __('merchant_panel.home_delivery_label') }}
+                    <button wire:click="setFilter('delivery_type', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['shipping_provider']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? '' }}
+                    <button @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
+                        wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['shipment_type']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ match ($this->filters['shipment_type']) {
+                        'delivery' => __('merchant_panel.delivery'),
+                        'exchange' => __('merchant_panel.exchange_label'),
+                        'pickup' => __('merchant_panel.pickup_label'),
+                        default => $this->filters['shipment_type'],
+                    } }}
+                    <button wire:click="setFilter('shipment_type', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['stopdesk_point']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allStopdeskPoints)->firstWhere('id', $this->filters['stopdesk_point'])['name'] ?? '' }}
+                    <button wire:click="setFilter('stopdesk_point', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['confirmed_by']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['user']['name'] ?? '' }}
+                    <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if ($this->filters['send_from_carrier_warehouse'] !== null)
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['send_from_carrier_warehouse'] ? __('buttons.yes') : __('buttons.no') }}
+                    <button wire:click="setFilter('send_from_carrier_warehouse', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (filled($this->filters['weight_min']) || filled($this->filters['weight_max']))
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['weight_min'] ?? '0' }} — {{ $this->filters['weight_max'] ?? '∞' }}
+                    @if (filled($this->filters['weight_min']))
+                        <button wire:click="$set('filters.weight_min', '')" wire:loading.attr="disabled"
+                            class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                    @endif
+                    @if (filled($this->filters['weight_max']))
+                        <button wire:click="$set('filters.weight_max', '')" wire:loading.attr="disabled"
+                            class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                    @endif
+                </span>
+            @endif
+            @if ($this->filters['address'] !== '')
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['address'] }}
+                    <button wire:click="setFilter('address', '')" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if ($this->filters['notes'] !== '')
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['notes'] }}
+                    <button wire:click="setFilter('notes', '')" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if ($this->filters['phone_secondary'] !== '')
+                <span
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    {{ $this->filters['phone_secondary'] }}
+                    <button wire:click="setFilter('phone_secondary', '')" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
             <button wire:click="clearFilters" class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 text-xs"
                 wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
                 <x-edz.icon name="x-circle" class="w-3 h-3" />
@@ -1548,13 +1721,35 @@ $submitEdit = function (): void {
                                     @endif
                                     @if (in_array('phone_secondary', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.phone_secondary') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.phone_secondary') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'phone_secondary', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ $this->filters['phone_secondary'] !== '' ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if ($this->filters['phone_secondary'] !== '')
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('notes', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.notes') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.notes') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'notes', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ $this->filters['notes'] !== '' ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if ($this->filters['notes'] !== '')
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('meta', $this->visibleColumns))
                                         <th
@@ -1580,33 +1775,99 @@ $submitEdit = function (): void {
                                     @endif
                                     @if (in_array('city', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.city') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.city') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'city', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['wilaya']) ? '' : 'opacity-40 pointer-events-none' }} {{ filled($this->filters['city']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['city']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('address', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.address') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.address') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'address', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ $this->filters['address'] !== '' ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if ($this->filters['address'] !== '')
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('delivery_type', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.delivery_type') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.delivery_type') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'delivery_type', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['delivery_type']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['delivery_type']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('shipping_provider', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.shipping_provider') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.shipping_provider') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'shipping_provider', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['shipping_provider']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['shipping_provider']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('stopdesk_point', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.stopdesk_point') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.stopdesk_point') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'stopdesk_point', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['shipping_provider']) ? '' : 'opacity-40 pointer-events-none' }} {{ filled($this->filters['stopdesk_point']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['stopdesk_point']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.send_from_carrier_warehouse') }}</th>
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.send_from_carrier_warehouse') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'send_from_carrier_warehouse', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ $this->filters['send_from_carrier_warehouse'] !== null ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if ($this->filters['send_from_carrier_warehouse'] !== null)
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
+                                        </th>
                                     @endif
                                     @if (in_array('products', $this->visibleColumns))
                                         <th
@@ -1678,8 +1939,18 @@ $submitEdit = function (): void {
                                     @endif
                                     @if (in_array('confirmed_by', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.confirmed_by') }}
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.confirmed_by') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'confirmed_by', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['confirmed_by']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['confirmed_by']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
                                         </th>
                                     @endif
                                     @if (in_array('created_at', $this->visibleColumns))
@@ -1713,14 +1984,34 @@ $submitEdit = function (): void {
                                     @endif
                                     @if (in_array('weight', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.weight') }}
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.weight') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'weight', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['weight_min']) || filled($this->filters['weight_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['weight_min']) || filled($this->filters['weight_max']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
                                         </th>
                                     @endif
                                     @if (in_array('shipment_type', $this->visibleColumns))
                                         <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.shipment') }}
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.shipment') }}
+                                                <button data-filter-btn
+                                                    @click.stop="$dispatch('edz-filter-open', { key: 'shipment_type', el: $event.currentTarget })"
+                                                    class="shrink-0 {{ filled($this->filters['shipment_type']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
+                                                    <x-edz.icon name="filter" class="w-3 h-3" />
+                                                </button>
+                                                @if (filled($this->filters['shipment_type']))
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
+                                                @endif
+                                            </div>
                                         </th>
                                     @endif
                                     <th class="px-4 py-3 text-end text-xs font-semibold text-ink-muted uppercase">
@@ -1973,7 +2264,7 @@ $submitEdit = function (): void {
                                             </div>
                                         </td>
                                     </tr>
-                                    
+
                                 @endforeach
                             </tbody>
                         </table>
@@ -2043,7 +2334,7 @@ $submitEdit = function (): void {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                         @endforeach
                     </div>
@@ -2523,8 +2814,12 @@ $submitEdit = function (): void {
         class="fixed z-50 p-2 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg"
         :class="{
             'max-h-64 overflow-y-auto edz-scroll': open === 'wilaya' || open === 'status' ||
-                open === 'assigned_to',
-            'w-48': open === 'product' || open === 'amount',
+                open === 'assigned_to' || open === 'city' || open === 'delivery_type' ||
+                open === 'shipping_provider' || open === 'stopdesk_point' ||
+                open === 'shipment_type' || open === 'confirmed_by',
+            'w-48': open === 'product' || open === 'amount' || open === 'address' ||
+                open === 'notes' || open === 'phone_secondary' || open === 'weight' ||
+                open === 'send_from_carrier_warehouse',
             'w-52': open === 'wilaya' || open === 'status' || open === 'assigned_to' ||
                 open === 'date'
         }">
@@ -2651,6 +2946,226 @@ $submitEdit = function (): void {
                         @endif
                     </div>
                 </div>
+            </div>
+        @endif
+
+        {{-- Delivery Type --}}
+        @if (in_array('delivery_type', $this->visibleColumns))
+            <div x-show="open === 'delivery_type'" x-cloak>
+                <button @click="$wire.setFilter('delivery_type', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['delivery_type'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                <button @click="$wire.setFilter('delivery_type', 'home')"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['delivery_type'] === 'home' ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('merchant_panel.home_delivery_label') }}
+                </button>
+                <button @click="$wire.setFilter('delivery_type', 'stopdesk')"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['delivery_type'] === 'stopdesk' ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('merchant_panel.stop_desk_label') }}
+                </button>
+            </div>
+        @endif
+
+        {{-- Shipment Type --}}
+        @if (in_array('shipment_type', $this->visibleColumns))
+            <div x-show="open === 'shipment_type'" x-cloak>
+                <button @click="$wire.setFilter('shipment_type', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipment_type'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                <button @click="$wire.setFilter('shipment_type', 'delivery')"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'delivery' ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('merchant_panel.delivery') }}
+                </button>
+                <button @click="$wire.setFilter('shipment_type', 'exchange')"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'exchange' ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('merchant_panel.exchange_label') }}
+                </button>
+                <button @click="$wire.setFilter('shipment_type', 'pickup')"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'pickup' ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('merchant_panel.pickup_label') }}
+                </button>
+            </div>
+        @endif
+
+        {{-- Shipping Provider --}}
+        @if (in_array('shipping_provider', $this->visibleColumns))
+            <div x-show="open === 'shipping_provider'" x-cloak>
+                <button @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipping_provider'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                @foreach ($this->allProviders as $pr)
+                    <button @click="$wire.setFilter('shipping_provider', '{{ $pr['id'] }}'); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints('{{ $pr['id'] }}')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipping_provider'] == $pr['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                        data-name="{{ $pr['name'] }}">
+                        {{ $pr['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Stopdesk Point (cascades from shipping_provider) --}}
+        @if (in_array('stopdesk_point', $this->visibleColumns))
+            <div x-show="open === 'stopdesk_point'" x-cloak>
+                @if (!filled($this->filters['shipping_provider']))
+                    <div
+                        class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">{{ __('merchant_panel.select_provider_first') }}</div>
+                @else
+                    <button @click="$wire.setFilter('stopdesk_point', null)"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['stopdesk_point'] ? 'bg-surface-secondary font-medium' : '' }}">
+                        —
+                    </button>
+                    @foreach ($this->allStopdeskPoints as $dp)
+                        <button @click="$wire.setFilter('stopdesk_point', '{{ $dp['id'] }}')"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['stopdesk_point'] == $dp['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                            data-name="{{ $dp['name'] }}">
+                            {{ $dp['name'] }}
+                        </button>
+                    @endforeach
+                @endif
+            </div>
+        @endif
+
+        {{-- City (cascades from wilaya) --}}
+        @if (in_array('city', $this->visibleColumns))
+            <div x-show="open === 'city'" x-cloak>
+                @if (!filled($this->filters['wilaya']))
+                    <div
+                        class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">{{ __('merchant_panel.select_state_first') }}</div>
+                @else
+                    <button @click="$wire.setFilter('city', null)"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['city'] ? 'bg-surface-secondary font-medium' : '' }}">
+                        —
+                    </button>
+                    @foreach ($this->allCities as $ct)
+                        <button @click="$wire.setFilter('city', '{{ $ct['id'] }}')"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['city'] == $ct['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                            data-name="{{ $ct['name'] }}">
+                            {{ $ct['name'] }}
+                        </button>
+                    @endforeach
+                @endif
+            </div>
+        @endif
+
+        {{-- Confirmed By --}}
+        @if (in_array('confirmed_by', $this->visibleColumns))
+            <div x-show="open === 'confirmed_by'" x-cloak>
+                <button @click="$wire.setFilter('confirmed_by', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['confirmed_by'] ? 'bg-surface-secondary font-medium' : '' }}">
+                    —
+                </button>
+                @foreach ($this->allMembers as $m)
+                    <button @click="$wire.setFilter('confirmed_by', '{{ $m['id'] }}')"
+                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['confirmed_by'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
+                        data-name="{{ $m['user']['name'] }}">
+                        {{ $m['user']['name'] }}
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Address --}}
+        @if (in_array('address', $this->visibleColumns))
+            <div x-show="open === 'address'" x-cloak>
+                <div class="relative">
+                    <input type="text" wire:model.live.debounce.600ms="filters.address"
+                        class="edz-input text-xs w-full pe-6" placeholder="{{ __('merchant_panel.address') }}"
+                        autocomplete="off">
+                    @if ($this->filters['address'] !== '')
+                        <button wire:click="$set('filters.address', '')" type="button"
+                            class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                            aria-label="Clear address">
+                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Notes --}}
+        @if (in_array('notes', $this->visibleColumns))
+            <div x-show="open === 'notes'" x-cloak>
+                <div class="relative">
+                    <input type="text" wire:model.live.debounce.600ms="filters.notes"
+                        class="edz-input text-xs w-full pe-6" placeholder="{{ __('merchant_panel.notes') }}"
+                        autocomplete="off">
+                    @if ($this->filters['notes'] !== '')
+                        <button wire:click="$set('filters.notes', '')" type="button"
+                            class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                            aria-label="Clear notes">
+                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Phone Secondary --}}
+        @if (in_array('phone_secondary', $this->visibleColumns))
+            <div x-show="open === 'phone_secondary'" x-cloak>
+                <div class="relative">
+                    <input type="text" wire:model.live.debounce.600ms="filters.phone_secondary"
+                        class="edz-input text-xs w-full pe-6" placeholder="{{ __('merchant_panel.phone_secondary') }}"
+                        autocomplete="off">
+                    @if ($this->filters['phone_secondary'] !== '')
+                        <button wire:click="$set('filters.phone_secondary', '')" type="button"
+                            class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                            aria-label="Clear phone 2">
+                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                        </button>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Weight (min/max range) --}}
+        @if (in_array('weight', $this->visibleColumns))
+            <div x-show="open === 'weight'" x-cloak>
+                <div class="flex items-center gap-1">
+                    <div class="relative flex-1">
+                        <input type="number" wire:model.live.debounce.600ms="filters.weight_min" placeholder="Min"
+                            class="edz-input text-xs w-full pe-6" step="0.01">
+                        @if ($this->filters['weight_min'] !== null && $this->filters['weight_min'] !== '')
+                            <button wire:click="$set('filters.weight_min', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear min weight">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
+                    <div class="relative flex-1">
+                        <input type="number" wire:model.live.debounce.600ms="filters.weight_max" placeholder="Max"
+                            class="edz-input text-xs w-full pe-6" step="0.01">
+                        @if ($this->filters['weight_max'] !== null && $this->filters['weight_max'] !== '')
+                            <button wire:click="$set('filters.weight_max', '')" type="button"
+                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                                aria-label="Clear max weight">
+                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Send from carrier warehouse (tri-state) --}}
+        @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
+            <div x-show="open === 'send_from_carrier_warehouse'" x-cloak>
+                <button @click="$wire.setFilter('send_from_carrier_warehouse', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === null ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('general.all') }}
+                </button>
+                <button @click="$wire.setFilter('send_from_carrier_warehouse', true)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === true ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('buttons.yes') }}
+                </button>
+                <button @click="$wire.setFilter('send_from_carrier_warehouse', false)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === false ? 'bg-surface-secondary font-medium' : '' }}">
+                    {{ __('buttons.no') }}
+                </button>
             </div>
         @endif
     </div>

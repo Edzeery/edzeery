@@ -393,6 +393,8 @@ return [
     'order_details' => 'Order details',
     'details_shipping' => 'Shipping & Payment',
     'details_contact' => 'Contact & Location',
+    'select_state_first' => 'Select a state first',
+    'select_provider_first' => 'Select a shipping provider first',
 
     // ----- Delivery Management -----
     'delivery_settings' => 'Delivery Settings',

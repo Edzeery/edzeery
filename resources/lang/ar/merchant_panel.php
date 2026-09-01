@@ -393,6 +393,8 @@ return [
     'order_details' => 'تفاصيل الطلب',
     'details_shipping' => 'الشحن والدفع',
     'details_contact' => 'التواصل والعنوان',
+    'select_state_first' => 'اختر الولاية أولاً',
+    'select_provider_first' => 'اختر شركة الشحن أولاً',
 
     // ----- Delivery Management -----
     'delivery_settings' => 'إعدادات التوصيل',
