@@ -1,0 +1,146 @@
+// ============================================================
+//  EDZ-INLINE-EDIT — Reusable display/edit toggle
+//  Uses ONLY semantic surface/text token channels (no dark:).
+//  Hover/focus states auto-switch under .dark on <html>.
+// ============================================================
+
+.edz-inline-edit {
+  display: inline-flex;
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+// --- Display mode ---
+.edz-inline-edit__display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem;
+  margin: -0.25rem -0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--edz-radius-md);
+  cursor: pointer;
+  text-align: start;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+    border-color: rgb(var(--edz-color-border-strong));
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: rgb(var(--edz-color-brand-600));
+    box-shadow: 0 0 0 3px rgb(var(--edz-color-brand-600), 0.15);
+  }
+}
+
+.edz-inline-edit__icon {
+  color: rgb(var(--edz-color-text-soft));
+  flex-shrink: 0;
+}
+
+.edz-inline-edit__empty {
+  color: rgb(var(--edz-color-text-muted));
+  font-style: italic;
+}
+
+.edz-inline-edit__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// --- Edit mode ---
+.edz-inline-edit__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
+.edz-inline-edit__input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: rgb(var(--edz-color-text));
+  background-color: rgb(var(--edz-color-surface));
+  border: 1px solid rgb(var(--edz-color-border-strong));
+  border-radius: var(--edz-radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: rgb(var(--edz-color-text-muted));
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgb(var(--edz-color-brand-600));
+    box-shadow: 0 0 0 3px rgb(var(--edz-color-brand-600), 0.15);
+  }
+
+  &--error {
+    border-color: rgb(var(--edz-color-danger-600));
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgb(var(--edz-color-danger-600), 0.15);
+    }
+  }
+}
+
+.edz-inline-edit__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.edz-inline-edit__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: rgb(var(--edz-color-brand-600));
+  border: 1px solid transparent;
+  border-radius: var(--edz-radius-md);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background-color: rgb(var(--edz-color-brand-700));
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.edz-inline-edit__cancel {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(var(--edz-color-text));
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--edz-radius-md);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover {
+    background-color: rgb(var(--edz-color-secondary));
+  }
+}
+
+.edz-inline-edit__error {
+  font-size: 0.8125rem;
+  color: rgb(var(--edz-color-danger-600));
+}

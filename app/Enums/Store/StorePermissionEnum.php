@@ -86,6 +86,10 @@ enum StorePermissionEnum: string
     |--------------------------------------------------------------------------
     */
     case DELIVERY_PRICING_MANAGE = 'delivery.pricing.manage';
+    case DELIVERY_RIDERS_VIEW = 'delivery.riders.view';
+    case DELIVERY_RIDERS_CREATE = 'delivery.riders.create';
+    case DELIVERY_RIDERS_UPDATE = 'delivery.riders.update';
+    case DELIVERY_RIDERS_DELETE = 'delivery.riders.delete';
     case ACCOUNTING_CONFIRM_TEAM = 'accounting.confirm.team'; // soon
 
     /*

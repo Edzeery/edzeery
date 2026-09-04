@@ -76,6 +76,9 @@ class StoreRoles
 
                 // Delivery & Accounting
                 StorePermissionEnum::DELIVERY_PRICING_MANAGE->value,
+                StorePermissionEnum::DELIVERY_RIDERS_VIEW->value,
+                StorePermissionEnum::DELIVERY_RIDERS_CREATE->value,
+                StorePermissionEnum::DELIVERY_RIDERS_UPDATE->value,
 
                 // Finance / Debts
                 StorePermissionEnum::FINANCE_DEBT_VIEW->value,

@@ -38,6 +38,7 @@ if ($store) {
         'merchant.delivery',
         'merchant.delivery.announced-rates',
         'merchant.delivery.stopdesk',
+        'merchant.delivery.riders',
     );
     $withData['storeOpen'] = request()->routeIs(
         'merchant.store-settings',
@@ -60,6 +61,7 @@ if ($store) {
     $withData['canViewStorefront'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewDelivery'] = canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value)
         || canStore(StorePermissionEnum::STORE_UPDATE->value);
+    $withData['canViewRiders'] = canStore(StorePermissionEnum::DELIVERY_RIDERS_VIEW->value);
 }
 
 with($withData);
@@ -320,6 +322,14 @@ with($withData);
                         <x-edz.icon name="map-pin" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                         <span class="edz-sidebar__label">{{ __('merchant_panel.pickup_points') }}</span>
                     </a>
+
+                    @if ($canViewRiders)
+                        <a href="{{ route('merchant.delivery.riders', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery.riders')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="user" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.tab_riders') }}</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         @endif

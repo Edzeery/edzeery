@@ -2028,7 +2028,8 @@ $submitEdit = function (): void {
                                             ? 'edz-table-row--' . ($order['status']['color'] ?? 'gray') . ($orderSelected ? ' edz-row-selected' : '')
                                             : '';
                                     @endphp
-                                    <tr x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
+                                    <tr data-order-id="{{ $orderId }}" data-order-number="{{ $order['number'] ?? '' }}"
+                                        x-data="orderRowActions($el)"
                                         class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-tertiary/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle ' : '' }}{{ $orderStatusTone }}">
                                         <td class="px-3 py-3 w-10">
                                             <input type="checkbox" value="{{ $orderId }}"
@@ -2280,7 +2281,8 @@ $submitEdit = function (): void {
                                     ? 'edz-table-row--' . ($order['status']['color'] ?? 'gray') . ($orderSelected ? ' edz-row-selected' : '')
                                     : '';
                             @endphp
-                            <div x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
+                            <div data-order-id="{{ $orderId }}" data-order-number="{{ $order['number'] ?? '' }}"
+                                x-data="orderRowActions($el)"
                                 class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle' : '' }} {{ $orderStatusTone }}">
                                 <div class="flex items-start gap-3">
                                     <input type="checkbox" value="{{ $orderId }}"

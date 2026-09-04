@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domains\Shipping\Models\DeliveryRider;
 use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\LandingTemplateEnum;
 use App\Enums\Store\StoreRoleEnum;
@@ -120,6 +121,7 @@ class DemoStoreSeeder extends Seeder
         $this->seedBrands($store);
         $this->seedCategories($store);
         $this->seedProducts($store);
+        $this->seedRiders($store);
     }
 
     private function createUser(string $email, string $name, UserRoleEnum $platformRole, StoreRoleEnum $storeRole): User
@@ -423,6 +425,23 @@ class DemoStoreSeeder extends Seeder
                     'is_primary' => true,
                 ]);
             }
+        }
+    }
+
+    private function seedRiders(Store $store): void
+    {
+        $riders = [
+            ['name' => 'Yacine Belkacem', 'phone' => '0550100011', 'email' => 'yacine.b@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_MOTORCYCLE, 'is_active' => true, 'notes' => 'Covers the city centre, available mornings.'],
+            ['name' => 'Amina Cherif',    'phone' => '0660200022', 'email' => 'amina.c@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_CAR,       'is_active' => true, 'notes' => 'Large orders and bulk deliveries.'],
+            ['name' => 'Sofiane Hamdi',   'phone' => '0770300033', 'email' => 'sofiane.h@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_BICYCLE,   'is_active' => false, 'notes' => 'Short-distance courier, currently on leave.'],
+            ['name' => 'Lina Meziane',    'phone' => '0550400044', 'email' => 'lina.m@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_VAN,       'is_active' => true, 'notes' => 'Furniture and heavy items, suburb routes.'],
+        ];
+
+        foreach ($riders as $rider) {
+            DeliveryRider::firstOrCreate(
+                ['store_id' => $store->id, 'phone' => $rider['phone']],
+                $rider
+            );
         }
     }
 }

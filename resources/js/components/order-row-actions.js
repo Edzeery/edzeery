@@ -1,4 +1,7 @@
-export default function orderRowActions(orderId, orderNumber) {
+export default function orderRowActions(el) {
+    const orderId = el.dataset.orderId;
+    const orderNumber = el.dataset.orderNumber;
+
     return {
         open: false,
         top: 0,
