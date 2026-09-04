@@ -76,7 +76,12 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/orders', 'merchant.orders.index')->name('orders.index');
         Volt::route('/{store:slug}/returns', 'merchant.returns.index')->name('returns.index');
         Volt::route('/{store:slug}/order-settings', 'merchant.order-settings')->name('order-settings');
-        Volt::route('/{store:slug}/delivery', 'merchant.delivery')->name('delivery');
+
+        // Delivery — split into standalone pages (sidebar group).
+        Volt::route('/{store:slug}/delivery', 'merchant.delivery.providers')->name('delivery');
+        Volt::route('/{store:slug}/delivery/announced-rates', 'merchant.delivery.announced-rates')->name('delivery.announced-rates');
+        Volt::route('/{store:slug}/delivery/stopdesk', 'merchant.delivery.stopdesk')->name('delivery.stopdesk');
+
         Volt::route('/{store:slug}/storefront-settings', 'merchant.storefront-settings')->name('storefront-settings');
         Volt::route('/{store:slug}/settings', 'merchant.store-settings')->name('store-settings');
 

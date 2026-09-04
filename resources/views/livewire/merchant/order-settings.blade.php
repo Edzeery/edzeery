@@ -7,17 +7,16 @@ use App\Models\Products\Product;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
-use function Livewire\Volt\updated;
 
 layout('components.layouts.store');
 
 state([
     'tab' => 'shifts',
     'members' => [],
-    'allProducts' => [],
     'shifts' => [],
     'assignments' => [],
 
@@ -27,9 +26,10 @@ state([
         'membership_id' => '',
         'shift_type' => 'morning',
         'start_time' => '08:00',
-        'end_time' => '17:00',
+        'end_time' => '12:00',
         'days_of_week' => [1, 2, 3, 4, 5],
         'is_active' => true,
+        'max_concurrent_orders' => null,
     ],
 
     'showAssignModal' => false,
@@ -38,7 +38,9 @@ state([
         'product_ids' => [],
     ],
     'productSearch' => '',
-    'productResults' => [],
+    'assignProductNames' => [],
+    'storeTimezone' => null,
+    'onShiftNow' => 0,
 ]);
 
 mount(function (): void {
@@ -46,33 +48,33 @@ mount(function (): void {
     $this->loadData();
 });
 
-updated(['productSearch'], function (): void {
-    $this->searchAssignProducts();
-});
-
 $loadData = function (): void {
     $storeId = currentStoreId();
 
+    $store = \App\Models\Stores\Store::where('id', $storeId)->with('settings')->first();
+    $this->storeTimezone = $store?->settings?->timezone ?? config('app.timezone');
+
     $this->members = StoreMembership::where('store_id', $storeId)
-        ->where('is_active', true)
         ->with('user')
         ->get()
         ->toArray();
 
     $this->shifts = ConfirmationShift::where('store_id', $storeId)
         ->with('membership.user')
-        ->orderBy('created_at')
-        ->get()
-        ->toArray();
+        ->orderBy('start_time')
+        ->get();
+
+    $now = \Carbon\Carbon::now($this->storeTimezone);
+    $this->onShiftNow = $this->shifts
+        ->filter(fn (ConfirmationShift $s) => $s->coversDayTime($now->dayOfWeekIso, $now->format('H:i')))
+        ->pluck('membership_id')
+        ->unique()
+        ->count();
+
+    $this->shifts = $this->shifts->toArray();
 
     $this->assignments = ConfirmationProductAssignment::where('store_id', $storeId)
-        ->with('membership.user', 'product')
-        ->get()
-        ->toArray();
-
-    $this->allProducts = Product::where('store_id', $storeId)
-        ->select('id', 'name', 'price')
-        ->orderBy('name')
+        ->with('membership.user', 'product:id,name')
         ->get()
         ->toArray();
 };
@@ -110,8 +112,9 @@ $openShiftModal = function (?string $shiftId = null): void {
             'shift_type' => $shift->shift_type,
             'start_time' => $shift->start_time,
             'end_time' => $shift->end_time,
-            'days_of_week' => $shift->days_of_week ?? [1, 2, 3, 4, 5, 6, 7],
+            'days_of_week' => $shift->days_of_week ?? range(1, 7),
             'is_active' => $shift->is_active,
+            'max_concurrent_orders' => $shift->max_concurrent_orders,
         ];
     } else {
         $this->editingShiftId = null;
@@ -122,6 +125,7 @@ $openShiftModal = function (?string $shiftId = null): void {
             'end_time' => '12:00',
             'days_of_week' => [1, 2, 3, 4, 5],
             'is_active' => true,
+            'max_concurrent_orders' => null,
         ];
     }
     $this->showShiftModal = true;
@@ -144,15 +148,29 @@ $saveShift = function (): void {
         'membership_id' => 'required|exists:store_memberships,id',
         'shift_type' => 'required|string|in:morning,afternoon,evening,full_day,custom',
         'start_time' => 'required|date_format:H:i',
-        'end_time' => 'required|date_format:H:i|after:start_time',
+        'end_time' => 'required|date_format:H:i',
         'days_of_week' => 'required|array|min:1',
         'days_of_week.*' => 'integer|min:1|max:7',
         'is_active' => 'boolean',
+        'max_concurrent_orders' => 'nullable|integer|min:1|max:9999',
     ])->validate();
 
     $storeId = currentStoreId();
+
+    // Overnight shifts are allowed (start > end); empty end means invalid.
+    $days = array_values(array_unique($validated['days_of_week']));
+
+    // Prevent overlapping active shifts for the same member.
+    $candidate = $validated;
+    $candidate['days_of_week'] = $days;
+    if (ConfirmationShift::overlapsActiveShift($candidate, $this->editingShiftId)) {
+        $this->addError('shiftForm.start_time', __('merchant_panel.shift_overlap'));
+        return;
+    }
+
     $data = $validated;
     $data['store_id'] = $storeId;
+    $data['days_of_week'] = $days;
 
     if (! empty($this->editingShiftId)) {
         ConfirmationShift::where('store_id', $storeId)
@@ -181,6 +199,13 @@ $toggleShiftActive = function (string $shiftId): void {
     $this->loadData();
 };
 
+$benefitsMembership = function (string $membershipId): bool {
+    return StoreMembership::where('store_id', currentStoreId())
+        ->where('id', $membershipId)
+        ->where('is_active', true)
+        ->exists();
+};
+
 // ——— Product Assignments ———
 
 $openAssignModal = function (?string $membershipId = null): void {
@@ -188,39 +213,65 @@ $openAssignModal = function (?string $membershipId = null): void {
         'membership_id' => $membershipId ?? '',
         'product_ids' => [],
     ];
+    $this->assignProductNames = [];
 
     if ($membershipId) {
-        $this->assignForm['product_ids'] = ConfirmationProductAssignment::where('store_id', currentStoreId())
+        $existing = ConfirmationProductAssignment::where('store_id', currentStoreId())
             ->where('membership_id', $membershipId)
-            ->pluck('product_id')
-            ->toArray();
+            ->with('product:id,name')
+            ->get();
+
+        $this->assignForm['product_ids'] = $existing->pluck('product_id')->toArray();
+        $this->assignProductNames = $existing->pluck('product.name', 'product_id')->toArray();
     }
 
     $this->productSearch = '';
-    $this->productResults = [];
     $this->showAssignModal = true;
 };
 
-$searchAssignProducts = function (): void {
-    $search = $this->productSearch;
-    if (strlen($search) < 2) {
-        $this->productResults = [];
-        return;
-    }
+$searchAssignProducts = computed(function (): array {
+    $search = trim($this->productSearch);
     $storeId = currentStoreId();
-    $this->productResults = Product::where('store_id', $storeId)
-        ->where('name', 'like', "%{$search}%")
+
+    return Product::where('store_id', $storeId)
+        ->where('is_active', true)
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%");
+            });
+        })
+        ->orderBy('name')
         ->limit(15)
-        ->get()
-        ->toArray();
-};
+        ->get(['id', 'name', 'sku', 'price'])
+        ->map(fn (Product $p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sku' => $p->sku,
+            'price' => (float) $p->price,
+            'image_url' => $p->getPrimaryImagePathAttribute(),
+        ])
+        ->values()
+        ->all();
+});
 
 $toggleAssignProduct = function (string $productId): void {
+    $product = Product::where('store_id', currentStoreId())
+        ->where('id', $productId)
+        ->where('is_active', true)
+        ->first();
+
+    if (! $product) {
+        return;
+    }
+
     $current = $this->assignForm['product_ids'];
     if (in_array($productId, $current)) {
         $this->assignForm['product_ids'] = array_values(array_diff($current, [$productId]));
+        unset($this->assignProductNames[$productId]);
     } else {
         $this->assignForm['product_ids'][] = $productId;
+        $this->assignProductNames[$productId] = $product->name;
     }
 };
 
@@ -235,12 +286,29 @@ $saveAssignments = function (): void {
         return;
     }
 
-    DB::transaction(function () use ($storeId, $membershipId) {
+    $productIds = array_values(array_unique($this->assignForm['product_ids'] ?? []));
+
+    if (! $this->benefitsMembership($membershipId)) {
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.select_member_first'));
+        return;
+    }
+
+    // Ensure every selected product actually belongs to this store.
+    $validProductCount = Product::where('store_id', $storeId)
+        ->whereIn('id', $productIds)
+        ->count();
+
+    if ($validProductCount !== count($productIds)) {
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.invalid_products'));
+        return;
+    }
+
+    DB::transaction(function () use ($storeId, $membershipId, $productIds) {
         ConfirmationProductAssignment::where('store_id', $storeId)
             ->where('membership_id', $membershipId)
             ->delete();
 
-        foreach ($this->assignForm['product_ids'] as $productId) {
+        foreach ($productIds as $productId) {
             ConfirmationProductAssignment::create([
                 'store_id' => $storeId,
                 'membership_id' => $membershipId,
@@ -288,6 +356,33 @@ $removeAssignment = function (string $assignmentId): void {
             title="{{ __('merchant_panel.order_settings') }}"
             description="{{ __('merchant_panel.order_settings_desc') }}">
         </x-edz.page-header>
+    </div>
+
+    @php
+        $now = \Carbon\Carbon::now($storeTimezone ?? config('app.timezone'));
+    @endphp
+
+    {{-- Store-time info bar --}}
+    <div class="edz-card edz-card--padded mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center">
+                    <x-edz.icon name="clock" class="w-5 h-5 text-brand-500" />
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-ink">
+                        {{ $now->translatedFormat('l, d M Y — H:i') }}
+                    </p>
+                    <p class="text-xs text-ink-muted">{{ __('merchant_panel.store_timezone') }}: {{ $storeTimezone }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-success-500"></span>
+                <span class="text-sm text-ink">
+                    {{ __('merchant_panel.agents_on_shift_now', ['count' => $onShiftNow]) }}
+                </span>
+            </div>
+        </div>
     </div>
 
     {{-- Stats Cards --}}
@@ -372,6 +467,7 @@ $removeAssignment = function (string $assignmentId): void {
                                 <th>{{ __('merchant_panel.type') }}</th>
                                 <th>{{ __('merchant_panel.hours') }}</th>
                                 <th>{{ __('merchant_panel.days') }}</th>
+                                <th>{{ __('merchant_panel.max_orders_cap') }}</th>
                                 <th>{{ __('merchant_panel.status') }}</th>
                                 <th class="text-end">{{ __('merchant_panel.actions') }}</th>
                             </tr>
@@ -380,13 +476,22 @@ $removeAssignment = function (string $assignmentId): void {
                             @foreach($shifts as $shift)
                                 <tr wire:key="shift-{{ $shift['id'] }}">
                                     <td class="font-medium text-ink">
-                                        {{ $shift['membership']['user']['name'] ?? '—' }}
+                                        <div class="flex items-center gap-2">
+                                            {{ $shift['membership']['user']['name'] ?? '—' }}
+                                            @if(empty($shift['membership']['is_active']))
+                                                <span class="edz-badge edz-badge--neutral">{{ __('merchant_panel.member_inactive') }}</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="capitalize">
                                         {{ $SHIFT_TYPES[$shift['shift_type']] ?? $shift['shift_type'] }}
                                     </td>
                                     <td class="font-mono text-xs">
+                                        @php $isOvernight = $shift['start_time'] !== $shift['end_time'] && $shift['start_time'] > $shift['end_time']; @endphp
                                         {{ $shift['start_time'] }} — {{ $shift['end_time'] }}
+                                        @if($isOvernight)
+                                            <span class="edz-badge edz-badge--brand ms-1">{{ __('merchant_panel.shift_overnight') }}</span>
+                                        @endif
                                     </td>
                                     <td class="text-xs">
                                         @if(!empty($shift['days_of_week']))
@@ -397,6 +502,13 @@ $removeAssignment = function (string $assignmentId): void {
                                             </span>
                                         @else
                                             <span class="text-ink-muted">{{ __('merchant_panel.all_days') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-xs">
+                                        @if(!empty($shift['max_concurrent_orders']))
+                                            <span class="edz-badge edz-badge--brand">{{ $shift['max_concurrent_orders'] }}</span>
+                                        @else
+                                            <span class="text-ink-muted">∞</span>
                                         @endif
                                     </td>
                                     <td>
@@ -542,7 +654,11 @@ $removeAssignment = function (string $assignmentId): void {
                     <div class="grid grid-cols-2 gap-4">
                         <div class="edz-field">
                             <label class="edz-field__label" for="shift-start">{{ __('merchant_panel.start_time') }}</label>
-                            <input type="time" id="shift-start" wire:model="shiftForm.start_time" class="edz-input">
+                            <input type="time" id="shift-start" wire:model="shiftForm.start_time"
+                                   class="edz-input @error('shiftForm.start_time') edz-input--error @enderror">
+                            @error('shiftForm.start_time')
+                                <span class="edz-field__error">{{ $message }}</span>
+                            @enderror
                         </div>
                         <div class="edz-field">
                             <label class="edz-field__label" for="shift-end">{{ __('merchant_panel.end_time') }}</label>
@@ -564,6 +680,18 @@ $removeAssignment = function (string $assignmentId): void {
                                 </button>
                             @endforeach
                         </div>
+                    </div>
+
+                    <div class="edz-field">
+                        <label class="edz-field__label" for="shift-max">{{ __('merchant_panel.max_concurrent_orders') }}</label>
+                        <input type="number" id="shift-max" wire:model.blur="shiftForm.max_concurrent_orders"
+                               min="1" max="9999" inputmode="numeric"
+                               placeholder="{{ __('merchant_panel.max_concurrent_orders_placeholder') }}"
+                               class="edz-input @error('shiftForm.max_concurrent_orders') edz-input--error @enderror">
+                        <p class="edz-field__hint">{{ __('merchant_panel.max_concurrent_orders_hint') }}</p>
+                        @error('shiftForm.max_concurrent_orders')
+                            <span class="edz-field__error">{{ $message }}</span>
+                        @enderror
                     </div>
 
                     <div class="flex items-center gap-2 pt-2 border-t border-surface-border">
@@ -609,45 +737,15 @@ $removeAssignment = function (string $assignmentId): void {
 
                     <div class="edz-field">
                         <label class="edz-field__label" for="assign-search">{{ __('merchant_panel.search_products') }}</label>
-                        <div class="relative">
-                            <input type="text" id="assign-search" wire:model.live.debounce.300ms="productSearch"
-                                   placeholder="{{ __('merchant_panel.type_product_name') }}"
-                                   class="edz-input ps-9">
-                            <x-edz.icon name="arrow-right" class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
-                        </div>
-                        @if(!empty($productResults))
-                            <div class="border border-surface-border rounded-lg max-h-40 overflow-y-auto mt-2">
-                                @foreach($productResults as $p)
-                                    <label class="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-surface-secondary">
-                                        <input type="checkbox"
-                                               {{ in_array($p['id'], $assignForm['product_ids'] ?? []) ? 'checked' : '' }}
-                                               wire:click="toggleAssignProduct('{{ $p['id'] }}')"
-                                               class="rounded border-surface-border text-brand-600">
-                                        <span class="flex-1">{{ $p['name'] }}</span>
-                                        <span class="text-xs text-ink-muted">{{ currency($p['price'] ?? 0) }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        @endif
+                        <x-edz.product-multi-picker
+                            :options="$this->searchAssignProducts"
+                            :selected="$assignForm['product_ids'] ?? []"
+                            :selected-names="$assignProductNames"
+                            toggle="toggleAssignProduct"
+                            model="productSearch"
+                            :placeholder="__('merchant_panel.search_products_to_add')"
+                            :empty-message="__('merchant_panel.list_no_products_found')" />
                     </div>
-
-                    @if(!empty($assignForm['product_ids']))
-                        <div class="edz-field">
-                            <span class="edz-field__label">{{ __('merchant_panel.selected_count') }} ({{ count($assignForm['product_ids']) }})</span>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                @foreach($assignForm['product_ids'] as $pid)
-                                    @php $pname = collect($allProducts)->firstWhere('id', $pid)['name'] ?? $pid @endphp
-                                    <span class="edz-badge edz-badge--brand">
-                                        {{ $pname }}
-                                        <button type="button" wire:click="toggleAssignProduct('{{ $pid }}')"
-                                                class="cursor-pointer" aria-label="{{ __('buttons.cancel') }}">
-                                            <x-edz.icon name="x-mark" class="w-3 h-3" />
-                                        </button>
-                                    </span>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-surface-border">
                         <button type="button" @click="$wire.set('showAssignModal', false)" class="edz-btn edz-btn--ghost">

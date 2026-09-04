@@ -153,17 +153,13 @@ class StoreMembership extends Model
         $store = $this->storeWithTimezone()->first() ?? $this->store;
         $timezone = $store?->settings?->timezone ?? config('app.timezone');
         $at = $at ?? now($timezone);
+
         $dayOfWeek = $at->dayOfWeekIso;
-        $currentTime = $at->format('H:i:s');
+        $time = $at->format('H:i');
 
         return $this->confirmationShifts()
             ->where('is_active', true)
-            ->where('start_time', '<=', $currentTime)
-            ->where('end_time', '>=', $currentTime)
-            ->where(function ($q) use ($dayOfWeek) {
-                $q->whereNull('days_of_week')
-                  ->orWhereJsonContains('days_of_week', $dayOfWeek);
-            })
-            ->exists();
+            ->get(['days_of_week', 'start_time', 'end_time', 'is_active'])
+            ->contains(fn ($shift) => $shift->coversDayTime($dayOfWeek, $time));
     }
 }

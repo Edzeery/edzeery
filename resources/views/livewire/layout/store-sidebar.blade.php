@@ -11,6 +11,7 @@ $withData = [
     'productsOpen' => false,
     'inventoryOpen' => false,
     'operationsOpen' => false,
+    'deliveryOpen' => false,
     'storeOpen' => false,
 ];
 
@@ -32,7 +33,11 @@ if ($store) {
         'merchant.returns.*',
         'merchant.order-settings',
         'merchant.debts.*',
-        'merchant.delivery'
+    );
+    $withData['deliveryOpen'] = request()->routeIs(
+        'merchant.delivery',
+        'merchant.delivery.announced-rates',
+        'merchant.delivery.stopdesk',
     );
     $withData['storeOpen'] = request()->routeIs(
         'merchant.store-settings',
@@ -66,6 +71,7 @@ with($withData);
             products: {{ $productsOpen ? 'true' : 'false' }},
             inventory: {{ $inventoryOpen ? 'true' : 'false' }},
             operations: {{ $operationsOpen ? 'true' : 'false' }},
+            delivery: {{ $deliveryOpen ? 'true' : 'false' }},
             store: {{ $storeOpen ? 'true' : 'false' }},
         },
      }"
@@ -220,7 +226,7 @@ with($withData);
             </div>
         @endif
 
-        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts || $canViewDelivery)
+        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts)
             <div class="edz-sidebar__group">
                 <button type="button"
                         @click="openGroups.operations = !openGroups.operations"
@@ -265,14 +271,6 @@ with($withData);
                         </a>
                     @endif
 
-                    @if ($canViewDelivery)
-                        <a href="{{ route('merchant.delivery', $store) }}" wire:navigate
-                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery')) edz-sidebar__sub-link--active @endif">
-                            <x-edz.icon name="truck" class="edz-sidebar__icon edz-sidebar__sub-icon" />
-                            <span class="edz-sidebar__label">{{ __('merchant_panel.delivery_settings') }}</span>
-                        </a>
-                    @endif
-
                     @if ($canViewDebts)
                         <a href="{{ route('merchant.debts.index', $store) }}" wire:navigate
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.debts.*')) edz-sidebar__sub-link--active @endif">
@@ -280,6 +278,48 @@ with($withData);
                             <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>
                         </a>
                     @endif
+                </div>
+            </div>
+        @endif
+
+        @if ($canViewDelivery)
+            <div class="edz-sidebar__group">
+                <button type="button"
+                        @click="openGroups.delivery = !openGroups.delivery"
+                        class="edz-sidebar__sub-toggle"
+                        :class="{ 'edz-sidebar__sub-toggle--open': openGroups.delivery }"
+                        :aria-expanded="openGroups.delivery.toString()"
+                        aria-controls="edz-sub-delivery"
+                        aria-label="{{ __('merchant_panel.delivery_group') }}">
+                    <x-edz.icon name="truck" class="edz-sidebar__icon" />
+                    <span class="edz-sidebar__label">{{ __('merchant_panel.delivery_group') }}</span>
+                    <x-edz.icon name="chevron-down" class="edz-sidebar__sub-chevron w-4 h-4" />
+                </button>
+
+                <div id="edz-sub-delivery" class="edz-sidebar__sub" x-show="openGroups.delivery" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 transform -translate-y-1"
+                     x-transition:enter-end="opacity-100 transform translate-y-0"
+                     x-transition:leave="transition ease-in duration-150"
+                     x-transition:leave-start="opacity-100 transform translate-y-0"
+                     x-transition:leave-end="opacity-0 transform -translate-y-1">
+                    <a href="{{ route('merchant.delivery', $store) }}" wire:navigate
+                       class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery')) edz-sidebar__sub-link--active @endif">
+                        <x-edz.icon name="truck" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                        <span class="edz-sidebar__label">{{ __('merchant_panel.delivery_companies') }}</span>
+                    </a>
+
+                    <a href="{{ route('merchant.delivery.announced-rates', $store) }}" wire:navigate
+                       class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery.announced-rates')) edz-sidebar__sub-link--active @endif">
+                        <x-edz.icon name="banknotes" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                        <span class="edz-sidebar__label">{{ __('merchant_panel.announced_rates') }}</span>
+                    </a>
+
+                    <a href="{{ route('merchant.delivery.stopdesk', $store) }}" wire:navigate
+                       class="edz-sidebar__sub-link @if (request()->routeIs('merchant.delivery.stopdesk')) edz-sidebar__sub-link--active @endif">
+                        <x-edz.icon name="map-pin" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                        <span class="edz-sidebar__label">{{ __('merchant_panel.pickup_points') }}</span>
+                    </a>
                 </div>
             </div>
         @endif

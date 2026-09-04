@@ -427,3 +427,33 @@ select.edz-select,
     background-color: rgb(var(--edz-color-secondary));
   }
 }
+
+// --- Multi-product picker selected chips ---
+.edz-product-multi__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  border-top: 1px solid rgb(var(--edz-color-border));
+  margin-top: 0.375rem;
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+
+.edz-product-multi__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: rgb(var(--edz-color-text));
+  background-color: rgb(var(--edz-color-brand-600), 0.08);
+  border: 1px solid rgb(var(--edz-color-brand-600), 0.2);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+
+  &:hover {
+    background-color: rgb(var(--edz-color-brand-600), 0.14);
+    border-color: rgb(var(--edz-color-brand-600), 0.35);
+  }
+}

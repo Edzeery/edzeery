@@ -101,11 +101,16 @@ $submitOrder = function () {
 
     if ($this->delivery_type === 'home') {
         $calculator = app(ShippingCostCalculator::class);
+        $variantIds = collect($items)->pluck('variant_id')->filter()->values()->all();
+        $shippingProductIds = ProductVariant::where('store_id', $storeId)
+            ->whereIn('id', $variantIds)
+            ->pluck('product_id')->filter()->unique()->values()->all();
         $shipping = $calculator->calculate(
             currentStore(),
             $this->state_id,
             $this->city_id,
-            $subtotal
+            $subtotal,
+            $shippingProductIds
         );
 
         if (!($shipping['available'] ?? false)) {
@@ -293,7 +298,8 @@ $submitOrder = function () {
         );
 
         $calculator = app(ShippingCostCalculator::class);
-        $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal);
+        $shippingProductIds = $variants->pluck('product_id')->filter()->unique()->values()->all();
+        $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal, $shippingProductIds);
         $paymentMethods = $this->paymentMethods;
     @endphp
 

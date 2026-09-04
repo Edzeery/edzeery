@@ -2,14 +2,18 @@
 
 namespace App\Domains\Shipping\Models;
 
+use App\Models\Locations\City;
 use App\Models\Locations\State;
 use App\Models\Stores\Store;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class DeliveryRate extends Model
+/**
+ * Per-municipality (بلديّة) home delivery price for a carrier + state.
+ * Overrides the state-level home cost of delivery_rates when set.
+ */
+class DeliveryRateCity extends Model
 {
     use HasUlids;
 
@@ -17,22 +21,15 @@ class DeliveryRate extends Model
         'store_id',
         'shipping_provider_id',
         'state_id',
-        'label',
-        'office_cost',
+        'city_id',
         'home_cost',
         'free_above',
-        'default_center_id',
-        'source',
-        'synced_at',
         'is_active',
     ];
 
     protected $casts = [
-        'office_cost' => 'decimal:2',
         'home_cost' => 'decimal:2',
         'free_above' => 'integer',
-        'source' => 'string',
-        'synced_at' => 'datetime',
         'is_active' => 'boolean',
     ];
 
@@ -51,14 +48,8 @@ class DeliveryRate extends Model
         return $this->belongsTo(State::class);
     }
 
-    public function defaultCenter(): BelongsTo
+    public function city(): BelongsTo
     {
-        return $this->belongsTo(StopdeskPoint::class, 'default_center_id');
-    }
-
-    public function cityRates(): HasMany
-    {
-        return $this->hasMany(DeliveryRateCity::class, 'shipping_provider_id', 'shipping_provider_id')
-            ->where('state_id', $this->state_id);
+        return $this->belongsTo(City::class);
     }
 }

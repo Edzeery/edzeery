@@ -1,19 +1,23 @@
 <?php
 
+use App\Domains\Shipping\Models\DeliveryPriceList;
+use App\Domains\Shipping\Models\DeliveryRate;
+use App\Domains\Shipping\Models\DeliveryRateCity;
+use App\Domains\Shipping\Models\DeliveryRateListCity;
+use App\Domains\Shipping\Models\DeliveryRateListState;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Domains\Shipping\Models\ShippingRate;
-use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\ShippingCostCalculator;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
+use App\Models\Products\Product;
 use App\Models\Stores\Store;
 use App\Models\User;
-
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
@@ -24,7 +28,7 @@ beforeEach(function () {
     $this->store = Store::create([
         'user_id' => $this->user->id,
         'name' => 'Test Store',
-        'slug' => 'test-store-' . uniqid(),
+        'slug' => 'test-store-'.uniqid(),
         'status' => 'active',
     ]);
 
@@ -238,4 +242,298 @@ test('inactive provider flat rate ignored', function () {
     $result = $this->calculator->calculate($this->store);
 
     expect($result['method'])->toBe('free');
+});
+
+// ————— Announced company rates (delivery_rates) —————
+
+function calculatorProvider(Store $store, string $name = 'Yalidine', bool $default = true): ShippingProvider
+{
+    return ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => $name,
+        'code' => Str::slug($name).'-'.uniqid(),
+        'credentials' => [],
+        'is_active' => true,
+        'is_default' => $default,
+    ]);
+}
+
+function calculatorProduct(Store $store, string $name, float $price = 900): Product
+{
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => $name,
+        'slug' => Str::slug($name).'-'.uniqid(),
+        'sku' => 'calc-'.uniqid(),
+        'price' => $price,
+        'is_active' => true,
+    ]);
+
+    \App\Models\Products\ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'Default',
+        'sku' => 'calc-v-'.uniqid(),
+        'price' => $price,
+        'stock' => 10,
+    ]);
+
+    return $product;
+}
+
+test('announced company rate takes precedence over legacy rate', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'office_cost' => 500,
+        'is_active' => true,
+    ]);
+
+    ShippingRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'cost' => 400,
+        'is_active' => true,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id);
+
+    expect($result['cost'])->toBe(900.0)
+        ->and($result['method'])->toBe('rate')
+        ->and($result['provider_name'])->toBe('Yalidine');
+});
+
+test('storefront resolves to the default provider when several have rates', function () {
+    calculatorProvider($this->store, 'Default'); // is_default = true
+    $other = calculatorProvider($this->store, 'Other', false);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $other->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 1100,
+        'is_active' => true,
+    ]);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => ShippingProvider::where('store_id', $this->store->id)->where('name', 'Default')->first()->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'is_active' => true,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id);
+
+    expect($result['provider_name'])->toBe('Default')
+        ->and($result['cost'])->toBe(900.0);
+});
+
+test('announced per-municipality rate overrides the state home cost', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'is_active' => true,
+    ]);
+
+    DeliveryRateCity::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'city_id' => $this->city->id,
+        'home_cost' => 450,
+        'is_active' => true,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, $this->city->id);
+
+    expect($result['cost'])->toBe(450.0);
+});
+
+test('announced free_above threshold triggers free shipping', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'free_above' => 5000,
+        'is_active' => true,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 6000);
+
+    expect($result['is_free'])->toBeTrue()
+        ->and($result['cost'])->toBe(0);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 3000);
+
+    expect($result['is_free'])->toBeFalse()
+        ->and($result['cost'])->toBe(900.0);
+});
+
+// ————— Price lists (delivery_price_lists) —————
+
+test('price list price applies when the whole cart is covered by one list', function () {
+    $p1 = calculatorProduct($this->store, 'Alpha');
+    $p2 = calculatorProduct($this->store, 'Beta');
+
+    $list = DeliveryPriceList::create([
+        'store_id' => $this->store->id,
+        'name' => 'Fast',
+        'is_active' => true,
+    ]);
+    $list->products()->attach([$p1->id, $p2->id]);
+
+    DeliveryRateListState::create([
+        'delivery_price_list_id' => $list->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 650,
+        'office_cost' => 350,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 0, [$p1->id, $p2->id]);
+
+    expect($result['cost'])->toBe(650.0)
+        ->and($result['method'])->toBe('rate')
+        ->and($result['provider_name'])->toBe('Fast');
+});
+
+test('price list municipality override beats the list state price', function () {
+    $p = calculatorProduct($this->store, 'Gamma');
+
+    $list = DeliveryPriceList::create([
+        'store_id' => $this->store->id,
+        'name' => 'Fast',
+        'is_active' => true,
+    ]);
+    $list->products()->attach($p->id);
+
+    DeliveryRateListState::create([
+        'delivery_price_list_id' => $list->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 650,
+        'office_cost' => 350,
+    ]);
+
+    DeliveryRateListCity::create([
+        'delivery_price_list_id' => $list->id,
+        'state_id' => $this->state->id,
+        'city_id' => $this->city->id,
+        'home_cost' => 400,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, $this->city->id, 0, [$p->id]);
+
+    expect($result['cost'])->toBe(400.0);
+});
+
+test('mixed cart falls back to the announced company rate', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'is_active' => true,
+    ]);
+
+    $inList = calculatorProduct($this->store, 'InList');
+    $outside = calculatorProduct($this->store, 'Outside');
+
+    $list = DeliveryPriceList::create([
+        'store_id' => $this->store->id,
+        'name' => 'Fast',
+        'is_active' => true,
+    ]);
+    $list->products()->attach($inList->id);
+
+    DeliveryRateListState::create([
+        'delivery_price_list_id' => $list->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 650,
+        'office_cost' => 350,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 0, [$inList->id, $outside->id]);
+
+    expect($result['provider_name'])->toBe('Yalidine')
+        ->and($result['cost'])->toBe(900.0);
+});
+
+test('cart covered by two lists falls back to the announced company rate', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'is_active' => true,
+    ]);
+
+    $p = calculatorProduct($this->store, 'Shared');
+
+    foreach (['ListA', 'ListB'] as $name) {
+        $list = DeliveryPriceList::create([
+            'store_id' => $this->store->id,
+            'name' => $name,
+            'is_active' => true,
+        ]);
+        $list->products()->attach($p->id);
+
+        DeliveryRateListState::create([
+            'delivery_price_list_id' => $list->id,
+            'state_id' => $this->state->id,
+            'home_cost' => $name === 'ListA' ? 650 : 500,
+        ]);
+    }
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 0, [$p->id]);
+
+    expect($result['provider_name'])->toBe('Yalidine')
+        ->and($result['cost'])->toBe(900.0);
+});
+
+test('inactive price lists are ignored', function () {
+    $provider = calculatorProvider($this->store);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 900,
+        'is_active' => true,
+    ]);
+
+    $p = calculatorProduct($this->store, 'Inactive');
+
+    $list = DeliveryPriceList::create([
+        'store_id' => $this->store->id,
+        'name' => 'Old',
+        'is_active' => false,
+    ]);
+    $list->products()->attach($p->id);
+
+    DeliveryRateListState::create([
+        'delivery_price_list_id' => $list->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 650,
+    ]);
+
+    $result = $this->calculator->calculate($this->store, $this->state->id, null, 0, [$p->id]);
+
+    expect($result['provider_name'])->toBe('Yalidine')
+        ->and($result['cost'])->toBe(900.0);
 });
