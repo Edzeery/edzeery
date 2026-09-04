@@ -73,7 +73,7 @@ with([
                 <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.total_orders') }}</p>
                 @if ($summary['total_orders_change'] != 0)
                     <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                        {{ $summary['total_orders_change'] > 0 ? 'text-success-700 bg-success-50 dark:text-success-300 dark:bg-success-900/30' : 'text-danger-700 bg-danger-50 dark:text-danger-300 dark:bg-danger-900/30' }}">
+                        {{ $summary['total_orders_change'] > 0 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
                         {{ $summary['total_orders_change'] > 0 ? '▲' : '▼' }} {{ abs($summary['total_orders_change']) }}%
                     </span>
                 @endif
@@ -86,7 +86,7 @@ with([
         <div class="edz-card edz-card--padded group">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.revenue') }}</p>
-                <div class="w-8 h-8 rounded-lg bg-success-50 dark:bg-success-900/20 flex items-center justify-center text-success-600">
+                <div class="w-8 h-8 rounded-lg bg-success-surface flex items-center justify-center text-success-600">
                     <x-edz.icon name="trending-up" class="w-4 h-4" />
                 </div>
             </div>
@@ -99,7 +99,7 @@ with([
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.confirmation_rate') }}</p>
                 <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                    {{ $summary['confirmation_rate'] >= 70 ? 'text-success-700 bg-success-50 dark:text-success-300 dark:bg-success-900/30' : 'text-warning-700 bg-warning-50 dark:text-warning-300 dark:bg-warning-900/30' }}">
+                    {{ $summary['confirmation_rate'] >= 70 ? 'text-success-fg-strong bg-success-surface' : 'text-warning-fg-strong bg-warning-surface' }}">
                     {{ $summary['confirmation_rate'] }}%
                 </span>
             </div>
@@ -116,7 +116,7 @@ with([
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.return_rate') }}</p>
                 <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                    {{ $summary['return_rate'] <= 10 ? 'text-success-700 bg-success-50 dark:text-success-300 dark:bg-success-900/30' : 'text-danger-700 bg-danger-50 dark:text-danger-300 dark:bg-danger-900/30' }}">
+                    {{ $summary['return_rate'] <= 10 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
                     {{ $summary['return_rate'] }}%
                 </span>
             </div>
@@ -150,7 +150,7 @@ with([
     <div class="edz-card edz-card--padded mb-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-xl {{ currentStore()?->isPubliclyActive() ? 'bg-success-50 dark:bg-success-900/20 text-success-600' : 'bg-warning-50 dark:bg-warning-900/20 text-warning-600' }} flex items-center justify-center">
+                <div class="flex-shrink-0 w-10 h-10 rounded-xl {{ currentStore()?->isPubliclyActive() ? 'bg-success-surface text-success-600' : 'bg-warning-surface text-warning-600' }} flex items-center justify-center">
                     <x-edz.icon name="external-link" class="w-5 h-5" />
                 </div>
                 <div>

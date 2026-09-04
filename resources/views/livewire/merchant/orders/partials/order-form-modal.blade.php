@@ -65,13 +65,13 @@
                         <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
                         <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
                             <button type="button"
-                                :class="delivery === 'home' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
                                 @click="delivery = 'home'" class="px-4 py-2 text-sm font-medium transition-colors">
                                 <x-edz.icon name="home" class="w-4 h-4 inline mr-1" />
                                 {{ __('merchant_panel.home_delivery_label') }}
                             </button>
                             <button type="button"
-                                :class="delivery === 'stopdesk' ? 'bg-primary-500 text-white' : 'bg-surface text-ink'"
+                                :class="delivery === 'stopdesk' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
                                 @click="delivery = 'stopdesk'" class="px-4 py-2 text-sm font-medium transition-colors">
                                 <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
                                 {{ __('merchant_panel.stop_desk_label') }}
@@ -142,16 +142,16 @@
 
                         {{-- Trigger to open product picker modal --}}
                         <button type="button" @click="openProductPicker()" :disabled="isLoadingProducts"
-                            class="w-full flex items-center gap-3 px-4 py-3 bg-surface-secondary dark:bg-ink-800
-                                border border-dashed border-surface-border dark:border-ink-600 rounded-xl
-                                hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/10
+                            class="w-full flex items-center gap-3 px-4 py-3 bg-surface-secondary
+                                border border-dashed border-surface-border rounded-xl
+                                hover:border-brand-400 hover:bg-brand-50
                                 transition-colors text-sm text-ink-muted group disabled:opacity-50">
-                            <x-edz.spinner :show="'isLoadingProducts'" class="w-5 h-5 text-primary-500" />
+                            <x-edz.spinner :show="'isLoadingProducts'" class="w-5 h-5 text-brand-500" />
                             <x-edz.icon name="qr-code" x-show="!isLoadingProducts"
-                                class="w-5 h-5 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                                class="w-5 h-5 text-ink-muted group-hover:text-brand-500 transition-colors" />
                             <span class="flex-1 text-start">{{ __('merchant_panel.search_products_barcode') }}</span>
                             <x-edz.icon name="plus"
-                                class="w-4 h-4 text-ink-muted group-hover:text-primary-500 transition-colors" />
+                                class="w-4 h-4 text-ink-muted group-hover:text-brand-500 transition-colors" />
                         </button>
 
                         {{-- Items list --}}
@@ -159,7 +159,7 @@
                             <div class="mt-3 space-y-2  overflow-y-auto max-h-[calc(80vh-475px)]  edz-scroll">
                                 @foreach ($form['items'] as $idx => $item)
                                     <div
-                                        class="flex items-center gap-3 p-3 bg-surface-secondary dark:bg-ink-800 rounded-lg">
+                                        class="flex items-center gap-3 p-3 bg-surface-secondary rounded-lg">
                                         {{-- Image --}}
                                         <img src="{{ $item['image_url'] ?? asset('img/icons/noimg.png') }}"
                                             alt=""
@@ -184,12 +184,12 @@
 
                                         {{-- Quantity stepper --}}
                                         <div
-                                            class="flex items-center rounded-lg border border-surface-border dark:border-ink-600 overflow-hidden shrink-0">
+                                            class="flex items-center rounded-lg border border-surface-border overflow-hidden shrink-0">
                                             <button type="button"
                                                 wire:click="updateFormItemQty({{ $idx }}, {{ max(1, $item['quantity'] - 1) }})"
                                                 :disabled="{{ $item['quantity'] <= 1 ? 'true' : 'false' }}"
-                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
-                                                    text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
+                                                class="w-8 h-8 flex items-center justify-center bg-surface
+                                                    text-ink-muted hover:bg-surface-secondary
                                                     transition-colors disabled:opacity-30 disabled:cursor-not-allowed
                                                     text-sm font-medium select-none">
                                                 &minus;
@@ -197,7 +197,7 @@
                                             <input type="number" value="{{ $item['quantity'] }}"
                                                 wire:change="updateFormItemQty({{ $idx }}, parseInt($event.target.value))"
                                                 min="1"
-                                                class="w-10 h-8 text-center border-x border-surface-border dark:border-ink-600
+                                                class="w-10 h-8 text-center border-x border-surface-border
                                                     bg-transparent text-sm font-semibold text-ink
                                                     focus:outline-none focus:ring-0
                                                     [appearance:textfield]
@@ -205,8 +205,8 @@
                                                     [&::-webkit-inner-spin-button]:appearance-none">
                                             <button type="button"
                                                 wire:click="updateFormItemQty({{ $idx }}, {{ $item['quantity'] + 1 }})"
-                                                class="w-8 h-8 flex items-center justify-center bg-surface dark:bg-ink-700
-                                                    text-ink-muted hover:bg-surface-secondary dark:hover:bg-ink-600
+                                                class="w-8 h-8 flex items-center justify-center bg-surface
+                                                    text-ink-muted hover:bg-surface-secondary
                                                     transition-colors disabled:opacity-30 disabled:cursor-not-allowed
                                                     text-sm font-medium select-none">
                                                 &plus;
@@ -232,7 +232,7 @@
 
                                         {{-- Delete --}}
                                         <button type="button" wire:click="removeFormItem({{ $idx }})"
-                                            class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors">
+                                            class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-surface transition-colors">
                                             <x-edz.icon name="x-mark" class="w-4 h-4" />
                                         </button>
                                     </div>
@@ -255,7 +255,7 @@
                             }
                             $grandTotal = max(0, $subtotal - $discount);
                         @endphp
-                        <div class="bg-surface-secondary dark:bg-ink-800 rounded-lg p-4">
+                        <div class="bg-surface-secondary rounded-lg p-4">
                             {{-- Top row: main stats --}}
                             <div class="flex items-center justify-between gap-4 flex-wrap">
                                 <div class="flex items-center gap-4 text-sm">
@@ -283,7 +283,7 @@
 
                             {{-- Discount row --}}
                             <div
-                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border">
                                 <div class="flex items-center gap-2">
                                     <x-edz.select wire:model="form.discount_type" :options="[
                                         ['value' => '', 'label' => __('merchant_panel.discount')],
@@ -310,7 +310,7 @@
 
                             {{-- Grand total row --}}
                             <div
-                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border dark:border-ink-700">
+                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border">
                                 <span class="text-base font-bold text-ink">{{ __('merchant_panel.total') }}</span>
                                 <span
                                     class="text-lg font-bold text-ink tabular-nums">{{ currency($grandTotal) }}</span>
@@ -398,7 +398,7 @@
 
                     {{-- Product items (server-rendered) --}}
                     <div wire:loading.remove wire:target="loadProducts"
-                        class="divide-y divide-surface-border dark:divide-ink-700">
+                        class="divide-y divide-surface-border">
                         @forelse ($formProductResults as $pv)
                             @php
                                 $searchText = mb_strtolower(
@@ -413,7 +413,7 @@
                                 @if ($pv['has_variants'] && ($pv['variant_count'] ?? 0) > 1)
                                     <button type="button" @click="openVariants('{{ $pv['product_id'] }}')"
                                         :disabled="isLoadingVariants"
-                                        class="w-full text-left py-3 hover:bg-surface-secondary dark:hover:bg-ink-700 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2 disabled:opacity-50">
+                                        class="w-full text-left py-3 hover:bg-surface-secondary flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2 disabled:opacity-50">
                                         <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
                                             alt="" loading="lazy"
                                             class="w-11 h-11 rounded-xl object-cover bg-surface-secondary shrink-0">
@@ -441,8 +441,8 @@
                                         :disabled="isAddingProduct"
                                         class="w-full text-left py-3 flex items-center gap-3 text-sm transition-colors rounded-lg px-2 -mx-2
                                     {{ $isProductSelected
-                                        ? 'bg-success-50/50 dark:bg-success-900/10 border border-success-200/50 dark:border-success-800/30'
-                                        : 'hover:bg-surface-secondary dark:hover:bg-ink-700' }}
+                                        ? 'bg-success-surface-subtle border border-success-border'
+                                        : 'hover:bg-surface-secondary' }}
                                     disabled:opacity-50">
                                         <img src="{{ $pv['image_url'] ?? asset('img/icons/noimg.png') }}"
                                             alt="" loading="lazy"
@@ -468,12 +468,12 @@
                                             class="text-ink font-semibold shrink-0 tabular-nums">{{ $pv['first_variant']['price_formatted'] }}</span>
                                         @if ($isProductSelected)
                                             <span
-                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20 text-success-600 dark:text-success-400 shrink-0">
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-surface text-success-fg shrink-0">
                                                 <x-edz.icon name="check" class="w-4 h-4" />
                                             </span>
                                         @else
                                             <span
-                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 shrink-0">
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-brand-surface text-brand-fg shrink-0">
                                                 <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none"
                                                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -551,7 +551,7 @@
                 {{-- Variant list --}}
                 <div class="flex-1 overflow-y-auto px-5 pb-5 max-h-[calc(100vh-475px)]  edz-scroll">
                     @if ($formSelectedProduct && count($formSelectedProduct['variants']) > 0)
-                        <div class="divide-y divide-surface-border dark:divide-ink-700">
+                        <div class="divide-y divide-surface-border">
                             @foreach ($formSelectedProduct['variants'] as $variant)
                                 @php
                                     $isVariantSelected = isset($formSelectedItems[$variant['id']]);
@@ -568,7 +568,7 @@
                                 <div data-variant-search="{{ $variantSearchText }}"
                                     x-show="!variantQuery || variantQuery.length < 2 || $el.dataset.variantSearch.includes(variantQuery.toLowerCase())"
                                     class="py-3 flex items-center gap-3 text-sm rounded-lg px-2 -mx-2 transition-colors
-                                {{ $isVariantSelected ? 'bg-success-50/50 dark:bg-success-900/10' : '' }}
+                                {{ $isVariantSelected ? 'bg-success-surface-subtle' : '' }}
                                 {{ $isDisabled && !$isVariantSelected ? 'opacity-40' : '' }}">
                                     <div class="flex-1 min-w-0">
                                         <div class="font-medium text-ink text-xs truncate">{{ $variant['name'] }}
@@ -581,7 +581,7 @@
                                             @endif
                                             <span>SKU: {{ $variant['sku'] ?? 'â€”' }}</span>
                                             @if ($isVariantSelected)
-                                                <span class="text-success-600 dark:text-success-400 font-medium">آ·
+                                                <span class="text-success-fg font-medium">آ·
                                                     {{ $variantQty }}
                                                     {{ __('merchant_panel.in_cart') }}</span>
                                             @elseif ($variant['stock'] <= 0)
@@ -597,15 +597,15 @@
                                         class="text-ink font-semibold text-xs shrink-0 tabular-nums">{{ currency($variant['price']) }}</span>
                                     @if ($isVariantSelected)
                                         <span
-                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-100 dark:bg-success-900/20
-                                        text-success-600 dark:text-success-400 shrink-0">
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-surface
+                                        text-success-fg shrink-0">
                                             <x-edz.icon name="check" class="w-4 h-4" />
                                         </span>
                                     @elseif ($variant['is_active'] && $variant['stock'] > 0)
                                         <button type="button" @click="selectVariant('{{ $variant['id'] }}')"
                                             :disabled="isAddingProduct"
-                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/20
-                                            text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/30
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-brand-surface
+                                            text-brand-fg hover:bg-brand-surface
                                             transition-colors shrink-0 disabled:opacity-50">
                                             <svg x-show="!isAddingProduct" class="w-4 h-4" fill="none"
                                                 viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

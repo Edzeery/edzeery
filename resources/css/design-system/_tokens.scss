@@ -47,6 +47,51 @@
   --edz-color-text-muted: #{f.edz-rgb-channels(v.$edz-color-text-muted)};
   --edz-color-inverse: #{f.edz-rgb-channels(v.$edz-color-inverse)};
 
+  // --- Semantic status surfaces (LIGHT) ---
+  --edz-bg-brand-surface: #{v.$edz-brand-surface-light};
+  --edz-bg-brand-surface-strong: #{v.$edz-brand-surface-strong-light};
+  --edz-bg-brand-surface-subtle: #{v.$edz-brand-surface-subtle-light};
+  --edz-color-brand-fg: #{f.edz-rgb-channels(v.$edz-brand-fg-light)};
+  --edz-color-brand-fg-strong: #{f.edz-rgb-channels(v.$edz-brand-fg-strong-light)};
+  --edz-color-brand-border: #{f.edz-rgb-channels(v.$edz-brand-border-light)};
+  --edz-color-brand-ring: #{f.edz-rgb-channels(v.$edz-brand-ring-light)};
+
+  --edz-bg-accent-surface: #{v.$edz-accent-surface-light};
+  --edz-bg-accent-surface-strong: #{v.$edz-accent-surface-strong-light};
+  --edz-bg-accent-surface-subtle: #{v.$edz-accent-surface-subtle-light};
+  --edz-color-accent-fg: #{f.edz-rgb-channels(v.$edz-accent-fg-light)};
+  --edz-color-accent-fg-strong: #{f.edz-rgb-channels(v.$edz-accent-fg-strong-light)};
+  --edz-color-accent-border: #{f.edz-rgb-channels(v.$edz-accent-border-light)};
+  --edz-color-accent-ring: #{f.edz-rgb-channels(v.$edz-accent-ring-light)};
+
+  --edz-bg-success-surface: #{v.$edz-success-surface-light};
+  --edz-bg-success-surface-strong: #{v.$edz-success-surface-strong-light};
+  --edz-bg-success-surface-subtle: #{v.$edz-success-surface-subtle-light};
+  --edz-color-success-fg: #{f.edz-rgb-channels(v.$edz-success-fg-light)};
+  --edz-color-success-fg-strong: #{f.edz-rgb-channels(v.$edz-success-fg-strong-light)};
+  --edz-color-success-border: #{f.edz-rgb-channels(v.$edz-success-border-light)};
+
+  --edz-bg-warning-surface: #{v.$edz-warning-surface-light};
+  --edz-bg-warning-surface-strong: #{v.$edz-warning-surface-strong-light};
+  --edz-bg-warning-surface-subtle: #{v.$edz-warning-surface-subtle-light};
+  --edz-color-warning-fg: #{f.edz-rgb-channels(v.$edz-warning-fg-light)};
+  --edz-color-warning-fg-strong: #{f.edz-rgb-channels(v.$edz-warning-fg-strong-light)};
+  --edz-color-warning-border: #{f.edz-rgb-channels(v.$edz-warning-border-light)};
+
+  --edz-bg-danger-surface: #{v.$edz-danger-surface-light};
+  --edz-bg-danger-surface-strong: #{v.$edz-danger-surface-strong-light};
+  --edz-bg-danger-surface-subtle: #{v.$edz-danger-surface-subtle-light};
+  --edz-color-danger-fg: #{f.edz-rgb-channels(v.$edz-danger-fg-light)};
+  --edz-color-danger-fg-strong: #{f.edz-rgb-channels(v.$edz-danger-fg-strong-light)};
+  --edz-color-danger-border: #{f.edz-rgb-channels(v.$edz-danger-border-light)};
+
+  --edz-bg-info-surface: #{v.$edz-info-surface-light};
+  --edz-bg-info-surface-strong: #{v.$edz-info-surface-strong-light};
+  --edz-bg-info-surface-subtle: #{v.$edz-info-surface-subtle-light};
+  --edz-color-info-fg: #{f.edz-rgb-channels(v.$edz-info-fg-light)};
+  --edz-color-info-fg-strong: #{f.edz-rgb-channels(v.$edz-info-fg-strong-light)};
+  --edz-color-info-border: #{f.edz-rgb-channels(v.$edz-info-border-light)};
+
   // --- Radii ---
   --edz-radius-sm: #{v.$edz-radius-sm};
   --edz-radius-md: #{v.$edz-radius-md};
@@ -127,4 +172,49 @@
   // Dark glassmorphism
   --edz-glass-bg: #{v.$edz-glass-bg-dark};
   --edz-glass-border: #{v.$edz-glass-border-dark};
+
+  // --- Semantic status surfaces (DARK) ---
+  --edz-bg-brand-surface: #{v.$edz-brand-surface-dark};
+  --edz-bg-brand-surface-strong: #{v.$edz-brand-surface-strong-dark};
+  --edz-bg-brand-surface-subtle: #{v.$edz-brand-surface-subtle-dark};
+  --edz-color-brand-fg: #{f.edz-rgb-channels(v.$edz-brand-fg-dark)};
+  --edz-color-brand-fg-strong: #{f.edz-rgb-channels(v.$edz-brand-fg-strong-dark)};
+  --edz-color-brand-border: #{f.edz-rgb-channels(v.$edz-brand-border-dark)};
+  --edz-color-brand-ring: #{f.edz-rgb-channels(v.$edz-brand-ring-dark)};
+
+  --edz-bg-accent-surface: #{v.$edz-accent-surface-dark};
+  --edz-bg-accent-surface-strong: #{v.$edz-accent-surface-strong-dark};
+  --edz-bg-accent-surface-subtle: #{v.$edz-accent-surface-subtle-dark};
+  --edz-color-accent-fg: #{f.edz-rgb-channels(v.$edz-accent-fg-dark)};
+  --edz-color-accent-fg-strong: #{f.edz-rgb-channels(v.$edz-accent-fg-strong-dark)};
+  --edz-color-accent-border: #{f.edz-rgb-channels(v.$edz-accent-border-dark)};
+  --edz-color-accent-ring: #{f.edz-rgb-channels(v.$edz-accent-ring-dark)};
+
+  --edz-bg-success-surface: #{v.$edz-success-surface-dark};
+  --edz-bg-success-surface-strong: #{v.$edz-success-surface-strong-dark};
+  --edz-bg-success-surface-subtle: #{v.$edz-success-surface-subtle-dark};
+  --edz-color-success-fg: #{f.edz-rgb-channels(v.$edz-success-fg-dark)};
+  --edz-color-success-fg-strong: #{f.edz-rgb-channels(v.$edz-success-fg-strong-dark)};
+  --edz-color-success-border: #{f.edz-rgb-channels(v.$edz-success-border-dark)};
+
+  --edz-bg-warning-surface: #{v.$edz-warning-surface-dark};
+  --edz-bg-warning-surface-strong: #{v.$edz-warning-surface-strong-dark};
+  --edz-bg-warning-surface-subtle: #{v.$edz-warning-surface-subtle-dark};
+  --edz-color-warning-fg: #{f.edz-rgb-channels(v.$edz-warning-fg-dark)};
+  --edz-color-warning-fg-strong: #{f.edz-rgb-channels(v.$edz-warning-fg-strong-dark)};
+  --edz-color-warning-border: #{f.edz-rgb-channels(v.$edz-warning-border-dark)};
+
+  --edz-bg-danger-surface: #{v.$edz-danger-surface-dark};
+  --edz-bg-danger-surface-strong: #{v.$edz-danger-surface-strong-dark};
+  --edz-bg-danger-surface-subtle: #{v.$edz-danger-surface-subtle-dark};
+  --edz-color-danger-fg: #{f.edz-rgb-channels(v.$edz-danger-fg-dark)};
+  --edz-color-danger-fg-strong: #{f.edz-rgb-channels(v.$edz-danger-fg-strong-dark)};
+  --edz-color-danger-border: #{f.edz-rgb-channels(v.$edz-danger-border-dark)};
+
+  --edz-bg-info-surface: #{v.$edz-info-surface-dark};
+  --edz-bg-info-surface-strong: #{v.$edz-info-surface-strong-dark};
+  --edz-bg-info-surface-subtle: #{v.$edz-info-surface-subtle-dark};
+  --edz-color-info-fg: #{f.edz-rgb-channels(v.$edz-info-fg-dark)};
+  --edz-color-info-fg-strong: #{f.edz-rgb-channels(v.$edz-info-fg-strong-dark)};
+  --edz-color-info-border: #{f.edz-rgb-channels(v.$edz-info-border-dark)};
 }

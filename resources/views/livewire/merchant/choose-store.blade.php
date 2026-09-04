@@ -162,7 +162,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
     </div>
 
     {{-- 1. User profile header --}}
-    <div class="flex items-center gap-4 p-4 rounded-2xl shadow-card border border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface animate-fade-up"
+    <div class="flex items-center gap-4 p-4 rounded-2xl shadow-card border border-surface-border bg-surface animate-fade-up"
          style="animation-delay: 0.05s">
 
         <div class="w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-white text-lg font-bold shadow-md"
@@ -174,7 +174,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
             <div class="flex items-center gap-2 flex-wrap">
                 <p class="font-bold text-ink truncate">{{ $this->user['name'] }}</p>
                 @if (!empty($this->subscription['plan_name']))
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-surface text-warning-fg-strong text-xs font-semibold">
                         <ion-icon name="star" class="text-xs"></ion-icon>
                         {{ $this->subscription['plan_name'] }}
                     </span>
@@ -187,18 +187,18 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
     {{-- 2. Quick actions row --}}
     <div class="grid grid-cols-3 gap-2 animate-fade-up" style="animation-delay: 0.1s">
         <a href="{{ route('account.profile') }}"
-           class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface text-xs font-semibold text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-600 transition-all duration-200">
+           class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-surface-border bg-surface text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition-all duration-200">
             <ion-icon name="person-outline" class="text-lg"></ion-icon>
             {{ __('buttons.profile') }}
         </a>
         <a href="{{ route('account.billing') }}"
-           class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface text-xs font-semibold text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-600 transition-all duration-200">
+           class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-surface-border bg-surface text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition-all duration-200">
             <ion-icon name="card-outline" class="text-lg"></ion-icon>
             {{ __('buttons.billing') }}
         </a>
         @if ($this->canCreate)
             <a href="{{ route('merchant.create-store') }}"
-               class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-success-200 dark:border-success-800 bg-success-50 dark:bg-success-900/20 text-xs font-semibold text-success-700 dark:text-success-300 hover:bg-success-100 dark:hover:bg-success-900/30 transition-all duration-200">
+               class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-success-border bg-success-surface text-xs font-semibold text-success-fg-strong hover:bg-success-surface transition-all duration-200">
                 <ion-icon name="add-circle-outline" class="text-lg"></ion-icon>
                 {{ __('buttons.create') }} {{ __('buttons.new') }}
             </a>
@@ -213,7 +213,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
             $atLimit = !$this->isUnlimited && $maxInt > 0 && $this->effectiveUsage >= $maxInt;
         @endphp
 
-        <div class="rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-secondary dark:bg-dark-secondary p-4 animate-fade-up"
+        <div class="rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
              style="animation-delay: 0.15s">
             <div class="flex items-center justify-between gap-3">
                 <div>
@@ -232,17 +232,17 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                 @endif
             </div>
             @if (!$this->isUnlimited && $maxInt > 0)
-                <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-border dark:bg-dark-border">
+                <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-border">
                     <div class="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out"
                          style="width: {{ $usagePercent }}%"></div>
                 </div>
             @endif
         </div>
     @else
-        <div class="flex items-center justify-between gap-3 rounded-xl border border-neutral-border dark:border-dark-border bg-neutral-secondary dark:bg-dark-secondary p-4 animate-fade-up"
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
              style="animation-delay: 0.15s">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-9 h-9 shrink-0 rounded-lg bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
+                <div class="w-9 h-9 shrink-0 rounded-lg bg-warning-surface flex items-center justify-center">
                     <ion-icon name="star" class="text-lg text-warning-500"></ion-icon>
                 </div>
                 <p class="text-sm font-semibold text-ink truncate">
@@ -270,7 +270,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                 @endphp
 
                 <article wire:key="store-card-{{ $store['slug'] }}"
-                    class="relative overflow-hidden flex flex-col gap-3 p-4 rounded-2xl shadow-card border border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface hover:border-brand-300 dark:hover:border-brand-600 hover:shadow-md transition-all duration-200 group">
+                    class="relative overflow-hidden flex flex-col gap-3 p-4 rounded-2xl shadow-card border border-surface-border bg-surface hover:border-brand-border hover:shadow-md transition-all duration-200 group">
 
                     {{-- Owned store: subtle brand-colored left border --}}
                     @if ($store['is_owner'])
@@ -281,7 +281,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                     <div class="flex items-start gap-3">
                         @if (!empty($store['logo']))
                             <img src="{{ asset('storage/' . $store['logo']) }}" alt="{{ $store['name'] }}"
-                                 class="w-11 h-11 shrink-0 rounded-xl object-cover border border-neutral-border dark:border-dark-border">
+                                 class="w-11 h-11 shrink-0 rounded-xl object-cover border border-surface-border">
                         @else
                             <div class="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center text-white font-bold"
                                  style="background-color: {{ $store['color'] }};">
@@ -290,11 +290,11 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                         @endif
 
                         <div class="min-w-0 flex-1">
-                            <h3 class="font-semibold text-ink truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
+                            <h3 class="font-semibold text-ink truncate group-hover:text-brand-fg transition">
                                 {{ $store['name'] }}
                             </h3>
                             <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
-                               class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 transition truncate max-w-full">
+                               class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-ink-muted hover:text-brand-fg transition truncate max-w-full">
                                 <ion-icon name="globe-outline" class="shrink-0"></ion-icon>
                                 {{ $store['slug'] }}.{{ rtrim(config('app.domain', 'edzeery.com'), '/') }}
                             </a>
@@ -308,7 +308,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                     </div>
 
                     {{-- Stats row --}}
-                    <div class="grid grid-cols-3 gap-1 rounded-xl bg-neutral-secondary dark:bg-dark-secondary p-2 text-center">
+                    <div class="grid grid-cols-3 gap-1 rounded-xl bg-surface-secondary p-2 text-center">
                         <div class="flex flex-col items-center gap-0.5">
                             <ion-icon name="cart-outline" class="text-sm text-ink-muted"></ion-icon>
                             <span class="text-xs font-semibold text-ink">{{ number_format($store['products_count']) }}</span>
@@ -347,7 +347,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                         </button>
                         <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
                            title="{{ __('merchant_panel.visit_store') }}"
-                           class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-border dark:border-dark-border text-xs font-semibold text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-600 transition">
+                           class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-surface-border text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition">
                             <ion-icon name="globe-outline" class="text-base"></ion-icon>
                             {{ __('merchant_panel.visit_store') }}
                         </a>
@@ -358,9 +358,9 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
         </div>
     @else
         {{-- 5. Empty state --}}
-        <div class="rounded-2xl border-2 border-dashed border-neutral-border dark:border-dark-border bg-neutral-surface dark:bg-dark-surface p-10 text-center animate-fade-up"
+        <div class="rounded-2xl border-2 border-dashed border-surface-border bg-surface p-10 text-center animate-fade-up"
              style="animation-delay: 0.2s">
-            <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center mb-4">
+            <div class="mx-auto w-16 h-16 rounded-2xl bg-brand-surface flex items-center justify-center mb-4">
                 <ion-icon name="storefront-outline" class="text-3xl text-brand-500"></ion-icon>
             </div>
             <h3 class="font-semibold text-ink">{{ __('merchant_panel.no_stores_yet') }}</h3>
@@ -379,7 +379,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
             @csrf
             <button type="submit"
                     class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-ink-muted
-                            hover:text-error-600 dark:hover:text-error-400 rounded-xl hover:bg-error-50 dark:hover:bg-error-900/10 transition-all duration-200">
+                            hover:text-danger-fg rounded-xl hover:bg-danger-surface transition-all duration-200">
                 <ion-icon name="log-out-outline" class="text-base"></ion-icon>
                 {{ __('buttons.logout') }}
             </button>

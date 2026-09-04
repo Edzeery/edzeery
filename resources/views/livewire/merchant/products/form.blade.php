@@ -530,14 +530,14 @@ $wizardSteps = computed(fn () => [
     <x-merchant.wizard-steps :steps="$this->wizardSteps" :currentStep="$currentStep" />
 
     @if (! $this->hasActiveSubscription)
-        <div class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-4 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
+        <div class="mb-6 rounded-lg border border-warning-border bg-warning-surface px-5 py-4 text-sm text-warning-800">
             <div class="flex items-start gap-3">
                 <x-edz.icon name="exclamation-triangle" class="mt-0.5 h-5 w-5 flex-shrink-0 text-warning-500" />
                 <div>
                     <p class="font-semibold">{{ __('messages.subscription_required') }}</p>
                     <p class="mt-1">{{ __('messages.subscription_expired_text') }}</p>
                     <a href="{{ route('account.billing') }}" wire:navigate
-                       class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-warning-700 underline hover:text-warning-900 dark:text-warning-400 dark:hover:text-warning-200">
+                       class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-warning-fg underline hover:text-warning-fg-strong">
                         {{ __('messages.go_to_billing') }}
                         <x-edz.icon name="arrow-right" class="h-4 w-4" />
                     </a>
@@ -547,7 +547,7 @@ $wizardSteps = computed(fn () => [
     @endif
 
     @if ($errors->any())
-        <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
+        <div class="mb-6 rounded-lg border border-danger-border bg-danger-surface px-4 py-3 text-sm text-danger-fg-strong">
             <p class="font-semibold">{{ __('products.fix_errors') }}</p>
             <ul class="mt-1 list-inside list-disc">
                 @foreach ($errors->all() as $error)

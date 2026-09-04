@@ -107,7 +107,7 @@ $save = function (): void {
     <div class="edz-card">
         <div class="edz-card__body">
             @if ($errors->any())
-                <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-300">
+                <div class="mb-6 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-fg-strong">
                     <p class="font-semibold">{{ __('messages.validation_error') }}</p>
                     <ul class="mt-1 list-inside list-disc">
                         @foreach ($errors->all() as $error)

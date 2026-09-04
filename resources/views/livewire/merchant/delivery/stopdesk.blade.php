@@ -157,7 +157,7 @@ $deleteStopdesk = function (string $id): void {
                 <div wire:key="stopdesk-{{ $point['id'] }}" class="edz-card edz-card--padded">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-11 h-11 rounded-xl bg-info-50 dark:bg-info-900/20 flex items-center justify-center">
+                            <div class="w-11 h-11 rounded-xl bg-info-surface flex items-center justify-center">
                                 <x-edz.icon name="map-pin" class="w-5 h-5 text-info-500" />
                             </div>
                             <div>
@@ -192,7 +192,7 @@ $deleteStopdesk = function (string $id): void {
                     </div>
 
                     @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
-                        <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-neutral-border dark:border-dark-border">
+                        <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-surface-border">
                             <button type="button" aria-label="{{ __('merchant_panel.edit_stopdesk') }}"
                                     wire:click="openStopdeskModal('{{ $point['id'] }}')"
                                     class="edz-btn edz-btn--ghost edz-btn--sm">

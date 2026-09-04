@@ -40,9 +40,9 @@ $alerts = computed(function () {
 
 $statusBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
-        default => ['text' => 'IN', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
+        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
+        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],
+        default => ['text' => 'IN', 'class' => 'text-success-fg-strong bg-success-surface-strong'],
     };
 };
 ?>
@@ -89,8 +89,8 @@ $statusBadge = function (ProductVariant $variant): array {
                             <td class="px-4 py-3 font-medium text-ink">{{ $variant->product?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
-                                    @if ($variant->stock <= 0) bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300
-                                    @else bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300 @endif">
+                                    @if ($variant->stock <= 0) bg-danger-surface-strong text-danger-fg-strong
+                                    @else bg-warning-surface-strong text-warning-fg-strong @endif">
                                     {{ $variant->stock }}
                                 </span>
                             </td>

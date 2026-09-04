@@ -188,8 +188,8 @@ $createStore = function (): void {
 
         {{-- Header --}}
         <div class="text-center mb-8 animate-fade-up">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-100 dark:bg-brand-900/30 mb-4">
-                <ion-icon name="storefront-outline" class="text-2xl text-brand-600 dark:text-brand-400"></ion-icon>
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-surface mb-4">
+                <ion-icon name="storefront-outline" class="text-2xl text-brand-fg"></ion-icon>
             </div>
             <h1 class="text-2xl sm:text-3xl font-bold text-ink tracking-tight">
                 {{ __('stores.create_your_store') }}
@@ -207,11 +207,11 @@ $createStore = function (): void {
                     <span class="text-xs font-semibold text-ink-muted">
                         {{ __('stores.step_of', ['current' => $step, 'total' => 5]) }}
                     </span>
-                    <span class="text-xs font-medium text-brand-600 dark:text-brand-400">
+                    <span class="text-xs font-medium text-brand-fg">
                         {{ [1 => __('stores.step_info'), 2 => __('stores.step_settings'), 3 => __('stores.step_seo'), 4 => __('stores.step_design'), 5 => __('stores.step_template')][$step] }}
                     </span>
                 </div>
-                <div class="h-1.5 w-full bg-neutral-secondary dark:bg-dark-secondary rounded-full overflow-hidden">
+                <div class="h-1.5 w-full bg-surface-secondary rounded-full overflow-hidden">
                     <div class="h-full bg-brand-600 rounded-full transition-all duration-500 ease-out"
                          style="width: {{ ($step / 5) * 100 }}%"></div>
                 </div>
@@ -220,7 +220,7 @@ $createStore = function (): void {
             {{-- Desktop: full stepper --}}
             <div class="hidden sm:flex items-center justify-between relative">
                 {{-- Connecting line --}}
-                <div class="absolute top-5 left-[10%] right-[10%] h-0.5 bg-neutral-secondary dark:bg-dark-secondary"></div>
+                <div class="absolute top-5 left-[10%] right-[10%] h-0.5 bg-surface-secondary"></div>
                 <div class="absolute top-5 left-[10%] h-0.5 bg-brand-600 transition-all duration-500 ease-out"
                      style="width: {{ (($step - 1) / 4) * 80 }}%"></div>
 
@@ -232,9 +232,9 @@ $createStore = function (): void {
                                     @if ($step > $s)
                                         bg-brand-600 border-brand-600 text-white shadow-sm
                                     @elseif ($step === $s)
-                                        bg-brand-600 border-brand-600 text-white shadow-md ring-4 ring-brand-100 dark:ring-brand-900/30
+                                        bg-brand-600 border-brand-600 text-white shadow-md ring-4 ring-brand-ring
                                     @else
-                                        bg-surface-primary dark:bg-dark-surface border-neutral-border dark:border-dark-border text-ink-muted group-hover:border-brand-300 group-hover:text-brand-600
+                                        bg-surface border-surface-border text-ink-muted group-hover:border-brand-300 group-hover:text-brand-600
                                     @endif">
                             @if ($step > $s)
                                 <ion-icon name="checkmark-outline" class="text-base"></ion-icon>
@@ -252,7 +252,7 @@ $createStore = function (): void {
         </div>
 
         {{-- Form Card --}}
-        <div class="bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border rounded-2xl shadow-card animate-fade-up"
+        <div class="bg-surface border border-surface-border rounded-2xl shadow-card animate-fade-up"
              style="animation-delay: 0.15s">
             <form wire:submit="{{ $step === 5 ? 'createStore' : 'nextStep' }}" x-data="edzDirty()">
 
@@ -278,7 +278,7 @@ $createStore = function (): void {
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.store_name') }}</label>
                                     <input type="text"
-                                           class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm
+                                           class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm
                                                   focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition placeholder:text-ink-soft"
                                            wire:model.live="name"
                                            placeholder="{{ __('stores.name_placeholder') }}">
@@ -290,11 +290,11 @@ $createStore = function (): void {
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.slug') }}</label>
                                     <div class="flex items-center gap-0">
-                                        <span class="inline-flex items-center px-3 py-2.5 rounded-l-xl border border-r-0 border-neutral-border dark:border-dark-border bg-neutral-secondary dark:bg-dark-secondary text-sm text-ink-muted">
+                                        <span class="inline-flex items-center px-3 py-2.5 rounded-l-xl border border-r-0 border-surface-border bg-surface-secondary text-sm text-ink-muted">
                                             {{ request()->getHost() }}/
                                         </span>
                                         <input type="text"
-                                               class="flex-1 px-4 py-2.5 rounded-r-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm font-medium
+                                               class="flex-1 px-4 py-2.5 rounded-r-xl bg-surface border border-surface-border text-ink text-sm font-medium
                                                       focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                                                wire:model="slug" readonly>
                                     </div>
@@ -305,7 +305,7 @@ $createStore = function (): void {
 
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.description') }}</label>
-                                    <textarea class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm min-h-[80px] resize-y
+                                    <textarea class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm min-h-[80px] resize-y
                                                    focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition placeholder:text-ink-soft"
                                               wire:model="description"
                                               placeholder="{{ __('stores.description_placeholder') }}"></textarea>
@@ -315,8 +315,8 @@ $createStore = function (): void {
                                     {{-- Logo upload --}}
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.logo') }}</label>
-                                        <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border
-                                                      hover:border-brand-400 dark:hover:border-brand-500 cursor-pointer transition group bg-surface-secondary dark:bg-dark-secondary">
+                                        <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-surface-border
+                                                      hover:border-brand-border cursor-pointer transition group bg-surface-secondary">
                                             @if ($logo)
                                                 <div class="relative w-full h-full flex items-center justify-center p-2">
                                                     <img src="{{ $logo->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
@@ -340,8 +340,8 @@ $createStore = function (): void {
                                     {{-- Cover upload --}}
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.cover') }}</label>
-                                        <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border
-                                                      hover:border-brand-400 dark:hover:border-brand-500 cursor-pointer transition group bg-surface-secondary dark:bg-dark-secondary">
+                                        <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-surface-border
+                                                      hover:border-brand-border cursor-pointer transition group bg-surface-secondary">
                                             @if ($cover)
                                                 <div class="relative w-full h-full flex items-center justify-center p-2">
                                                     <img src="{{ $cover->temporaryUrl() }}" class="max-h-full max-w-full object-cover rounded-lg">
@@ -382,7 +382,7 @@ $createStore = function (): void {
                                 <div class="grid grid-cols-3 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.currency') }}</label>
-                                        <select class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm appearance-none
+                                        <select class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm appearance-none
                                                        focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                                                 wire:model="currency">
                                             <option value="DZD">DZD</option>
@@ -393,13 +393,13 @@ $createStore = function (): void {
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.symbol') }}</label>
                                         <input type="text"
-                                               class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm
+                                               class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm
                                                       focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                                                wire:model="currency_symbol">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.language') }}</label>
-                                        <select class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm appearance-none
+                                        <select class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm appearance-none
                                                        focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                                                 wire:model="language">
                                             <option value="ar">{{ __('stores.lang_arabic') }}</option>
@@ -411,10 +411,10 @@ $createStore = function (): void {
 
                                 {{-- Toggles --}}
                                 <div class="space-y-3">
-                                    <label class="flex items-center justify-between p-4 rounded-xl bg-surface-secondary dark:bg-dark-secondary border border-neutral-border/50 dark:border-dark-border/50 cursor-pointer group hover:border-brand-300 dark:hover:border-brand-600 transition">
+                                    <label class="flex items-center justify-between p-4 rounded-xl bg-surface-secondary border border-surface-border/50 cursor-pointer group hover:border-brand-border transition">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                                                <ion-icon name="cube-outline" class="text-brand-600 dark:text-brand-400 text-lg"></ion-icon>
+                                            <div class="w-9 h-9 rounded-lg bg-brand-surface flex items-center justify-center">
+                                                <ion-icon name="cube-outline" class="text-brand-fg text-lg"></ion-icon>
                                             </div>
                                             <div>
                                                 <span class="text-sm font-medium text-ink">{{ __('stores.inventory_tracking') }}</span>
@@ -422,15 +422,15 @@ $createStore = function (): void {
                                         </div>
                                         <div class="relative">
                                             <input type="checkbox" wire:model="inventory_tracking" class="sr-only peer">
-                                            <div class="w-11 h-6 bg-neutral-border dark:bg-dark-border rounded-full peer-checked:bg-brand-600 transition-colors"></div>
+                                            <div class="w-11 h-6 bg-surface-border rounded-full peer-checked:bg-brand-600 transition-colors"></div>
                                             <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform peer-checked:translate-x-5 transition-transform"></div>
                                         </div>
                                     </label>
 
-                                    <label class="flex items-center justify-between p-4 rounded-xl bg-surface-secondary dark:bg-dark-secondary border border-neutral-border/50 dark:border-dark-border/50 cursor-pointer group hover:border-brand-300 dark:hover:border-brand-600 transition">
+                                    <label class="flex items-center justify-between p-4 rounded-xl bg-surface-secondary border border-surface-border/50 cursor-pointer group hover:border-brand-border transition">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-9 h-9 rounded-lg bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                                                <ion-icon name="person-outline" class="text-brand-600 dark:text-brand-400 text-lg"></ion-icon>
+                                            <div class="w-9 h-9 rounded-lg bg-brand-surface flex items-center justify-center">
+                                                <ion-icon name="person-outline" class="text-brand-fg text-lg"></ion-icon>
                                             </div>
                                             <div>
                                                 <span class="text-sm font-medium text-ink">{{ __('stores.guest_checkout') }}</span>
@@ -438,7 +438,7 @@ $createStore = function (): void {
                                         </div>
                                         <div class="relative">
                                             <input type="checkbox" wire:model="guest_checkout" class="sr-only peer">
-                                            <div class="w-11 h-6 bg-neutral-border dark:bg-dark-border rounded-full peer-checked:bg-brand-600 transition-colors"></div>
+                                            <div class="w-11 h-6 bg-surface-border rounded-full peer-checked:bg-brand-600 transition-colors"></div>
                                             <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform peer-checked:translate-x-5 transition-transform"></div>
                                         </div>
                                     </label>
@@ -463,7 +463,7 @@ $createStore = function (): void {
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.meta_title') }}</label>
                                     <input type="text"
-                                           class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm
+                                           class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm
                                                   focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition placeholder:text-ink-soft"
                                            wire:model="meta_title"
                                            placeholder="{{ __('stores.meta_title_placeholder') }}">
@@ -474,7 +474,7 @@ $createStore = function (): void {
 
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.meta_description') }}</label>
-                                    <textarea class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm min-h-[72px] resize-y
+                                    <textarea class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm min-h-[72px] resize-y
                                                    focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition placeholder:text-ink-soft"
                                               wire:model="meta_description"
                                               placeholder="{{ __('stores.meta_description_placeholder') }}"></textarea>
@@ -486,7 +486,7 @@ $createStore = function (): void {
                                 <div>
                                     <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.meta_keywords') }}</label>
                                     <input type="text"
-                                           class="w-full px-4 py-2.5 rounded-xl bg-surface-primary dark:bg-dark-surface border border-neutral-border dark:border-dark-border text-ink text-sm
+                                           class="w-full px-4 py-2.5 rounded-xl bg-surface border border-surface-border text-ink text-sm
                                                   focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition placeholder:text-ink-soft"
                                            wire:model="meta_keywords"
                                            placeholder="{{ __('stores.meta_keywords_placeholder') }}">
@@ -513,10 +513,10 @@ $createStore = function (): void {
                                     {{-- Primary Color --}}
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.primary_color') }}</label>
-                                        <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-secondary dark:bg-dark-secondary border border-neutral-border/50 dark:border-dark-border/50">
+                                        <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-secondary border border-surface-border/50">
                                             <div class="relative">
                                                 <input type="color" wire:model="primary_color"
-                                                       class="w-12 h-12 rounded-xl border-2 border-white dark:border-gray-700 shadow-sm cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none">
+                                                       class="w-12 h-12 rounded-xl border-2 border-surface-border shadow-sm cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none">
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <div class="h-3 rounded-full mb-1.5" style="background-color: {{ $primary_color }}"></div>
@@ -528,10 +528,10 @@ $createStore = function (): void {
                                     {{-- Secondary Color --}}
                                     <div>
                                         <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.secondary_color') }}</label>
-                                        <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-secondary dark:bg-dark-secondary border border-neutral-border/50 dark:border-dark-border/50">
+                                        <div class="flex items-center gap-3 p-3 rounded-xl bg-surface-secondary border border-surface-border/50">
                                             <div class="relative">
                                                 <input type="color" wire:model="secondary_color"
-                                                       class="w-12 h-12 rounded-xl border-2 border-white dark:border-gray-700 shadow-sm cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none">
+                                                       class="w-12 h-12 rounded-xl border-2 border-surface-border shadow-sm cursor-pointer appearance-none bg-transparent [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none">
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <div class="h-3 rounded-full mb-1.5" style="background-color: {{ $secondary_color }}"></div>
@@ -549,7 +549,7 @@ $createStore = function (): void {
                                             <button type="button"
                                                     x-on:click="$wire.set('primary_color', '{{ $preset }}')"
                                                     class="w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110
-                                                           {{ $primary_color === $preset ? 'border-ink dark:border-white shadow-md scale-110' : 'border-transparent' }}"
+                                                           {{ $primary_color === $preset ? 'border-ink shadow-md scale-110' : 'border-transparent' }}"
                                                     style="background-color: {{ $preset }}">
                                             </button>
                                         @endforeach
@@ -565,8 +565,8 @@ $createStore = function (): void {
                                                     x-on:click="$wire.set('font_family', '{{ $fontKey }}')"
                                                     class="p-3 rounded-xl border-2 text-center transition-all duration-200
                                                            {{ $font_family === $fontKey
-                                                              ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-sm'
-                                                              : 'border-neutral-border dark:border-dark-border hover:border-brand-300 dark:hover:border-brand-600' }}">
+                                                              ? 'border-brand-500 bg-brand-surface shadow-sm'
+                                                              : 'border-surface-border hover:border-brand-border' }}">
                                                 <span class="text-sm font-semibold text-ink" style="font-family: '{{ $fontKey }}', sans-serif">
                                                     {{ $fontLabel }}
                                                 </span>
@@ -576,7 +576,7 @@ $createStore = function (): void {
                                 </div>
 
                                 {{-- Live preview bar --}}
-                                <div class="p-4 rounded-xl border border-neutral-border/50 dark:border-dark-border/50 bg-surface-secondary/50 dark:bg-dark-secondary/50">
+                                <div class="p-4 rounded-xl border border-surface-border/50 bg-surface-secondary/50">
                                     <span class="text-[11px] font-medium text-ink-muted uppercase tracking-wider mb-2 block">{{ __('stores.color_preview') }}</span>
                                     <div class="flex items-center gap-3">
                                         <div class="h-8 px-4 rounded-lg text-white text-sm font-semibold flex items-center"
@@ -633,21 +633,21 @@ $createStore = function (): void {
                                                 x-on:click="$wire.set('landing_template', '{{ $tplKey }}')"
                                                 class="w-full flex items-start gap-4 p-4 rounded-xl border-2 text-start transition-all duration-200
                                                        @if ($landing_template === $tplKey)
-                                                           border-brand-500 bg-brand-50/50 dark:bg-brand-900/15 shadow-sm ring-1 ring-brand-500/20
+                                                           border-brand-500 bg-brand-surface-subtle shadow-sm ring-1 ring-brand-500/20
                                                        @else
-                                                           border-neutral-border dark:border-dark-border hover:border-brand-300 dark:hover:border-brand-600 hover:bg-surface-secondary/50 dark:hover:bg-dark-secondary/50
+                                                           border-surface-border hover:border-brand-border hover:bg-surface-secondary/50
                                                        @endif">
                                             <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5
-                                                        @if ($landing_template === $tplKey) bg-brand-100 dark:bg-brand-900/30 @else bg-neutral-secondary dark:bg-dark-secondary @endif">
+                                                        @if ($landing_template === $tplKey) bg-brand-surface @else bg-surface-secondary @endif">
                                                 <ion-icon name="{{ $tpl['icon'] }}"
-                                                          class="text-lg @if ($landing_template === $tplKey) text-brand-600 dark:text-brand-400 @else text-ink-muted @endif">
+                                                          class="text-lg @if ($landing_template === $tplKey) text-brand-fg @else text-ink-muted @endif">
                                                 </ion-icon>
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <div class="flex items-center gap-2">
                                                     <span class="text-sm font-semibold text-ink">{{ $tpl['label'] }}</span>
                                                     @if ($landing_template === $tplKey)
-                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/30 text-[10px] font-semibold text-brand-700 dark:text-brand-300">
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-surface text-[10px] font-semibold text-brand-fg-strong">
                                                             <ion-icon name="checkmark-circle" class="text-xs"></ion-icon>
                                                             {{ __('buttons.selected') }}
                                                         </span>
@@ -665,13 +665,13 @@ $createStore = function (): void {
                 </div>
 
                 {{-- Navigation Footer --}}
-                <div class="px-6 sm:px-8 py-4 border-t border-neutral-border/50 dark:border-dark-border/50 flex items-center justify-between">
+                <div class="px-6 sm:px-8 py-4 border-t border-surface-border/50 flex items-center justify-between">
                     <div>
                         @if ($step > 1)
                             <button type="button"
                                     wire:click="prevStep"
                                     class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-ink-muted
-                                           hover:text-ink hover:bg-neutral-secondary dark:hover:bg-dark-secondary transition">
+                                           hover:text-ink hover:bg-surface-secondary transition">
                                 <ion-icon name="arrow-back-outline" class="text-base"></ion-icon>
                                 {{ __('buttons.back') }}
                             </button>
@@ -709,7 +709,7 @@ $createStore = function (): void {
         {{-- Back link --}}
         <div class="text-center mt-6 animate-fade-up" style="animation-delay: 0.2s">
             <a href="{{ route('merchant.choose-store') }}"
-               class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 transition">
+               class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand-fg transition">
                 <ion-icon name="arrow-back-outline" class="text-sm"></ion-icon>
                 {{ __('stores.back_to_selection') }}
             </a>

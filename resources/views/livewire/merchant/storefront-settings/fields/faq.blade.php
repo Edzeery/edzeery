@@ -8,7 +8,7 @@
     'max' => $limits['title'],
 ])
 @foreach ([0, 1, 2] as $i)
-    <div class="p-3 rounded-lg bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-700 space-y-3">
+    <div class="p-3 rounded-lg bg-surface-secondary/30 border border-surface-border space-y-3">
         <p class="text-xs font-medium text-ink-400 uppercase tracking-wider">{{ __('merchant_panel.faq_item') }} {{ $i + 1 }}</p>
         @include('livewire.merchant.storefront-settings.fields.partials.countered-field', [
             'id' => 'faq-item-' . $i . '-question',

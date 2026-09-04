@@ -16,13 +16,13 @@
 <div x-data="{ open: false }"
      data-section-key="{{ $key }}"
      x-show="$wire.sections.includes($el.dataset.sectionKey)"
-     class="border border-gray-200 dark:border-gray-700 rounded-xl transition-all">
+     class="border border-surface-border rounded-xl transition-all">
 
     <button type="button"
         x-on:click="open = !open"
         :aria-expanded="open ? 'true' : 'false'"
         :aria-controls="'section-editor-{{ $key }}'"
-        class="w-full px-5 py-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition rounded-t-xl">
+        class="w-full px-5 py-4 flex items-center justify-between bg-surface-secondary hover:bg-surface-secondary transition rounded-t-xl">
         <div class="flex items-center gap-3">
             <x-edz.icon :name="$section['icon']" class="w-5 h-5 text-accent-500" />
             <span class="text-sm font-semibold text-ink">{{ $section['label'] }}</span>

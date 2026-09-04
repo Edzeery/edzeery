@@ -66,9 +66,9 @@ $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
-        default => ['text' => 'IN', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
+        'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
+        'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],
+        default => ['text' => 'IN', 'class' => 'text-success-fg-strong bg-success-surface-strong'],
     };
 };
 
@@ -305,7 +305,7 @@ $deleteSelected = function (): void {
         </div>
 
         @if (! empty($selected))
-            <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
+            <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3">
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         x-data
@@ -431,9 +431,9 @@ $deleteSelected = function (): void {
                                                             <td class="px-3 py-2 text-xs text-ink-muted">{{ $movement->created_at?->format('Y-m-d H:i') }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                                                                    @if ($movement->type->isDecrease()) bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300
-                                                                    @elseif ($movement->type->isIncrease()) bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300
-                                                                    @else bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300 @endif">
+                                                                @if ($movement->type->isDecrease()) bg-danger-surface-strong text-danger-fg-strong
+                                                                @elseif ($movement->type->isIncrease()) bg-success-surface-strong text-success-fg-strong
+                                                                @else bg-warning-surface-strong text-warning-fg-strong @endif">
                                                                     {{ $movement->type->label() }}
                                                                 </span>
                                                             </td>

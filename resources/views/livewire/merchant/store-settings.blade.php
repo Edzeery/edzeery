@@ -146,7 +146,7 @@ $save = function (): void {
 
             {{-- Mobile: Horizontal Tabs --}}
             <div class="lg:hidden shrink-0">
-                <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto">
+                <div class="flex gap-1 p-1 bg-surface-secondary rounded-xl overflow-x-auto">
                     @php
                         $tabs = [
                             'branding'   => ['icon' => 'color-palette', 'label' => __('merchant_panel.branding')],
@@ -161,8 +161,8 @@ $save = function (): void {
                             x-on:click="activeTab = '{{ $tabKey }}'"
                             class="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center"
                             :class="activeTab === '{{ $tabKey }}'
-                                ? 'bg-white dark:bg-gray-700 text-accent-600 dark:text-accent-400 shadow-sm'
-                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'">
+                                ? 'bg-surface text-accent-fg shadow-sm'
+                                : 'text-ink-muted hover:text-ink-soft'">
                             <x-edz.icon :name="$tab['icon']" class="w-4 h-4 shrink-0" />
                             <span>{{ $tab['label'] }}</span>
                         </button>
@@ -179,16 +179,16 @@ $save = function (): void {
                                 x-on:click="activeTab = '{{ $tabKey }}'"
                                 class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-start transition-all duration-200 group"
                                 :class="activeTab === '{{ $tabKey }}'
-                                    ? 'bg-accent-50 dark:bg-accent-900/15 text-accent-700 dark:text-accent-300'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200'">
+                                    ? 'bg-accent-surface text-accent-fg-strong'
+                                    : 'text-ink-muted hover:bg-surface-secondary hover:text-ink'">
                                 <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200"
                                      :class="activeTab === '{{ $tabKey }}'
-                                         ? 'bg-accent-100 dark:bg-accent-800/40'
-                                         : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700'">
+                                         ? 'bg-accent-surface-strong'
+                                         : 'bg-surface-secondary group-hover:bg-surface-tertiary'">
                                      <x-edz.icon :name="$tab['icon']" class="w-5 h-5" />
                                 </div>
                                 <span class="text-sm font-medium"
-                                    :class="activeTab === '{{ $tabKey }}' ? 'text-accent-800 dark:text-accent-200' : ''">
+                                    :class="activeTab === '{{ $tabKey }}' ? 'text-accent-fg-strong' : ''">
                                     {{ $tab['label'] }}
                                 </span>
                             </button>
@@ -212,8 +212,8 @@ $save = function (): void {
                             {{-- Logo --}}
                             <div>
                                 <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.logo') }}</label>
-                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border
-                                              hover:border-accent-400 dark:hover:border-accent-500 cursor-pointer transition group bg-surface-secondary dark:bg-dark-secondary">
+                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-surface-border
+                                              hover:border-accent-border cursor-pointer transition group bg-surface-secondary">
                                     @if ($logo)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $logo->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
@@ -241,8 +241,8 @@ $save = function (): void {
                             {{-- Cover --}}
                             <div>
                                 <label class="block text-sm font-medium text-ink mb-1.5">{{ __('stores.cover') }}</label>
-                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border
-                                              hover:border-accent-400 dark:hover:border-accent-500 cursor-pointer transition group bg-surface-secondary dark:bg-dark-secondary">
+                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-surface-border
+                                              hover:border-accent-border cursor-pointer transition group bg-surface-secondary">
                                     @if ($cover)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $cover->temporaryUrl() }}" class="max-h-full max-w-full object-cover rounded-lg">
@@ -270,8 +270,8 @@ $save = function (): void {
                             {{-- Favicon --}}
                             <div>
                                 <label class="block text-sm font-medium text-ink mb-1.5">{{ __('merchant_panel.favicon') }}</label>
-                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-neutral-border dark:border-dark-border
-                                              hover:border-accent-400 dark:hover:border-accent-500 cursor-pointer transition group bg-surface-secondary dark:bg-dark-secondary">
+                                <label class="flex flex-col items-center justify-center w-full h-28 rounded-xl border-2 border-dashed border-surface-border
+                                              hover:border-accent-border cursor-pointer transition group bg-surface-secondary">
                                     @if ($favicon)
                                         <div class="relative w-full h-full flex items-center justify-center p-2">
                                             <img src="{{ $favicon->temporaryUrl() }}" class="max-h-full max-w-full object-contain rounded-lg">
@@ -365,7 +365,7 @@ $save = function (): void {
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                                {{ $inventory_tracking ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
+                                {{ $inventory_tracking ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
                                 <input type="checkbox" wire:model="inventory_tracking"
                                     class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                                 <div>
@@ -376,7 +376,7 @@ $save = function (): void {
 
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                                {{ $allow_backorder ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
+                                {{ $allow_backorder ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
                                 <input type="checkbox" wire:model="allow_backorder"
                                     class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                                 <div>
@@ -387,7 +387,7 @@ $save = function (): void {
 
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
-                                {{ $show_out_of_stock ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10' : 'border-neutral-border dark:border-dark-border' }}">
+                                {{ $show_out_of_stock ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
                                 <input type="checkbox" wire:model="show_out_of_stock"
                                     class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
                                 <div>
@@ -399,14 +399,14 @@ $save = function (): void {
 
                         {{-- Store-wide default order limits. Individual products
                              may override these from their own settings. --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-neutral-border dark:border-dark-border">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 pt-6 border-t border-surface-border">
                             <div>
                                 <label class="edz-label">{{ __('merchant_panel.default_min_order_qty') }}</label>
                                 <input type="number" min="1" wire:model="min_order_qty"
                                     placeholder="1"
                                     class="edz-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                                 <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.default_min_order_qty_desc') }}</p>
-                                @error('min_order_qty') <p class="text-red-500 dark:text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                                @error('min_order_qty') <p class="text-danger-fg text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
                             <div>
                                 <label class="edz-label">{{ __('merchant_panel.default_max_order_qty') }}</label>
@@ -414,7 +414,7 @@ $save = function (): void {
                                     placeholder="{{ __('merchant_panel.unlimited') }}"
                                     class="edz-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
                                 <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.default_max_order_qty_desc') }}</p>
-                                @error('max_order_qty') <p class="text-red-500 dark:text-red-400 text-xs mt-1">{{ $message }}</p> @enderror
+                                @error('max_order_qty') <p class="text-danger-fg text-xs mt-1">{{ $message }}</p> @enderror
                             </div>
                         </div>
                     </div>
@@ -437,7 +437,7 @@ $save = function (): void {
                                     <option value="en">{{ __('merchant_panel.english') }}</option>
                                     <option value="es">{{ __('merchant_panel.spanish') }}</option>
                                 </select>
-                                @error('language') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                                @error('language') <p class="text-danger-fg text-xs mt-1.5">{{ $message }}</p> @enderror
                             </div>
 
                             <div>
@@ -446,17 +446,17 @@ $save = function (): void {
                                     @foreach (['ar' => __('merchant_panel.arabic'), 'fr' => __('merchant_panel.french'), 'en' => __('merchant_panel.english'), 'es' => __('merchant_panel.spanish')] as $code => $label)
                                         <label
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition"
-                                            :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-50 dark:bg-accent-900/10 text-accent-700 dark:text-accent-400' : 'border-neutral-border dark:border-dark-border text-ink-muted hover:border-neutral-border'">
+                                            :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-surface-subtle text-accent-fg font-semibold' : 'border-surface-border text-ink-muted hover:border-neutral-border'">
                                             <input type="checkbox" value="{{ $code }}"
                                                 wire:model.live="supported_languages" class="sr-only" />
                                             <span
                                                 class="w-2 h-2 rounded-full"
-                                                :class="$wire.supported_languages.includes('{{ $code }}') ? 'bg-accent-500' : 'bg-neutral-border dark:bg-dark-border'"></span>
+                                                :class="$wire.supported_languages.includes('{{ $code }}') ? 'bg-accent-500' : 'bg-surface-border'"></span>
                                             {{ $label }}
                                         </label>
                                     @endforeach
                                 </div>
-                                @error('supported_languages') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                                @error('supported_languages') <p class="text-danger-fg text-xs mt-1.5">{{ $message }}</p> @enderror
                                 <p class="text-xs text-ink-muted mt-2">{{ __('merchant_panel.supported_languages_desc') }}</p>
                             </div>
                         </div>

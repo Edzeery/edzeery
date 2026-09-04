@@ -315,7 +315,7 @@ $deleteSelected = function (): void {
         </div>
 
         @if (! empty($selected))
-            <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-50/50 px-4 py-3 dark:bg-brand-950/30">
+            <div class="flex flex-wrap items-center gap-2 border-b border-surface-border bg-brand-surface px-4 py-3">
                 <span class="text-sm font-medium text-ink">{{ __('general.selected_count', ['count' => count($selected)]) }}</span>
                 <button type="button" class="edz-btn edz-btn--danger edz-btn--sm"
                         x-data

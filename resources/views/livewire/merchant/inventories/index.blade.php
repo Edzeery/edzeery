@@ -56,9 +56,9 @@ $canAdjust = fn() => canStore(StorePermissionEnum::INVENTORY_UPDATE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
     return match ($variant->stockStatus()) {
-        'out' => ['text' => __('stock_alerts.out_of_stock'), 'class' => 'text-danger-700 bg-danger-100 dark:text-danger-300 dark:bg-danger-900/40'],
-        'low' => ['text' => __('stock_alerts.low_stock'), 'class' => 'text-warning-700 bg-warning-100 dark:text-warning-300 dark:bg-warning-900/40'],
-        default => ['text' => 'In stock', 'class' => 'text-success-700 bg-success-100 dark:text-success-300 dark:bg-success-900/40'],
+        'out' => ['text' => __('stock_alerts.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
+        'low' => ['text' => __('stock_alerts.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],
+        default => ['text' => 'In stock', 'class' => 'text-success-fg-strong bg-success-surface-strong'],
     };
 };
 
@@ -112,7 +112,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['total']) }}</p>
                 </div>
                 <span
-                    class="grid h-10 w-10 place-items-center rounded-lg bg-success-100 text-success-700 dark:bg-success-900/40 dark:text-success-300"><x-edz.icon
+                    class="grid h-10 w-10 place-items-center rounded-lg bg-success-surface-strong text-success-fg-strong"><x-edz.icon
                         name="check-circle" class="w-5 h-5" /></span>
             </div>
         </div>
@@ -123,7 +123,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['low']) }}</p>
                 </div>
                 <span
-                    class="grid h-10 w-10 place-items-center rounded-lg bg-warning-100 text-warning-700 dark:bg-warning-900/40 dark:text-warning-300"><x-edz.icon
+                    class="grid h-10 w-10 place-items-center rounded-lg bg-warning-surface-strong text-warning-fg-strong"><x-edz.icon
                         name="exclamation-triangle" class="w-5 h-5" /></span>
             </div>
         </div>
@@ -134,7 +134,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['out']) }}</p>
                 </div>
                 <span
-                    class="grid h-10 w-10 place-items-center rounded-lg bg-danger-100 text-danger-700 dark:bg-danger-900/40 dark:text-danger-300"><x-edz.icon
+                    class="grid h-10 w-10 place-items-center rounded-lg bg-danger-surface-strong text-danger-fg-strong"><x-edz.icon
                         name="x-mark" class="w-5 h-5" /></span>
             </div>
         </div>
@@ -145,7 +145,7 @@ $adjust = function (ProductVariant $variant): void {
                     <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($this->stats['movements7']) }}</p>
                 </div>
                 <span
-                    class="grid h-10 w-10 place-items-center rounded-lg bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300"><x-edz.icon
+                    class="grid h-10 w-10 place-items-center rounded-lg bg-brand-surface-strong text-brand-fg-strong"><x-edz.icon
                         name="arrows-right-left" class="w-5 h-5" /></span>
             </div>
         </div>

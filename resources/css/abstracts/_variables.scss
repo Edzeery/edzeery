@@ -146,6 +146,98 @@ $edz-dark-text:      $edz-gray-50;
 $edz-dark-text-soft: #94a3b8;
 $edz-dark-text-muted: $edz-gray-500;
 
+// --- Semantic status surfaces (auto-switch in dark mode) --------
+// Surface tokens: light tint → dark tint (pre-baked rgba with alpha)
+// Use via bg-{family}-surface, text-{family}-fg, border-{family}-border
+
+// Brand
+$edz-brand-surface-light:        $edz-brand-50;
+$edz-brand-surface-dark:         rgba(30, 58, 138, 0.3);
+$edz-brand-surface-strong-light: $edz-brand-100;
+$edz-brand-surface-strong-dark:  rgba(30, 58, 138, 0.4);
+$edz-brand-surface-subtle-light: rgba($edz-brand-50, 0.5);
+$edz-brand-surface-subtle-dark:  rgba(30, 58, 138, 0.15);
+$edz-brand-fg-light:             $edz-brand-600;
+$edz-brand-fg-dark:              $edz-brand-400;
+$edz-brand-fg-strong-light:      $edz-brand-700;
+$edz-brand-fg-strong-dark:       $edz-brand-300;
+$edz-brand-border-light:         $edz-brand-200;
+$edz-brand-border-dark:          $edz-brand-800;
+$edz-brand-ring-light:           $edz-brand-100;
+$edz-brand-ring-dark:            $edz-brand-800;
+
+// Accent
+$edz-accent-surface-light:        $edz-accent-50;
+$edz-accent-surface-dark:         rgba(49, 46, 129, 0.3);
+$edz-accent-surface-strong-light: $edz-accent-100;
+$edz-accent-surface-strong-dark:  rgba(49, 46, 129, 0.4);
+$edz-accent-surface-subtle-light: rgba($edz-accent-50, 0.5);
+$edz-accent-surface-subtle-dark:  rgba(49, 46, 129, 0.15);
+$edz-accent-fg-light:             $edz-accent-700;
+$edz-accent-fg-dark:              $edz-accent-400;
+$edz-accent-fg-strong-light:      $edz-accent-800;
+$edz-accent-fg-strong-dark:       $edz-accent-200;
+$edz-accent-border-light:         $edz-accent-200;
+$edz-accent-border-dark:          $edz-accent-800;
+$edz-accent-ring-light:           $edz-accent-100;
+$edz-accent-ring-dark:            $edz-accent-800;
+
+// Success
+$edz-success-surface-light:        $edz-success-50;
+$edz-success-surface-dark:         rgba(20, 83, 45, 0.3);
+$edz-success-surface-strong-light: $edz-success-100;
+$edz-success-surface-strong-dark:  rgba(20, 83, 45, 0.4);
+$edz-success-surface-subtle-light: rgba($edz-success-50, 0.5);
+$edz-success-surface-subtle-dark:  rgba(20, 83, 45, 0.15);
+$edz-success-fg-light:             $edz-success-700;
+$edz-success-fg-dark:              $edz-success-400;
+$edz-success-fg-strong-light:      $edz-success-800;
+$edz-success-fg-strong-dark:       $edz-success-300;
+$edz-success-border-light:         $edz-success-200;
+$edz-success-border-dark:          $edz-success-800;
+
+// Warning
+$edz-warning-surface-light:        $edz-warning-50;
+$edz-warning-surface-dark:         rgba(120, 53, 15, 0.3);
+$edz-warning-surface-strong-light: $edz-warning-100;
+$edz-warning-surface-strong-dark:  rgba(120, 53, 15, 0.4);
+$edz-warning-surface-subtle-light: rgba($edz-warning-50, 0.5);
+$edz-warning-surface-subtle-dark:  rgba(120, 53, 15, 0.15);
+$edz-warning-fg-light:             $edz-warning-700;
+$edz-warning-fg-dark:              $edz-warning-400;
+$edz-warning-fg-strong-light:      $edz-warning-800;
+$edz-warning-fg-strong-dark:       $edz-warning-300;
+$edz-warning-border-light:         $edz-warning-200;
+$edz-warning-border-dark:          $edz-warning-700;
+
+// Danger
+$edz-danger-surface-light:        $edz-danger-50;
+$edz-danger-surface-dark:         rgba(127, 29, 29, 0.3);
+$edz-danger-surface-strong-light: $edz-danger-100;
+$edz-danger-surface-strong-dark:  rgba(127, 29, 29, 0.4);
+$edz-danger-surface-subtle-light: rgba($edz-danger-50, 0.5);
+$edz-danger-surface-subtle-dark:  rgba(127, 29, 29, 0.15);
+$edz-danger-fg-light:             $edz-danger-700;
+$edz-danger-fg-dark:              $edz-danger-400;
+$edz-danger-fg-strong-light:      $edz-danger-800;
+$edz-danger-fg-strong-dark:       $edz-danger-300;
+$edz-danger-border-light:         $edz-danger-200;
+$edz-danger-border-dark:          $edz-danger-800;
+
+// Info
+$edz-info-surface-light:        $edz-info-50;
+$edz-info-surface-dark:         rgba(12, 74, 110, 0.2);
+$edz-info-surface-strong-light: $edz-info-100;
+$edz-info-surface-strong-dark:  rgba(12, 74, 110, 0.3);
+$edz-info-surface-subtle-light: rgba($edz-info-50, 0.5);
+$edz-info-surface-subtle-dark:  rgba(12, 74, 110, 0.1);
+$edz-info-fg-light:             $edz-info-700;
+$edz-info-fg-dark:              $edz-info-400;
+$edz-info-fg-strong-light:      $edz-info-800;
+$edz-info-fg-strong-dark:       $edz-info-300;
+$edz-info-border-light:         $edz-info-200;
+$edz-info-border-dark:          $edz-info-800;
+
 // --- Radii (Apple-inspired progressive rounding) ----------------
 $edz-radius-none: 0;
 $edz-radius-sm: 0.375rem;   // 6px — small elements

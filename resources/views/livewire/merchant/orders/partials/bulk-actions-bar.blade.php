@@ -9,7 +9,7 @@
 {{-- Opts the heavy bulk-delete into the global loading overlay (edzLoader). --}}
 <x-edz.loading-target action="bulkDelete" :label="__('merchant.bulk_processing')" />
 <div wire:key="bulk-actions-bar"
-    class="relative mb-4 p-3 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-700 rounded-xl flex items-center justify-between sticky top-0 z-30"
+    class="relative mb-4 p-3 bg-accent-surface border border-accent-border rounded-xl flex items-center justify-between sticky top-0 z-30"
     wire:loading.attr="disabled"
     wire:loading.class="opacity-60 pointer-events-none cursor-not-allowed"
     wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete">
@@ -17,12 +17,12 @@
     {{-- Visible execution indicator + spinner (M10) --}}
     <div wire:loading wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete"
         x-cloak
-        class="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-accent-50/80 dark:bg-accent-900/40 rounded-xl">
-        <x-edz.spinner class="w-5 h-5 text-accent-600 dark:text-accent-300" />
-        <span class="text-xs font-semibold text-accent-700 dark:text-accent-200">{{ __('merchant.bulk_processing') }}</span>
+        class="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-accent-surface-strong rounded-xl">
+        <x-edz.spinner class="w-5 h-5 text-accent-fg" />
+        <span class="text-xs font-semibold text-accent-fg-strong">{{ __('merchant.bulk_processing') }}</span>
     </div>
 
-    <span class="text-sm text-accent-700 dark:text-accent-400 font-medium">
+    <span class="text-sm text-accent-fg font-medium">
         {{ count($this->selectedOrders) }} {{ __('merchant.orders_count') }}
     </span>
     <div class="flex gap-2 flex-wrap">
@@ -35,7 +35,7 @@
                 <span wire:loading.remove wire:target="bulkAssignAgent">{{ __('merchant.bulk_assign_agent') }}</span>
             </button>
             <div x-show="open" x-transition
-                class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
+                class="absolute z-50 right-0 mt-1 w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
                 @foreach ($this->allMembers as $m)
                     <button wire:click="bulkAssignAgent('{{ $m['id'] }}')"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
@@ -56,7 +56,7 @@
                     <span wire:loading.remove wire:target="bulkSendToCarrier">{{ __('merchant.bulk_send_carrier') }}</span>
                 </button>
                 <div x-show="open" x-transition
-                    class="absolute z-50 right-0 mt-1 w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                    class="absolute z-50 right-0 mt-1 w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
                     @foreach ($this->allProviders as $pr)
                         <button wire:click="bulkSendToCarrier('{{ $pr['id'] }}')"
                             class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"

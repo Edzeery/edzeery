@@ -366,7 +366,7 @@ $removeAssignment = function (string $assignmentId): void {
     <div class="edz-card edz-card--padded mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-brand-surface flex items-center justify-center">
                     <x-edz.icon name="clock" class="w-5 h-5 text-brand-500" />
                 </div>
                 <div>
@@ -389,7 +389,7 @@ $removeAssignment = function (string $assignmentId): void {
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-brand-surface flex items-center justify-center">
                     <x-edz.icon name="adjustments" class="w-5 h-5 text-brand-500" />
                 </div>
                 <div>
@@ -400,7 +400,7 @@ $removeAssignment = function (string $assignmentId): void {
         </div>
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-success-50 dark:bg-success-900/20 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-success-surface flex items-center justify-center">
                     <x-edz.icon name="check-circle" class="w-5 h-5 text-success-500" />
                 </div>
                 <div>
@@ -411,7 +411,7 @@ $removeAssignment = function (string $assignmentId): void {
         </div>
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-warning-50 dark:bg-warning-900/20 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-warning-surface flex items-center justify-center">
                     <x-edz.icon name="package" class="w-5 h-5 text-warning-500" />
                 </div>
                 <div>
@@ -422,7 +422,7 @@ $removeAssignment = function (string $assignmentId): void {
         </div>
         <div class="edz-card edz-card--padded">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-info-50 dark:bg-info-900/20 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-xl bg-info-surface flex items-center justify-center">
                     <x-edz.icon name="user" class="w-5 h-5 text-info-500" />
                 </div>
                 <div>
@@ -436,12 +436,12 @@ $removeAssignment = function (string $assignmentId): void {
     {{-- Tabs --}}
     <div class="flex gap-1 mb-6 border-b border-surface-border">
         <button wire:click="setTab('shifts')"
-                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px {{ $tab === 'shifts' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-ink-muted hover:text-ink' }}">
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px {{ $tab === 'shifts' ? 'border-brand-500 text-brand-fg' : 'border-transparent text-ink-muted hover:text-ink' }}">
             <x-edz.icon name="adjustments" class="w-4 h-4" />
             {{ __('merchant_panel.tab_shifts') }}
         </button>
         <button wire:click="setTab('products')"
-                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px {{ $tab === 'products' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-ink-muted hover:text-ink' }}">
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px {{ $tab === 'products' ? 'border-brand-500 text-brand-fg' : 'border-transparent text-ink-muted hover:text-ink' }}">
             <x-edz.icon name="package" class="w-4 h-4" />
             {{ __('merchant_panel.tab_product_assignments') }}
         </button>
@@ -574,8 +574,8 @@ $removeAssignment = function (string $assignmentId): void {
                     <div class="edz-card overflow-hidden" wire:key="group-{{ $memberId }}">
                         <div class="bg-surface-secondary border-b border-surface-border px-4 py-3 flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                                    <x-edz.icon name="user" class="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                                <div class="w-8 h-8 rounded-full bg-brand-surface flex items-center justify-center">
+                                    <x-edz.icon name="user" class="w-4 h-4 text-brand-fg" />
                                 </div>
                                 <span class="font-semibold text-sm text-ink">{{ $agentName }}</span>
                                 <span class="edz-badge edz-badge--neutral">{{ $items->count() }} {{ __('merchant_panel.products') }}</span>

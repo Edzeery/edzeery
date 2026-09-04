@@ -676,15 +676,15 @@ $closeListStatePopup = function (): void {
     </x-edz.page-header>
 
     {{-- Sub-tabs: by delivery company / by price list --}}
-    <div class="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto mb-5 max-w-md" role="tablist"
+    <div class="flex gap-1 p-1 bg-surface-secondary rounded-xl overflow-x-auto mb-5 max-w-md" role="tablist"
         aria-label="{{ __('merchant_panel.announced_rates') }}">
         <button type="button" role="tab"
             wire:click="setTab('company')"
             :aria-selected="$tab === 'company' ? 'true' : 'false'"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             {{ $tab === 'company'
-                ? 'bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300' }}">
+                ? 'bg-surface text-brand-fg shadow-sm'
+                : 'text-ink-muted hover:text-ink-soft' }}">
             <x-edz.icon name="truck" class="w-4 h-4 shrink-0" />
             <span>{{ __('merchant_panel.announced_by_company') }}</span>
         </button>
@@ -693,8 +693,8 @@ $closeListStatePopup = function (): void {
             :aria-selected="$tab === 'lists' ? 'true' : 'false'"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             {{ $tab === 'lists'
-                ? 'bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300' }}">
+                ? 'bg-surface text-brand-fg shadow-sm'
+                : 'text-ink-muted hover:text-ink-soft' }}">
             <x-edz.icon name="list-bullet" class="w-4 h-4 shrink-0" />
             <span>{{ __('merchant_panel.announced_by_list') }}</span>
         </button>
@@ -721,7 +721,7 @@ $closeListStatePopup = function (): void {
                         <button type="button"
                             wire:click="selectProvider('{{ $provider['id'] }}')"
                             class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-start transition-colors whitespace-nowrap lg:whitespace-normal
-                            {{ $selectedProviderId === $provider['id'] ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-800' : 'hover:bg-surface-secondary' }}">
+                            {{ $selectedProviderId === $provider['id'] ? 'bg-brand-surface ring-1 ring-brand-ring' : 'hover:bg-surface-secondary' }}">
                             <x-edz.icon name="truck"
                                 class="w-4 h-4 shrink-0 {{ $selectedProviderId === $provider['id'] ? 'text-brand-500' : 'text-ink-muted' }}" />
                             <span class="min-w-0 flex-1">
@@ -754,7 +754,7 @@ $closeListStatePopup = function (): void {
                     <div class="edz-card edz-card--padded mb-4">
                         <div class="flex flex-wrap items-start justify-between gap-4">
                             <div class="flex items-start gap-3">
-                                <div class="w-11 h-11 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center shrink-0">
+                                <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center shrink-0">
                                     <x-edz.icon name="truck" class="w-5 h-5 text-brand-500" />
                                 </div>
                                 <div>
@@ -778,7 +778,7 @@ $closeListStatePopup = function (): void {
                     {{-- Rates grid (designed as a table, no <table> element) --}}
                     <div class="edz-card overflow-hidden">
                         {{-- Header row --}}
-                        <div class="grid grid-cols-12 gap-3 px-5 py-3 bg-surface-secondary dark:bg-dark-secondary text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                        <div class="grid grid-cols-12 gap-3 px-5 py-3 bg-surface-secondary text-xs font-semibold uppercase tracking-wide text-ink-muted">
                             <div class="col-span-12 sm:col-span-6 lg:col-span-4">{{ __('merchant_panel.state') }}</div>
                             <div class="col-span-6 sm:col-span-3 lg:col-span-2">{{ __('merchant_panel.home_cost') }}</div>
                             <div class="col-span-6 sm:col-span-3 lg:col-span-2">{{ __('merchant_panel.office_cost') }}</div>
@@ -787,9 +787,9 @@ $closeListStatePopup = function (): void {
                         </div>
 
                         {{-- Divider --}}
-                        <div class="border-t border-neutral-border dark:border-dark-border"></div>
+                        <div class="border-t border-surface-border"></div>
 
-                        <div class="divide-y divide-neutral-border dark:divide-dark-border">
+                        <div class="divide-y divide-surface-border">
                             @foreach ($states as $state)
                                 @php
                                     $cell = array_merge(
@@ -882,7 +882,7 @@ $closeListStatePopup = function (): void {
                             <button type="button"
                                 wire:click="selectList('{{ $list['id'] }}')"
                                 class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-start transition-colors whitespace-nowrap lg:whitespace-normal
-                                {{ $selectedListId === $list['id'] ? 'bg-brand-50 dark:bg-brand-900/20 ring-1 ring-brand-200 dark:ring-brand-800' : 'hover:bg-surface-secondary' }}">
+                                {{ $selectedListId === $list['id'] ? 'bg-brand-surface ring-1 ring-brand-ring' : 'hover:bg-surface-secondary' }}">
                                 <x-edz.icon name="list-bullet"
                                     class="w-4 h-4 shrink-0 {{ $selectedListId === $list['id'] ? 'text-brand-500' : 'text-ink-muted' }}" />
                                 <span class="min-w-0 flex-1">
@@ -915,7 +915,7 @@ $closeListStatePopup = function (): void {
                         <div class="edz-card edz-card--padded mb-4">
                             <div class="flex flex-wrap items-start justify-between gap-4">
                                 <div class="flex items-start gap-3">
-                                    <div class="w-11 h-11 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center shrink-0">
+                                    <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center shrink-0">
                                         <x-edz.icon name="list-bullet" class="w-5 h-5 text-brand-500" />
                                     </div>
                                     <div>
@@ -954,16 +954,16 @@ $closeListStatePopup = function (): void {
 
                         {{-- List rates grid (states: home/office + municipalities) --}}
                         <div class="edz-card overflow-hidden">
-                            <div class="grid grid-cols-12 gap-3 px-5 py-3 bg-surface-secondary dark:bg-dark-secondary text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                            <div class="grid grid-cols-12 gap-3 px-5 py-3 bg-surface-secondary text-xs font-semibold uppercase tracking-wide text-ink-muted">
                                 <div class="col-span-12 sm:col-span-6 lg:col-span-4">{{ __('merchant_panel.state') }}</div>
                                 <div class="col-span-6 sm:col-span-3 lg:col-span-2">{{ __('merchant_panel.home_cost') }}</div>
                                 <div class="col-span-6 sm:col-span-3 lg:col-span-2">{{ __('merchant_panel.office_cost') }}</div>
                                 <div class="col-span-12 sm:col-span-12 lg:col-span-4 text-end">{{ __('merchant_panel.actions') }}</div>
                             </div>
 
-                            <div class="border-t border-neutral-border dark:border-dark-border"></div>
+                            <div class="border-t border-surface-border"></div>
 
-                            <div class="divide-y divide-neutral-border dark:divide-dark-border">
+                            <div class="divide-y divide-surface-border">
                                 @foreach ($states as $state)
                                     @php
                                         $cell = array_merge(
@@ -1060,7 +1060,7 @@ $closeListStatePopup = function (): void {
                             <div class="col-span-5 text-end">{{ __('merchant_panel.home_cost') }}</div>
                         </div>
 
-                        <div class="divide-y divide-neutral-border dark:divide-dark-border max-h-[26rem] overflow-y-auto edz-scroll">
+                        <div class="divide-y divide-surface-border max-h-[26rem] overflow-y-auto edz-scroll">
                             @foreach ($popupCitiesWithPrices as $city)
                                 <div wire:key="city-row-{{ $city['id'] }}" class="grid grid-cols-12 gap-3 px-2 py-2.5 items-center">
                                     <div class="col-span-7 text-sm text-ink truncate">{{ $city['name'] }}</div>
@@ -1151,7 +1151,7 @@ $closeListStatePopup = function (): void {
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-neutral-border dark:border-dark-border">
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
                         <button type="button" wire:click="closeListModal" class="edz-btn edz-btn--ghost edz-btn--sm">
                             {{ __('merchant_panel.cancel') }}
                         </button>
@@ -1211,7 +1211,7 @@ $closeListStatePopup = function (): void {
                             <div class="col-span-5 text-end">{{ __('merchant_panel.home_cost') }}</div>
                         </div>
 
-                        <div class="divide-y divide-neutral-border dark:divide-dark-border max-h-[26rem] overflow-y-auto edz-scroll">
+                        <div class="divide-y divide-surface-border max-h-[26rem] overflow-y-auto edz-scroll">
                             @foreach ($listPopupCitiesWithPrices as $city)
                                 <div wire:key="list-city-row-{{ $city['id'] }}"
                                     class="grid grid-cols-12 gap-3 px-2 py-2.5 items-center">

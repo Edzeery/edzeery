@@ -15,16 +15,16 @@
 
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" x-on:click="previewOpen = false"></div>
 
-        <div class="relative w-full h-[90vh] max-w-7xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        <div class="relative w-full h-[90vh] max-w-7xl bg-surface rounded-2xl shadow-2xl overflow-hidden flex flex-col"
              x-on:click.stop
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100">
 
-            <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-surface-border bg-surface-secondary shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center">
-                        <x-edz.icon name="eye" class="w-5 h-5 text-accent-600 dark:text-accent-400" />
+                    <div class="w-8 h-8 rounded-lg bg-accent-surface flex items-center justify-center">
+                        <x-edz.icon name="eye" class="w-5 h-5 text-accent-fg" />
                     </div>
                     <div>
                         <p class="text-sm font-semibold text-ink">{{ __('storefront.preview') }} — {{ $store->name }}</p>
@@ -40,7 +40,7 @@
                     <button type="button" data-modal-autofocus
                         x-on:click="previewOpen = false"
                         aria-label="{{ __('buttons.close') }}"
-                        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        class="p-2 rounded-lg hover:bg-surface-secondary transition">
                         <x-edz.icon name="x-mark" class="w-5 h-5 text-ink-400" />
                     </button>
                 </div>

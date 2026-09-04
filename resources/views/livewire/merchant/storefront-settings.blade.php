@@ -261,17 +261,17 @@ $chosenPickerProduct = computed(function () {
     {{-- Store Link Bar --}}
     @if ($canPreview)
         <div
-            class="mb-6 p-4 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800 rounded-xl">
+            class="mb-6 p-4 bg-accent-surface border border-accent-border rounded-xl">
             <div class="flex items-center justify-between flex-wrap gap-3">
                 <div class="flex items-center gap-3">
                     <div
-                        class="w-10 h-10 rounded-xl bg-accent-100 dark:bg-accent-800/50 flex items-center justify-center">
-                        <x-edz.icon name="storefront" class="w-5 h-5 text-accent-600 dark:text-accent-400" />
+                        class="w-10 h-10 rounded-xl bg-accent-surface-strong flex items-center justify-center">
+                        <x-edz.icon name="storefront" class="w-5 h-5 text-accent-fg" />
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-accent-700 dark:text-accent-300">
+                        <p class="text-sm font-medium text-accent-fg-strong">
                             {{ __('storefront.your_store_link') }}</p>
-                        <p class="text-xs text-accent-500 dark:text-accent-400 font-mono">{{ $store->public_url }}</p>
+                        <p class="text-xs text-accent-fg font-mono">{{ $store->public_url }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -348,10 +348,10 @@ $chosenPickerProduct = computed(function () {
                                         :class="selectedTemplate === '{{ $key }}'
                                             ?
                                             'ring-2 ring-accent-500 shadow-lg' :
-                                            'ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-gray-300 dark:hover:ring-gray-600'">
+                                            'ring-1 ring-gray-ring hover:ring-surface-border-strong'">
 
                                         <div
-                                            class="relative h-40 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 overflow-hidden">
+                                            class="relative h-40 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
                                             @include(
                                                 'livewire.merchant.storefront-settings.partials.template-thumbnails',
                                                 ['key' => $key]
@@ -366,14 +366,14 @@ $chosenPickerProduct = computed(function () {
                                             </div>
                                         </div>
 
-                                        <div class="p-4 bg-white dark:bg-gray-800">
+                                        <div class="p-4 bg-surface">
                                             <p class="text-sm font-semibold text-ink">{{ $case->label() }}</p>
                                             <p class="text-xs text-ink-muted mt-1 leading-relaxed">
                                                 {{ $case->description() }}</p>
                                             @if ($canPreview)
                                                 <a :href="'{{ $store->public_url }}?preview_template={{ $key }}'"
                                                     target="_blank" rel="noopener noreferrer" x-on:click.stop
-                                                    class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition">
+                                                    class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-fg hover:text-accent-fg-strong transition">
                                                     <x-edz.icon name="eye" class="w-4 h-4" />
                                                     {{ __('storefront.preview_template') }}
                                                 </a>
@@ -388,7 +388,7 @@ $chosenPickerProduct = computed(function () {
                              Every choice commits LIVE so the selection is
                              visible (and survives a refresh) immediately —
                              no hidden deferred state, no save surprises. --}}
-                        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700"
+                        <div class="mt-6 pt-6 border-t border-surface-border"
                             x-show="selectedTemplate === 'single_product'" x-cloak x-data="{ open: false }"
                             @click.outside="open = false">
                             <label class="edz-label">{{ __('merchant_panel.template_product') }}</label>
@@ -417,8 +417,8 @@ $chosenPickerProduct = computed(function () {
                                 <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150"
                                     x-transition:enter-start="opacity-0 -translate-y-1"
                                     x-transition:enter-end="opacity-100 translate-y-0"
-                                    class="absolute z-30 mt-2 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl overflow-hidden">
-                                    <div class="p-2 border-b border-gray-100 dark:border-gray-800">
+                                    class="absolute z-30 mt-2 w-full rounded-xl border border-surface-border bg-surface shadow-xl overflow-hidden">
+                                    <div class="p-2 border-b border-surface-border">
                                         <input type="search" wire:model.live.debounce.250ms="picker_query"
                                             placeholder="{{ __('storefront.search_products') }}"
                                             class="edz-input w-full text-sm">
@@ -428,7 +428,7 @@ $chosenPickerProduct = computed(function () {
                                         <li>
                                             <button type="button" data-picker-value=""
                                                 x-on:click="$wire.set('section_content.single_product.product_id', $el.dataset.pickerValue); $wire.set('picker_query', ''); open = false"
-                                                class="w-full text-start px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-between gap-2 {{ $chosenPickerProduct ? '' : 'store-text-primary font-semibold' }}">
+                                                class="w-full text-start px-3 py-2.5 text-sm hover:bg-surface-secondary transition flex items-center justify-between gap-2 {{ $chosenPickerProduct ? '' : 'store-text-primary font-semibold' }}">
                                                 <span>{{ __('merchant_panel.template_product_auto') }}</span>
                                                 @if (!$chosenPickerProduct)
                                                     <x-edz.icon name="check" class="w-4 h-4 shrink-0" />
@@ -440,7 +440,7 @@ $chosenPickerProduct = computed(function () {
                                             <li wire:key="picker-opt-{{ $pickerProduct->id }}">
                                                 <button type="button" data-picker-value="{{ $pickerProduct->id }}"
                                                     x-on:click="$wire.set('section_content.single_product.product_id', $el.dataset.pickerValue); $wire.set('picker_query', ''); open = false"
-                                                    class="w-full text-start px-3 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-between gap-2 {{ $isChosen ? 'store-text-primary font-semibold' : '' }}">
+                                                    class="w-full text-start px-3 py-2.5 text-sm hover:bg-surface-secondary transition flex items-center justify-between gap-2 {{ $isChosen ? 'store-text-primary font-semibold' : '' }}">
                                                     <span class="truncate">{{ $pickerProduct->name }}</span>
                                                     @if ($isChosen)
                                                         <x-edz.icon name="check" class="w-4 h-4 shrink-0" />
@@ -449,7 +449,7 @@ $chosenPickerProduct = computed(function () {
                                             </li>
                                         @endforeach
                                         @if ($this->pickerOptions->isEmpty())
-                                            <li class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                            <li class="px-3 py-3 text-sm text-ink-muted">
                                                 {{ __('storefront.no_results_found') }}
                                             </li>
                                         @endif
@@ -479,7 +479,7 @@ $chosenPickerProduct = computed(function () {
                                 <label class="edz-label" for="primary-color">{{ __('stores.primary_color') }}</label>
                                 <div class="flex items-center gap-3">
                                     <input id="primary-color" type="color" wire:model="primary_color"
-                                        class="w-10 h-10 rounded-lg border-2 border-gray-200 dark:border-gray-600 cursor-pointer shrink-0" />
+                                        class="w-10 h-10 rounded-lg border-2 border-surface-border cursor-pointer shrink-0" />
                                     <input type="text" wire:model="primary_color"
                                         class="edz-input flex-1 font-mono text-sm" placeholder="#4f46e5" />
                                 </div>
@@ -490,7 +490,7 @@ $chosenPickerProduct = computed(function () {
                                     for="secondary-color">{{ __('stores.secondary_color') }}</label>
                                 <div class="flex items-center gap-3">
                                     <input id="secondary-color" type="color" wire:model="secondary_color"
-                                        class="w-10 h-10 rounded-lg border-2 border-gray-200 dark:border-gray-600 cursor-pointer shrink-0" />
+                                        class="w-10 h-10 rounded-lg border-2 border-surface-border cursor-pointer shrink-0" />
                                     <input type="text" wire:model="secondary_color"
                                         class="edz-input flex-1 font-mono text-sm" placeholder="#7c3aed" />
                                 </div>
@@ -508,7 +508,7 @@ $chosenPickerProduct = computed(function () {
 
                         {{-- Live preview: reads reactive $wire state locally (no requests) --}}
                         <div
-                            class="mt-6 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            class="mt-6 p-4 rounded-xl border border-surface-border bg-surface-secondary/50">
                             <p class="text-xs text-ink-400 mb-3 font-medium">{{ __('merchant_panel.live_preview') }}
                             </p>
                             <div class="flex items-center gap-3 flex-wrap">
@@ -557,8 +557,8 @@ $chosenPickerProduct = computed(function () {
                                 <label
                                     class="flex items-start gap-3 p-3.5 rounded-xl border transition-all duration-200 cursor-pointer"
                                     :class="$wire.sections.includes('{{ $key }}') ?
-                                        'border-accent-500 bg-accent-50 dark:bg-accent-900/10 shadow-sm' :
-                                        'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'">
+                                        'border-accent-500 bg-accent-surface-subtle shadow-sm' :
+                                        'border-surface-border hover:border-surface-border-strong'">
                                     <input type="checkbox" value="{{ $key }}" wire:model="sections"
                                         class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500" />
                                     <div class="flex-1 min-w-0">
@@ -577,7 +577,7 @@ $chosenPickerProduct = computed(function () {
                     </div>
 
                     {{-- Section content editors --}}
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <div class="border-t border-surface-border pt-6">
                         <div class="flex items-center gap-2 mb-4">
                             <x-edz.icon name="edit" class="w-4 h-4 text-ink-400" />
                             <h4 class="text-sm font-semibold text-ink">{{ __('merchant_panel.section_content') }}
@@ -609,7 +609,7 @@ $chosenPickerProduct = computed(function () {
 
 {{-- Save bar --}}
 <div
-    class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-t border-gray-200 dark:border-gray-700/50 z-10">
+    class="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-surface/80 backdrop-blur-lg border-t border-surface-border/50 z-10">
     <div class="flex items-center justify-end gap-3">
         @if ($canPreview)
             <a href="{{ $store->public_url }}" target="_blank" rel="noopener noreferrer"

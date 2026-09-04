@@ -134,7 +134,7 @@ $formatAmount = function (float $amount): string {
                         </div>
                         <div>
                             <dt class="text-sm text-ink-muted mb-1">{{ __('finance.progress') }}</dt>
-                            <div class="w-full bg-surface-tertiary rounded-full h-2 dark:bg-surface-secondary">
+                            <div class="w-full bg-surface-secondary rounded-full h-2">
                                 <div class="bg-success-500 h-2 rounded-full" style="width: {{ $debt->progress }}%"></div>
                             </div>
                             <span class="text-xs text-ink-muted">{{ $debt->progress }}%</span>

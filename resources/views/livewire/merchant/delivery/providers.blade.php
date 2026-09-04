@@ -283,7 +283,7 @@ $deleteProvider = function (string $id): void {
                 <div wire:key="provider-{{ $provider['id'] }}" class="edz-card edz-card--padded">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-11 h-11 rounded-xl bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center">
+                            <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center">
                                 <x-edz.icon name="truck" class="w-5 h-5 text-brand-500" />
                             </div>
                             <div class="min-w-0">
@@ -326,7 +326,7 @@ $deleteProvider = function (string $id): void {
                     </div>
 
                     @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
-                        <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-neutral-border dark:border-dark-border">
+                        <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-surface-border">
                             <button type="button" aria-label="{{ __('merchant_panel.edit_provider') }}"
                                     wire:click="openProviderModal('{{ $provider['id'] }}')"
                                     class="edz-btn edz-btn--ghost edz-btn--sm">
@@ -412,7 +412,7 @@ $deleteProvider = function (string $id): void {
                     @php $carrier = $this->selectedCarrier(); @endphp
                     @if ($carrier && !empty($carrier['credential_fields']))
                         <div wire:key="credential-fields-{{ $providerForm['carrier_id'] }}"
-                             class="border-t border-surface-border dark:border-ink-700 pt-4">
+                             class="border-t border-surface-border pt-4">
                             <p class="text-sm font-medium text-ink mb-1">{{ __('merchant_panel.credential_values') }}</p>
                             <p class="text-xs text-ink-muted mb-3">{{ __('merchant_panel.provider_credentials_hint') }}</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -434,7 +434,7 @@ $deleteProvider = function (string $id): void {
                             </div>
                         </div>
                     @else
-                        <div class="border-t border-surface-border dark:border-ink-700 pt-4">
+                        <div class="border-t border-surface-border pt-4">
                             <p class="text-xs text-ink-muted">{{ __('merchant_panel.no_credentials_required') }}</p>
                         </div>
                     @endif

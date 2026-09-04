@@ -1412,7 +1412,7 @@ $submitEdit = function (): void {
                     <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-40 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                    class="absolute z-40 mt-1 w-40 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
                     <button wire:click="setFilter('source', null)"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
                     <button wire:click="setFilter('source', 'store')"
@@ -1434,7 +1434,7 @@ $submitEdit = function (): void {
                     <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-44 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5">
+                    class="absolute z-40 mt-1 w-44 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
                     <button wire:click="setFilter('delivery_type', null)"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
                     <button wire:click="setFilter('delivery_type', 'home')"
@@ -1456,7 +1456,7 @@ $submitEdit = function (): void {
                     <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
                 </button>
                 <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-48 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
+                    class="absolute z-40 mt-1 w-48 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
                     <button wire:click="setFilter('shipping_provider', null)"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
                     @foreach ($this->allProviders as $pr)
@@ -1481,7 +1481,7 @@ $submitEdit = function (): void {
             <div class="flex items-center gap-1 text-xs text-ink-muted" x-data="{ pp: {{ $this->perPage }} }">
                 <span>{{ __('merchant.per_page') }}</span>
                 <select x-model="pp" x-on:change="$wire.setPerPage(parseInt($event.target.value))"
-                    class="text-xs border border-surface-border rounded-lg px-2 py-1 bg-surface dark:bg-ink-800 text-ink focus:outline-none focus:ring-1 focus:ring-[var(--store-primary)]">
+                    class="text-xs border border-surface-border rounded-lg px-2 py-1 bg-surface text-ink focus:outline-none focus:ring-1 focus:ring-[var(--store-primary)]">
                     <option value="15">15</option>
                     <option value="25">25</option>
                     <option value="50">50</option>
@@ -1496,7 +1496,7 @@ $submitEdit = function (): void {
         <div class="mb-3 flex items-center gap-2 flex-wrap">
             @if (!empty($this->filters['wilaya']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? '' }}
                     <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1504,7 +1504,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['city']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? '' }}
                     <button wire:click="setFilter('city', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1514,7 +1514,7 @@ $submitEdit = function (): void {
                 @foreach ($this->allStatuses as $s)
                     @if (in_array($s['id'], $this->filters['status']))
                         <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                             {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
                             <button wire:click="toggleStatusFilter('{{ $s['id'] }}')"
                                 wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1525,7 +1525,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['assigned_to']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? '' }}
                     <button wire:click="setFilter('assigned_to', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1533,7 +1533,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['date_from']) || !empty($this->filters['date_to']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}
                     <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
                         wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1542,7 +1542,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['delivery_type']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : __('merchant_panel.home_delivery_label') }}
                     <button wire:click="setFilter('delivery_type', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1551,7 +1551,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['shipping_provider']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? '' }}
                     <button @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
                         wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1560,7 +1560,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['shipment_type']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ match ($this->filters['shipment_type']) {
                         'delivery' => __('merchant_panel.delivery'),
                         'exchange' => __('merchant_panel.exchange_label'),
@@ -1574,7 +1574,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['stopdesk_point']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allStopdeskPoints)->firstWhere('id', $this->filters['stopdesk_point'])['name'] ?? '' }}
                     <button wire:click="setFilter('stopdesk_point', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1583,7 +1583,7 @@ $submitEdit = function (): void {
             @endif
             @if (!empty($this->filters['confirmed_by']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['user']['name'] ?? '' }}
                     <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1592,7 +1592,7 @@ $submitEdit = function (): void {
             @endif
             @if ($this->filters['send_from_carrier_warehouse'] !== null)
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['send_from_carrier_warehouse'] ? __('buttons.yes') : __('buttons.no') }}
                     <button wire:click="setFilter('send_from_carrier_warehouse', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark"
@@ -1601,7 +1601,7 @@ $submitEdit = function (): void {
             @endif
             @if (filled($this->filters['weight_min']) || filled($this->filters['weight_max']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['weight_min'] ?? '0' }} — {{ $this->filters['weight_max'] ?? '∞' }}
                     @if (filled($this->filters['weight_min']))
                         <button wire:click="$set('filters.weight_min', '')" wire:loading.attr="disabled"
@@ -1615,7 +1615,7 @@ $submitEdit = function (): void {
             @endif
             @if ($this->filters['address'] !== '')
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['address'] }}
                     <button wire:click="setFilter('address', '')" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1623,7 +1623,7 @@ $submitEdit = function (): void {
             @endif
             @if ($this->filters['notes'] !== '')
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['notes'] }}
                     <button wire:click="setFilter('notes', '')" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1631,7 +1631,7 @@ $submitEdit = function (): void {
             @endif
             @if ($this->filters['phone_secondary'] !== '')
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400">
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     {{ $this->filters['phone_secondary'] }}
                     <button wire:click="setFilter('phone_secondary', '')" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -1650,8 +1650,8 @@ $submitEdit = function (): void {
     {{-- Bulk action bar (sticky when items selected) --}}
     @if ($this->showTrash)
         <div
-            class="mb-4 p-3 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 rounded-xl flex items-center justify-between">
-            <span class="text-sm text-warning-700 dark:text-warning-400 font-medium">
+            class="mb-4 p-3 bg-warning-surface border border-warning-border rounded-xl flex items-center justify-between">
+            <span class="text-sm text-warning-fg font-medium">
                 {{ __('merchant.trash_bin') }} — {{ $orders['total'] ?? 0 }}
             </span>
             <div class="flex gap-2">
@@ -2018,7 +2018,7 @@ $submitEdit = function (): void {
                                         {{ __('merchant_panel.actions') }}</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-surface-100 dark:divide-ink-800">
+                            <tbody class="divide-y divide-surface-border">
                                 @foreach ($orders['data'] as $order)
                                     @php
                                         $transitions = $order['transitions'] ?? [];
@@ -2029,7 +2029,7 @@ $submitEdit = function (): void {
                                             : '';
                                     @endphp
                                     <tr x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
-                                        class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-50 dark:hover:bg-ink-800/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-50 dark:bg-accent-900/10 ' : '' }}{{ $orderStatusTone }}">
+                                        class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-tertiary/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle ' : '' }}{{ $orderStatusTone }}">
                                         <td class="px-3 py-3 w-10">
                                             <input type="checkbox" value="{{ $orderId }}"
                                                 wire:click="toggleSelectOrder('{{ $orderId }}')"
@@ -2148,14 +2148,14 @@ $submitEdit = function (): void {
                                                         <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                     </button>
                                                     <div x-show="open" x-transition x-cloak
-                                                        class="fixed z-[200] w-56 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
+                                                        class="fixed z-[200] w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
                                                         :style="'top:' + top + 'px; left:' + left + 'px'">
                                                         @foreach ($this->allStatuses as $s)
                                                             @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
                                                                 <button
                                                                     wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                     wire:loading.attr="disabled" @click="open = false"
-                                                                    class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary dark:hover:bg-ink-700 disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
+                                                                    class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
                                                                     <x-edz.spinner
                                                                         wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                         class="w-3 h-3" />
@@ -2271,7 +2271,7 @@ $submitEdit = function (): void {
                     </div>
 
                     {{-- Mobile cards (Apple Adaptive Layout): below lg only --}}
-                    <div class="lg:hidden divide-y divide-surface-100 dark:divide-ink-800">
+                    <div class="lg:hidden divide-y divide-surface-border">
                         @foreach ($orders['data'] as $order)
                             @php
                                 $orderId = $order['id'] ?? '';
@@ -2281,7 +2281,7 @@ $submitEdit = function (): void {
                                     : '';
                             @endphp
                             <div x-data="orderRowActions(@js($orderId), @js($order['number'] ?? ''))"
-                                class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-50 dark:bg-accent-900/10' : '' }} {{ $orderStatusTone }}">
+                                class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle' : '' }} {{ $orderStatusTone }}">
                                 <div class="flex items-start gap-3">
                                     <input type="checkbox" value="{{ $orderId }}"
                                         wire:click="toggleSelectOrder('{{ $orderId }}')"
@@ -2543,7 +2543,7 @@ $submitEdit = function (): void {
                         {{-- Header --}}
                         <div class="flex items-start gap-3">
                             <div
-                                class="flex items-center justify-center w-10 h-10 rounded-full bg-accent-50 dark:bg-accent-900/25 text-accent-600 dark:text-accent-300 shrink-0">
+                                class="flex items-center justify-center w-10 h-10 rounded-full bg-accent-surface text-accent-fg-strong shrink-0">
                                 <x-edz.icon name="info-circle" class="w-5 h-5" />
                             </div>
                             <div class="min-w-0 flex-1">
@@ -2590,7 +2590,7 @@ $submitEdit = function (): void {
                                     {{ __('merchant_panel.products') }}
                                 </h4>
                                 <div
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                     @if (!in_array('products', $this->visibleColumns))
                                         @forelse ($detailsOrder['items_summary'] ?? [] as $item)
                                             <div class="flex items-center justify-between gap-3 px-3 py-2">
@@ -2606,7 +2606,7 @@ $submitEdit = function (): void {
                                     @endif
                                     @if (!in_array('amount', $this->visibleColumns))
                                         <div
-                                            class="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface dark:bg-ink-800 font-bold text-ink">
+                                            class="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface font-bold text-ink">
                                             <span>{{ __('merchant_panel.total') }}</span>
                                             <span>{{ currency($detailsOrder['total_amount']) }}</span>
                                         </div>
@@ -2624,7 +2624,7 @@ $submitEdit = function (): void {
                                     {{ __('merchant_panel.details_shipping') }}
                                 </h4>
                                 <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                     @if (!in_array('delivery_type', $this->visibleColumns))
                                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                                             <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.delivery') }}</dt>
@@ -2682,7 +2682,7 @@ $submitEdit = function (): void {
                                     {{ __('merchant_panel.details_contact') }}
                                 </h4>
                                 <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                     @if (!in_array('phone_secondary', $this->visibleColumns))
                                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                                             <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.phone_secondary') }}</dt>
@@ -2720,7 +2720,7 @@ $submitEdit = function (): void {
                                     {{ __('merchant_panel.assignment') }}
                                 </h4>
                                 <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                     @if (!in_array('assigned_agent', $this->visibleColumns))
                                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                                             <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.agent') }}</dt>
@@ -2755,7 +2755,7 @@ $submitEdit = function (): void {
                                     @endif
                                 </dl>
                                 @if (!in_array('notes', $this->visibleColumns) && !empty($detailsOrder['notes']))
-                                    <div class="mt-2 p-2.5 rounded-lg bg-surface-100 dark:bg-ink-700 text-sm text-ink-muted italic">
+                                    <div class="mt-2 p-2.5 rounded-lg bg-surface-tertiary text-sm text-ink-muted italic">
                                         "{{ $detailsOrder['notes'] }}"
                                     </div>
                                 @endif
@@ -2771,7 +2771,7 @@ $submitEdit = function (): void {
                                     {{ __('merchant_panel.tracking') }}
                                 </h4>
                                 <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-50 dark:bg-ink-800/30 text-sm">
+                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                     @if (!in_array('shipping_provider', $this->visibleColumns) && !empty($detailsTracking['shipping_provider']))
                                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                                             <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.carrier') }}</dt>
@@ -2811,7 +2811,7 @@ $submitEdit = function (): void {
     <div x-data="dropdownPosition()" x-show="open" x-transition @click.away="close()"
         @edz-filter-open.window="$event.detail && toggle($event, $event.detail)"
         :style="`top: ${top}px; left: ${left}px`"
-        class="fixed z-50 p-2 bg-surface dark:bg-ink-800 border border-surface-border rounded-xl shadow-lg"
+        class="fixed z-50 p-2 bg-surface border border-surface-border rounded-xl shadow-lg"
         :class="{
             'max-h-64 overflow-y-auto edz-scroll': open === 'wilaya' || open === 'status' ||
                 open === 'assigned_to' || open === 'city' || open === 'delivery_type' ||
