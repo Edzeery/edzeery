@@ -246,7 +246,7 @@ use App\Enums\Store\StorePermissionEnum;
                                 <button type="button" aria-label="<?php echo e(__('merchant_panel.confirm_delete_rider')); ?>"
                                         class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                         x-data
-                                        x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteRider('<?php echo e($rider['id']); ?>') })">
+                                        x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteRider('<?php echo e($rider['id']); ?>') })()">
                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

@@ -335,7 +335,7 @@ $deleteProvider = function (string $id): void {
                             <button type="button" aria-label="{{ __('merchant_panel.confirm_delete_provider') }}"
                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                     x-data
-                                    x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteProvider('{{ $provider['id'] }}') })">
+                                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteProvider('{{ $provider['id'] }}') })()">
                                 <x-edz.icon name="trash" class="w-4 h-4" />
                             </button>
                         </div>

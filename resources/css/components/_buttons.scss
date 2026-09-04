@@ -109,4 +109,39 @@
       background-color: rgb(var(--edz-color-danger-700));
     }
   }
+
+  // --- Centralised loading state (edz-button-loading.js) ---
+  .edz-btn__hide {
+    display: none !important;
+  }
+
+  .edz-btn__ring {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .edz-btn__ring .edz-spinner {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .edz-btn--xs .edz-btn__ring .edz-spinner {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .edz-btn--sm .edz-btn__ring .edz-spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .edz-btn--lg .edz-btn__ring .edz-spinner {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .edz-btn--loading {
+    cursor: wait;
+  }
 }

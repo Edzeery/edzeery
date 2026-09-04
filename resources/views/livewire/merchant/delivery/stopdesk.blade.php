@@ -201,7 +201,7 @@ $deleteStopdesk = function (string $id): void {
                             <button type="button" aria-label="{{ __('merchant_panel.confirm_delete_stopdesk') }}"
                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                     x-data
-                                    x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteStopdesk('{{ $point['id'] }}') })">
+                                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteStopdesk('{{ $point['id'] }}') })()">
                                 <x-edz.icon name="trash" class="w-4 h-4" />
                             </button>
                         </div>

@@ -527,7 +527,7 @@ $removeAssignment = function (string $assignmentId): void {
 <button type="button" aria-label="{{ __('merchant_panel.delete_shift') }}"
                                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                                     x-data
-                                                    x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteShift('{{ $shift['id'] }}') })">
+                                                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteShift('{{ $shift['id'] }}') })()">
                                                     <x-edz.icon name="x-mark" class="w-4 h-4" />
                                             </button>
                                         </div>
@@ -597,7 +597,7 @@ $removeAssignment = function (string $assignmentId): void {
                                     <button type="button"
                                             class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                             x-data
-                                            x-on:click="EdzSwal.confirmDelete(() => { $wire.removeAssignment('{{ $a['id'] }}') })">
+                                            x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.removeAssignment('{{ $a['id'] }}') })()">
                                         <x-edz.icon name="x-mark" class="w-4 h-4" />
                                     </button>
                                 </div>

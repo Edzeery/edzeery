@@ -8,6 +8,7 @@ import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
 import orderRowActions from "./components/order-row-actions.js";
+import initButtonLoading from "./edz-button-loading.js";
 
 window.flatpickr = flatpickr;
 window.Chart = Chart;
@@ -276,9 +277,12 @@ document.addEventListener('livewire:navigated', () => {
                 allowInput: true,
                 clickOpens: true,
                 onChange: (selectedDates, dateStr, instance) => {
+                    // Trigger Livewire wire:model update
                     el.dispatchEvent(new Event('change', { bubbles: true }));
                 },
             });
         }
     });
 });
+
+initButtonLoading();

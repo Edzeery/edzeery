@@ -208,7 +208,7 @@ use App\Models\Locations\State;
                             <button type="button" aria-label="<?php echo e(__('merchant_panel.confirm_delete_stopdesk')); ?>"
                                     class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
                                     x-data
-                                    x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteStopdesk('<?php echo e($point['id']); ?>') })">
+                                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteStopdesk('<?php echo e($point['id']); ?>') })()">
                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

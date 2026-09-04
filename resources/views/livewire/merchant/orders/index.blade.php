@@ -248,7 +248,7 @@ $loadColumnPreferences = function (): void {
     $secondaries = array_values(array_diff($stored, $primaryKeys));
     $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
 
-    $this->tableStyle = ($pref->table_style === 'status') ? 'status' : 'default';
+    $this->tableStyle = ($pref?->table_style === 'status') ? 'status' : 'default';
 };
 
 $saveColumnPreferences = function (): void {

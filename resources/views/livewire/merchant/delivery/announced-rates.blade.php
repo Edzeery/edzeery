@@ -680,7 +680,7 @@ $closeListStatePopup = function (): void {
         aria-label="{{ __('merchant_panel.announced_rates') }}">
         <button type="button" role="tab"
             wire:click="setTab('company')"
-            :aria-selected="$tab === 'company' ? 'true' : 'false'"
+            aria-selected="{{ $tab === 'company' ? 'true' : 'false' }}"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             {{ $tab === 'company'
                 ? 'bg-surface text-brand-fg shadow-sm'
@@ -690,7 +690,7 @@ $closeListStatePopup = function (): void {
         </button>
         <button type="button" role="tab"
             wire:click="setTab('lists')"
-            :aria-selected="$tab === 'lists' ? 'true' : 'false'"
+            aria-selected="{{ $tab === 'lists' ? 'true' : 'false' }}"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             {{ $tab === 'lists'
                 ? 'bg-surface text-brand-fg shadow-sm'
@@ -944,7 +944,7 @@ $closeListStatePopup = function (): void {
                                     </button>
                                     <button type="button" aria-label="{{ __('merchant_panel.confirm_delete_list') }}"
                                         class="edz-btn edz-btn--ghost edz-btn--sm"
-                                        x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteList('{{ $selectedListId }}') })">
+                                        x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteList('{{ $selectedListId }}') })()">
                                         <x-edz.icon name="trash" class="w-4 h-4 text-danger-600" />
                                         {{ __('merchant_panel.delete') }}
                                     </button>

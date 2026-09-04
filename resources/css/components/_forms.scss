@@ -303,6 +303,12 @@ select.edz-select,
   to { transform: rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .edz-spinner {
+    animation: none;
+  }
+}
+
 // --- Mobile bottom-sheet mode ---
 @media (max-width: 639px) {
   .edz-select__panel {

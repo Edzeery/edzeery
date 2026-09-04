@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\DB;
         aria-label="<?php echo e(__('merchant_panel.announced_rates')); ?>">
         <button type="button" role="tab"
             wire:click="setTab('company')"
-            :aria-selected="$tab === 'company' ? 'true' : 'false'"
+            aria-selected="<?php echo e($tab === 'company' ? 'true' : 'false'); ?>"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             <?php echo e($tab === 'company'
                 ? 'bg-surface text-brand-fg shadow-sm'
@@ -72,7 +72,7 @@ use Illuminate\Support\Facades\DB;
         </button>
         <button type="button" role="tab"
             wire:click="setTab('lists')"
-            :aria-selected="$tab === 'lists' ? 'true' : 'false'"
+            aria-selected="<?php echo e($tab === 'lists' ? 'true' : 'false'); ?>"
             class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 flex-1 justify-center
             <?php echo e($tab === 'lists'
                 ? 'bg-surface text-brand-fg shadow-sm'
@@ -638,7 +638,7 @@ use Illuminate\Support\Facades\DB;
                                     </button>
                                     <button type="button" aria-label="<?php echo e(__('merchant_panel.confirm_delete_list')); ?>"
                                         class="edz-btn edz-btn--ghost edz-btn--sm"
-                                        x-on:click="EdzSwal.confirmDelete(() => { $wire.deleteList('<?php echo e($selectedListId); ?>') })">
+                                        x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteList('<?php echo e($selectedListId); ?>') })()">
                                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4 text-danger-600']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
