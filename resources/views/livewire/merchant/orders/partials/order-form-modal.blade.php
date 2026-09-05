@@ -37,10 +37,76 @@
                             <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
                             <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
                         </div>
+                    </div>
+
+                    {{-- Delivery — Carrier-first: company → delivery type → office --}}
+                    <div x-data="{ delivery: $wire.form.delivery_type }"
+                        x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
+                        x-effect="delivery = $wire.form.delivery_type">
+                        <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
+                        <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
+                            <button type="button"
+                                :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
+                                @click="delivery = 'home'"
+                                class="px-4 py-2 text-sm font-medium transition-colors">
+                                <x-edz.icon name="home" class="w-4 h-4 inline mr-1" />
+                                {{ __('merchant_panel.home_delivery_label') }}
+                            </button>
+                            <button type="button"
+                                :class="delivery === 'stopdesk' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
+                                @click="delivery = 'stopdesk'"
+                                class="px-4 py-2 text-sm font-medium transition-colors">
+                                <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
+                                {{ __('merchant_panel.stop_desk_label') }}
+                            </button>
+                        </div>
+
+                        {{-- Carrier + office (office deliveries only) --}}
+                        <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
+                                <x-edz.select wire:model="form.shipping_provider_id"
+                                    wire:change="loadFormOffices($event.target.value)"
+                                    :options="$this->allProviders" option-value="id" option-label="name"
+                                    placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
+                                    :disabled="$loadingOffices" />
+                                @error('form.shipping_provider_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div x-show="$wire.form.shipping_provider_id" x-cloak>
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1">
+                                        <label class="edz-label">{{ __('merchant_panel.office') }}</label>
+                                        <x-edz.select wire:model="form.stopdesk_point_id"
+                                            :options="$this->formOffices" option-value="value"
+                                            option-label="label" option-hint="hint"
+                                            placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
+                                            :disabled="$loadingOffices" />
+                                    </div>
+                                    <button type="button" wire:click="refreshFormOffices"
+                                        wire:loading.attr="disabled" :disabled="$loadingOffices"
+                                        class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
+                                        aria-label="{{ __('merchant_panel.refresh_offices') }}">
+                                        <x-edz.spinner wire:target="refreshFormOffices" class="w-4 h-4" />
+                                        <x-edz.icon name="arrow-path" class="w-4 h-4"
+                                            wire:loading.remove wire:target="refreshFormOffices" />
+                                    </button>
+                                </div>
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.office_hint') }}</p>
+                                @error('form.stopdesk_point_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Destination --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                             <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                :options="$this->allStates" option-value="id" option-label="name" placeholder="â€”"
+                                :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
                                 size="sm" />
                             @error('form.state_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
@@ -49,7 +115,7 @@
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.city') }}</label>
                             <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
-                                option-label="name" placeholder="â€”" size="sm" />
+                                option-label="name" placeholder="—" size="sm" />
                             @error('form.city_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
@@ -57,25 +123,6 @@
                         <div class="sm:col-span-2">
                             <label class="edz-label">{{ __('merchant_panel.address') }}</label>
                             <input type="text" wire:model="form.address" class="edz-input text-sm">
-                        </div>
-                    </div>
-
-                    {{-- Delivery Type Toggle --}}
-                    <div x-data="{ delivery: $wire.form.delivery_type }" x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))" x-effect="delivery = $wire.form.delivery_type">
-                        <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
-                        <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
-                            <button type="button"
-                                :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'home'" class="px-4 py-2 text-sm font-medium transition-colors">
-                                <x-edz.icon name="home" class="w-4 h-4 inline mr-1" />
-                                {{ __('merchant_panel.home_delivery_label') }}
-                            </button>
-                            <button type="button"
-                                :class="delivery === 'stopdesk' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'stopdesk'" class="px-4 py-2 text-sm font-medium transition-colors">
-                                <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
-                                {{ __('merchant_panel.stop_desk_label') }}
-                            </button>
                         </div>
                     </div>
 
@@ -98,43 +145,6 @@
                             <input type="number" wire:model="form.weight_kg" step="0.01" class="edz-input text-sm">
                         </div>
                     </div>
-
-                    {{-- Shipping assignment (edit only) --}}
-                    @if ($showEditModal)
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" x-data="{
-                            get desks() {
-                                const all = {{ \Illuminate\Support\Js::from($editDesks) }};
-                                const pid = $wire.form.shipping_provider_id || '';
-                                const sid = $wire.form.state_id || '';
-                                const sel = $wire.form.stopdesk_point_id || '';
-                                return all
-                                    .filter(d =>
-                                        d.id === sel ||
-                                        (!pid || d.shipping_provider_id === pid) &&
-                                        (!sid || d.state_id === sid))
-                                    .sort((a, b) =>
-                                        (b.city_id === ($wire.form.city_id || '')) -
-                                        (a.city_id === ($wire.form.city_id || '')));
-                            }
-                        }">
-                            <div>
-                                <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                                <x-edz.select wire:model="form.shipping_provider_id" :options="$editProviders" option-value="id"
-                                    option-label="name" placeholder="â€”" size="sm" />
-                            </div>
-                            <div>
-                                <label class="edz-label">{{ __('merchant_panel.pickup_desk') }}</label>
-                                <select wire:model="form.stopdesk_point_id" class="edz-input text-sm">
-                                    <option value="">â€”</option>
-                                    <template x-for="desk in desks" :key="desk.id">
-                                        <option :value="desk.id"
-                                            x-text="desk.name + ' - ' + (desk.address || '')">
-                                        </option>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-                    @endif
 
                     {{-- Products --}}
                     <div>
@@ -179,10 +189,17 @@
                                                     <span class="text-warning-500 ml-2">{{ $item['stock'] }}
                                                         {{ __('merchant_panel.left') }}</span>
                                                 @endif
+                                                @if (($item['preorder'] ?? false))
+                                                    <span
+                                                        class="text-success-600 ml-2">{{ __('merchant_panel.pre_order') }}</span>
+                                                @endif
                                             </div>
                                         </div>
 
                                         {{-- Quantity stepper --}}
+                                        @php
+                                            $capReached = ($item['cap'] ?? null) !== null && ($item['quantity'] ?? 0) >= $item['cap'];
+                                        @endphp
                                         <div
                                             class="flex items-center rounded-lg border border-surface-border overflow-hidden shrink-0">
                                             <button type="button"
@@ -196,7 +213,7 @@
                                             </button>
                                             <input type="number" value="{{ $item['quantity'] }}"
                                                 wire:change="updateFormItemQty({{ $idx }}, parseInt($event.target.value))"
-                                                min="1"
+                                                min="1" @if (($item['cap'] ?? null) !== null) max="{{ $item['cap'] }}" @endif
                                                 class="w-10 h-8 text-center border-x border-surface-border
                                                     bg-transparent text-sm font-semibold text-ink
                                                     focus:outline-none focus:ring-0
@@ -205,6 +222,7 @@
                                                     [&::-webkit-inner-spin-button]:appearance-none">
                                             <button type="button"
                                                 wire:click="updateFormItemQty({{ $idx }}, {{ $item['quantity'] + 1 }})"
+                                                :disabled="{{ $capReached ? 'true' : 'false' }}"
                                                 class="w-8 h-8 flex items-center justify-center bg-surface
                                                     text-ink-muted hover:bg-surface-secondary
                                                     transition-colors disabled:opacity-30 disabled:cursor-not-allowed
@@ -240,6 +258,39 @@
                             </div>
                         @endif
                     </div>
+
+                    {{-- Duplicate-detection warning (P28 extended) --}}
+                    @if (!empty($formDuplicateWarnings))
+                        <div class="rounded-xl border border-warning/40 bg-warning/5 p-3">
+                            <div class="flex items-center gap-2 text-warning mb-2">
+                                <x-edz.icon name="exclamation-triangle" class="w-4 h-4" />
+                                <span class="text-sm font-medium">
+                                    {{ __('order_flow.duplicate_detected', ['count' => count($formDuplicateWarnings)]) }}
+                                </span>
+                            </div>
+                            <ul class="space-y-1.5 text-sm">
+                                @foreach ($formDuplicateWarnings as $dup)
+                                    <li class="flex items-center justify-between gap-2">
+                                        <button type="button"
+                                            wire:click="set('showCreateModal', false); set('showEditModal', false); openOrderDetails('{{ $dup['order_id'] }}')"
+                                            class="flex items-center gap-2 text-ink hover:text-brand-600 truncate">
+                                            <span class="text-xs text-ink-muted">{{ __('merchant_panel.status') }}</span>
+                                            <span class="text-xs">
+                                                {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $dup['status_key'])->label() }}
+                                            </span>
+                                            <span class="truncate font-medium">#{{ $dup['number'] }}</span>
+                                            <span class="text-ink-muted text-xs shrink-0">
+                                                {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}
+                                            </span>
+                                        </button>
+                                        <span class="shrink-0 text-xs text-ink-muted">
+                                            ×{{ $dup['total_overlap_qty'] }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     {{-- Order Summary â€” Horizontal --}}
                     @if (!empty($form['items']))

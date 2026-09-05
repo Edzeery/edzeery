@@ -257,6 +257,14 @@ with($withData);
                         </a>
                     @endif
 
+                    @if ($canViewOrders)
+                        <a href="{{ route('merchant.tracking.index', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.tracking.*')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="truck" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('order_flow.tracking_page_title') }}</span>
+                        </a>
+                    @endif
+
                     @if ($canViewReturns)
                         <a href="{{ route('merchant.returns.index', $store) }}" wire:navigate
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.returns.*')) edz-sidebar__sub-link--active @endif">

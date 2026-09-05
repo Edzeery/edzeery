@@ -21,6 +21,7 @@ class StopdeskPoint extends Model
         'name',
         'address',
         'phone',
+        'external_code',
         'is_active',
     ];
 

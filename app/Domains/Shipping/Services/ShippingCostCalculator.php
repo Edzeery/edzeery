@@ -116,6 +116,8 @@ class ShippingCostCalculator
 
     private function resolveRate(ShippingRate $rate, float $cartTotal): array
     {
+        $source = ['rate_type' => ShippingRate::class, 'rate_id' => $rate->id];
+
         if ($rate->free_above && $cartTotal >= $rate->free_above) {
             return [
                 'cost' => 0,
@@ -124,6 +126,7 @@ class ShippingCostCalculator
                 'label' => $rate->label ?? __('storefront.free_delivery'),
                 'method' => 'free',
                 'available' => true,
+                'source' => $source,
             ];
         }
 
@@ -134,6 +137,7 @@ class ShippingCostCalculator
             'label' => $rate->label ?? __('storefront.shipping_fee'),
             'method' => 'rate',
             'available' => true,
+            'source' => $source,
         ];
     }
 
@@ -178,13 +182,23 @@ class ShippingCostCalculator
 
     private function resolveListRate(DeliveryPriceList $list, ?State $state, ?string $cityId): array
     {
-        $cost = (float) $list->stateRates->first()->home_cost;
+        $stateRate = $list->stateRates->first();
+        $cost = $stateRate ? (float) $stateRate->home_cost : 0;
+
+        $source = [
+            'rate_type' => $stateRate ? $stateRate::class : null,
+            'rate_id' => $stateRate?->id,
+        ];
 
         if ($cityId) {
             $cityRate = $list->cityRates()->where('city_id', $cityId)->first();
 
             if ($cityRate && $cityRate->home_cost !== null) {
                 $cost = (float) $cityRate->home_cost;
+                $source = [
+                    'rate_type' => $cityRate::class,
+                    'rate_id' => $cityRate->id,
+                ];
             }
         }
 
@@ -195,6 +209,7 @@ class ShippingCostCalculator
             'label' => __('storefront.shipping_fee'),
             'method' => 'rate',
             'available' => true,
+            'source' => $source,
         ];
     }
 
@@ -244,6 +259,10 @@ class ShippingCostCalculator
 
     private function resolveDeliveryRatePrice(DeliveryRate $rate, float $cartTotal): array
     {
+        $source = isset($rate->cityRate) && $rate->cityRate
+            ? ['rate_type' => DeliveryRateCity::class, 'rate_id' => $rate->cityRate->id]
+            : ['rate_type' => DeliveryRate::class, 'rate_id' => $rate->id];
+
         if ($rate->free_above && $cartTotal >= $rate->free_above) {
             return [
                 'cost' => 0,
@@ -252,6 +271,7 @@ class ShippingCostCalculator
                 'label' => __('storefront.free_delivery'),
                 'method' => 'free',
                 'available' => true,
+                'source' => $source,
             ];
         }
 
@@ -262,6 +282,7 @@ class ShippingCostCalculator
             'label' => __('storefront.shipping_fee'),
             'method' => 'rate',
             'available' => true,
+            'source' => $source,
         ];
     }
 }

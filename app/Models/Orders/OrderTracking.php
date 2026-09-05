@@ -55,6 +55,11 @@ class OrderTracking extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function histories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OrderTrackingHistory::class, 'order_tracking_id');
+    }
+
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);

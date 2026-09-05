@@ -12,10 +12,10 @@
     class="relative mb-4 p-3 bg-accent-surface border border-accent-border rounded-xl flex items-center justify-between sticky top-0 z-30"
     wire:loading.attr="disabled"
     wire:loading.class="opacity-60 pointer-events-none cursor-not-allowed"
-    wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete">
+    wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete,submitBulkStatus">
 
     {{-- Visible execution indicator + spinner (M10) --}}
-    <div wire:loading wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete"
+    <div wire:loading wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete,submitBulkStatus"
         x-cloak
         class="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-accent-surface-strong rounded-xl">
         <x-edz.spinner class="w-5 h-5 text-accent-fg" />
@@ -66,6 +66,17 @@
                     @endforeach
                 </div>
             </div>
+        @endif
+
+        {{-- Change status (P29) --}}
+        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            <button wire:click="openBulkStatusModal" class="edz-btn edz-btn--ghost edz-btn--sm"
+                wire:loading.attr="disabled" wire:target="submitBulkStatus,openBulkStatusModal">
+                <x-edz.spinner wire:target="submitBulkStatus" class="w-4 h-4" />
+                <x-edz.icon name="adjustments-horizontal" wire:loading.remove
+                    wire:target="submitBulkStatus" class="w-4 h-4" />
+                <span wire:loading.remove wire:target="submitBulkStatus">{{ __('order_flow.bulk_status_title') }}</span>
+            </button>
         @endif
 
         {{-- Delete (client-side confirm via EdzSwal, then calls $wire.bulkDelete) --}}

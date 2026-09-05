@@ -1,6 +1,7 @@
 const FLICKER_GUARD_MS = 150;
 const PENDING_TTL_MS = 1500;
-const CLICK_SELECTOR = ".edz-btn[wire\\:click], .edz-btn[wire\\:submit]";
+const CLICK_SELECTOR =
+    "button[wire\\:click], .edz-btn[wire\\:click], button[wire\\:submit], .edz-btn[wire\\:submit]";
 
 let lastClick = { el: null, at: 0 };
 let active = new Map();
@@ -35,7 +36,7 @@ function wireCalls(body) {
 function allButtons() {
     const direct = Array.from(document.querySelectorAll(CLICK_SELECTOR));
     const submitButtons = Array.from(
-        document.querySelectorAll("form[wire\\:submit] button.edz-btn[type=submit]"),
+        document.querySelectorAll("form[wire\\:submit] button[type=submit]"),
     );
     return direct.concat(submitButtons.filter((el) => !direct.includes(el)));
 }
@@ -155,7 +156,7 @@ function interceptClick(event) {
     const button =
         (source && source.closest(CLICK_SELECTOR)) ||
         (source && source.closest("form[wire\\:submit]")
-            ? source.closest("form[wire\\:submit]").querySelector("button.edz-btn[type=submit]")
+            ? source.closest("form[wire\\:submit]").querySelector("button[type=submit]")
             : null);
     if (!button) return;
     if (button.dataset.edzPending) {

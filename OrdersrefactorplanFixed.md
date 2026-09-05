@@ -43,11 +43,12 @@
 | **21** | **تسجيل الأعمدة الممتد + إضافات السكيما** | ✅ DONE | سجل 23 عمودًا (13 افتراضيًا + 10 جديدًا) + migration `meta`/`send_from_carrier_warehouse` + لوحة Customize Columns مجمّعة (Apple-style) + عرض الأعمدة الجديدة read-only + ترجمات ar/en/es/fr |
 | **22** | **إعدادات الجدول: مودال + حفظ صريح + ستايلات** | ✅ DONE | مودال `x-edz.modal` (تبويبا أعمدة/ستايل) + حفظ صريح عبر مسودات + قفل الأعمدة الأساسية الـ 13 + ستايل ثانٍ يلوّن الصفوف حسب الحالة (5 كلاسات SCSS) + migration `table_style` |
 | **23** | **تفاصيل الطلب: مودال متجاوب + إزالة التكرار + ترجمة الحالات** | ✅ DONE | استبدال التوسيع المضمّن بمودال `x-edz.modal` متجاوب + إخفاء حقول الأعمدة المفعّلة + ترجمة الحالات بكل المواضع (badge/select/مينيو/فلاتر) عبر mystatuskit بالأيقونات |
+| **24** | **إزالة التجاوز اليدوي لتكلفة الشحن + «توصيل مجاني» بدل 0 دج** | ✅ DONE | التراجع عن `order_shipping_costs` بالكامل + `manual_override`؛ `orders.shipping_cost` مصدر وحيد؛ عرض «مجاني» موحّد لأي `<=0` (Phase 24 أدناه) |
 
 ### بنود errorTofix.md المتبقية خارج نطاق هذا الملف (لم تُطوَ ضمن أي Phase أعلاه، تبقى مرجعًا منفصلاً)
 - L1: حذف حالة `canceled` المكرّرة (تحتاج ترحيل بيانات) — مؤجّل
 - L2: أعمدة `product_name`/`variant_name` كصورة ثابتة على `OrderItem` — تغيير سكيمة، مؤجّل
-- L5: `ShippingCostCalculator` fallback يتطلّب إعدادًا صريحًا — منخفض الخطورة، مؤجّل
+- ~~L5: `ShippingCostCalculator` fallback يتطلّب إعدادًا صريحًا~~ — **مغلقة في Phase 24**: عدم وجود أسعار مخصّصة يُعرض الآن «توصيل مجاني» بدل `0 دج` (قرار المستخدم: أي `shipping_cost <= 0` → مجاني)
 - FE1–FE6 (تحسينات مستقبلية): حماية COD، إشعارات واتساب، تصدير، تحديث جماعي متعدد الحالات، حالات إضافية، إدارة حالات مخصّصة — **لا تُنفَّذ الآن**
 
 ---
@@ -279,3 +280,79 @@
 - [x] كل مواضع الحالة مترجمة بالأيقونات (خلية/badge/مينيو/فلاتر/مودال)
 - [x] مفاتيح الترجمة الثلاثة + إصلاح es موجودة في اللغات الأربع
 - [x] اختبارات الطلبات تمر و`view:cache` سليم
+
+---
+
+## Phase 24 — إزالة التجاوز اليدوي لتكلفة الشحن + «توصيل مجاني» بدل 0 دج (جديد)
+
+**الحالة: ✅ DONE (2026-09-05)** — تحقّق: `php -l` سليم على كل ملف مُغيَّر، `view:cache` ناجح، اختبارات طلبات التاجر 23 ناجحة (109 assertions)، والـ suite كاملة **285 ناجحة (1056 assertions)**، لا مراجع متبقية لأي رمز مُزال (فحص app/resources/routes/config/database/tests).
+
+**الهدف:** التراجع عن جدول `order_shipping_costs` وخط تجاوز `shipping_cost` اليدوي (بموافقة المستخدم الصريحة — «`orders.shipping_cost` مصدر الحقيقة الوحيد، تكلفة الشحن والمجموع الكلي غير قابلَين للتخصيص»)، وإغلاق **L5**: عند غياب أسعار مخصّصة (لا للشركة ولا عبر قائمة الأسعار) يُعرض **«توصيل مجاني»** بدل مبلغ `0` — بقاعدة موحّدة: أي `shipping_cost <= 0` يُعرض مجاني.
+
+### إزالات
+| الملف | التغيير |
+|---|---|
+| `database/migrations/2026_09_05_000003_create_order_shipping_costs_table.php` | حُذف (لم يُنشر في MySQL — ظل `Pending`) |
+| `app/Models/Orders/OrderShippingCost.php` | حُذف |
+| `app/Models/Orders/Order.php` | حُذف `shippingCosts()` + `latestShippingCost()` |
+| `app/Domains/Order/Services/OrderService.php` | حُذف `use OrderShippingCost` + أسلوب `snapshotShippingCost()`؛ إنشاء الطلب يكتب `orders.shipping_cost` مباشرة من نتيجة الحاسبة |
+| `resources/views/livewire/merchant/orders/index.blade.php` | حُذف `$startOrderShippingCostEdit` + `$saveOrderShippingCost` + الإدخال الرقمي المضمّن؛ `$recalculateOrderShipping` يكتب مباشرة |
+| `resources/lang/{ar,en,fr,es}/merchant_panel.php` | حُذف `manual_override` |
+| `tests/Feature/Merchant/OrderInlineEditTest.php` | حُذف اختبار «override the shipping cost inline» (الميزة أُزيلت) — أُبقي اختبار recalc المدينة (يتوقّع `shipping_cost === 400.0` بعد `saveOrderCity`، يثبت مسار الحاسبة) |
+| `tests/Feature/scratch_validator_test.php` | حُذف (بقايا مؤقتة) |
+
+### عرض «توصيل مجاني» (بلا تغيير سكيما — أداء مثالي)
+- عمود `shipping_cost` في الجدول (desktop) يعرض الآن شارة `<x-edz.badge tone="neutral" sm>` بأيقونة `truck` ونص `merchant_panel.shipping_free` عند `<= 0`، والـ `currency()` عند القيمة المدفوعة — **بلا زر تعديل (read-only)**.
+- بطاقة الموبايل (`lg:hidden`) تطبّق نفس المنطق عند إظهار تكلفة الشحن.
+- ترجمة `shipping_free` أُضيفت ×4 لغات: `Free delivery / توصيل مجاني / Livraison gratuite / Envío gratuito`.
+- خصائص أداء: صفر استعلامات إضافية (يقرأ العمود الرقمي المحمّل في `$arr`)، صفر ترحيل/ميغريشن، صفر إضافة لحجم الحزمة (شارة موجودة مسبقًا).
+- توثيق سلوك موحّد (قرار المستخدم): `cost=0` من أي مصدر (لا أسعار، `free_above`، أو stopdesk غير محسوب) يُعرض مجاني.
+
+**Acceptance criteria (مكتملة):**
+- [x] لا مراجع متبقية لـ `snapshotShippingCost`/`shippingCosts`/`latestShippingCost`/`OrderShippingCost`/`manual_override`/`saveOrderShippingCost`/`startOrderShippingCostEdit` في app/resources/routes/config/database/tests
+- [x] `php -l` و`view:cache` سليمان
+- [x] اختبارات طلبات التاجر 23 ناجحة (109 assertions) — منها recalc المدينة بـ `400.0`
+- [x] الـ suite كاملة 285 ناجحة (1056 assertions) — لا ارتداد
+- [x] تحقّق النقاط: خلية `shipping_cost` لا توسّع الجدول على `lg+` (overflow-x قائم)، والشارة تلفّ سليمًا على بطاقة الجوال
+
+---
+
+## Phase 25–29 — عمليات الطلبيات: التأكيد الاحترافي/التتبع/السجل/التكرار/الجماعي (جديد)
+
+**الحالة: ✅ DONE (2026-09-05)** — الخطة الكاملة: `OrdersOperationsPlan.md` (P25–P29، موافقة «نفّذ كل شيء»). التحقّق: `php -l` سليم، `view:cache` ناجح، `route:list` يؤكد `merchant.tracking.index`، والـ suite كاملة **290 ناجحة (1064 assertions)** — منها **5 اختبارات جديدة** (`tests/Feature/Merchant/OrderDuplicateDetectionTest.php`) + اختبارات التتبع الناتجة (8 لدومين التتبع، تستمر ناجحة) + صفر انحدار.
+
+### P25 — البنية (متوفّرة فعليًا، بلا تصريح لمكوّن منفصل — التزام قاعدة `@include`)
+- `app/Domains/Order/Support/OrderWorkflow.php` — مجموعات `backOffice`/`carrier`/`closed` + `isCarrier(key)`؛ CARRIER تعني «يظهر في صفحة التتبع فقط».
+- `app/Domains/Order/Services/OrderAuditService.php` — `log(Order, eventType, message, actorMembershipId, meta)` + المساعِدات `created`/`statusChanged`/`fieldChanges`/`contactAttempt`/`sentToCarrier`/`tracking`/`reassigned`/`note` (يُكتب `order_events`).
+- `app/Domains/Order/Services/OrderTrackingService.php` (إعادة كتابة) — سجل `order_tracking_histories` على كل تغيّر تتبع (startShipment/markDelivered/markReturned/markReturning/markLost/markDamaged/markFailedAttempt/markInTransit/markOutForDelivery) مع idempotency عبر `currentOpenTracking()`، يقبل actor membership.
+- `app/Observers/OrderObserver.php` — تدقيق إنشاء + تعديل (diff على TRACKED_FIELDS) + حالة (from→to، يفكّر في reason عبر `setTransitionMeta` الذي خُزّن `from_key` جديدًا) + `syncTracking` مطلوب (علامة `$status->key` shipped/delivered/returned) — إنشاء/تعديل/تفعيل تمامًا داخل `orders` فقط.
+- ميغريشنات `2026_09_05_100001/100002/100003` — `order_events`، `order_tracking_histories`، فهرسا `(store_id, customer_id, created_at)` و`order_items(product_variant_id)`.
+
+### P26 — درج التأكيد الاحترافي (صفحة الطلبيات)
+- `resources/views/livewire/merchant/orders/index.blade.php` — مودال التأكيد (ملخص الطلبية + شريك التوصيل `confirmProviderId` + مفتاح «تم الاتصال» → `confirmation_attempts`/`last_contact_at`) بمسلكين: `submitConfirmOnly` (تأكيد فقط) و`submitConfirmAndSend` (تأكيد + إرسال للشركة عبر `OrderShippingGateway::send()`).
+- `app/Domains/Shipping/Services/OrderShippingGateway.php` — `send()`: `confirm` ثم حلقة `preparing → shipped` داخل معاملة DB + إرسالًا للـ carrier عبر `CarrierOrderPostService` (try/catch + `sentToCarrier` audit) + إنشاء tracking عبر observer تلقائيًا.
+- **التصفية الافتراضية:** `loadOrders` تستبعد حالات `OrderWorkflow::carrier()` من «الطلبيات» عندما `filters.status` فارغًا وليست في سلة المحذوفة — الطلبية «تختفي» بمجرد الإرسال للشركة (تظهر في «تتبع الطلبيات»).
+
+### P27 — صفحة «تتبع الطلبيات» (`merchant/{store}/tracking`)
+- `routes/merchant.php` + `resources/views/livewire/merchant/tracking/index.blade.php` (سطر Volt — لا مكوّن فرعي، حارس `ORDER_VIEW`).
+- فلاتر (provider/tracking_status/date_from/date_to) + إحصائيات (نشطة/سلّمت اليوم/رجع اليوم) + جدول desktop (`hidden md:block`) + بطاقات موبايل (`md:hidden`).
+- درج الطلبية: بطاقة الشركة (رقم التتبع + نسخ)، ملخص الشحن، إجراءات سريعة (in_transit/out_for_delivery/failed_attempt/returning/delivered/returned/lost/damaged — على حارس `ORDER_MANAGE`)، سجل حالات التتبع + سجل الطلبية (خط زمني). التسميات عبر `Status::for('tracking', …)->label()` (بدون ملف `status_tracking.*`).
+
+### P28 — كشف الطلبيات المتكررة
+- `app/Domains/Order/Services/OrderDuplicateService.php` — `findSimilar(Order|array $candidate, int $limit=5)`: تطابق `customer.phone` + تداخل منتجات (`product_variant_id`/`product_id`)، نافذة 30 يومًا، `exclude_id` لاستبعاد الطلبية الجاري تعديلها، عزل المتجر.
+- **نموذج الإنشاء/التعديل:** `formDuplicateWarnings` يُحتى في `updated('form.customer_phone')`/`updated('form.items')` (قرار §4.2: على أفعال منفصلة — اختيار العميل/إضافة عنصر) + لوحة تحذير بعد المنتجات (حالة/رقم/تاريخ + رابط يفتح تفاصيل الطلبية عبر `openOrderDetails` — الذي صار يحمّل الطلبية بنفسه حتى لو لم تكن في الصفحة الحالية).
+- **درج التأكيد:** لوحة «تحقّق» مُماثلة + إجراء سريع `markOrderDuplicate` (transition `duplicate` عبر `OrderService`).
+- Limit 5 (مطابقة §4.1 «أحدث 5»؛ §4.3 ذكر 6 كنظر نظري).
+
+### P29 — تعديل حالة جماعي
+- `submitBulkStatus` — قائمة الحالات المستثناة دائمًا `['cancelled', 'canceled', 'confirmed']`؛ لكل طلبية `canTransition` تُطبق والتخطّي يُبلَّغ (swal)، زرار «تغيير الحالة» في شريط التحديد الجماعي.
+- ترجمات `order_flow.php` ×4 لغات (event_*/confirm_*/duplicate_*/tracking_*/bulk_*).
+
+### Acceptance criteria (مكتملة)
+- [x] strip: الصفحة «الافتراضية» للطلبيات لا تعرض CARRIER (ظهر الاختبار المرتبط فعليًا قبل هذا العنقود؛ فحص `loadOrders` يأكد)
+- [x] التتبع: `merchant.{store}.tracking` مسار فعلي + القائمة الجانبية تظهر عليه
+- [x] تطبيق التتبع عبر `OrderTrackingService` يسجّل سجل حالة لكل تغيير + تدقيق على الطلبية
+- [x] `findSimilar` يقبل `Order|array` (اختبار مباشر)
+- [x] تحذير النموذج لا يرمي على كل keystroke (hooks على onChange لأفعال منفصلة فقط)
+- [x] الأداء: صفر N+1 (eager-loading)، `limit 5`، لا مكوّن Livewire فرعي
+- [x] 290 ناجحة (1064 assertions) — صفر انحدار؛ `php -l` + `view:cache` سليمان

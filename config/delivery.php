@@ -16,4 +16,14 @@ return [
         // 'zrexpress' => \App\Domains\Shipping\Adapters\ZRExpressAdapter::class,
         '*' => DefaultDeliveryRatesAdapter::class,
     ],
+
+    /*
+     * Carrier integrations (office lookup + order posting) keyed by
+     * carriers.code. The '*' key is null by default: carriers without a
+     * dedicated integration keep the manual stopdesk-points flow.
+     */
+    'carrier_integrations' => [
+        'noest' => \App\Domains\Shipping\Adapters\NoestIntegrationAdapter::class,
+        '*' => null,
+    ],
 ];

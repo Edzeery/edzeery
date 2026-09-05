@@ -24,14 +24,15 @@ class Order extends Model
     use HasUlids;
     use SoftDeletes;
 
-    /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string}> */
+    /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string, from_key: ?string}> */
     private static array $transitionMeta = [];
 
-    public static function setTransitionMeta(int|string $orderId, ?string $changedByMembershipId, ?string $reason): void
+    public static function setTransitionMeta(int|string $orderId, ?string $changedByMembershipId, ?string $reason, ?string $fromKey = null): void
     {
         self::$transitionMeta[$orderId] = [
             'changed_by_membership_id' => $changedByMembershipId,
             'reason' => $reason,
+            'from_key' => $fromKey,
         ];
     }
 
@@ -170,6 +171,11 @@ class Order extends Model
         return $this->hasOne(OrderStatusHistory::class)
             ->whereHas('status', fn ($q) => $q->where('key', 'confirmed'))
             ->latestOfMany('created_at');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(OrderEvent::class);
     }
 
     /* =========================

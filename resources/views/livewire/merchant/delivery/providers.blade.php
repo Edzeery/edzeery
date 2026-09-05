@@ -378,22 +378,22 @@ $deleteProvider = function (string $id): void {
                     {{-- 2-level carrier selection --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="edz-label">{{ __('merchant_panel.platform') }}</label>
+                            <label class="edz-label">{{ __('merchant_panel.delivery_company') }}</label>
                             <x-edz.select wire:model="providerForm.platform_id"
                                 wire:change="selectProviderPlatform($event.target.value)"
                                 :options="$this->providerPlatformOptions()"
-                                placeholder="{{ __('merchant_panel.select_platform') }}" size="sm" search />
+                                placeholder="{{ __('merchant_panel.select_delivery_company') }}" size="sm" search />
                             @error('providerForm.platform_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
                         </div>
                         <div>
-                            <label class="edz-label">{{ __('merchant_panel.carrier') }}</label>
+                            <label class="edz-label">{{ __('merchant_panel.delivery_company_branch') }}</label>
                             <x-edz.select wire:key="carrier-options-{{ $providerForm['platform_id'] ?: 'none' }}"
                                 wire:model="providerForm.carrier_id"
                                 wire:change="selectProviderCarrier($event.target.value)"
                                 :options="$this->providerCarrierOptions()" option-value="id" option-label="name"
-                                placeholder="{{ $providerForm['platform_id'] ? __('merchant_panel.select_carrier') : __('merchant_panel.select_platform_first') }}"
+                                placeholder="{{ $providerForm['platform_id'] ? __('merchant_panel.select_delivery_company_branch') : __('merchant_panel.select_delivery_company_first') }}"
                                 size="sm" search />
                             @error('providerForm.carrier_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>

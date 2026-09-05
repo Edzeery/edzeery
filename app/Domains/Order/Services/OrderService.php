@@ -45,7 +45,7 @@ class OrderService
         DB::beginTransaction();
 
         try {
-            Order::setTransitionMeta($order->id, $changedBy?->id, $reason);
+            Order::setTransitionMeta($order->id, $changedBy?->id, $reason, $order->status?->key);
 
             $order->update(['status_id' => $newStatus->id]);
 
@@ -154,6 +154,8 @@ class OrderService
                 'total_amount' => $data['total_amount'] ?? 0,
                 'state_id' => $data['state_id'] ?? null,
                 'city_id' => $data['city_id'] ?? null,
+                'shipping_provider_id' => $data['shipping_provider_id'] ?? null,
+                'stopdesk_point_id' => $data['stopdesk_point_id'] ?? null,
                 'address' => $data['address'] ?? null,
                 'delivery_type' => $data['delivery_type'] ?? 'home',
                 'payment_method' => $data['payment_method'] ?? 'cod',
@@ -185,6 +187,22 @@ class OrderService
                         'subtotal' => $item['quantity'] * $item['price'],
                     ]);
                 }
+            }
+
+            // Shipping cost is always sourced from published/configured rates
+            // via the calculator; orders.shipping_cost mirrors the single truth.
+            if ($order->delivery_type === Order::DELIVERY_HOME && $order->state_id) {
+                $items = collect($order->items);
+                $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)
+                    ->calculate(
+                        $order->store,
+                        $order->state_id,
+                        $order->city_id,
+                        (float) $items->sum('subtotal'),
+                        $items->pluck('product_id')->filter()->values()->toArray(),
+                    );
+
+                $order->update(['shipping_cost' => (float) ($result['cost'] ?? 0)]);
             }
 
             return $order;

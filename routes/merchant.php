@@ -15,10 +15,21 @@ use Livewire\Volt\Volt;
 |--------------------------------------------------------------------------
 | Layer 1: Account — user-level pages, independent of any store
 */
+
+Route::get('/merchant', function () {
+    return redirect()->route('account.profile');
+})->middleware(['auth', 'verified'])
+    ->name('redirect.merchant.account');
+Route::get('/merchant/account', function () {
+    return redirect()->route('account.profile');
+})->middleware(['auth', 'verified'])
+    ->name('redirect.merchant.account');
+
 Route::prefix('merchant/account')
     ->middleware(['auth', 'verified'])
     ->name('account.')
     ->group(function () {
+
 
         Volt::route('/profile', 'account.profile')->name('profile');
         Volt::route('/stores', 'merchant.stores.index')->name('stores');
@@ -51,11 +62,17 @@ Route::prefix('merchant')
         ResolveStoreFromRoute::class,
         EnsureStoreResolved::class,
         EnsureStoreMembership::class,
-        EnsureHasStoreRole::class.':owner,admin,manager,staff',
+        EnsureHasStoreRole::class . ':owner,admin,manager,staff',
         EnsureStoreIsActive::class,
     ])
     ->name('merchant.')
     ->group(function (): void {
+
+
+        Route::get('/{store:slug}', function () {
+            return redirect()->route('merchant.dashboard', ['store' => request()->route('store')]);
+        })->name('store.redirect');
+
         Volt::route('/{store:slug}/dashboard', 'merchant.dashboard')->name('dashboard');
 
         Volt::route('/{store:slug}/products', 'merchant.products.index')->name('products.index');
@@ -74,6 +91,7 @@ Route::prefix('merchant')
 
         Volt::route('/{store:slug}/teams', 'merchant.teams.index')->name('teams.index');
         Volt::route('/{store:slug}/orders', 'merchant.orders.index')->name('orders.index');
+        Volt::route('/{store:slug}/tracking', 'merchant.tracking.index')->name('tracking.index');
         Volt::route('/{store:slug}/returns', 'merchant.returns.index')->name('returns.index');
         Volt::route('/{store:slug}/order-settings', 'merchant.order-settings')->name('order-settings');
 

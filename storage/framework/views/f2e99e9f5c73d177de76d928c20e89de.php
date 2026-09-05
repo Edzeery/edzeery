@@ -11,6 +11,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+    use App\Livewire\Concerns\HasInlineEdit;
+
     public $search;
 
     public $filters;
@@ -44,6 +46,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     public $allStopdeskPoints;
 
     public $allProviders;
+
+    public $editCityOptions;
 
     public $selectedOrders;
 
@@ -81,9 +85,35 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $formSelectedItems;
 
-    public $editProviders;
+    public $formOffices;
 
-    public $editDesks;
+    public $loadingOffices;
+
+    public $formDuplicateWarnings;
+
+    public $showConfirmModal;
+
+    public $confirmOrderId;
+
+    public $confirmProviderId;
+
+    public $confirmContacted;
+
+    public $confirmSummary;
+
+    public $duplicateWarnings;
+
+    public $detailsEvents;
+
+    public $showBulkStatusModal;
+
+    public $bulkStatusTarget;
+
+    public $bulkStatusReason;
+
+    public $phoneEditPhone;
+
+    public $phoneEditSecondary;
 
     public function mount(): void
     {
@@ -323,6 +353,83 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('closeOrderDetails'))->execute(...$arguments);
     }
 
+    public function openConfirmModal(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openConfirmModal'))->execute(...$arguments);
+    }
+
+    public function closeConfirmModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeConfirmModal'))->execute(...$arguments);
+    }
+
+    public function bumpConfirmationAttempt(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('bumpConfirmationAttempt'))->execute(...$arguments);
+    }
+
+    public function submitConfirmOnly(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitConfirmOnly'))->execute(...$arguments);
+    }
+
+    public function submitConfirmAndSend(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitConfirmAndSend'))->execute(...$arguments);
+    }
+
+    public function refreshDuplicateWarnings(?\App\Models\Orders\Order $order = NULL): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('refreshDuplicateWarnings'))->execute(...$arguments);
+    }
+
+    public function refreshFormDuplicateWarnings(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('refreshFormDuplicateWarnings'))->execute(...$arguments);
+    }
+
+    public function markOrderDuplicate(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('markOrderDuplicate'))->execute(...$arguments);
+    }
+
+    public function openBulkStatusModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openBulkStatusModal'))->execute(...$arguments);
+    }
+
+    public function closeBulkStatusModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeBulkStatusModal'))->execute(...$arguments);
+    }
+
+    public function submitBulkStatus(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('submitBulkStatus'))->execute(...$arguments);
+    }
+
     public function openReassignModal(string $orderId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -363,6 +470,97 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('loadCities'))->execute(...$arguments);
+    }
+
+    public function rebuildFormOffices(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('rebuildFormOffices'))->execute(...$arguments);
+    }
+
+    public function loadFormOffices(?string $providerId = NULL, bool $preserveOffice = false): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('loadFormOffices'))->execute(...$arguments);
+    }
+
+    public function refreshFormOffices(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('refreshFormOffices'))->execute(...$arguments);
+    }
+
+    public function startOrderPhoneEdit(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('startOrderPhoneEdit'))->execute(...$arguments);
+    }
+
+    public function cancelOrderPhoneEdit(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('cancelOrderPhoneEdit'))->execute(...$arguments);
+    }
+
+    public function saveOrderPhone(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('saveOrderPhone'))->execute(...$arguments);
+    }
+
+    public function recalculateOrderShipping(\App\Models\Orders\Order $order): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('recalculateOrderShipping'))->execute(...$arguments);
+    }
+
+    public function guardOrderEditable(): bool
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('guardOrderEditable'))->execute(...$arguments);
+    }
+
+    public function startOrderWilayaEdit(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('startOrderWilayaEdit'))->execute(...$arguments);
+    }
+
+    public function startOrderCityEdit(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('startOrderCityEdit'))->execute(...$arguments);
+    }
+
+    public function cancelOrderEdit(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('cancelOrderEdit'))->execute(...$arguments);
+    }
+
+    public function saveOrderWilaya(?string $stateId = NULL): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('saveOrderWilaya'))->execute(...$arguments);
+    }
+
+    public function saveOrderCity(?string $cityId = NULL): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('saveOrderCity'))->execute(...$arguments);
     }
 
     public function openCreateModal(): void
