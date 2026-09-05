@@ -52,6 +52,8 @@ return [
     'tracking_history_empty' => 'Aucun historique',
     'order_timeline' => 'Chronologie de la commande',
     'order_timeline_empty' => 'Aucun événement',
+    'event_day_today' => "Aujourd'hui",
+    'event_day_yesterday' => 'Hier',
     'tracking_provider' => 'Transporteur',
     'tracking_number_copy' => 'Copier le numéro de suivi',
     'filter_provider' => 'Transporteur',

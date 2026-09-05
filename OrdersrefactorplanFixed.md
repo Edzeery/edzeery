@@ -356,3 +356,19 @@
 - [x] تحذير النموذج لا يرمي على كل keystroke (hooks على onChange لأفعال منفصلة فقط)
 - [x] الأداء: صفر N+1 (eager-loading)، `limit 5`، لا مكوّن Livewire فرعي
 - [x] 290 ناجحة (1064 assertions) — صفر انحدار؛ `php -l` + `view:cache` سليمان
+
+---
+
+## Phase 29.1 — إتاحة سجل أحداث الطلبية (Event Log Visibility) (جولة Phase 29 الجديدة)
+
+**الحالة: ✅ DONE (2026-09-05)** — فتح جولة «Phase 29» (29.1–29.7) على مكوّن الطلبيات، تُنفَّذ فرعًا تلو الفرع بموافقة صريحة من المستخدم. الخطة الكاملة: `OrdersOperationsPlan.md`.
+
+- **الفجوة (root cause):** الخط الزمني `order_events` كان يظهر لكل من يفتح مودال تفاصيل الطلبية أو درج التتبع دون تمييز دور — حتى STAFF يرى سجل الاتصالات/الإرسال/الإسناد للمنظومة بأكملها.
+- **الحل:** `StoreOrderPermissions::canViewOrderEventLog(Order, StoreMembership): bool` — OWNER/ADMIN دائمًا، MANAGER فقط لطلب معيّن لعضويته (`assigned_to_membership_id === $membership->id`)، STAFF أبدًا (ولا تُحمَّل الأحداث أصلاً عند المنع). حارس موحّد على كلٍّ من:
+  - مودال التفاصيل `resources/views/livewire/merchant/orders/index.blade.php` (`openOrderDetails` + `canViewOrderDetailsEvents` + الشرط في التيمبلت).
+  - درج التتبع `resources/views/livewire/merchant/tracking/index.blade.php` (`openDrawer` + `canViewDrawerEvents`) — نفس السجل، لا ثغرة ملتافة.
+- **سهولة القراءة:** تجميع الأحداث باليوم (اليوم/أمس/تاريخ مترجم عبر `translatedFormat`) + وقت `H:i` + اسم الفاعل + شارة دوره عبر mystatuskit (`x-role-badge`).
+- **الترجمات:** `event_day_today`/`event_day_yesterday` ×4 لغات في `resources/lang/{en,ar,fr,es}/order_flow.php`؛ تأكيد مسبق أن مفاتيح `event_type_*` كلها موجودة (8/8 في كل لغة).
+- **الاختبارات:** `tests/Feature/Merchant/OrderEventLogVisibilityTest.php` — **8 ناجحة (20 assertions)**: الدور الشامل (owner/admin دائمًا، manager للمعيَّن فقط، staff أبدًا حتى لو مُعيَّن) + تكامل مودال التفاصيل (owner يرى/لا يرى staff + `canView*`) + درج التتبع (owner يرى/لا يرى staff).
+- **التحقق:** السويت الكامل **297 ناجح (1080 assertions)**؛ الإخفاق الوحيد كان قفل ملفات Blade على Windows (`CartOrderLimitsTest`) — أُعيد منفردًا **11/11**، أي صفر انحدار فعلي. `view:cache` + `php -l` سليمان.
+- **خارج النطاق (لم يُلمس):** call-center، HR/payroll، ERP، landing-builder، `mystatuskit`، قيم `StorePermissionEnum`.

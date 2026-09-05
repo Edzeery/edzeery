@@ -268,4 +268,16 @@ created_at, index: (store_id, order_id, created_at)
 
 ---
 
+### 29.1 — إتاحة سجل أحداث الطلبية (تم بموافقة المستخدم، مرة واحدة ثم انتظار الموافقة للتالي)
+
+> بدء جولة **Phase 29** (29.1–29.7) على مكوّن الطلبيات: فرع تلو فرع، كل فرع يُختبر ويُعرض ثم يُنتظر الموافقة قبل التالي. هذا إدخال الفرع الأول فقط.
+
+- **الفجوة:** الخط الزمني `order_events` غير محمي بالدور (STAFF يرى سجل الاتصالات/الإرسال للمنظمة كلها) في مودال التفاصيل وفي درج التتبع معًا.
+- **الحل:** `StoreOrderPermissions::canViewOrderEventLog(Order, StoreMembership): bool` — OWNER/ADMIN دائمًا؛ MANAGER فقط عند `assigned_to_membership_id === $membership->id`؛ STAFF أبدًا (بدون تحميل الأحداث). حارس موحّد على `orders/index.blade.php` (`canViewOrderDetailsEvents`) و`tracking/index.blade.php` (`canViewDrawerEvents`).
+- **السهولة:** تجميع يومي (اليوم/أمس/تاريخ مترجم) + `H:i` + فاعل + شارة دور عبر `x-role-badge` (mystatuskit).
+- **ترجمات:** `event_day_today`/`event_day_yesterday` ×4 لغات.
+- **أدلة:** `tests/Feature/Merchant/OrderEventLogVisibilityTest.php` — **8 ناجحة (20 assertions)**. السويت كاملة **297 ناجح (1080 assertions)**؛ الوحيد المتأثر بلوك ملفات Windows (CartOrderLimitsTest) أُعيد منفردًا بنجاح 11/11 → **صفر انحدار فعلي**. `view:cache` + `php -l` سليمان.
+
+---
+
 *ملاحظة: هذا الملف وثيقة تخطيط فقط — أي كتابة/تعديل لأكواد لا يبدأ إلا بعد موافقة صريحة من المستخدم.*

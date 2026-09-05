@@ -3,6 +3,9 @@
 namespace App\Support;
 
 use App\Enums\Store\StorePermissionEnum;
+use App\Enums\Store\StoreRoleEnum;
+use App\Models\Orders\Order;
+use App\Models\Stores\Team\StoreMembership;
 
 /**
  * Maps an order status key to the fine-grained permission required to move an
@@ -47,5 +50,26 @@ class StoreOrderPermissions
         }
 
         return StorePermissionEnum::ORDER_MANAGE->value;
+    }
+
+    /**
+     * P29.1 — Who may inspect the order event log (audit timeline)?
+     *
+     * - OWNER / ADMIN  → always
+     * - MANAGER        → only orders assigned to their own membership
+     * - STAFF / any    → never (hidden, not loaded)
+     */
+    public static function canViewOrderEventLog(Order $order, StoreMembership $membership): bool
+    {
+        if ($membership->isOwner() || $membership->isAdmin()) {
+            return true;
+        }
+
+        if ($membership->isManager()) {
+            return filled($order->assigned_to_membership_id)
+                && $order->assigned_to_membership_id === $membership->id;
+        }
+
+        return false;
     }
 }

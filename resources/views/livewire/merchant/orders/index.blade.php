@@ -133,6 +133,7 @@ state([
 
     // Details audit log
     'detailsEvents' => [],
+    'canViewOrderDetailsEvents' => false,
 
     // Bulk status change modal (P29)
     'showBulkStatusModal' => false,
@@ -793,60 +794,75 @@ $clearProductFilter = function (): void {
 $openOrderDetails = function (string $orderId): void {
     $this->detailsOrderId = $orderId;
 
+    $order = Order::where('store_id', currentStoreId())
+        ->with([
+            'customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user',
+            'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider',
+            'confirmedByHistory.status', 'confirmedByHistory.changedBy.user', 'stopdeskPoint.city',
+        ])
+        ->find($orderId);
+
+    if (! $order) {
+        $this->canViewOrderDetailsEvents = false;
+        $this->detailsEvents = [];
+
+        return;
+    }
+
     // The details drawer resolves the order from the current page payload.
     // When it's absent (e.g. a duplicate order opened from the form/reference),
     // hydrate a single order with the same mapping so the drawer renders.
     if (! collect($this->orders['data'] ?? [])->contains('id', $orderId)) {
         $service = app(OrderService::class);
 
-        $order = Order::where('store_id', currentStoreId())
-            ->with([
-                'customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user',
-                'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider',
-                'confirmedByHistory.status', 'confirmedByHistory.changedBy.user', 'stopdeskPoint.city',
-            ])
-            ->find($orderId);
+        $arr = $order->toArray();
+        $arr['transitions'] = $service->availableTransitions($order);
+        $arr['items_summary'] = $order->items
+            ->map(
+                fn($i) => [
+                    'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
+                    'qty' => $i->quantity,
+                    'price' => $i->price,
+                ],
+            )
+            ->toArray();
+        $arr['tracking'] = $order->latestTracking
+            ? [
+                'tracking_number' => $order->latestTracking->tracking_number,
+                'carrier_status' => $order->latestTracking->carrier_status,
+                'carrier_label' => $order->latestTracking->carrier_label,
+                'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
+                'delivered_at' => $order->latestTracking->delivered_at?->format('Y-m-d H:i'),
+                'shipping_provider' => $order->latestTracking->shippingProvider?->name,
+            ]
+            : null;
 
-        if ($order) {
-            $arr = $order->toArray();
-            $arr['transitions'] = $service->availableTransitions($order);
-            $arr['items_summary'] = $order->items
-                ->map(
-                    fn($i) => [
-                        'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
-                        'qty' => $i->quantity,
-                        'price' => $i->price,
-                    ],
-                )
-                ->toArray();
-            $arr['tracking'] = $order->latestTracking
-                ? [
-                    'tracking_number' => $order->latestTracking->tracking_number,
-                    'carrier_status' => $order->latestTracking->carrier_status,
-                    'carrier_label' => $order->latestTracking->carrier_label,
-                    'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
-                    'delivered_at' => $order->latestTracking->delivered_at?->format('Y-m-d H:i'),
-                    'shipping_provider' => $order->latestTracking->shippingProvider?->name,
-                ]
-                : null;
-
-            // Prepend so firstWhere in the drawer finds it even on an empty page.
-            $this->orders['data'] = array_merge([$arr], $this->orders['data'] ?? []);
-        }
+        // Prepend so firstWhere in the drawer finds it even on an empty page.
+        $this->orders['data'] = array_merge([$arr], $this->orders['data'] ?? []);
     }
 
-    $this->detailsEvents = \App\Models\Orders\OrderEvent::where('store_id', currentStoreId())
-        ->where('order_id', $orderId)
-        ->with('actor.user')
-        ->orderByDesc('occurred_at')
-        ->limit(15)
-        ->get()
-        ->toArray();
+    // P29.1 — Event log visibility: only load the audit timeline when this
+    // member is allowed to see it (OWNER/ADMIN always, MANAGER when assigned).
+    $membership = $this->getCurrentMembership();
+    $this->canViewOrderDetailsEvents = $membership
+        ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)
+        : false;
+
+    $this->detailsEvents = $this->canViewOrderDetailsEvents
+        ? \App\Models\Orders\OrderEvent::where('store_id', currentStoreId())
+            ->where('order_id', $orderId)
+            ->with('actor.user')
+            ->orderByDesc('occurred_at')
+            ->limit(15)
+            ->get()
+            ->toArray()
+        : [];
 };
 
 $closeOrderDetails = function (): void {
     $this->detailsOrderId = null;
     $this->detailsEvents = [];
+    $this->canViewOrderDetailsEvents = false;
 };
 
 // ——— Confirmation drawer (P26) ———
@@ -3719,34 +3735,62 @@ $submitEdit = function (): void {
                         @endif
 
                         {{-- Order events timeline (audit log) --}}
-                        @if (!empty($this->detailsEvents))
+                        @if ($this->canViewOrderDetailsEvents && !empty($this->detailsEvents))
+                            @php
+                                $detailsEventDays = collect($this->detailsEvents)
+                                    ->groupBy(fn ($ev) => \Carbon\Carbon::parse($ev['occurred_at'])->format('Y-m-d'));
+                                $detailsNewestEventId = $this->detailsEvents[0]['id'] ?? null;
+                            @endphp
                             <section class="mt-5">
                                 <h4
                                     class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
                                     <x-edz.icon name="clock" class="w-4 h-4" />
                                     {{ __('order_flow.order_timeline') }}
                                 </h4>
-                                <ol
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30">
-                                    @foreach ($this->detailsEvents as $i => $ev)
-                                        <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
-                                            <span
-                                                class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ $i === 0 ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-ink leading-snug">{{ $ev['message'] ?? '—' }}</p>
-                                                <p class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
-                                                    <span>{{ __('order_flow.event_type_' . ($ev['event_type'] ?? 'note')) }}</span>
-                                                    <span>•</span>
-                                                    <span>{{ \Carbon\Carbon::parse($ev['occurred_at'])->diffForHumans() }}</span>
-                                                    @if (!empty($ev['actor']['user']['name']))
-                                                        <span>•</span>
-                                                        <span>{{ $ev['actor']['user']['name'] }}</span>
-                                                    @endif
-                                                </p>
-                                            </div>
-                                        </li>
+                                <div
+                                    class="rounded-xl border border-surface-border overflow-hidden bg-surface-tertiary/30">
+                                    @foreach ($detailsEventDays as $dayKey => $dayEvents)
+                                        @php
+                                            $evDay = \Carbon\Carbon::parse($dayKey);
+                                        @endphp
+                                        <div class="px-3 pt-3">
+                                            <p
+                                                class="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                                                @if ($evDay->isToday())
+                                                    {{ __('order_flow.event_day_today') }}
+                                                @elseif ($evDay->isYesterday())
+                                                    {{ __('order_flow.event_day_yesterday') }}
+                                                @else
+                                                    {{ $evDay->translatedFormat('l, M j') }}
+                                                @endif
+                                            </p>
+                                        </div>
+                                        <ol class="divide-y divide-surface-border">
+                                            @foreach ($dayEvents as $ev)
+                                                <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
+                                                    <span
+                                                        class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ ($ev['id'] ?? null) === $detailsNewestEventId ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-ink leading-snug">{{ $ev['message'] ?? '—' }}</p>
+                                                        <p
+                                                            class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
+                                                            <span>{{ __('order_flow.event_type_' . ($ev['event_type'] ?? 'note')) }}</span>
+                                                            <span>•</span>
+                                                            <span>{{ \Carbon\Carbon::parse($ev['occurred_at'])->format('H:i') }}</span>
+                                                            @if (!empty($ev['actor']['user']['name']))
+                                                                <span>•</span>
+                                                                <span>{{ $ev['actor']['user']['name'] }}</span>
+                                                            @endif
+                                                            @if (!empty($ev['actor']['role']))
+                                                                <x-role-badge :role="$ev['actor']['role']" />
+                                                            @endif
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ol>
                                     @endforeach
-                                </ol>
+                                </div>
                             </section>
                         @endif
 

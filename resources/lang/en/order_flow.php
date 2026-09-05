@@ -56,6 +56,8 @@ return [
     'tracking_history_empty' => 'No tracking history yet',
     'order_timeline' => 'Order timeline',
     'order_timeline_empty' => 'No events yet',
+    'event_day_today' => 'Today',
+    'event_day_yesterday' => 'Yesterday',
     'tracking_provider' => 'Carrier',
     'tracking_number_copy' => 'Copy tracking number',
     'filter_provider' => 'Carrier',

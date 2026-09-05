@@ -11,6 +11,7 @@ use App\Models\Orders\OrderTrackingHistory;
 use Livewire\Volt\Component;
 
 use function Livewire\Volt\layout;
+use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
 
 layout('components.layouts.store');
@@ -33,6 +34,7 @@ state([
     'drawerTracking' => null,
     'drawerStatusHistories' => [],
     'drawerEvents' => [],
+    'canViewDrawerEvents' => false,
 ]);
 
 $loadShipments = function (): void {
@@ -172,13 +174,24 @@ $openDrawer = function (string $orderId): void {
             ->all();
     }
 
-    $this->drawerEvents = OrderEvent::where('store_id', currentStoreId())
-        ->where('order_id', $order->id)
-        ->with('actor.user')
-        ->orderByDesc('occurred_at')
-        ->limit(15)
-        ->get()
-        ->toArray();
+    // P29.1 — Event log visibility: same rule as the orders details drawer.
+    $currentMembership = \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
+        ->where('user_id', auth()->id())
+        ->first();
+
+    $this->canViewDrawerEvents = $currentMembership
+        ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $currentMembership)
+        : false;
+
+    $this->drawerEvents = $this->canViewDrawerEvents
+        ? OrderEvent::where('store_id', currentStoreId())
+            ->where('order_id', $order->id)
+            ->with('actor.user')
+            ->orderByDesc('occurred_at')
+            ->limit(15)
+            ->get()
+            ->toArray()
+        : [];
 };
 
 $closeDrawer = function (): void {
@@ -186,6 +199,7 @@ $closeDrawer = function (): void {
     $this->drawerTracking = null;
     $this->drawerStatusHistories = [];
     $this->drawerEvents = [];
+    $this->canViewDrawerEvents = false;
 };
 
 $membership = fn () => \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
@@ -643,34 +657,63 @@ mount(function (): void {
                         @endif
                     </section>
 
-                    {{-- Order events timeline --}}
-                    @if (!empty($this->drawerEvents))
+                    {{-- Order events timeline (audit log) --}}
+                    @if ($this->canViewDrawerEvents && !empty($this->drawerEvents))
+                        @php
+                            $drawerEventDays = collect($this->drawerEvents)
+                                ->groupBy(fn ($ev) => \Carbon\Carbon::parse($ev['occurred_at'])->format('Y-m-d'));
+                            $drawerNewestEventId = $this->drawerEvents[0]['id'] ?? null;
+                        @endphp
                         <section class="mt-5">
                             <h4
                                 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
                                 <x-edz.icon name="list-bullet" class="w-4 h-4" />
                                 {{ __('order_flow.order_timeline') }}
                             </h4>
-                            <ol
-                                class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30">
-                                @foreach ($this->drawerEvents as $i => $ev)
-                                    <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
-                                        <span class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ $i === 0 ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-ink leading-snug">{{ $ev['message'] ?? '—' }}</p>
-                                            <p class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
-                                                <span>{{ __('order_flow.event_type_' . ($ev['event_type'] ?? 'note')) }}</span>
-                                                <span>•</span>
-                                                <span>{{ \Carbon\Carbon::parse($ev['occurred_at'])->diffForHumans() }}</span>
-                                                @if (!empty($ev['actor']['user']['name']))
-                                                    <span>•</span>
-                                                    <span>{{ $ev['actor']['user']['name'] }}</span>
-                                                @endif
-                                            </p>
-                                        </div>
-                                    </li>
+                            <div
+                                class="rounded-xl border border-surface-border overflow-hidden bg-surface-tertiary/30">
+                                @foreach ($drawerEventDays as $dayKey => $dayEvents)
+                                    @php
+                                        $evDay = \Carbon\Carbon::parse($dayKey);
+                                    @endphp
+                                    <div class="px-3 pt-3">
+                                        <p
+                                            class="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                                            @if ($evDay->isToday())
+                                                {{ __('order_flow.event_day_today') }}
+                                            @elseif ($evDay->isYesterday())
+                                                {{ __('order_flow.event_day_yesterday') }}
+                                            @else
+                                                {{ $evDay->translatedFormat('l, M j') }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                    <ol class="divide-y divide-surface-border">
+                                        @foreach ($dayEvents as $ev)
+                                            <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
+                                                <span
+                                                    class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ ($ev['id'] ?? null) === $drawerNewestEventId ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-ink leading-snug">{{ $ev['message'] ?? '—' }}</p>
+                                                    <p
+                                                        class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
+                                                        <span>{{ __('order_flow.event_type_' . ($ev['event_type'] ?? 'note')) }}</span>
+                                                        <span>•</span>
+                                                        <span>{{ \Carbon\Carbon::parse($ev['occurred_at'])->format('H:i') }}</span>
+                                                        @if (!empty($ev['actor']['user']['name']))
+                                                            <span>•</span>
+                                                            <span>{{ $ev['actor']['user']['name'] }}</span>
+                                                        @endif
+                                                        @if (!empty($ev['actor']['role']))
+                                                            <x-role-badge :role="$ev['actor']['role']" />
+                                                        @endif
+                                                    </p>
+                                                </div>
+                                            </li>
+                                        @endforeach
+                                    </ol>
                                 @endforeach
-                            </ol>
+                            </div>
                         </section>
                     @endif
                 </div>

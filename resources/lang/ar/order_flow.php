@@ -52,6 +52,8 @@ return [
     'tracking_history_empty' => 'لا يوجد سجل تتبع بعد',
     'order_timeline' => 'سجل أحداث الطلبية',
     'order_timeline_empty' => 'لا توجد أحداث بعد',
+    'event_day_today' => 'اليوم',
+    'event_day_yesterday' => 'أمس',
     'tracking_provider' => 'شركة التوصيل',
     'tracking_number_copy' => 'نسخ رقم التتبع',
     'filter_provider' => 'شركة التوصيل',

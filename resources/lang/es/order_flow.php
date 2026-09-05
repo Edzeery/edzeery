@@ -52,6 +52,8 @@ return [
     'tracking_history_empty' => 'Sin historial de seguimiento',
     'order_timeline' => 'Cronología del pedido',
     'order_timeline_empty' => 'Sin eventos',
+    'event_day_today' => 'Hoy',
+    'event_day_yesterday' => 'Ayer',
     'tracking_provider' => 'Transportista',
     'tracking_number_copy' => 'Copiar número de seguimiento',
     'filter_provider' => 'Transportista',
