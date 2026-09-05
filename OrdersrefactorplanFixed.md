@@ -372,3 +372,22 @@
 - **الاختبارات:** `tests/Feature/Merchant/OrderEventLogVisibilityTest.php` — **8 ناجحة (20 assertions)**: الدور الشامل (owner/admin دائمًا، manager للمعيَّن فقط، staff أبدًا حتى لو مُعيَّن) + تكامل مودال التفاصيل (owner يرى/لا يرى staff + `canView*`) + درج التتبع (owner يرى/لا يرى staff).
 - **التحقق:** السويت الكامل **297 ناجح (1080 assertions)**؛ الإخفاق الوحيد كان قفل ملفات Blade على Windows (`CartOrderLimitsTest`) — أُعيد منفردًا **11/11**، أي صفر انحدار فعلي. `view:cache` + `php -l` سليمان.
 - **خارج النطاق (لم يُلمس):** call-center، HR/payroll، ERP، landing-builder، `mystatuskit`، قيم `StorePermissionEnum`.
+
+---
+
+## Phase 29.2 — الإرسال المباشر لطلبية مُؤكَّدة (Direct Send to Carrier) (جولة Phase 29)
+
+**الحالة: ✅ DONE (2026-09-05)** — الفرع الثاني من جولة Phase 29، بموافقة صريحة من المستخدم.
+
+- **الفجوة (root cause):** طلبية في `confirmed`/`preparing` لا يمكن إرسالها لشركة التوصيل إلا بإعادة فتح درج التأكيد — لا يوجد إجراء مباشر من الصف/البطاقة.
+- **الحل:** إجراء `$sendConfirmedOrder(string $orderId)` في `resources/views/livewire/merchant/orders/index.blade.php`:
+  - حارس `abort_unless(canStore(ORDER_MANAGE), 403)` (توست بدل 403 في 29.6 القادم).
+  - يُقبل `confirmed`/`preparing` فقط — غير ذلك → `swal:toast` بـ`send_requires_confirmation` ويعود فورًا (**لا auto-confirm مطلقًا**؛ `OrderShippingGateway::send` يُستدعى بـ`confirmFirst: false`).
+  - فحص جهوزية قبل أي تحوّل: اسم العميل، هاتفه، الولاية، البلدية، العنوان-أو-نقطة الاستلام، ≥1 صنف، وشركة توصيل-أو-موصّل. الناقص يُدرج واحدًا واحدًا (عبر `merchant_panel.*` المترجمة) في توست `send_missing_fields:fields` — وتبقى الحالة دون تغيير.
+  - عند اكتمال المعطيات: `OrderShippingGateway::send(order: $order, providerId: $order->shipping_provider_id ?: null, changedBy: $membership)` ثم `loadOrders()` ثم توست نجاح (`merchant.orders_sent`).
+  - زرا إرسال (أيقونة truck) في صف الجدول + بطاقات الهاتف يظهران فقط عندما يكون `$order['status']['key'] ∈ {confirmed, preparing}` وبإذن `ORDER_MANAGE` — ليس في سلة المهملات. درج التأكيد (P26) لم يُعدَّل إطلاقًا.
+- **الترجمات:** `send_requires_confirmation`/`send_missing_fields` ×4 في `resources/lang/{en,ar,fr,es}/order_flow.php` بعد `confirmed_only`.
+- **إصلاح خطأ كامن اكتُشف أثناء التنفيذ:** `app/Domains/Order/Services/OrderTrackingService.php` كان يعلّق معاملات الفاعل `?int $actorMembershipId` بينما `store_memberships.id` نوعه ULID (نصي) → أي انتقال إلى `shipped` بعضوية فاعلة كان يرمي `TypeError` داخل `OrderObserver::syncTracking()` (يُعطّل حتى درج «تأكيد وإرسال» الحالي). أصبح النوع `int|string|null` — تعديل محايد سلوكيًا بلا أي تغيير منطقي.
+- **الاختبارات:** `tests/Feature/Merchant/DirectSendConfirmedOrderTest.php` — **7 ناجحة (16 assertions)**: STAFF بلا صلاحية → 403؛ pending → رفض بتوست `send_requires_confirmation` مع بقائها pending (لا تأكيد تلقائي)؛ confirmed → shipped مع تأكيد حدث `sent_to_carrier`؛ preparing → shipped؛ عنوان ناقص → توست يذكر `merchant_panel.address` والحالة ثابتة؛ غياب (العميل+المنتجات+الشريك) → كل الحقول الناقصة تُدرج؛ نقطة استلام بدل العنوان → إرسال ناجح.
+- **التحقق:** السويت الكامل **305 ناجح (1100 assertions)** — صفر انحدار (CartOrderLimitsTest نجح ضمن السويت كاملًا هذه المرة). `view:cache` + `php -l` سليمان.
+- **خارج النطاق (لم يُلمس):** درج التأكيد، call-center، HR/payroll، ERP، landing-builder، `mystatuskit`، قيم `StorePermissionEnum`.

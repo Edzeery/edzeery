@@ -14,7 +14,7 @@ class OrderTrackingService
      * Create a new tracking record for an order being shipped.
      * Idempotent: returns existing open tracking if one exists.
      */
-    public function startShipment(Order $order, ?string $trackingNumber = null, ?int $actorMembershipId = null): OrderTracking
+    public function startShipment(Order $order, ?string $trackingNumber = null, int|string|null $actorMembershipId = null): OrderTracking
     {
         $open = $this->currentOpenTracking($order);
 
@@ -46,7 +46,7 @@ class OrderTrackingService
     /**
      * Mark the order's currently open tracking record as delivered.
      */
-    public function markDelivered(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markDelivered(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::DELIVERED->value, $actorMembershipId, $notes, [
             'delivered_at' => now(),
@@ -56,7 +56,7 @@ class OrderTrackingService
     /**
      * Mark the order's currently open tracking record as returned.
      */
-    public function markReturned(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markReturned(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::RETURNED->value, $actorMembershipId, $notes, [
             'returned_at' => now(),
@@ -67,7 +67,7 @@ class OrderTrackingService
      * Mark the order's currently open tracking record as being returned
      * (in transit back) without a final outcome yet.
      */
-    public function markReturning(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markReturning(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::RETURNING->value, $actorMembershipId, $notes, [
             'returned_at' => now(),
@@ -77,7 +77,7 @@ class OrderTrackingService
     /**
      * Mark the order's currently open tracking record as lost (terminal).
      */
-    public function markLost(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markLost(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::LOST->value, $actorMembershipId, $notes);
     }
@@ -85,7 +85,7 @@ class OrderTrackingService
     /**
      * Mark the order's currently open tracking record as damaged (terminal).
      */
-    public function markDamaged(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markDamaged(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::DAMAGED->value, $actorMembershipId, $notes);
     }
@@ -93,7 +93,7 @@ class OrderTrackingService
     /**
      * Record a failed delivery attempt (non-terminal).
      */
-    public function markFailedAttempt(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markFailedAttempt(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::FAILED_ATTEMPT->value, $actorMembershipId, $notes);
     }
@@ -101,7 +101,7 @@ class OrderTrackingService
     /**
      * Mark an order currently out for delivery / in transit.
      */
-    public function markInTransit(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markInTransit(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::IN_TRANSIT->value, $actorMembershipId, $notes);
     }
@@ -109,7 +109,7 @@ class OrderTrackingService
     /**
      * Mark an order currently out for delivery.
      */
-    public function markOutForDelivery(Order $order, ?int $actorMembershipId = null, ?string $notes = null): ?OrderTracking
+    public function markOutForDelivery(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking
     {
         return $this->applyStatus($order, OrderTrackingStatus::OUT_FOR_DELIVERY->value, $actorMembershipId, $notes);
     }
@@ -117,7 +117,7 @@ class OrderTrackingService
     protected function applyStatus(
         Order $order,
         string $newStatus,
-        ?int $actorMembershipId,
+        int|string|null $actorMembershipId,
         ?string $notes,
         array $extra = [],
     ): ?OrderTracking {
@@ -153,7 +153,7 @@ class OrderTrackingService
     protected function recordHistory(
         OrderTracking $tracking,
         string $status,
-        ?int $actorMembershipId,
+        int|string|null $actorMembershipId,
         ?string $notes,
         ?array $payload,
         Order $order,

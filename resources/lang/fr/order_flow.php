@@ -34,6 +34,8 @@ return [
     'confirm_requires_partner' => 'Choisissez un transporteur ou un livreur avant l’envoi.',
     'confirmed_and_sent' => 'Commande confirmée et remise au transporteur ✈',
     'confirmed_only' => 'Commande confirmée',
+    'send_requires_confirmation' => 'Confirmez la commande avant de la remettre au transporteur.',
+    'send_missing_fields' => 'Envoi impossible — champs manquants : :fields',
 
     'duplicate_warnings_title' => 'Doublons possibles',
     'duplicate_detected' => ':count commande(s) similaire(s) sur les 30 derniers jours',

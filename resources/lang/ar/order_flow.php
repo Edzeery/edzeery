@@ -34,6 +34,8 @@ return [
     'confirm_requires_partner' => 'اختر شركة التوصيل أو الموصّل قبل الإرسال.',
     'confirmed_and_sent' => 'تم تأكيد الطلبية وإرسالها لشركة التوصيل ✈',
     'confirmed_only' => 'تم تأكيد الطلبية',
+    'send_requires_confirmation' => 'يجب تأكيد الطلبية قبل إرسالها لشركة التوصيل.',
+    'send_missing_fields' => 'تعذّر الإرسال — بيانات ناقصة: :fields',
 
     'duplicate_warnings_title' => 'طلبيات محتملة مشابهة',
     'duplicate_detected' => 'وُجدت :count طلبية مشابهة خلال آخر ٣٠ يومًا',

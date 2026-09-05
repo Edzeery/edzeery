@@ -34,6 +34,8 @@ return [
     'confirm_requires_partner' => 'Elige un transportista o repartidor antes de enviar.',
     'confirmed_and_sent' => 'Pedido confirmado y entregado al transportista ✈',
     'confirmed_only' => 'Pedido confirmado',
+    'send_requires_confirmation' => 'Confirma el pedido antes de enviarlo al transportista.',
+    'send_missing_fields' => 'No se puede enviar todavía — faltan datos: :fields',
 
     'duplicate_warnings_title' => 'Posibles duplicados',
     'duplicate_detected' => ':count pedido(s) similar(es) en los últimos 30 días',

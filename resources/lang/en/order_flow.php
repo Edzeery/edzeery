@@ -36,6 +36,8 @@ return [
     'confirm_requires_partner' => 'Choose a delivery company or rider before sending.',
     'confirmed_and_sent' => 'Order confirmed and handed to carrier ✈',
     'confirmed_only' => 'Order confirmed',
+    'send_requires_confirmation' => 'Confirm the order before sending it to the carrier.',
+    'send_missing_fields' => 'Cannot send — missing: :fields',
 
     // ----- Duplicates -----
     'duplicate_warnings_title' => 'Possible duplicates',

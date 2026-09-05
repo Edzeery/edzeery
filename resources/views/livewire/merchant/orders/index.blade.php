@@ -1005,6 +1005,80 @@ $submitConfirmAndSend = function (): void {
     }
 };
 
+// 29.2 — Direct "hand to carrier" for an ALREADY confirmed order (no drawer).
+// Sends via the same gateway with confirmFirst: false so it NEVER auto-confirms.
+// Readiness is validated before any transition; incomplete orders get a
+// field-by-field warning and keep their current status.
+$sendConfirmedOrder = function (string $orderId): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $order = Order::with('customer')
+        ->where('store_id', currentStoreId())
+        ->find($orderId);
+
+    if (! $order) {
+        return;
+    }
+
+    if (! in_array($order->status?->key, ['confirmed', 'preparing'], true)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.send_requires_confirmation')]);
+        return;
+    }
+
+    $missing = [];
+
+    if (blank($order->customer?->name)) {
+        $missing[] = __('merchant_panel.customer_name');
+    }
+    if (blank($order->customer?->phone)) {
+        $missing[] = __('merchant_panel.customer_phone');
+    }
+    if (blank($order->state_id)) {
+        $missing[] = __('merchant_panel.state');
+    }
+    if (blank($order->city_id)) {
+        $missing[] = __('merchant_panel.city');
+    }
+    if (blank($order->address) && blank($order->stopdesk_point_id)) {
+        $missing[] = __('merchant_panel.address');
+    }
+    if (! $order->items()->exists()) {
+        $missing[] = __('merchant_panel.items');
+    }
+    if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
+        $missing[] = __('order_flow.confirm_partner');
+    }
+
+    if (! empty($missing)) {
+        $this->dispatch('swal:toast', [
+            'icon' => 'warning',
+            'title' => __('order_flow.send_missing_fields', ['fields' => implode('، ', $missing)]),
+        ]);
+        return;
+    }
+
+    $membership = $this->getCurrentMembership();
+
+    if (! $membership) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => 'Unauthorized']);
+        return;
+    }
+
+    try {
+        app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->send(
+            order: $order,
+            providerId: $order->shipping_provider_id ?: null,
+            changedBy: $membership,
+        );
+
+        $this->loadOrders();
+        $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_sent')]);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning("sendConfirmedOrder failed for order [{$order->number}]: " . $e->getMessage());
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
+    }
+};
+
 $refreshDuplicateWarnings = function (?Order $order = null): void {
     $order ??= $this->confirmOrderId
         ? Order::where('store_id', currentStoreId())->with('items.variant')->find($this->confirmOrderId)
@@ -3077,6 +3151,14 @@ $submitEdit = function (): void {
                                                         <x-edz.icon name="phone" class="w-4 h-4 shrink-0" />
                                                     </button>
                                                 @endif
+                                                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+                                                 && !$this->showTrash && in_array($order['status']['key'] ?? null, ['confirmed', 'preparing'], true))
+                                                    <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
+                                                        class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                        title="{{ __('order_flow.send_to_carrier') }}">
+                                                        <x-edz.icon name="truck" class="w-4 h-4 shrink-0" />
+                                                    </button>
+                                                @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
 
                                                         <button @click="$wire.openEditModal('{{ $orderId }}')"
@@ -3210,6 +3292,13 @@ $submitEdit = function (): void {
                                                     class="edz-btn edz-btn--ghost edz-btn--xs"
                                                     title="{{ __('order_flow.confirm_title') }}">
                                                     <x-edz.icon name="phone" class="w-4 h-4" />
+                                                </button>
+                                            @endif
+                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status']['key'] ?? null, ['confirmed', 'preparing'], true))
+                                                <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
+                                                    title="{{ __('order_flow.send_to_carrier') }}">
+                                                    <x-edz.icon name="truck" class="w-4 h-4" />
                                                 </button>
                                             @endif
                                             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))

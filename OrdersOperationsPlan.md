@@ -280,4 +280,14 @@ created_at, index: (store_id, order_id, created_at)
 
 ---
 
+### 29.2 — إرسال مباشر للطلبيات المؤكَّدة (تم بموافقة المستخدم)
+
+- **الفجوة:** طلبية في `confirmed/preparing` لا يمكن إرسالها لشركة التوصيل إلا بإعادة فتح درج التأكيد وتكرار التدفق كاملًا.
+- **الحل:** إجراء `$sendConfirmedOrder(string $orderId)` — حارس `order.manage`؛ قبول `confirmed`/`preparing` فقط (غير ذلك → توست `send_requires_confirmation` فورًا، **بدون أي تأكيد تلقائي**)؛ فحص جهوزية قبل أي تحوّل (اسم/هاتف، ولاية، بلدية، عنوان-أو-نقطة استلام، ≥1 صنف، شركة-أو-موصّل) مع إدراج الناقص واحدًا واحدًا في توست `send_missing_fields` وتبقى الحالة كما هي؛ عند الاكتمال → `OrderShippingGateway::send(order, providerId: shipping_provider_id ?: null, changedBy, confirmFirst: false)` + `loadOrders()` + توست نجاح. زران جدد (truck) في جدول الطلبيات وبطاقات الهاتف يظهران فقط لطلبيات `confirmed/preparing` (بدون المساس بدرج التأكيد).
+- **ترجمات:** `send_requires_confirmation`/`send_missing_fields` ×4 لغات في `order_flow.php` بعد `confirmed_only`.
+- **إصلاح خطأ كامن (ضروري لهذا المسار):** `OrderTrackingService` كان يستقبل `?int $actorMembershipId` بينما معرّفات العضويات ULID (نصية) → أي تحوّل `shipped` بعضوية فاعلة ينهار عبر `OrderObserver::syncTracking()`. أصبح `int|string|null` (تغيير محايد سلوكيًا) — يُصلح أيضًا درج «تأكيد وإرسال» القائم.
+- **أدلة:** `tests/Feature/Merchant/DirectSendConfirmedOrderTest.php` — **7 ناجحة (16 assertions)** (منع بلا صلاحية 403، رفض pending دون تأكيد تلقائي، إرسال confirmed/preparing → shipped مع حدث `sent_to_carrier`، منع بعنوان ناقص مع ذِكر الحقل، حصر كل الحقول الناقصة، قبول نقطة استلام بدل العنوان). السويت كاملة **305 ناجح (1100 assertions)** → **صفر انحدار** (نجح CartOrderLimitsTest ضمن السويت). `view:cache` + `php -l` سليمان.
+
+---
+
 *ملاحظة: هذا الملف وثيقة تخطيط فقط — أي كتابة/تعديل لأكواد لا يبدأ إلا بعد موافقة صريحة من المستخدم.*
