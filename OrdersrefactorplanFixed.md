@@ -391,3 +391,21 @@
 - **الاختبارات:** `tests/Feature/Merchant/DirectSendConfirmedOrderTest.php` — **7 ناجحة (16 assertions)**: STAFF بلا صلاحية → 403؛ pending → رفض بتوست `send_requires_confirmation` مع بقائها pending (لا تأكيد تلقائي)؛ confirmed → shipped مع تأكيد حدث `sent_to_carrier`؛ preparing → shipped؛ عنوان ناقص → توست يذكر `merchant_panel.address` والحالة ثابتة؛ غياب (العميل+المنتجات+الشريك) → كل الحقول الناقصة تُدرج؛ نقطة استلام بدل العنوان → إرسال ناجح.
 - **التحقق:** السويت الكامل **305 ناجح (1100 assertions)** — صفر انحدار (CartOrderLimitsTest نجح ضمن السويت كاملًا هذه المرة). `view:cache` + `php -l` سليمان.
 - **خارج النطاق (لم يُلمس):** درج التأكيد، call-center، HR/payroll، ERP، landing-builder، `mystatuskit`، قيم `StorePermissionEnum`.
+
+---
+
+## Phase 29.3 — الإرسال الجماعي للطلبيات مجمَّعًا حسب شركة كل طلبية (Bulk Send Grouped per Carrier) (جولة Phase 29)
+
+**الحالة: ✅ DONE (2026-09-05)** — الفرع الثالث من جولة Phase 29، بموافقة صريحة من المستخدم.
+
+- **الفجوة (root cause):** الإرسال الجماعي القديم (`bulkSendToCarrier(?string $providerId)`) كان يدفع *كل* الطلبيات المحددة إلى شركة واحدة يختارها المستخدم من قائمة — بينما لكل طلبية شركة (أو موصّل) خاص بها مُسجَّل، فكان الإرسال «لكل الاحتياط» يعلّقها على شركة مختلفة. كما لم يكن يعرض ملخص تأكيد ولا فحص جهوزية.
+- **الحل:** ثلاثة إجراءات في `resources/views/livewire/merchant/orders/index.blade.php` + زر/قائمة محدث في شريط الإجراءات المشترك:
+  - `$openBulkSendModal()` — حارس `abort_unless(canStore(ORDER_MANAGE), 403)`؛ بلا تحديد → `swal:toast` بـ`merchant.no_orders_selected`؛ المحددة تُجمّع حسب `shipping_provider_id` مع بديل `delivery_rider_id`؛ بلا شركة وموصّل → مجموعة «بلا شركة» (`bulk_send_unassigned`)؛ وينتج `bulkSendSummary` (اسم + عدد) يعرضه `x-edz.modal` الجديد (P29.3).
+  - `$collectMissingFields(Order)` — يعيد فحص جهوزية 29.2 (اسم/هاتف/ولاية/بلدية/عنوان-أو-نقطة/≥1 صنف/شركة-أو-موصّل) كقائمة حقول ناقصة؛ يُعاد استخدامه في `$sendConfirmedOrder` (29.2) والجماعي.
+  - `$confirmBulkSend()` — يتجاوز المحددة مستخدَمًا `OrderShippingGateway::send(order, providerId: $order->shipping_provider_id ?: null, changedBy)` لكل طلبية على شركتها (لا auto-confirm أبدًا)؛ غير المؤكَّد/الناقص يُتخطَّى دون تغيير حالته؛ ثم توست واحد بصيغة «Alpha (2) • Beta (1) • :count تخطَّى» (أيقونة تحذير إن تخطَّى أحد، نجاح بخلافه) — **لأن `assertDispatched` بغلاف يفحص أول حدث مطابق فقط**، صُهر التوستان في حدث واحد.
+  - زر «إرسال» في `partials/bulk-actions-bar.blade.php` أصبح زرًا واحدًا يفتح المودال (بدل قائمة الشركات) مع حارس `ORDER_MANAGE` لديه.
+- **الترجمات:** مفاتيح 9 ×4 لغات في `order_flow.php`: `bulk_send_summary_title`/`bulk_send_summary_subtitle`/`bulk_send_group_count`/`bulk_send_no_groups`/`bulk_send_confirm`/`bulk_send_unassigned`/`bulk_send_rider`/`bulk_send_summary_line`/`bulk_send_skipped`.
+- **الاختبارات:** `tests/Feature/Merchant/BulkSendCarrierGroupingTest.php` — **8 ناجحة (31 assertions)**:
+  1. STAFF بلا صلاحية → 403؛ 2. تحذير بدون تحديد دون فتح المودال؛ 3. التجميع: شركتان + موصّل + بلا شركة (أعداد/أسماء صحيحة)؛ 4. إرسال كل طلبية لشركتها مع ملخص «Alpha (2) • Beta (1)» + حادثتا `sent_to_carrier`؛ 5. تخطِّي pending دون تأكيد تلقائي؛ 6. تخطِّي طلبية ناقصة العنوان؛ 7. إرسال طلبية موصّل فقط (مفتاح `delivery_rider_id` → FK حقيقي عبر `DeliveryRider`)؛ 8. تخطِّي طلبية بلا شركة وموصّل نهائيًا.
+- **التحقق:** السويت الكامل **313 ناجح (1131 assertions)** — صفر انحدار. `view:cache` + `php -l` سليمان.
+- **خارج النطاق (لم يُلمس):** درج التأكيد (P26)، call-center، HR/payroll، ERP، landing-builder، `mystatuskit`، قيم `StorePermissionEnum`.

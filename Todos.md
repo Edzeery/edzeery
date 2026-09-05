@@ -293,3 +293,13 @@ git rm "it" "prepareBindings(\$bindings)"
 ### جولة Phase 29 — فرع 29.2 ✅ (إرسال مباشر لطلب مُؤكَّد)
 
 اكتمل الفرع الثاني (29.2): إجراء `$sendConfirmedOrder(string $orderId)` — حارس `order.manage` + قبول `confirmed/preparing` فقط (رفض غيرها بتوست `send_requires_confirmation`، لا تأكيد تلقائي أبدًا عبر `confirmFirst: false`)، فحص جهوزية (اسم/هاتف/ولاية/بلدية/عنوان-أو-نقطة استلام/≥1 صنف/شركة-أو-موصّل) مع إدراج الناقص في توست `send_missing_fields` وتبقى الحالة كما هي، ثم إرسال عبر `OrderShippingGateway::send(..., confirmFirst: false)`. زر truck في الجدول + بطاقات الهاتف لهاتين الحالتين فقط. مفاتيح ×4 لغات. إصلاح خطأ كامن: `?int` → `int|string|null` في `OrderTrackingService` (معرّفات العضويات ULID) كان يعطّل أي تحوّل `shipped` بعضوية. `DirectSendConfirmedOrderTest.php` — **7 ناجحة (16 assertions)**؛ السويت **305 ناجح (1100 assertions)** → صفر انحدار.
+
+### جولة Phase 29 — فرع 29.3 ✅ (إرسال جماعي مجمَّع حسب شركة كل طلبية)
+
+اكتمل الفرع الثالث (29.3): استُبدل «إرسال الكل لشركة واحدة» القديم بنافذة تأكيد جماعية:
+- `$openBulkSendModal()` — حارس `order.manage` + تحذير `no_orders_selected`؛ يجمع المحددة حسب `shipping_provider_id` (بديل `delivery_rider_id`)؛ بلا شركة إطلاقًا → مجموعة «بلا شركة»؛ يعرض ملخصًا لكل شركة (اسم + عدد) في `x-edz.modal`.
+- `$collectMissingFields(Order)` — استخراج فحص جهوزية 29.2 في مغلف واحد يُعاد استخدامه من الإرسال المباشر والجماعي.
+- `$confirmBulkSend()` — يرسل كل طلبية لشركتها عبر `OrderShippingGateway::send(providerId: $order->shipping_provider_id ?: null)` (لا تأكيد تلقائي)، يكمل غير المؤكَّد والناقص بيانات، توست واحد يجمع سطور الشركات + عدد المتخطَّى (باشارات الحذر).
+- تغيير UI: زر واحد في شريط الإجراءات بدل قائمة شركات (درج التأكيد لم يتغير). مفاتيح 9 ×4 لغات: `bulk_send_summary_title`/`bulk_send_summary_subtitle`/`bulk_send_group_count`/`bulk_send_no_groups`/`bulk_send_confirm`/`bulk_send_unassigned`/`bulk_send_rider`/`bulk_send_summary_line`/`bulk_send_skipped`.
+- ملاحظة اختبارات: `assertDispatched` يفحص أول حدث مطابق فقط، لذا حُرِّر التوست إلى حدث واحد يجمع الملخص + المتخطَّى.
+- `BulkSendCarrierGroupingTest.php` — **8 ناجحة (31 assertions)**. السويت كاملة **313 ناجح (1131 assertions)** → صفر انحدار.

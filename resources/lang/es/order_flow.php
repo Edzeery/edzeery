@@ -37,6 +37,17 @@ return [
     'send_requires_confirmation' => 'Confirma el pedido antes de enviarlo al transportista.',
     'send_missing_fields' => 'No se puede enviar todavía — faltan datos: :fields',
 
+    // ----- Envío masivo al transportista (agrupado por el transportista de cada pedido) -----
+    'bulk_send_summary_title' => 'Enviar pedidos al transportista',
+    'bulk_send_summary_subtitle' => 'Los pedidos seleccionados se entregarán a su propio transportista:',
+    'bulk_send_group_count' => ':count pedido(s)',
+    'bulk_send_no_groups' => 'No hay pedidos elegibles seleccionados.',
+    'bulk_send_confirm' => 'Enviar todos',
+    'bulk_send_unassigned' => 'Sin transportista asignado',
+    'bulk_send_rider' => 'Repartidor',
+    'bulk_send_summary_line' => ':carrier (:count)',
+    'bulk_send_skipped' => ':count pedido(s) requieren más datos o confirmación previa',
+
     'duplicate_warnings_title' => 'Posibles duplicados',
     'duplicate_detected' => ':count pedido(s) similar(es) en los últimos 30 días',
     'no_duplicates' => 'Sin duplicados en los últimos 30 días',

@@ -39,6 +39,17 @@ return [
     'send_requires_confirmation' => 'Confirm the order before sending it to the carrier.',
     'send_missing_fields' => 'Cannot send — missing: :fields',
 
+    // ----- Bulk send-to-carrier (grouped by each order's carrier) -----
+    'bulk_send_summary_title' => 'Send orders to carrier',
+    'bulk_send_summary_subtitle' => 'Selected orders will be handed to their own carrier:',
+    'bulk_send_group_count' => ':count order(s)',
+    'bulk_send_no_groups' => 'No eligible orders selected.',
+    'bulk_send_confirm' => 'Send all',
+    'bulk_send_unassigned' => 'No carrier assigned',
+    'bulk_send_rider' => 'Delivery rider',
+    'bulk_send_summary_line' => ':carrier (:count)',
+    'bulk_send_skipped' => ':count order(s) need more info or must be confirmed first',
+
     // ----- Duplicates -----
     'duplicate_warnings_title' => 'Possible duplicates',
     'duplicate_detected' => ':count similar order(s) found in the last 30 days',

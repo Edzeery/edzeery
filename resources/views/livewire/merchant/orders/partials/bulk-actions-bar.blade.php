@@ -12,10 +12,10 @@
     class="relative mb-4 p-3 bg-accent-surface border border-accent-border rounded-xl flex items-center justify-between sticky top-0 z-30"
     wire:loading.attr="disabled"
     wire:loading.class="opacity-60 pointer-events-none cursor-not-allowed"
-    wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete,submitBulkStatus">
+    wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus">
 
     {{-- Visible execution indicator + spinner (M10) --}}
-    <div wire:loading wire:target="bulkAssignAgent,bulkSendToCarrier,bulkDelete,submitBulkStatus"
+    <div wire:loading wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus"
         x-cloak
         class="absolute inset-0 z-20 flex items-center justify-center gap-2 bg-accent-surface-strong rounded-xl">
         <x-edz.spinner class="w-5 h-5 text-accent-fg" />
@@ -46,26 +46,15 @@
             </div>
         </div>
 
-        {{-- Send to carrier --}}
-        @if (count($this->allProviders) > 0)
-            <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
-                    wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
-                    <x-edz.spinner wire:target="bulkSendToCarrier" class="w-4 h-4" />
-                    <x-edz.icon name="truck" wire:loading.remove wire:target="bulkSendToCarrier" class="w-4 h-4" />
-                    <span wire:loading.remove wire:target="bulkSendToCarrier">{{ __('merchant.bulk_send_carrier') }}</span>
-                </button>
-                <div x-show="open" x-transition
-                    class="absolute z-50 right-0 mt-1 w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
-                    @foreach ($this->allProviders as $pr)
-                        <button wire:click="bulkSendToCarrier('{{ $pr['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary disabled:opacity-50"
-                            wire:loading.attr="disabled" wire:target="bulkSendToCarrier">
-                            {{ $pr['name'] }}
-                        </button>
-                    @endforeach
-                </div>
-            </div>
+        {{-- Send to carrier (P29.3): opens a confirmation modal grouped by
+             each selected order's own carrier (provider, fallback rider). --}}
+        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            <button wire:click="openBulkSendModal" class="edz-btn edz-btn--ghost edz-btn--sm"
+                wire:loading.attr="disabled" wire:target="openBulkSendModal,confirmBulkSend">
+                <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
+                <x-edz.icon name="truck" wire:loading.remove wire:target="confirmBulkSend" class="w-4 h-4" />
+                <span wire:loading.remove wire:target="confirmBulkSend">{{ __('merchant.bulk_send_carrier') }}</span>
+            </button>
         @endif
 
         {{-- Change status (P29) --}}

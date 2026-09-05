@@ -37,6 +37,17 @@ return [
     'send_requires_confirmation' => 'Confirmez la commande avant de la remettre au transporteur.',
     'send_missing_fields' => 'Envoi impossible — champs manquants : :fields',
 
+    // ----- Envoi groupé au transporteur (groupé par transporteur de chaque commande) -----
+    'bulk_send_summary_title' => 'Envoyer les commandes au transporteur',
+    'bulk_send_summary_subtitle' => 'Les commandes sélectionnées seront remises à leur propre transporteur :',
+    'bulk_send_group_count' => ':count commande(s)',
+    'bulk_send_no_groups' => 'Aucune commande éligible sélectionnée.',
+    'bulk_send_confirm' => 'Tout envoyer',
+    'bulk_send_unassigned' => 'Aucun transporteur attribué',
+    'bulk_send_rider' => 'Livreur',
+    'bulk_send_summary_line' => ':carrier (:count)',
+    'bulk_send_skipped' => ':count commande(s) nécessitent plus d\'infos ou une confirmation préalable',
+
     'duplicate_warnings_title' => 'Doublons possibles',
     'duplicate_detected' => ':count commande(s) similaire(s) sur les 30 derniers jours',
     'no_duplicates' => 'Aucun doublon sur les 30 derniers jours',

@@ -140,6 +140,10 @@ state([
     'bulkStatusTarget' => '',
     'bulkStatusReason' => '',
 
+    // Bulk send-to-carrier modal (P29.3): grouped by each order's own carrier
+    'showBulkSendModal' => false,
+    'bulkSendSummary' => [],
+
     // Inline phone edit (customer phone + order secondary stacked in one cell)
     'phoneEditPhone' => '',
     'phoneEditSecondary' => '',
@@ -588,34 +592,152 @@ $bulkAssignAgent = function (?string $membershipId): void {
     $this->loadOrders();
 };
 
-$bulkSendToCarrier = function (?string $providerId): void {
+// P29.3 — Bulk "send to carrier" grouped by each order's OWN carrier
+// (shipping_provider_id, falling back to delivery_rider_id). Orders with
+// neither are reported as unassigned. The confirmation modal shows a
+// per-carrier summary before anything is sent.
+$openBulkSendModal = function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
     if (empty($this->selectedOrders)) {
-        $this->dispatch('swal', type: 'warning', title: __('merchant.no_orders_selected'));
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
         return;
     }
-    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
-    $membership = $this->getCurrentMembership();
-    $sent = 0;
-    Order::where('store_id', currentStoreId())
+
+    $providers = collect($this->allProviders)->keyBy('id');
+
+    $orders = Order::with('customer')
+        ->where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
-        ->each(function ($order) use ($gateway, $providerId, $membership, &$sent) {
-            try {
-                $gateway->send(
-                    order: $order,
-                    providerId: $providerId,
-                    changedBy: $membership,
-                );
-                $sent++;
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("bulkSendToCarrier failed for order [{$order->number}]: " . $e->getMessage());
-            }
-        });
-    $failed = count($this->selectedOrders) - $sent;
-    $msg = $failed > 0 ? __('merchant.orders_sent') . " ({$sent}/" . count($this->selectedOrders) . " — {$failed} failed)" : __('merchant.orders_sent');
-    $this->dispatch('swal', type: $failed > 0 ? 'warning' : 'success', title: $msg);
+        ->get();
+
+    $groups = [];
+    foreach ($orders as $order) {
+        $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
+        $name = $carrierKey === 'unassigned'
+            ? __('order_flow.bulk_send_unassigned')
+            : ($providers->get($carrierKey)['name'] ?? __('order_flow.bulk_send_rider'));
+
+        if (! isset($groups[$carrierKey])) {
+            $groups[$carrierKey] = ['key' => $carrierKey, 'name' => $name, 'count' => 0];
+        }
+        $groups[$carrierKey]['count']++;
+    }
+
+    $this->bulkSendSummary = array_values($groups);
+    $this->showBulkSendModal = true;
+};
+
+$closeBulkSendModal = function (): void {
+    $this->showBulkSendModal = false;
+    $this->bulkSendSummary = [];
+};
+
+// Per-order 29.2 readiness + missing-field list, reused by the bulk flow.
+$collectMissingFields = function (Order $order): array {
+    $missing = [];
+
+    if (blank($order->customer?->name)) {
+        $missing[] = __('merchant_panel.customer_name');
+    }
+    if (blank($order->customer?->phone)) {
+        $missing[] = __('merchant_panel.customer_phone');
+    }
+    if (blank($order->state_id)) {
+        $missing[] = __('merchant_panel.state');
+    }
+    if (blank($order->city_id)) {
+        $missing[] = __('merchant_panel.city');
+    }
+    if (blank($order->address) && blank($order->stopdesk_point_id)) {
+        $missing[] = __('merchant_panel.address');
+    }
+    if (! $order->items()->exists()) {
+        $missing[] = __('merchant_panel.items');
+    }
+    if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
+        $missing[] = __('order_flow.confirm_partner');
+    }
+
+    return $missing;
+};
+
+$confirmBulkSend = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $this->showBulkSendModal = false;
+    $this->bulkSendSummary = [];
+
+    if (empty($this->selectedOrders)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
+        return;
+    }
+
+    $membership = $this->getCurrentMembership();
+    if (! $membership) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => 'Unauthorized']);
+        return;
+    }
+
+    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
+
+    $orders = Order::with('customer')
+        ->where('store_id', currentStoreId())
+        ->whereIn('id', $this->selectedOrders)
+        ->get();
+
+    $perCarrier = [];
+    $sent = 0;
+    $skipped = [];
+
+    foreach ($orders as $order) {
+        // Skip orders that are not ready/eligible (confirmed/preparing).
+        if (! in_array($order->status?->key, ['confirmed', 'preparing'], true)) {
+            $skipped[] = $order->number;
+            continue;
+        }
+
+        $missing = $this->collectMissingFields($order);
+        if (! empty($missing)) {
+            $skipped[] = $order->number;
+            continue;
+        }
+
+        try {
+            $gateway->send(
+                order: $order,
+                providerId: $order->shipping_provider_id ?: null,
+                changedBy: $membership,
+            );
+
+            $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
+            $perCarrier[$carrierKey] = ($perCarrier[$carrierKey] ?? 0) + 1;
+            $sent++;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("confirmedBulkSend failed for order [{$order->number}]: " . $e->getMessage());
+        }
+    }
+
     $this->clearSelection();
     $this->loadOrders();
+
+    $summaryLines = [];
+    foreach ($perCarrier as $carrierKey => $count) {
+        $carrierName = collect($this->allProviders)->firstWhere('id', $carrierKey)['name']
+            ?? __('order_flow.bulk_send_rider');
+        $summaryLines[] = __('order_flow.bulk_send_summary_line', ['carrier' => $carrierName, 'count' => $count]);
+    }
+
+    if ($skipped) {
+        $summaryLines[] = __('order_flow.bulk_send_skipped', ['count' => count($skipped)]);
+    }
+
+    if ($sent > 0 || $skipped) {
+        $this->dispatch('swal:toast', [
+            'icon' => ! empty($skipped) ? 'warning' : 'success',
+            'title' => implode(' • ', $summaryLines),
+        ]);
+    }
 };
 
 $bulkDelete = function (): void {
@@ -4099,6 +4221,41 @@ $submitEdit = function (): void {
                     <button wire:click="submitBulkStatus" type="button"
                         class="edz-btn edz-btn--primary">
                         {{ __('buttons.save') }}
+                    </button>
+                </div>
+            </div>
+        </x-edz.modal>
+    @endif
+
+    {{-- Bulk Send to Carrier (P29.3) --}}
+    @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
+        <x-edz.modal :is-open="$showBulkSendModal" @close="$wire.closeBulkSendModal()" size="md"
+            show-close-button>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.bulk_send_summary_title') }}</h3>
+                <p class="text-xs text-ink-muted mb-4">{{ __('order_flow.bulk_send_summary_subtitle') }}</p>
+
+                @if (empty($this->bulkSendSummary))
+                    <p class="text-sm text-ink-muted">{{ __('order_flow.bulk_send_no_groups') }}</p>
+                @else
+                    <ul class="space-y-2">
+                        @foreach ($this->bulkSendSummary as $g)
+                            <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2">
+                                <span class="text-sm font-medium text-ink">{{ $g['name'] }}</span>
+                                <span class="text-xs font-semibold text-ink-muted">{{ __('order_flow.bulk_send_group_count', ['count' => $g['count']]) }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button wire:click="closeBulkSendModal" type="button"
+                        class="edz-btn edz-btn--ghost">
+                        {{ __('buttons.cancel') }}
+                    </button>
+                    <button wire:click="confirmBulkSend" type="button"
+                        class="edz-btn edz-btn--primary">
+                        {{ __('order_flow.bulk_send_confirm') }}
                     </button>
                 </div>
             </div>

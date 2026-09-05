@@ -37,6 +37,17 @@ return [
     'send_requires_confirmation' => 'يجب تأكيد الطلبية قبل إرسالها لشركة التوصيل.',
     'send_missing_fields' => 'تعذّر الإرسال — بيانات ناقصة: :fields',
 
+    // ----- الإرسال الجماعي لشركة التوصيل (مجمّع حسب شركة كل طلبية) -----
+    'bulk_send_summary_title' => 'إرسال الطلبيات لشركات التوصيل',
+    'bulk_send_summary_subtitle' => 'ستُسلَّم الطلبيات المحددة إلى شركة التوصيل الخاصة بكل منها:',
+    'bulk_send_group_count' => ':count طلبية',
+    'bulk_send_no_groups' => 'لا توجد طلبيات مؤهلة للإرسال.',
+    'bulk_send_confirm' => 'إرسال الكل',
+    'bulk_send_unassigned' => 'لا توجد شركة توصيل معينة',
+    'bulk_send_rider' => 'موصّل',
+    'bulk_send_summary_line' => ':carrier (:count)',
+    'bulk_send_skipped' => 'تتطلب :count طلبية إكمال البيانات أو تأكيدًا أولًا',
+
     'duplicate_warnings_title' => 'طلبيات محتملة مشابهة',
     'duplicate_detected' => 'وُجدت :count طلبية مشابهة خلال آخر ٣٠ يومًا',
     'no_duplicates' => 'لا توجد طلبية مشابهة خلال آخر ٣٠ يومًا',
