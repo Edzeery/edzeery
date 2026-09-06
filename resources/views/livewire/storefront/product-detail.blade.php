@@ -188,7 +188,7 @@ $decrementQuantity = function (): void {
                                     x-transition:enter-start="opacity-0 scale-105"
                                     x-transition:enter-end="opacity-100 scale-100"
                                     src="{{ asset('storage/' . $img->path) }}"
-                                    alt="{{ $this->product->name }} â€” {{ $i + 1 }}"
+                                    alt="{{ $this->product->name }} — {{ $i + 1 }}"
                                     class="w-full h-full object-cover absolute inset-0"
                                     onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'"
                                     draggable="false">

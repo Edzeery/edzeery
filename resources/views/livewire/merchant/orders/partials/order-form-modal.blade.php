@@ -17,8 +17,8 @@
                         </div>
                     </div>
 
-                    {{-- Customer --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{-- Customer & Address — 4-col grid (1 @375, 2 @768, 4 @1440) --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-4 gap-4">
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
                             <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
@@ -37,6 +37,10 @@
                             <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
                             <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
                         </div>
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.address') }}</label>
+                            <input type="text" wire:model="form.address" class="edz-input text-sm">
+                        </div>
                     </div>
 
                     {{-- Delivery cascade — company → type → wilaya → city → office --}}
@@ -48,7 +52,7 @@
                             wire:change="loadFormOffices($event.target.value)"
                             :options="$this->allProviders" option-value="id" option-label="name"
                             placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                            :disabled="$loadingOffices" />
+                            search :disabled="$loadingOffices" />
                         @error('form.shipping_provider_id')
                             <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                         @enderror
@@ -77,15 +81,15 @@
                                 <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                                 <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
                                     :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
-                                    size="sm" />
+                                    size="sm" search />
                                 @error('form.state_id')
                                     <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                                 @enderror
                             </div>
                             <div>
                                 <label class="edz-label">{{ __('merchant_panel.city') }}</label>
-                                <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
-                                    option-label="name" placeholder="—" size="sm" />
+                                <x-edz.select wire:model="form.city_id" wire:change="rebuildFormOffices()" :options="$this->allCities" option-value="id"
+                                    option-label="name" placeholder="—" size="sm" search />
                                 @error('form.city_id')
                                     <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                                 @enderror
@@ -101,11 +105,11 @@
                                         :options="$this->formOffices" option-value="value"
                                         option-label="label" option-hint="hint"
                                         placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
-                                        :disabled="$loadingOffices" />
+                                        search :disabled="$loadingOffices" />
                                 </div>
                                 <button type="button" wire:click="refreshFormOffices"
-                                    wire:loading.attr="disabled" :disabled="$loadingOffices"
-                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
+                                    wire:loading.attr="disabled"
+                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0 disabled:opacity-50 disabled:pointer-events-none {{ $loadingOffices ? 'opacity-50 pointer-events-none' : '' }}"
                                     aria-label="{{ __('merchant_panel.refresh_offices') }}">
                                     <x-edz.spinner wire:target="refreshFormOffices" class="w-4 h-4" />
                                     <x-edz.icon name="arrow-path" class="w-4 h-4"
@@ -125,12 +129,6 @@
                         </div>
                     </div>
 
-                    {{-- Address --}}
-                    <div class="mt-5">
-                        <label class="edz-label">{{ __('merchant_panel.address') }}</label>
-                        <input type="text" wire:model="form.address" class="edz-input text-sm">
-                    </div>
-
                     {{-- Order Info --}}
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
@@ -148,6 +146,7 @@
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.weight_kg') }}</label>
                             <input type="number" wire:model="form.weight_kg" step="0.01" class="edz-input text-sm">
+                            <p class="text-xs text-ink-muted mt-1">{{ __('order_flow.weight_auto_hint') }}</p>
                         </div>
                     </div>
 
@@ -186,7 +185,7 @@
                                                 {{ $item['name'] }}
                                             </div>
                                             <div class="text-xs text-ink-muted mt-0.5">
-                                                SKU: {{ $item['sku'] ?? 'â€”' }}
+                                                SKU: {{ $item['sku'] ?? '—' }}
                                                 @if (($item['stock'] ?? 0) <= 0)
                                                     <span
                                                         class="text-danger-500 ml-2">{{ __('merchant_panel.out_of_stock') }}</span>
@@ -297,81 +296,9 @@
                         </div>
                     @endif
 
-                    {{-- Order Summary â€” Horizontal --}}
+                    {{-- Order Summary — Shared financial grid (single source for create & edit) --}}
                     @if (!empty($form['items']))
-                        @php
-                            $subtotal = collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
-                            $totalWeight = collect($form['items'])->sum(fn($i) => ($i['weight'] ?? 0) * $i['quantity']);
-                            $discount = 0;
-                            if ($form['discount_type'] && $form['discount_value']) {
-                                $discount =
-                                    $form['discount_type'] === 'amount'
-                                        ? (float) $form['discount_value']
-                                        : round(($subtotal * (float) $form['discount_value']) / 100, 2);
-                            }
-                            $grandTotal = max(0, $subtotal - $discount);
-                        @endphp
-                        <div class="bg-surface-secondary rounded-lg p-4">
-                            {{-- Top row: main stats --}}
-                            <div class="flex items-center justify-between gap-4 flex-wrap">
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.items') }}:</span>
-                                    <span
-                                        class="font-semibold text-ink">{{ collect($form['items'])->sum('quantity') }}</span>
-                                </div>
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.subtotal') }}:</span>
-                                    <span class="font-semibold text-ink tabular-nums">{{ currency($subtotal) }}</span>
-                                </div>
-                                @if ($totalWeight > 0)
-                                    <div class="flex items-center gap-4 text-sm">
-                                        <span class="text-ink-muted">{{ __('merchant_panel.total_weight') }}:</span>
-                                        <span
-                                            class="font-medium text-ink tabular-nums">{{ number_format($totalWeight, 2) }}
-                                            kg</span>
-                                    </div>
-                                @endif
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted">{{ __('merchant_panel.delivery_cost') }}:</span>
-                                    <span class="text-success-500 font-medium">{{ __('merchant_panel.free') }}</span>
-                                </div>
-                            </div>
-
-                            {{-- Discount row --}}
-                            <div
-                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border">
-                                <div class="flex items-center gap-2">
-                                    <x-edz.select wire:model="form.discount_type" :options="[
-                                        ['value' => '', 'label' => __('merchant_panel.discount')],
-                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
-                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
-                                    ]" size="sm"
-                                        class="w-28" />
-                                    @if ($form['discount_type'])
-                                        <input type="number" wire:model="form.discount_value"
-                                            class="edz-input text-xs py-1 w-20" min="0"
-                                            placeholder="{{ $form['discount_type'] === 'percent' ? '%' : 'DZD' }}">
-                                    @endif
-                                    @if ($form['discount_type'] && $form['discount_value'])
-                                        <input type="text" wire:model="form.discount_reason"
-                                            class="edz-input text-xs py-1 flex-1 max-w-xs"
-                                            placeholder="{{ __('merchant_panel.discount_reason') }}">
-                                    @endif
-                                </div>
-                                <span
-                                    class="text-sm font-medium tabular-nums {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
-                                    {{ $discount > 0 ? '-' . currency($discount) : 'â€”' }}
-                                </span>
-                            </div>
-
-                            {{-- Grand total row --}}
-                            <div
-                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border">
-                                <span class="text-base font-bold text-ink">{{ __('merchant_panel.total') }}</span>
-                                <span
-                                    class="text-lg font-bold text-ink tabular-nums">{{ currency($grandTotal) }}</span>
-                            </div>
-                        </div>
+                        @include('livewire.merchant.orders.partials.order-financial-summary')
                     @endif
 
                     {{-- Notes --}}
@@ -507,7 +434,7 @@
                                             <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}
                                             </div>
                                             <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-1.5">
-                                                <span>SKU: {{ $pv['first_variant']['sku'] ?? 'â€”' }}</span>
+                                                <span>SKU: {{ $pv['first_variant']['sku'] ?? '—' }}</span>
                                                 @if (($pv['first_variant']['stock_status'] ?? '') === 'out')
                                                     <span
                                                         class="text-danger-500 font-medium">{{ __('merchant_panel.out_of_stock') }}</span>
@@ -635,7 +562,7 @@
                                                 <span>{{ $variant['option_labels'] }}</span>
                                                 <span class="text-surface-border">آ·</span>
                                             @endif
-                                            <span>SKU: {{ $variant['sku'] ?? 'â€”' }}</span>
+                                            <span>SKU: {{ $variant['sku'] ?? '—' }}</span>
                                             @if ($isVariantSelected)
                                                 <span class="text-success-fg font-medium">آ·
                                                     {{ $variantQty }}

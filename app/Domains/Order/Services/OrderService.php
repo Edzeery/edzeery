@@ -2,6 +2,7 @@
 
 namespace App\Domains\Order\Services;
 
+use App\Domains\Order\Exceptions\OrderIncompleteException;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderStatusHistory;
 use App\Models\Status;
@@ -109,6 +110,12 @@ class OrderService
 
     public function confirm(Order $order, ?StoreMembership $changedBy = null): Order
     {
+        $missing = app(OrderCompleteness::class)->missing($order);
+
+        if ($missing !== []) {
+            throw OrderIncompleteException::fromMissing($missing);
+        }
+
         return $this->transition($order, 'confirmed', null, $changedBy);
     }
 
@@ -164,6 +171,9 @@ class OrderService
                 'phone_secondary' => $data['phone_secondary'] ?? null,
                 'weight_kg' => $data['weight_kg'] ?? null,
                 'shipment_type' => $data['shipment_type'] ?? 'delivery',
+                'discount_type' => $data['discount_type'] ?? null,
+                'discount_value' => $data['discount_value'] ?? null,
+                'discount_reason' => $data['discount_reason'] ?? null,
                 'created_by_membership_id' => $createdBy->id,
             ]);
 

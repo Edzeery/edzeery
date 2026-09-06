@@ -1,0 +1,15 @@
+// ============================================================
+//  Order column settings: drag-and-drop reorder feedback
+// ============================================================
+
+.edz-drag-source {
+    opacity: 0.4;
+}
+
+.edz-drag-over-before {
+    box-shadow: 0 -2px 0 0 rgb(var(--edz-color-accent-500));
+}
+
+.edz-drag-over-after {
+    box-shadow: 0 2px 0 0 rgb(var(--edz-color-accent-500));
+}

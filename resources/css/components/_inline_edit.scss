@@ -64,6 +64,11 @@
   max-width: 100%;
 }
 
+.edz-inline-edit__edit--wide {
+  min-width: 24rem;
+  max-width: 100%;
+}
+
 .edz-inline-edit__input {
   width: 100%;
   padding: 0.5rem 0.75rem;
@@ -121,6 +126,10 @@
   &:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+
+  &--loading {
+    pointer-events: none;
   }
 }
 

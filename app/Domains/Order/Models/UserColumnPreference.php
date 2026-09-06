@@ -16,6 +16,7 @@ class UserColumnPreference extends Model
         'view_key',
         'visible_columns',
         'table_style',
+        'prefs_version',
     ];
 
     protected $casts = [

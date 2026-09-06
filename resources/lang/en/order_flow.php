@@ -38,6 +38,7 @@ return [
     'confirmed_only' => 'Order confirmed',
     'send_requires_confirmation' => 'Confirm the order before sending it to the carrier.',
     'send_missing_fields' => 'Cannot send — missing: :fields',
+    'confirm_missing_fields' => 'Cannot confirm — missing: :fields',
 
     // ----- Bulk send-to-carrier (grouped by each order's carrier) -----
     'bulk_send_summary_title' => 'Send orders to carrier',
@@ -113,4 +114,8 @@ return [
 
     // ----- Timeline empty states -----
     'empty_state_title' => 'Nothing here yet',
+
+    'weight_auto_hint' => 'Auto-calculated from products — editable',
+
+    'office_reset_for_destination' => 'The previously selected office is not available for the new destination, so the choice was cleared',
 ];

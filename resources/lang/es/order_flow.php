@@ -36,6 +36,7 @@ return [
     'confirmed_only' => 'Pedido confirmado',
     'send_requires_confirmation' => 'Confirma el pedido antes de enviarlo al transportista.',
     'send_missing_fields' => 'No se puede enviar todavía — faltan datos: :fields',
+    'confirm_missing_fields' => 'No se puede confirmar — faltan datos: :fields',
 
     // ----- Envío masivo al transportista (agrupado por el transportista de cada pedido) -----
     'bulk_send_summary_title' => 'Enviar pedidos al transportista',
@@ -107,4 +108,8 @@ return [
     'bulk_status_done' => ':done pedido(s) cambiados — :skipped omitidos (no permitidos)',
 
     'empty_state_title' => 'Nada aquí aún',
+
+    'weight_auto_hint' => 'Calculado automáticamente a partir de los productos — editable',
+
+    'office_reset_for_destination' => 'La oficina seleccionada anteriormente no está disponible para el nuevo destino, por lo que la selección se eliminó',
 ];

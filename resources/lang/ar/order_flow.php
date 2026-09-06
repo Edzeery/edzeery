@@ -36,6 +36,7 @@ return [
     'confirmed_only' => 'تم تأكيد الطلبية',
     'send_requires_confirmation' => 'يجب تأكيد الطلبية قبل إرسالها لشركة التوصيل.',
     'send_missing_fields' => 'تعذّر الإرسال — بيانات ناقصة: :fields',
+    'confirm_missing_fields' => 'لا يمكن تأكيد الطلبية — بيانات ناقصة: :fields',
 
     // ----- الإرسال الجماعي لشركة التوصيل (مجمّع حسب شركة كل طلبية) -----
     'bulk_send_summary_title' => 'إرسال الطلبيات لشركات التوصيل',
@@ -107,4 +108,8 @@ return [
     'bulk_status_done' => 'غُيّرت :done طلبية — تخطّيت :skipped غير مسموحة',
 
     'empty_state_title' => 'لا يوجد شيء هنا بعد',
+
+    'weight_auto_hint' => 'محسوب تلقائيًا من المنتجات — قابل للتعديل',
+
+    'office_reset_for_destination' => 'المكتب المحدد سابقًا غير متاح للوجهة الجديدة، فأُزيل الاختيار',
 ];

@@ -45,6 +45,12 @@ class OrderShippingGateway
         try {
             $order->refresh();
 
+            $missing = app(\App\Domains\Order\Services\OrderCompleteness::class)->missing($order, true);
+
+            if ($missing !== []) {
+                throw \App\Domains\Order\Exceptions\OrderIncompleteException::fromMissing($missing);
+            }
+
             $provider = null;
             if ($providerId) {
                 $provider = ShippingProvider::query()

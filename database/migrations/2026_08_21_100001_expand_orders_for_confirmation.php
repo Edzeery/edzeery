@@ -25,7 +25,7 @@ return new class extends Migration
 
             $table->unsignedInteger('confirmation_attempts')->default(0)->after('assigned_by_membership_id');
             $table->timestamp('last_contact_at')->nullable()->after('confirmation_attempts');
-            $table->decimal('weight_kg', 6, 2)->nullable()->after('last_contact_at');
+            $table->decimal('weight_kg', 6, 2)->default('1.00')->after('last_contact_at');
             $table->string('shipment_type')->default('delivery')->after('weight_kg');
 
             $table->index('assigned_to_membership_id');

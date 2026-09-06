@@ -46,7 +46,7 @@ export default function edzSelect(config) {
             if (!this.open) return 'display:none;';
             const isMobile = window.innerWidth < 640;
             if (isMobile) {
-                const w = Math.min(this.$refs.trigger?.offsetWidth || 300, window.innerWidth - 16);
+                const w = Math.min(480, window.innerWidth - 16);
                 return `position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:${w}px;z-index:70;border-radius:var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;max-height:60vh;`;
             }
             const s = `position:fixed;z-index:70;width:${this.popupWidth}px;`;
@@ -63,12 +63,25 @@ export default function edzSelect(config) {
                     this.open = false;
                 }
             };
+            // Reposition the fixed panel while it stays open: the trigger may
+            // move when the modal body scrolls or the window resizes.
+            this._repositionHandler = () => {
+                if (this.open && window.innerWidth >= 640) {
+                    this.updatePosition();
+                }
+            };
             document.addEventListener('click', this._documentClickHandler);
+            document.addEventListener('scroll', this._repositionHandler, true);
+            window.addEventListener('resize', this._repositionHandler);
         },
 
         destroy() {
             if (this._documentClickHandler) {
                 document.removeEventListener('click', this._documentClickHandler);
+            }
+            if (this._repositionHandler) {
+                document.removeEventListener('scroll', this._repositionHandler, true);
+                window.removeEventListener('resize', this._repositionHandler);
             }
         },
 

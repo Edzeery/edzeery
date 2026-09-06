@@ -148,9 +148,36 @@ function initSwal() {
     const bind = () => {
         if (typeof window.Livewire !== "undefined" && !swalBound) {
             swalBound = true;
-            window.Livewire.on("swal", (data) => {
+            // Canonical event: `swal` (payload `{ type, title, text }`).
+            // Legacy orders component broadcasts `swal:toast` with `{ icon, ... }`
+            // — normalise both so every toast surfaces reliably.
+            const handle = (data) => {
                 const payload = Array.isArray(data) ? data[0] : data;
-                EdzSwal.fire(payload);
+                if (!payload) return;
+                const { icon, type, title, text, ...rest } = payload;
+                EdzSwal.fire({ type: type || icon, title, text, ...rest });
+            };
+            window.Livewire.on("swal", handle);
+            window.Livewire.on("swal:toast", handle);
+
+            // Livewire 3 broadcasts `failed-validation` whenever a component
+            // validation fails ($this->validate() / rules). Surface a clear,
+            // prominent error toast (first message + total count) so required
+            // fields are never missed even if they sit outside the viewport.
+            window.Livewire.on("failed-validation", (data) => {
+                const info = Array.isArray(data) ? data[0] : data;
+                const errors = info?.errors || {};
+                const fields = Object.keys(errors);
+                if (fields.length === 0) return;
+                const first = errors[fields[0]];
+                const message = Array.isArray(first) ? first[0] : String(first);
+                const count = fields.length;
+                const suffix = count > 1 ? ` (+${count - 1} more)` : "";
+                EdzSwal.fire({
+                    type: "error",
+                    title: window.__swal_i18n?.validation_title || "Please check the form",
+                    text: message + suffix,
+                });
             });
         }
     };

@@ -9,6 +9,7 @@ import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
 import orderRowActions, { orderEventsMenu, orderMoreMenu } from "./components/order-row-actions.js";
 import edzDropdown from "./components/edz-dropdown.js";
+import orderColumnReorderDraft from "./components/order-column-reorder.js";
 import initButtonLoading from "./edz-button-loading.js";
 
 window.flatpickr = flatpickr;
@@ -188,6 +189,9 @@ function registerEdzPanel() {
 
     // --- Shared navbar dropdown (notifications / user menu) with viewport clamping ---
     Alpine.data("edzDropdown", edzDropdown);
+
+    // --- Order column settings: drag-and-drop reorder of all columns ---
+    Alpine.data("orderColumnReorderDraft", orderColumnReorderDraft);
 
     // --- Reusable product select (searchable, up to N products, frontend search) ---
     Alpine.data("productSelect", productSelect);

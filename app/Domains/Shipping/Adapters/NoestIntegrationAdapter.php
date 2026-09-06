@@ -95,13 +95,16 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             'commune' => $commune ?? '',
             'montant' => round((float) $order->total_amount, 2),
             'produit' => $this->productSummary($order),
-            'type_id' => 1,
+            'type_id' => $this->typeId($order),
             'poids' => (float) ($order->weight_kg ?? 0.5),
             'stop_desk' => $order->delivery_type === Order::DELIVERY_STOPDESK ? 1 : 0,
             'station_code' => $order->delivery_type === Order::DELIVERY_STOPDESK
                 ? (string) ($order->stopdeskPoint?->external_code ?? '')
                 : '',
             'can_open' => 1,
+            // NOEST optional financial-recovery flag: 0 = no recover/refund leg
+            // (our COD orders collect the full montant on delivery), 1 = collect
+            // from or refund the customer. Kept 0 — COD only, documented gap.
             'remboursement' => 0,
         ];
 
@@ -204,6 +207,22 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         });
 
         return $parts === [] ? null : implode(' / ', array_unique($parts));
+    }
+
+    /**
+     * Map the internal shipment type to NOEST's required type_id.
+     *
+     * NOEST contract (docs/توثيق_واجهة_برمجة_تطبيقات_NOEST_v2.3.md): 1=delivery,
+     * 2=exchange, 3=pickup from the customer. Anything else safely defaults to
+     * delivery so an unknown stored value never blocks posting.
+     */
+    protected function typeId(Order $order): int
+    {
+        return match ($order->shipment_type) {
+            'exchange' => 2,
+            'pickup' => 3,
+            default => 1,
+        };
     }
 
     protected function productSummary(Order $order): string

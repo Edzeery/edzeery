@@ -36,6 +36,7 @@ return [
     'confirmed_only' => 'Commande confirmée',
     'send_requires_confirmation' => 'Confirmez la commande avant de la remettre au transporteur.',
     'send_missing_fields' => 'Envoi impossible — champs manquants : :fields',
+    'confirm_missing_fields' => 'Confirmation impossible — champs manquants : :fields',
 
     // ----- Envoi groupé au transporteur (groupé par transporteur de chaque commande) -----
     'bulk_send_summary_title' => 'Envoyer les commandes au transporteur',
@@ -107,4 +108,8 @@ return [
     'bulk_status_done' => ':done commande(s) modifiée(s) — :skipped ignorée(s) non autorisée(s)',
 
     'empty_state_title' => 'Rien ici pour le moment',
+
+    'weight_auto_hint' => 'Calculé automatiquement à partir des produits — modifiable',
+
+    'office_reset_for_destination' => "Le bureau précédemment sélectionné n'est plus disponible pour la nouvelle destination, le choix a été effacé",
 ];

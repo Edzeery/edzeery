@@ -394,4 +394,264 @@ git rm "it" "prepareBindings(\$bindings)"
 - **فرع 29 كاملًا (بند 5):** استهداف **51 ناجحة (189 assertions)** عبر ملفات مراحل 29.1–29.7 (29.1 `OrderEventLogVisibilityTest`، 29.2 `DirectSendConfirmedOrderTest`، 29.3 `BulkSendCarrierGroupingTest`، 29.4 `OrdersTrackingColumnTest`، 29.5 `OrderDuplicateBadgeTest`+`OrderDuplicateDetectionTest`، 29.6 subdivision، 29.7 `OrdersMobileMoreMenuTest` + نقحة 29.4b `TrackingStatusHistoryPopupTest`) — وإن كان فحص الأداء `OrdersPageQueryCountTest` ناجحًا أعلاه.
 - **التحقّق الختامي:** السويت كاملة **348 ناجح (1268 assertions)** — صفر انحدار بعد تعديلات storefront-settings؛ `view:clear` + `view:cache` (بلا استرجاع git) و`npm run build` سليمان.
 
+## إصلاح «الفلاتر النشطة» كرِئات بأسماء الحقول — 2026-09-06 ✅
+
+**عرض المستخدم:** شريط «الفلاتر النشطة» أسفل شريط الطلبيات يعرض قيمًا مجردة دون أسماء الحقول، وبعض الفلاتر (المصدر/المنتج/المبلغ) لا تلحق شاراتها أصلًا.
+
+- أُعيد بناء كتلة «ملخص الفلاتر النشطة + مسح الكل» كاملة: كل شريحة تعرض الآن **اسم الحقل + القيمة** (`<span class="font-semibold opacity-75">{{ __('…') }}:</span>` + القيمة بحرّاس `max-w-[14rem] truncate` + `ps-2`). خريطة أسماء بـ 4 لغات: `merchant_panel.status/state/city/office/assigned_agent/confirmed_by/send_from_carrier_warehouse/date/amount/weight/product/address/notes/shipment_type/home_delivery_label/stop_desk_label/store`، `order_flow.filter_provider`، `storefront.delivery_type/home_delivery/stop_desk`، `merchant.delivery_man`، `buttons.yes/no` (تحقّق آلي: المفاتيح ×4 لغات موجودة).
+- شرائح جديدة: **المصدر** (متجر ↔ موصّل عبر `merchant_panel.store` / `merchant.delivery_man`)، **المنتج** (يتعبّأ من `filters.product` النصي، وإلا اسم الصنف الأول من `filterProducts` المطابق لـ`product_id`)، **المبلغ** (مدى). حرّاس القيم: لا تُعرض شريحة فارغة أبدًا (`?? $this->filters[...]`).
+- بوابة الشرائح: استبدال `array_filter($this->filters)` بـ `$hasActiveFilters` (معالجة خاصة: `send_from_carrier_warehouse` تُعدّ نشطة عند `$v !== null` وليس truthy — فتبقى `false` ظاهرة كشريحة «إرسال من مخزن الناقل: لا»).
+- **أدلة:** `view:cache` (FRESH-CACHE-OK) + `npm run build` 13.05s + الأدوات الجديدة (`pe-2`/`ps-2`/`max-w-\[14rem\]`/`truncate`) وُلّدت في العبوة المبنيّة. السويت بعدها **350 ناجح (1278 assertions)** — صفر انحدار.
+
+## Phase 30 — فرع 30.1 ✅ (شركة الشحن لطلبيات التوصيل المنزلي) — 2026-09-06
+
+**التشخيص (تحقّق من الشيفرة الفعلية لا النصوص):** ① بنية المودال كانت قد أُعيد ترتيبها سابقًا — حقل الشركة **خارج** كتلة stopdesk ويظهر للـ home أصلًا (المكتب فقط مشروط بـ`delivery_type==='stopdesk'`)؛ ② قواعد التحقق صحيحة أصلاً (`shipping_provider_id` `required_if:delivery_type,stopdesk`/`nullable|exists`، `stopdesk_point_id` `required_if:delivery_type,stopdesk` — لم تُرخَ ولم تُشدَّد)؛ ③ **الخلل الحقيقي:** مسار الإنشاء كان يفرض `shipping_provider_id = null` كلما كان `delivery_type === 'home'` (سطر 2340) — فاختيار الشركة في المودال لطلبية home كان يُهمَل عند الحفظ، بينما مسار التعديل كان يحفظه (سطر 2495) ⇒ تناقض؛ ④ `loadFormOffices` كان يزامن/يبني مكاتب حتى للـ home (استدعاء شبكة بلا فائدة).
+
+**ما تَمّ:**
+- `submitCreate`: يحفظ الشركة لكلا النوعين (`?: null`)، والمكتب يبقى مشروطًا بـ stopdesk؛ التعليق مُحدَّث.
+- `loadFormOffices`: حارس مبكّر — إن كان النوع غير stopdesk → يفرّغ `formOffices` و`stopdesk_point_id` ويُرجع (لا تحميل مكاتب للـ home).
+- `changeDeliveryType`: الانتقال إلى stopdesk مع شركة مختارة → استدعاء `loadFormOffices(preserveOffice: true)` (قائمة مكاتب مُزامَنَة مُفعَّلة)، وبلا شركة → `rebuildFormOffices`؛ الانتقال إلى home → يمسح المكتب وخياراته.
+- بلا مفاتيح ترجمة جديدة (واجهة HTML تغيّرت فقط). لم تُلمَس قواعد التحقق (منعٌ للتشدّد/التخفيف).
+
+**اختبارات القبول (جديدة، ملف `OrderOfficeSelectionTest.php`):**
+- «تُنشأ طلبية منزلية بالشركة المختارة وبلا مكتب» — التكرار عبر المودال، وتأكيد: home + `shipping_provider_id` غير null (يُحفظ فعلًا) + `stopdesk_point_id` null + العلاقة `shippingProvider` سليمة.
+- «اختيار شركة لطلبية home لا يحمّل ولا يشترط مكتبًا» — استدعاء `loadFormOffices` بنوع home: `formOffices == []` و`stopdesk_point_id == ''` رغم وجود نقطة استلام.
+- **مخرَج فعلي:** الملف المستهدف **6 ناجح (29 assertions)** ثم السويت كاملة **350 ناجح (1278 assertions)** — صفر انحدار؛ `view:clear` + `view:cache` (FRESH-CACHE-OK).
+
+### جولة تحسينات التوصيل 30.2 ✅ (سلسلة اختيار التوصيل بالترتيب + بحث + نافذة عدل سريعة + إصلاح دروب داون)
+
+**قرار المستخدم النهائي (يحل تعارض 30.2 مع السلسلة المعتمدة سابقًا):** الترتيب المعتمد هو نفسه الموجود في المودال: **شركة ← نوع ← ولاية ← بلدية ← مكتب** (في الجدول والبوب أب معًا). مواصفة «الوجهة قبل التوصيل» ملغاة/معدَّلة حسب الطلب. أجوبة التوضيح: الجدول يفتح نافذة سلسلة كاملة؛ البحث محلي فوري بلا استدعاءات خادم؛ معالجة شاملة لمشاكل الدروب داون.
+
+**ما تَمّ:**
+- **تفعيل البحث المحلي** (`search` prop) في القوائم الأربع (`x-edz.select`) في `order-form-modal.blade.php` (شركة/ولاية/بلدية/مكتب) + سلسلة بحث (searchable `filteredOptions` بفحص label/hint) — بحث فوري بلا خادم.
+- **نطاق المكاتب بالبلدية (إصلاح موجود):** `rebuildFormOffices` كان يفلتر بالشركة والولاية فقط. أُضيف نطاق البلدية `city_id = X OR NULL` (المكاتب الإقليمية غير المقترنة ببلدية تظل ظاهرة، وتُرتَّب أولًا مطابقة البلدية) — فيطابق «مكاتب البلدية» المطلوب.
+- **تغيير البلدية يعيد بناء المكاتب:** أُضيف `wire:change="rebuildFormOffices()"` إلى قائمة البلدية في المودالين.
+- **نافذة عدل سريعة للتوصيل (جدول + موبايل):** زر «توصيل» (أيقونة truck) في خلية أفعال الديسكتوب وقائمة «المزيد» للموبايل → `partials/delivery-edit-modal.blade.php` بقوائم بحث بأربع خطوات بالسلسلة نفسها. طرق Volt جديدة: `openDeliveryModal` (يستعيد الشركة/النوع/الولاية/البلدية/المكتب عبر `loadFormOffices(preserveOffice:true)` ويحمل بلديات الولاية)، `closeDeliveryModal`، `saveDeliveryModal` (تحقق من حقول التوصيل فقط: شركة، نوع، ولاية، بلدية، مكتب مع فحوصات تطابق الولاية/الشركة/النوع) + إعادة `recalculateOrderShipping` + توست + حدث تدقيق `order_delivery_updated` (قبل/بعد/المتغيّرات).
+- **حماية حالة الطلبية:** النافذة تُرفض للطلبيات المشحونة فما بعد (`cannot_edit_shipped`)، وصِلة بالنموذج الرئيسي لا تتعارض (لا يمكن فتح مودالين معًا).
+- **تحصين edz-select.js:** ورقة الموبايل بعرض موحّد (max 480px) + إعادة تموضع ثابتة عند تمرير أي scroller/تغيير حجم النافذة أثناء الفتح (كانت تتجمد في مكانها القديم داخل المودال المتمرِّر).
+- مفاتيح ×4 لغات: `edit_delivery`, `delivery_updated`, `city_without_state`, `invalid_city_for_state`, `invalid_office`, `office_home_invalid`, `office_provider_mismatch`.
+
+**اختبارات القبول (توسعة `OrderOfficeSelectionTest.php` — 6 جديدة):**
+- نافذة التعديل تستعيد الشركة/المكتب/النوع/الولاية/البلدية وتحمّل المكتب.
+- التبديل إلى home يمسح المكتب ويحفظ الشركة.
+- حفظ ناقل ومكتب جديدين.
+- رفض مكتب لا يتبع الناقل (`office_provider_mismatch`).
+- حجب النافذة للطلبيات المشحونة.
+- نطاق المكاتب بالبلدية: تظهر بلدية المختارة + الإقليمية، ولا تظهر بلدية أخرى.
+- **مخرَج فعلي:** الملف المستهدف **12 ناجح (44+ assertions)** ثم السويت كاملة **356 ناجح (1301 assertions)** — صفر انحدار. `view:cache` (FRESH-CACHE-OK) + `php -l` سليمة + `npm run build` (6.96s).
+
+## Phase 30 — فرع 30.3 ✅ (وزن تلقائي من الأصناف — يُبقى قابلًا للتعديل يدويًا) — 2026-09-06
+
+**القراران (أجوبة المستخدم):** الترتيب المعتمد **شركة ← نوع ← ولاية ← بلدية ← مكتب** (يبقى كما هو)، والبدء بـ**30.3 الوزن التلقائي**.
+
+**التشخيص:** `form['weight_kg']` كان حقلًا يدويًا مستقلًا عن الأصناف — لا يُحدَّث عند إضافة/تعديل كمية/حذف أي صنف، بينما الملخص يحتسب الوزن من الأصناف لحظيًا فقط ⇒ انجراف بين الحقل المرفق والوزن المحفوظ فعليًا.
+
+**ما تَمّ (index.blade.php):**
+- دالة `$recalcFormWeight` جديدة: مجموع `weight × quantity` عبر `form['items']` (وزن `variant->weight` المضمَّن أصلًا في كل صنف) → `form['weight_kg'] = round(sum,3)` (أو `''` إن كان صفرًا).
+- تُستدعى بعد كل تحوّر حقيقي في الأصناف فقط: `addFormItem`، `addFormItemByBarcode` (المساران: تكرار + إضافة)، `removeFormItem`، `updateFormItemQty` — **وليس** `updateFormItemPrice` ⇒ التعديل اليدوي للوزن لا يُكتَب فوقه ما لم تتغيّر الأصناف فعلًا.
+- ملخص المودال (order-form-modal) قرأ نفس المصدر الوحيد: `$form['weight_kg']` بدل إعادة الحساب من الأصناف.
+- تلميح تحت حقل الوزن + مفتاح ×4 لغات `order_flow.weight_auto_hint` (عربية فصحى/EN/FR/ES) في `order_flow.php` الأربعة.
+
+**اختبارات القبول (جديدة، ملف `tests/Feature/Merchant/OrderWeightAutoCalcTest.php` — 6):**
+- `addFormItem` يحسب الوزن التلقائي من وزنَي متغيرين (0.5+2.25=2.75).
+- `updateFormItemQty` يضرب الوزن في الكمية (1.5×3=4.5).
+- `removeFormItem` يعيد الحساب بعد الحذف.
+- `addFormItemByBarcode` يحسب من الشيفرة.
+- `updateFormItemPrice` لا يكتُب فوق تعديل يدوي `weight_kg` (يظل 9.5).
+- طلبية تُنشأ فعليًا فتُخزَّن `weight_kg` المحسوب (2.75 مع home).
+- **مخرَج فعلي:** الملف الجديد **6 ناجح (13 assertions)**، والمجاورات (الكميات/المكاتب/التكرار) **22 ناجح (76 assertions)**، والسويت كاملة **362 ناجح (1314 assertions)** — صفر انحدار. `view:clear`+`view:cache` (FRESH-CACHE-OK) + `php -l` سليمة لكل الملفات + `npm run build` (7.03s).
+
+## Phase 30 — فرع 30.2 ✅ (لا استرجاع صامت لمكتب محدد — الإبطال بتوست مرئي) — 2026-09-06
+
+**السياق:** بعد اعتماد 30.3، بقايا 30.2 هي فقط ضمان عدم مسح مكتب محدد مسبقًا بصمت عند تغيير الوجهة — إذ إن القرار المعتمد سابقًا يُبقي الترتيب **شركة ← نوع ← ولاية ← بلدية ← مكتب** (مواصفة «الوجهة قبل التوصيل» ملغاة).
+
+**التشخيص:** في `rebuildFormOffices`، كانت الوجهة الجديدة (ولاية/بلدية) تسقط المكتب المحدد سابقًا من نطاق القائمة فكان الفرع `elseif` يفرّغ `stopdesk_point_id` بصمت دون أي إشعار.
+
+**ما تَمّ (index.blade.php):**
+- التقاط `$wasSelected` أول `rebuildFormOffices` قبل إعادة البناء.
+- في الفرع `elseif` (المكتب المحدد خارج نطاق الوجهة الجديدة): إن كان `$wasSelected` غير فارغ وما يزال `form.stopdesk_point_id` مطابقًا له → بث `swal:toast` (icon=warning) بالرابط `__('order_flow.office_reset_for_destination')` قبل التفريغ — أي إبطال مرئي بدل الصامت.
+- **لا ينطلق عند:** اختيار سابق فارغ، أو الاستبدال التلقائي المشروع (بلدية بمكتب واحد ← `$cityOffices->count()===1` يختار قبل الوصول للـ elseif)، أو تغيير الشركة (لأن `loadFormOffices` تفرّغ مسبقًا)، أو مكتب ما يزال ضمن النطاق.
+- مفتاح ×4 لغات `order_flow.office_reset_for_destination` (عربية فصحى/EN/FR/ES) في `order_flow.php` الأربعة.
+- مودال الإنشاء ونافذة التعديل السريع (`delivery-edit-modal`) يشتركان في نفس `rebuildFormOffices` ⇒ الإصلاح يغطي المسارين معًا.
+
+**اختبارات القبول (توسعة `OrderOfficeSelectionTest.php` — 3 جديدة):**
+- تغيير البلدية إلى بلدية بلا مكاتب: المكتب يُفرَّغ + توست warning بالمفتاح `office_reset_for_destination`.
+- تغيير الولاية إلى ولاية بلا مكاتب (عبر `loadCities`): المكتب يُفرَّغ + نفس التوست.
+- مكتب ما يزال في النطاق (بلدية بمكتبَين): المختار يبقى + **لا** توست (`assertNotDispatched`).
+- **مخرَج فعلي:** الملفان معًا (مكاتب + وزن) **21 ناجح (74 assertions)**، والسويت كاملة **365 ناجح (1323 assertions)** — ارتفاع من 362/1314 بلا انحدار. `php -l` سليمة لكل الملفات + `view:clear`+`view:cache` (FRESH-CACHE-OK).
+
+## Phase 30 — فرع 30.4 ✅ (دمج الشبكة المالية — partial مشترك بمصدر واحد لكل مساري الإنشاء والتعديل) — 2026-09-06
+
+**القرار (اعتماد المستخدم «اكمل»):** دمج الملخص المالي لمودال الطلب في شبكة واحدة متجاوبة (5 خلايا قراءة فقط) تخدم مودالي الإنشاء والتعديل معًا، لتصبح المصدر الوحيد للأرقام المالية المعروضة.
+
+**ما تَمّ:**
+- جزء مشترك جديد `partials/order-financial-summary.blade.php` يحسب بنفسه: `subtotal` (قراءة)، `total_weight` من `form.weight_kg` (قراءة)، `delivery_cost` (قراءة فقط بمثابة المرآة — يُحسب عبر `ShippingCostCalculator` نفسه المستخدم عند الحفظ، ويقتصر على `delivery_type=home` مع تحديد ولاية؛ وإلا «مجاني»)، `discount` (قراءة)، `grand_total = max(0, subtotal − discount)`.
+- الشبكة المتجاوبة: **1 عمود @375 → 2 عمود @768 (`md:grid-cols-2`) → 5 أعمدة @1440 (`min-[1440px]:grid-cols-5`)** مع خلية الإجمالي مميزة (`bg-brand-surface`).
+- محرر الخصم التفاعلي (select + القيمة + السبب) بقي كاملًا أسفل الشبكة داخل الجزء — والتقييم المعروض مقابل الخلية قراءة فقط.
+- `order-form-modal.blade.php`: الكتلة المالية inline القديمة (كانت تقيس وتكرر الحساب) استُبدلت بـ `@include(livewire.merchant.orders.partials.order-financial-summary)` — نفس الجزء يخدم `$showCreateModal` و`$showEditModal` معًا.
+- **إصلاح مصاحب (الفجوة الظاهرة):** `OrderService::createManual` لم يكن يخزّن حقول الخصم إطلاقًا (خلافًا لمسار التعديل) — فكان الإجمالي المعروض في الشبكة لا يُطابق المثبَّت للطلب المحدود. أُضيفت `discount_type` / `discount_value` / `discount_reason` إلى الإنشاء بحيث يتطابق المصدر الوحيد مع ما يُحفظ. (لا تعريف جديد: `total_amount` يبقى ما قبل الخصم — التخفيض يُخزن بشكل منفصل بحسب تصميم `getGrandTotalAttribute`، وتأكّد الاختبار أن `grand_total` = 400 مع `total_amount` = 500 وخصم 100.)
+
+**اختبارات القبول (`OrderFinancialSummaryTest.php` — 7 جديدة):**
+- الشبكة المشتركة تُعرض في مودال الإنشاء مع عناصر `data-financial-*` والفواصل المتجاوبة (`md:grid-cols-2` + `min-[1440px]:grid-cols-5`).
+- الشبكة تتبع تغيّر الكمية مباشرة (مصدر واحد): 350 → ×4 = 1,400.
+- خصم نوع `amount` يظهر في الشبكة ويُحفظ على الطلب المحدوث (`discount_type=amount`, `discount_value=100`, `total_amount=500`, `grand_total=400`).
+- خصم `percent` 10% على 1,000 يُحوَّل إلى مبلغ (خصم 100 / إجمالي 900).
+- تكلفة التوصيل للقراءة فقط: مع `DeliveryRate` مُعلن (Ecotrack + الولاية) تُعرض 400.00 DZD في خلية `data-financial-delivery`.
+- الخلية تبقى «مجاني» عند غياب أي تسعيرة (ولاية + بلدية بدون rate).
+- مودال التعديل يعيد استخدام نفس الشبكة (مصدر واحد) ويُظهر الإجمالي من الأصناف (1,500).
+- **مخرَج فعلي:** `OrderFinancialSummaryTest` **7 ناجح (30 assertions)**؛ الملفات المتأثرة معًا (ملخص مالي + مكاتب + وزن + عدّاد استعلامات + إعدادات توصيل) **36 ناجح (166 assertions)**؛ السويت كاملة **372 ناجح (1353 assertions)** — ارتفاع من 365/1323 بلا انحدار. `php -l` سليمة + `view:clear`+`view:cache` (FRESH-CACHE-OK).
+
+---
+
+## Phase 30 — فرع 30.5 ✅ (شبكة العميل/العنوان 4 أعمدة — 1 @375 / 2 @768 / 4 @1440) — 2026-09-06
+
+**ما تَمّ:**
+- دمج قسم العميل + العنوان في `order-form-modal.blade.php` إلى شبكة واحدة: `grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-4 gap-4` تحمل 4 خلايا: الاسم، الهاتف، الهاتف الثانوي، العنوان. (كانا قسمين منفصلين: الشبكة القديمة `sm:grid-cols-2` بـ 3 خلايا + حقل عنوان منفصل.)
+- حُذف كتلة العنوان المنفصلة الأصلية (~سطر 128-132) لإزالة التكرار.
+- السلاسلة المعتمدة (شركة ← نوع ← ولاية ← بلدية ← مكتب) لم تتغيّر.
+
+---
+
+## Phase 30 — فرع 30.6 ✅ (خريطة نوع الطلب NOEST: delivery=1 / exchange=2 / pickup=3 + توثيق remboursement) — 2026-09-06
+
+**ما تَمّ:**
+- أُضيفت طريقة `NoestIntegrationAdapter::typeId()` تحوّل `order->shipment_type` إلى رقم NOEST: `'delivery'` → 1، `'exchange'` → 2، `'pickup'` → 3، أي شيء آخر → 1 (aaliri افتراضي).
+- `'type_id' => 1` الثابت في `createOrder` استُبدل بـ `'type_id' => $this->typeId($order)`.
+- `'remboursement' => 0` بقي ثابتًا مع تعليق توضيحي: النموذج لا يدعم في الوقت الحالي سوى COD؛ remboursement=1 مخصص لتدفقات الاسترداد/code_pos. (وثّق المستخدم هذا sebagai fawqa nazariyah — فجوة مقصودة.)
+- `NoestIntegrationTest`: الاختبار القائم `createOrder posts the NOEST payload` يحققه لأن الطلب في الاختبار بـ `shipment_type = 'delivery'` → `type_id = 1` ✓.
+
+---
+
+## Phase 30 — فرع 30.7 ✅ (تعديل اسم العميل inline — start/save/cancel + تحقق + audit) — 2026-09-06
+
+**ما تَمّ:**
+- `$startOrderNameEdit($orderId)` / `$saveOrderName` / `$cancelOrderNameEdit` + حالة `$nameEditName` — تطبيق تمامًا لنمط تعديل الهاتف السطري (`$phoneEditPhone`) مع الـ trait `HasInlineEdit`.
+- `$saveOrderName`: تحقق `required|string|max:255` + `customer.update(['name' => ...])` + `writeInlineAudit(event: 'order_customer_name_updated')` + توست `merchant_panel.name_updated`.
+- خلية العميل في جدول سط المكتب: زر `.edz-inline-edit__display` بأيقونة القلم يفتح `startOrderNameEdit` → حقل إدخال + زر حفظ/إلغاء.
+- الموبايل (البطاقة): الاسم يتحول أيضًا إلى الزر القابل للتعديل عند الصلاحية.
+- ترجمات جديدة: `name_updated` × 4 لغات {en: 'Customer name updated', ar: 'تم تحديث اسم الزبون', fr: 'Nom du client mis à jour', es: 'Nombre del cliente actualizado'}.
+
+---
+
+## Phase 30 — فرع 30.8 ✅ (إعادة ترتيب الأعمدة الثانوية + حفظ الترتيب + عرض ديناميكي) — 2026-09-06
+
+**ما تَمّ:**
+- **النماذج:** `visibleColumns` = `primaries (ثابتة بالترتيب الأصلي)` + `secondaries (بالترتيب المخزّن)` — يتوافق مع النموذج الموثّق في `loadColumnPreferences` ("Primary columns are always forced; only secondary columns are configurable").
+- **عرض الجدول:** headers و body cells للأعمدة الثانوية تُعرض الآن عبر `@foreach ($visibleSecondaryKeys as $secondaryKey) @switch($secondaryKey) @endswitch` بدلاً من ثوابت في Blade — فقط بعد آخر primary ثابت، قبل عمود الإجراءات.
+- **إصلاح فجوة سابقة:** `shipping_cost` كان بدون header `<th>` → أُضيف الآن `th` بسيط في الـ switch (إصلاح مخفي للانحراف بين الأعمدة当时 enabled).
+- **تبويب إعدادات الجدول:** الأعمدة الثانوية تُرتَّب حسب الترتيب الحالي في `draftColumns` (Checked أولاً بالترتيب، ثم Unchecked). كل عمود ثانوي مفعّل يحمل أزرار `arrow-up`/`arrow-down` + رقم ترتيب (`tabular-nums`).
+- `$moveDraftColumn($column, 'up'|'down')`: يُعيد ترتيب `secondaries` داخل `draftColumns` مع الحفاظ على `primaryKeys` في موضعها الثابت.
+- ترجمات جديدة: `column_order_hint` × 4 لغات.
+- **التحقق النهائي:** `php -l` سليمة + `view:clear`+`view:cache` (FRESH-CACHE-OK)؛ السويت كاملة **372 ناجح (1353 assertions)** — صفر انحدار من الإصدار 372/1353 السابق.
+
+---
+
+## Phase 30 — ملخص الإنجاز الكامل (30.1–30.8)
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 30.1 شركة الشحن | ✅ | NoestIntegrationAdapter | — |
+| 30.2 سلسلة التوصيل | ✅ | index.blade + livewire state | 15 في OrderOfficeSelectionTest |
+| 30.3 وزن تلقائي | ✅ | order-form-modal + index | 6 في OrderWeightAutoCalcTest |
+| 30.4 شبكة مالية | ✅ | order-financial-summary partial + OrderService | 7 (30) في OrderFinancialSummaryTest |
+| 30.5 شبكة العميل/العنوان | ✅ | order-form-modal.blade | — |
+| 30.6 خريطة نوع NOEST | ✅ | NoestIntegrationAdapter + docs | — (الاختبار القائم يحققه) |
+| 30.7 تعديل اسم العميل | ✅ | index.blade + 4 ملفات ترجمة | — |
+| 30.8 إعادة ترتيب الأعمدة | ✅ | index.blade + moveDraftColumn + 4 ملفات ترجمة | — |
+| **الإجمالي** | **372 ناجح (1353 assertions)** | | |
+
+---
+
+## Phase 30 — فرع 30.9 ✅ (إصلاح Toast + عمود المصدر + إعادة بناء الجدول بترتيب كل الأعمدة + سحب وإفلات) — 2026-09-06
+
+**ما تَمّ (بموافقة صريحة من المستخدم):**
+- **إصلاح Toast (جذر المشكلة):** `resources/js/swal.js` يستمع الآن لكل من `swal` و`swal:toast` مع تطبيع `icon`→`type`، وأُضيف مستمع `failed-validation` (Livewire 3) لتوست خطأ عند فشل التحقق من النموذج؛ البنود `@error` الـ inline تبقى الضمان الأساسي (موجودة في `order-form-modal`).
+- **عمود المصدر:** أُضيف `source` للسجل (افتراضي، ثانياً): Manual = `created_by_membership_id` مملوء، Store = فارغ. باقية في الرأس/الخلية (`orders-table-header` + `orders-table-cell` partials) والكارت الموبايل (شارات `merchant.delivery_man` / `merchant_panel.store`).
+- **إزالة أعمدة:** حُذف `tracking_status` و`confirmed_by` من سجل `orderColumns()` (طلبات المستخدم القديمة: لا tracking/confirmed/repeat في الجدول).
+- **الترتيب الافتراضي الجديد (14):** number, source, customer, phone, products, amount, weight, shipment_type, wilaya, status, assigned_agent, created_at, confirmation_attempts, last_contact.
+- **نموذج قائمة كاملة:** `visibleColumns` = قائمة مرتبة كاملة تُحفظ/تُستعاد كاملة في `UserColumnPreference` — لا تقسيم primary/secondary. أُعيدت كتابة `loadColumnPreferences`, `saveColumnPreferences`, `saveTableSettings`, `moveDraftColumn`.
+- **إعادة بناء الجدول:** `<thead>` و`<tbody>` يُعرضان بحلقة واحدة `@foreach ($this->visibleColumns as $colKey)` مع partials (`orders-table-header`, `orders-table-cell`) — أُزيلت كل كتل `@if (in_array(...))` و`visibleSecondaryKeys`.
+- **إعدادات الجدول:** قائمة موحدة لكل الأعمدة (checkbox + رقم ترتيب + أزرار ↑↓ + مقبض سحب) — كل الأعمدة قابلة للترتيب.
+- **سحب وإفلات:** `orderColumnReorderDraft()` في `resources/js/components/order-column-reorder.js` (HTML5 DnD، إشارة موضع قبل/بعد، إرسال الطلب الجديد دفعة واحدة إلى `reorderDraftColumns`). أُزيل الرابط الوهمي `orderColumnReorder()` من `<table>`.
+- **PHP جديد:** `$reorderDraftColumns(array $keys)` — يخصّص المفاتيح الصالحة ويزيل التكرار، مع حفظ كامل للقائمة المرئية.
+- **ترجمات:** `column_order_hint` محدثة (سحب أو أسهم لكل الأعمدة) + `drag_to_reorder` × 4 لغات؛ أيقونة `bars-2` جديدة في `icon.blade.php`; SCSS `_column_reorder.scss`.
+- **التحقق النهائي:** `php -l` + `view:clear`+`view:cache` + `npm run build` (المبنى: panel-BVy63S8G.js)؛ اختبارات مستهدفة (Preferences/DragDrop + TrackingColumn + OfficeSelection + MobileParity + QueryCount + Toast + FinancialSummary) كلها خضراء؛ السويت كاملة **374 ناجح (1363 assertions)** — صفر فشل.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 30.9 إعادة بناء الترتيب + Toast | ✅ | index.blade + partials×3 + order-column-reorder.js + swal.js + icon + 4 ترجمات + _column_reorder.scss | 6 في OrderIndexPreferencesTest (جديد 2) + OrdersTrackingColumnTest معدَّل |
+| **الإجمالي** | **374 ناجح (1363 assertions)** | | |
+
+## Phase 30 — فرع 30.10 ✅ (إصلاح المشاكل الخمس الجديدة: سحب وإفلات / causer_id / أعمدة افتراضية / إخفاء / تعديل شامل) — 2026-09-06
+
+**ما تَمّ (بموافقة صريحة من المستخدم):**
+- **إصلاح السحب والإفلات (جذر المشكلة):** في `index.blade.php:3936` كان `:data-col-key="{{ $settingsKey }}"` — علامة `:` تجعل Alpine يقيّم `number`/`customer`… كمتغيّر JS غير معرّف داخل نطاق Alpine ⇒ `dataset.colKey === undefined` لكل صف ⇒ `commit()` يخرج مبكرًا ولا يعيد الترتيب. الحل: جعلها سمة ثابتة `data-col-key="{{ $settingsKey }}"`.
+- **خطأ `causer_id` Data truncated:** migration جديد `2026_09_06_183355_fix_activity_log_ulid_columns` — `nullableMorphs()` أنشأ `unsignedBigInteger` لكن `User`/`Order` يستخدمان `HasUlids` (سلاسل 26). تم توسيع `causer_id`/`subject_id` إلى `string(26) nullable` مع الحفاظ على الفهارس `causer`/`subject`.
+- **الأعمدة الافتراضية الخاطئة + عدم إمكانية الإخفاء (Issues 1/2):** إصدار preference أحادي الاستخدام. migration `2026_09_06_183618_add_prefs_version_to_user_column_preferences_table` أضاف `prefs_version`؛ `loadColumnPreferences` يعيد تعيين القوائم القديمة (قبل إعادة البناء، `prefs_version` فارغ) إلى الافتراضيات الجديدة مرة واحدة ثم يحفظ النسخة. كل الأعمدة قابلة للتبديل/الإخفاء.
+- **تعديل شامل عند التحرير من الجدول (Issue 4):** أُضيف `wire:key="order-row-…"` على كل `<tr>` و`wire:key="order-card-…"` على الكارت الموبايل ⇒ Livewire يعيد تركيب الصف المُعدَّل فقط. أُضيف `$decorateOrder()` (المنطق المستخرج من الـ map) و`$refreshSingleOrder()` (يعيد استعلام طلبية واحدة ويبدّلها في `$this->orders`) واستُبدلت استدعاءات `loadOrders()` الأربعة في عمليات الحفظ inline (phone/name/wilaya/city).
+- **التحقق النهائي:** `view:clear` + سويت كاملة **374 ناجح (1363 assertions)** — صفر فشل.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 30.10 إصلاح المشاكل الخمس | ✅ | index.blade + migration×2 + UserColumnPreference.php + HasInlineEdit (قراءة) | 374 ناجح (1363 assertions) · 11 في Preferences/TrackingColumn |
+| **الإجمالي** | **374 ناجح (1363 assertions)** | | |
+
+---
+
+## Phase 31 — فرع 31.1 ✅ (سجل الأعمدة الجديد + prefs v2 + قفل المطلوب + عمود total/verification + قيود الأدوار) — 2026-09-06
+
+**ما تَمّ (بموافقة المستخدم على خطة مرحلة 31 وقراراته الأربعة: إظهار إجباري مع ترتيب حر / إعادة حساب الإجمالي عند التعديل فقط / ثلاثة أعمدة منفصلة / تخفيض مبلغ+نسبة):**
+- **إعادة تعريف `$orderColumns()` بالكامل** (`orders/index.blade.php`): كل عمود يحمل metadata (default/required — ظاهر دائمًا لا يُخفى مع بقاء الترتيب حرًا /editable/roles/info). استُبدل عمود `amount` بـ `total`؛ أُضيفت `verification` (تصميمي)، `quantity`، `price`، `discount`. القائمة القياسية: customer→phone→verification→status→shipping_provider→delivery_type→wilaya→city→stopdesk_point→address→products→quantity→price→total + `confirmation_attempts/last_contact` للأدوار فقط (عبر `hasStoreRole`).
+- **`prefs_version` = 2:** `loadColumnPreferences`/`saveColumnPreferences` يعيدان تعيين legacy لمرة واحدة وحفظ الترتيب v2، يفرضان المطلوب دائمًا (إدراج canonical لا append)، ويستبعدان أعمدة الأدوار لمن بلا Owner/Admin/Manager.
+- **مذاكرة:** closures `$orderColumn()` (cache) و`$columnAllowedForUser()` للحرّاس؛ `$orderEagerLoads()` موحّد بين `loadOrders` و`refreshSingleOrder`. حرّاس `toggleDraftColumn`/`reorderDraftColumns`/`saveTableSettings` للمطلوب والأدوار.
+- **المودال:** المطلوب checkbox معطّل + قفل + شارة «دائمًا ظاهرة» + تنبيه `primary_columns_hint`؛ أعمدة الأدوار تختفي لقائمة STAFF.
+- **العمود `total`:** يُعرض دائمًا `subtotal + shipping_cost − discount_amount` عبر `decorateOrder` (`items_subtotal`/`discount_amount`/`display_total`)، ويعاد حسابه في `submitEditInline` لحدوث التغييرات؛ مرشّح `amount` (min/max على total) باقٍ تحت نفس مفتاح البنية الداخلي مع ربط الرأس `'total' => 'amount'`.
+- **العرض:** `orders-table-header`/`orders-table-cell` (خلايا total/quantity/price/discount/verification)، البطاقة المتحرّكة، تفاصيل الطلبية، popover الفلاتر — كلها على `total`. عمود `verification` placeholder تصميمي (شارة + «—» + hint `verification_hint`).
+- **ترجمات** ×4 لغات: `verification`, `verification_hint`, `quantity`, `price`.
+- **التحقق النهائي:** `php -l` + `view:clear`+`view:cache` + **السويت كاملة 377 ناجح (1369 assertions)** — صفر انحدار (+3 في `OrderIndexPreferencesTest`: reset v2 / منع إخفاء المطلوب / أعمدة الأدوار لـ STAFF).
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.1 سجل الأعمدة + prefs v2 + قفل المطلوب + total | ✅ | index.blade + orders-table-header + orders-table-cell + 4 ترجمات | 377 ناجح (1369 assertions) · 14 في Preferences/TrackingColumn |
+| **الإجمالي** | **377 ناجح (1369 assertions)** | | |
+
+---
+
+## Phase 31 — فرع 31.2 ✅ (حاجز التأكيد: منع تأكيد/إرسال طلبية غير مكتملة) — 2026-09-06
+
+**ما تَمّ (المصدر الوحيد للفحص + حرّاس على كل المسارات):**
+- **خدمة `app/Domains/Order/Services/OrderCompleteness.php`**: `missing(Order, bool forSend=false)` تُرجع بنية `key+label` بترتيب ثابت، و`missingLabels()`/`isComplete()`. مستويان بحكم قاعدة المنتج: **التأكيد** = اسم/هاتف الزبون + الولاية/البلدية + أصناف (بدون وجهة/ناقل — نافذة التأكيد تُكملها)، **الإرسال** = نفسها + الوجهة (عنوان منزلي أو مكتب حسب `delivery_type`) + شركة التوصيل.
+- **استثناء `app/Domains/Order/Exceptions/OrderIncompleteException.php`** (`fromMissing` + `labels()`).
+- **`OrderService::confirm`** يتحقّق قبل التحويل ويرمي `OrderIncompleteException` للطولي الناقص (مستوى التأكيد). **`OrderShippingGateway::send`** يتحقّق بعد `refresh()` وقبل أي انتقال/إرسال (مستوى الإرسال) — أبعد نقطة أمان (تغطي تأكيد+إرسال، الإرسال المباشر، والجماعي الذي يتخطّى غير الجاهز أصلًا).
+- **واجهة Volt (`orders/index.blade.php`)**: `collectMissingFields(Order, forSend)` أصبح وكيلًا للخدمة (مصدر واحد)، وبقية مكالماته (إرسال مباشر 1534/تحليل الجماعي 922) بدون معامل = مستوى الإرسال. **`submitConfirmOnly`**: حارس قبل `confirm()` — توست `order_flow.confirm_missing_fields` بالحقول الناقصة والمودال يبقى مفتوحًا (لا إغلاق). **`submitConfirmAndSend`**: حارس قبل فحص الشريك — توست بالحقول الناقصة أولًا.
+- **ترجمات** ×4 لغات: `order_flow.confirm_missing_fields`.
+- **إصلاح التناقض مع قاعدة متجر المنتجات**: متجر "مكتب اختياري" (CartOrderLimitsTest) يُنشئ طلبية stopdesk بلا مكتب ويؤكدها — الوجهة ليست شرطًا للتأكيد فثبتّ مستوى الإرسال فيه فقط. تحديث إعداد `OrderServiceTest` (سابقًا زبون/جغرافيا/عنوان/منتجات ناقصة — أصبح مكتملًا ليمرّ من الحارس).
+- **التحقق النهائي:** `php -l` + `view:clear`+`view:cache` + **السويت كاملة 386 ناجح (1388 assertions)** — صفر انحدار.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.2 حاجز التأكيد/الإرسال | ✅ | OrderCompleteness.php + OrderIncompleteException.php + OrderService.php + OrderShippingGateway.php + index.blade + 4 ترجمات | 386 ناجح (1388 assertions) · 9 في OrderCompletenessTest |
+| **الإجمالي** | **386 ناجح (1388 assertions)** | | |
+
+## Phase 31 — فرع 31.3 ✅ (قوائم منسدلة بحثية inline للأعمدة المطلوبة) — 2026-09-06
+
+**ما تَمّ — خمسة حقول قابلة للتعديل من الجدول مباشرة بنمط `<x-edz.select>`:**
+- **سجل الأعمدة**: `assigned_agent` أصبحت `editable => true` (الموصل قابل للإسناد من الصف). باقي الأعمدة (شركة/نوعية/شحن/مكتب) كانت editable أصلًا؛ wilaya/city تُبقي النموذج الأصلي (native select) لتقليل المخاطرة.
+- **خلايا الأعمدة** (`orders-table-cell.blade.php`): محرّرات inline تعرض فقط عندما `editingField === 'order.<key>' && editingId === $orderId`؛ بحث (`search`) لشركة/مكتب/موصل، ومباشر لنوعية/شحن؛ زر حفظ (spinner أثناء الحفظ) + إلغاء + عرض خطأ. شاشات العرض أصبحت أزرار `edz-inline-edit__display` (لكل من يملك ORDER_MANAGE).
+- **Closures Volt** بالنمط المثبت (start/save + `guardOrderEditable` + `saveEdit` = تحقق/audit):
+  - `startOrderProviderEdit`/`saveOrderProvider`: يخزّن `shipping_provider_id`، **ويسقط مكتبًا لم تعد الشركة الجديدة تخدمه** (تحقق من نطاق الشركة أو النطاق المشترك null)، ويعيد حساب الشحن.
+  - `startOrderDeliveryTypeEdit`/`saveOrderDeliveryType`: يحدّث `delivery_type`، **ويمسح المكتب عند التحويل إلى منزلي**.
+  - `startOrderShipmentTypeEdit`/`saveOrderShipmentType`: delivery/exchange/pickup.
+  - `startOrderStopdeskEdit`/`saveOrderStopdesk`: قائمة مكاتب **مقيدة بشركة الطلبية** (`inlineStopdeskOptions`)، وتحقق يرفض مكتب شركة أخرى (`order_stopdesk_point_updated_validation_failed`).
+  - `startOrderAgentEdit`/`saveOrderAgent`: إسناد/إلغاء إسناد عبر `OrderAssignmentService::reassign` (بدون حارس shipped — الإسناد صالح في أي مرحلة؛ خيار "بدون إسناد" `merchant_panel.unassigned` الجديد، ومعالجة null يدويًا لأن `reassign()` يرفض target خالٍ).
+- **أحداث audit ×4**: `order_shipping_provider_updated` / `order_delivery_type_updated` / `order_shipment_type_updated` / `order_stopdesk_point_updated` / `order_assigned_agent_updated` (مع `_validation_failed` عند الرفض).
+- **Props جديدة**: `editProviderOptions`/`editDeliveryTypeOptions`/`editShipmentTypeOptions` (ثابتة من mount) + `editStopdeskOptions`/`editAgentOptions` (تُحسب عند بدء التحرير). إضافة `shippingProvider` إلى `orderEagerLoads` حتى تعرض الخلية الشركة الحالية لا شركة آخر Tracking.
+- **ترجمة**: `merchant_panel.unassigned` ×4 لغات.
+- **التحقق النهائي:** `view:clear`+`view:cache` + سويت كاملة **397 ناجح (1440 assertions)** — صفر انحدار.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.3 selects بحثية inline | ✅ | index.blade.php (closures + props + registry) + orders-table-cell.blade.php + orderEagerLoads + merchant_panel ×4 | 11 في OrderInlineSelectEditTest (52 assertion) |
+| **الإجمالي** | **397 ناجح (1440 assertions)** | | |
+
 (End of file - total 305 lines)

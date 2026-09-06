@@ -111,3 +111,88 @@ test('orders page stays on the default style when a stored row has a malformed t
         ->assertOk()
         ->assertSet('tableStyle', 'default');
 });
+
+test('stale prefs_version row is reset once to the v2 default layout', function () {
+    [$user, $store] = createOrdersStore('owner');
+
+    UserColumnPreference::create([
+        'membership_id' => ordersMembership($store, $user)->id,
+        'view_key' => 'orders_index',
+        'visible_columns' => ['number', 'amount', 'source'],
+        'table_style' => 'default',
+        'prefs_version' => 1,
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $v2Defaults = ['customer', 'phone', 'verification', 'status', 'shipping_provider', 'delivery_type', 'wilaya', 'city', 'stopdesk_point', 'address', 'products', 'quantity', 'price', 'total', 'confirmation_attempts', 'last_contact'];
+
+    Volt::test('merchant.orders.index')
+        ->assertSet('visibleColumns', $v2Defaults);
+
+    expect(
+        UserColumnPreference::where('membership_id', ordersMembership($store, $user)->id)
+            ->where('view_key', 'orders_index')
+            ->value('prefs_version'),
+    )->toBe(2);
+});
+
+test('required columns cannot be hidden from the settings draft', function () {
+    [$user, $store] = createOrdersStore('owner');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('openTableSettings')
+        ->call('toggleDraftColumn', 'phone')
+        ->call('toggleDraftColumn', 'notes')
+        ->assertSet('draftColumns', fn ($cols) => in_array('phone', $cols, true));
+});
+
+test('role-gated columns (attempts, last contact) are hidden for non-privileged staff', function () {
+    [$user, $store] = createOrdersStore('staff');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->assertSet('visibleColumns', fn ($cols) => !in_array('confirmation_attempts', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => !in_array('last_contact', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => in_array('customer', $cols, true));
+});
+
+test('drag-and-drop reorder reorders the draft and persists the full visible list', function () {
+    [$user, $store] = createOrdersStore('owner');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $defaults = ['customer', 'phone', 'verification', 'status', 'shipping_provider', 'delivery_type', 'wilaya', 'city', 'stopdesk_point', 'address', 'products', 'quantity', 'price', 'total', 'confirmation_attempts', 'last_contact'];
+    $reordered = array_merge(['total'], array_values(array_diff($defaults, ['total'])));
+
+    Volt::test('merchant.orders.index')
+        ->call('openTableSettings')
+        ->assertSet('draftColumns', $defaults)
+        ->call('reorderDraftColumns', $reordered)
+        ->assertSet('draftColumns', $reordered)
+        ->call('saveTableSettings')
+        ->assertSet('visibleColumns', $reordered)
+        ->assertDispatched('swal:toast');
+
+    expect(
+        UserColumnPreference::where('membership_id', ordersMembership($store, $user)->id)
+            ->where('view_key', 'orders_index')
+            ->value('visible_columns'),
+    )->toBe($reordered);
+});
+
+test('reorderDraftColumns dedupes and drops unknown keys before saving', function () {
+    [$user, $store] = createOrdersStore('owner');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('openTableSettings')
+        ->call('reorderDraftColumns', ['unknown_key', 'customer', 'customer', 'amount', 'number'])
+        ->assertSet('draftColumns', ['customer', 'number'])
+        ->call('saveTableSettings')
+        ->assertSet('visibleColumns', ['customer', 'phone', 'number', 'status', 'shipping_provider', 'delivery_type', 'wilaya', 'city', 'stopdesk_point', 'address', 'products', 'quantity', 'price', 'total']);
+});

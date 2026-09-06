@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 use App\Domains\Order\Models\UserColumnPreference;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Order\Services\OrderService;
@@ -67,8 +67,18 @@ state([
     'allStopdeskPoints' => [],
     'allProviders' => [],
 
-    // Inline-edit city options for the row currently being edited
+    // Inline-edit options for the row currently being edited (31.3 searchable selects)
     'editCityOptions' => [],
+    'editProviderOptions' => [],
+    'editStopdeskOptions' => [],
+    'editDeliveryTypeOptions' => [],
+    'editShipmentTypeOptions' => [],
+    'editAgentOptions' => [],
+
+    // 31.4 — inline discount editing (type/value/reason drive order.discount_*)
+    'discountEditType' => '',
+    'discountEditValue' => '',
+    'discountEditReason' => '',
 
     // Bulk operations
     'selectedOrders' => [],
@@ -120,6 +130,12 @@ state([
     'formOffices' => [],
     'loadingOffices' => false,
 
+    // Row delivery quick-edit modal (30.2): full cascade reuses $this->form
+    // delivery fields + allStates/allCities/formOffices + the cascade methods.
+    'showDeliveryModal' => false,
+    'deliveryOrderId' => null,
+    'deliverySaving' => false,
+
     // Duplicate-detection warnings inside the create/edit form (P28 extended)
     'formDuplicateWarnings' => [],
 
@@ -162,6 +178,9 @@ state([
     // Inline phone edit (customer phone + order secondary stacked in one cell)
     'phoneEditPhone' => '',
     'phoneEditSecondary' => '',
+
+    // Inline customer name edit (30.7)
+    'nameEditName' => '',
 ]);
 
 updated([
@@ -244,49 +263,132 @@ mount(function (): void {
         ->get(['id', 'name'])
         ->toArray();
 
+    // 31.3 — static option sets shared by the inline searchable selects.
+    $this->editProviderOptions = collect($this->allProviders)
+        ->map(fn($p) => ['value' => (string) $p['id'], 'label' => $p['name']])
+        ->values()
+        ->all();
+    $this->editDeliveryTypeOptions = [
+        ['value' => 'home', 'label' => __('merchant_panel.home_delivery_label')],
+        ['value' => 'stopdesk', 'label' => __('merchant_panel.stop_desk_label')],
+    ];
+    $this->editShipmentTypeOptions = [
+        ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+        ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
+        ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
+    ];
+    $this->editAgentOptions = collect($this->allMembers)
+        ->map(fn($m) => ['value' => (string) $m['id'], 'label' => $m['user']['name'] ?? '—'])
+        ->prepend(['value' => '', 'label' => __('merchant_panel.unassigned')])
+        ->values()
+        ->all();
+
     $this->loadColumnPreferences();
     $this->loadFilterProducts();
     $this->loadOrders();
 });
 
 $orderColumns = function (): array {
+    // Metadata per column (31.1):
+    //   default  – part of the freshly-reset visible set
+    //   required – always visible, may not be hidden (reorder remains free)
+    //   editable – editable directly from the table (inline editing)
+    //   roles    – non-empty ⇒ only members holding one of these roles may even see it
+    //   info     – design-only column (placeholder until its data source ships)
+    $sensitiveRoles = [
+        \App\Enums\Store\StoreRoleEnum::OWNER->value,
+        \App\Enums\Store\StoreRoleEnum::ADMIN->value,
+        \App\Enums\Store\StoreRoleEnum::MANAGER->value,
+    ];
+
     return [
         // identity
-        ['key' => 'number', 'label_key' => 'number', 'group' => 'identity', 'default' => true],
-        ['key' => 'customer', 'label_key' => 'customer', 'group' => 'identity', 'default' => true],
-        ['key' => 'phone', 'label_key' => 'phone', 'group' => 'identity', 'default' => true],
-        ['key' => 'notes', 'label_key' => 'notes', 'group' => 'identity', 'default' => false],
-        ['key' => 'meta', 'label_key' => 'meta', 'group' => 'identity', 'default' => false],
-        // geography
-        ['key' => 'wilaya', 'label_key' => 'state', 'group' => 'geography', 'default' => true],
-        ['key' => 'city', 'label_key' => 'city', 'group' => 'geography', 'default' => false],
-        ['key' => 'address', 'label_key' => 'address', 'group' => 'geography', 'default' => false],
-        ['key' => 'delivery_type', 'label_key' => 'delivery_type', 'group' => 'geography', 'default' => false],
-        ['key' => 'shipping_provider', 'label_key' => 'shipping_provider', 'group' => 'geography', 'default' => false],
-        ['key' => 'stopdesk_point', 'label_key' => 'stopdesk_point', 'group' => 'geography', 'default' => false],
-        ['key' => 'send_from_carrier_warehouse', 'label_key' => 'send_from_carrier_warehouse', 'group' => 'geography', 'default' => false],
+        ['key' => 'number', 'label_key' => 'number', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'source', 'label_key' => 'source', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'customer', 'label_key' => 'customer', 'group' => 'identity', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'phone', 'label_key' => 'phone', 'group' => 'identity', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'verification', 'label_key' => 'verification', 'group' => 'identity', 'default' => true, 'required' => false, 'editable' => false, 'info' => true],
+        ['key' => 'notes', 'label_key' => 'notes', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'meta', 'label_key' => 'meta', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
+
         // products_financial
-        ['key' => 'products', 'label_key' => 'products', 'group' => 'products_financial', 'default' => true],
-        ['key' => 'amount', 'label_key' => 'amount', 'group' => 'products_financial', 'default' => true],
-        ['key' => 'shipping_cost', 'label_key' => 'shipping_cost', 'group' => 'products_financial', 'default' => false],
-        ['key' => 'weight', 'label_key' => 'weight', 'group' => 'products_financial', 'default' => true],
-        ['key' => 'shipment_type', 'label_key' => 'shipment', 'group' => 'products_financial', 'default' => true],
+        ['key' => 'products', 'label_key' => 'products', 'group' => 'products_financial', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'quantity', 'label_key' => 'quantity', 'group' => 'products_financial', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'price', 'label_key' => 'price', 'group' => 'products_financial', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'total', 'label_key' => 'total', 'group' => 'products_financial', 'default' => true, 'required' => true, 'editable' => false],
+        ['key' => 'shipping_cost', 'label_key' => 'shipping_cost', 'group' => 'products_financial', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'weight', 'label_key' => 'weight', 'group' => 'products_financial', 'default' => false, 'required' => false, 'editable' => true],
+        ['key' => 'shipment_type', 'label_key' => 'shipment', 'group' => 'products_financial', 'default' => false, 'required' => false, 'editable' => true],
+        ['key' => 'discount', 'label_key' => 'discount', 'group' => 'products_financial', 'default' => false, 'required' => false, 'editable' => true],
+
+        // geography
+        ['key' => 'wilaya', 'label_key' => 'state', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'city', 'label_key' => 'city', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'address', 'label_key' => 'address', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'delivery_type', 'label_key' => 'delivery_type', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'shipping_provider', 'label_key' => 'shipping_provider', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'stopdesk_point', 'label_key' => 'stopdesk_point', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'send_from_carrier_warehouse', 'label_key' => 'send_from_carrier_warehouse', 'group' => 'geography', 'default' => false, 'required' => false, 'editable' => true],
+
         // workflow
-        ['key' => 'status', 'label_key' => 'status', 'group' => 'workflow', 'default' => true],
-        ['key' => 'tracking_status', 'label_key' => 'tracking_status', 'group' => 'workflow', 'default' => false],
-        ['key' => 'assigned_agent', 'label_key' => 'assigned_agent', 'group' => 'workflow', 'default' => true],
-        ['key' => 'confirmed_by', 'label_key' => 'confirmed_by', 'group' => 'workflow', 'default' => false],
-        ['key' => 'created_at', 'label_key' => 'date', 'group' => 'workflow', 'default' => true],
-        ['key' => 'confirmation_attempts', 'label_key' => 'attempts', 'group' => 'workflow', 'default' => true],
-        ['key' => 'last_contact', 'label_key' => 'last_contact', 'group' => 'workflow', 'default' => true],
+        ['key' => 'status', 'label_key' => 'status', 'group' => 'workflow', 'default' => true, 'required' => true, 'editable' => true],
+        ['key' => 'assigned_agent', 'label_key' => 'assigned_agent', 'group' => 'workflow', 'default' => false, 'required' => false, 'editable' => true],
+        ['key' => 'created_at', 'label_key' => 'date', 'group' => 'workflow', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'confirmation_attempts', 'label_key' => 'attempts', 'group' => 'workflow', 'default' => true, 'required' => false, 'editable' => false, 'roles' => $sensitiveRoles],
+        ['key' => 'last_contact', 'label_key' => 'last_contact', 'group' => 'workflow', 'default' => true, 'required' => false, 'editable' => false, 'roles' => $sensitiveRoles],
     ];
+};
+
+// Memoized registry lookup + role gate (used by prefs, header, cells and settings modal).
+$orderColumn = function (string $key): ?array {
+    static $cache = null;
+    if ($cache === null) {
+        $cache = collect($this->orderColumns())->keyBy('key')->all();
+    }
+
+    return $cache[$key] ?? null;
+};
+
+$columnAllowedForUser = function (array $col): bool {
+    $roles = $col['roles'] ?? null;
+    if (empty($roles)) {
+        return true;
+    }
+    foreach ($roles as $role) {
+        if (hasStoreRole($role)) {
+            return true;
+        }
+    }
+
+    return false;
 };
 
 $loadColumnPreferences = function (): void {
     $registry = $this->orderColumns();
     $validKeys = collect($registry)->pluck('key')->all();
-    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
-    $defaults = $primaryKeys;
+    $required = collect($registry)->where('required', true)->pluck('key')->all();
+    $allowed = collect($registry)->filter(fn($col) => $this->columnAllowedForUser($col))->pluck('key')->all();
+    $prefsVersion = 2;
+
+    // Canonical default order (31.1): matches the required/default layout.
+    $defaults = array_values(array_intersect([
+        'customer',
+        'phone',
+        'verification',
+        'status',
+        'shipping_provider',
+        'delivery_type',
+        'wilaya',
+        'city',
+        'stopdesk_point',
+        'address',
+        'products',
+        'quantity',
+        'price',
+        'total',
+        'confirmation_attempts',
+        'last_contact',
+    ], $validKeys, $allowed));
 
     $membership = $this->getCurrentMembership();
     if (!$membership) {
@@ -297,14 +399,39 @@ $loadColumnPreferences = function (): void {
 
     $pref = UserColumnPreference::where('membership_id', $membership->id)->where('view_key', 'orders_index')->first();
 
-    // Primary columns are always forced; only secondary columns are configurable.
+    $isLegacy = ! $pref
+        || (int) ($pref->prefs_version ?? 0) !== $prefsVersion;
+
+    // The stored preference is the FULL ordered column list (columns + order).
     $stored = $pref->visible_columns ?? [];
     if (!is_array($stored)) {
         $stored = [];
     }
-    $stored = array_values(array_intersect($stored, $validKeys));
-    $secondaries = array_values(array_diff($stored, $primaryKeys));
-    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+    // Drop anything unknown OR not visible for this member's roles.
+    $stored = array_values(array_intersect($stored, $validKeys, $allowed));
+
+    if ($isLegacy || empty($stored)) {
+        $stored = $defaults;
+        $pref?->update(['visible_columns' => $stored, 'prefs_version' => $prefsVersion]);
+    }
+
+    // Preserve the member's own order; insert any required column (that is not
+    // yet present, e.g. added by a future release) at its canonical default spot.
+    $ordered = $stored;
+    foreach ($defaults as $pos => $key) {
+        if (in_array($key, $ordered, true) || !in_array($key, $required, true)) {
+            continue;
+        }
+        $insertAt = min($pos, count($ordered));
+        array_splice($ordered, $insertAt, 0, [$key]);
+    }
+    foreach ($required as $key) {
+        if (!in_array($key, $ordered, true) && in_array($key, $allowed, true)) {
+            $ordered[] = $key;
+        }
+    }
+
+    $this->visibleColumns = $ordered;
 
     $this->tableStyle = $pref?->table_style === 'status' ? 'status' : 'default';
 };
@@ -317,12 +444,34 @@ $saveColumnPreferences = function (): void {
 
     $registry = $this->orderColumns();
     $validKeys = collect($registry)->pluck('key')->all();
-    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
+    $required = collect($registry)->where('required', true)->pluck('key')->all();
+    $allowed = collect($registry)->filter(fn($col) => $this->columnAllowedForUser($col))->pluck('key')->all();
 
-    $secondaries = array_values(array_diff(array_values(array_intersect($this->visibleColumns, $validKeys)), $primaryKeys));
-    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+    // Persist the FULL ordered list so column order is preserved across sessions.
+    $ordered = array_values(array_intersect($this->visibleColumns, $validKeys, $allowed));
 
-    UserColumnPreference::updateOrCreate(['membership_id' => $membership->id, 'view_key' => 'orders_index'], ['visible_columns' => $secondaries, 'table_style' => $this->tableStyle]);
+    // Required columns can never be hidden — force them back in on save,
+    // inserted at their canonical default spot rather than just appended.
+    $canonical = ['customer', 'phone', 'verification', 'status', 'shipping_provider', 'delivery_type', 'wilaya', 'city', 'stopdesk_point', 'address', 'products', 'quantity', 'price', 'total'];
+    foreach ($canonical as $pos => $key) {
+        if (in_array($key, $ordered, true) || !in_array($key, $required, true)) {
+            continue;
+        }
+        $insertAt = min($pos, count($ordered));
+        array_splice($ordered, $insertAt, 0, [$key]);
+    }
+    foreach ($required as $key) {
+        if (!in_array($key, $ordered, true)) {
+            $ordered[] = $key;
+        }
+    }
+    $this->visibleColumns = $ordered;
+
+    UserColumnPreference::updateOrCreate(['membership_id' => $membership->id, 'view_key' => 'orders_index'], [
+        'visible_columns' => $ordered,
+        'table_style' => $this->tableStyle,
+        'prefs_version' => 2,
+    ]);
 };
 
 $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
@@ -331,11 +480,10 @@ $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
         ->first();
 };
 
-$loadOrders = function (): void {
-    $storeId = currentStoreId();
-    $f = $this->filters;
-
-    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider'];
+// Single source of truth for the row eager-loads (shared by loadOrders and
+// refreshSingleOrder). Extended column-by-column as inline editing grows.
+$orderEagerLoads = function (): array {
+    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider', 'shippingProvider'];
     if (in_array('confirmed_by', $this->visibleColumns, true)) {
         $with[] = 'confirmedByHistory';
         $with[] = 'confirmedByHistory.status';
@@ -345,6 +493,15 @@ $loadOrders = function (): void {
         $with[] = 'stopdeskPoint';
         $with[] = 'stopdeskPoint.city';
     }
+
+    return $with;
+};
+
+$loadOrders = function (): void {
+    $storeId = currentStoreId();
+    $f = $this->filters;
+
+    $with = $this->orderEagerLoads();
 
     $query = Order::where('store_id', $storeId)->with($with);
 
@@ -449,7 +606,7 @@ $loadOrders = function (): void {
     } else {
         $query->withoutTrashed();
 
-        // افتراضيًا: الطلبيات الجارية في صفحة التتبع لا تظهر هنا ((IOException ≠ confirmed)
+        // ط§ظپطھط±ط§ط¶ظٹظ‹ط§: ط§ظ„ط·ظ„ط¨ظٹط§طھ ط§ظ„ط¬ط§ط±ظٹط© ظپظٹ طµظپط­ط© ط§ظ„طھطھط¨ط¹ ظ„ط§ طھط¸ظ‡ط± ظ‡ظ†ط§ ((IOException â‰  confirmed)
         if (empty($f['status'])) {
             $carrierStatusIds = Status::system()->forType('order')
                 ->whereIn('key', \App\Domains\Order\Support\OrderWorkflow::carrier())
@@ -479,65 +636,125 @@ $loadOrders = function (): void {
 
     $carrierKeys = \App\Domains\Order\Support\OrderWorkflow::carrier();
 
-    $this->orders = $paginated->toArray();
+$this->orders = $paginated->toArray();
     $this->orders['data'] = $paginated
         ->getCollection()
-        ->map(function ($order) use ($service, $duplicateCounts, $priorCarrierCounts, $carrierKeys, $membership) {
-            $arr = $order->toArray();
-            // Status key is resolved through the statuses relation (orders.status_id FK);
-            // blades must read this explicit key instead of nesting $arr['status']['key'].
-            $arr['status_key'] = $order->status?->key;
-            // P29.4 — the row actions column shows the event-log dropdown only to members
-            // allowed to read the audit log (OWNER/ADMIN always, MANAGER when assigned).
-            $arr['can_view_events'] = $membership
-                ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)
-                : false;
-            $arr['duplicate_count'] = (int) ($duplicateCounts[$order->id]['same_product'] ?? 0);
-            $arr['duplicate_phone_count'] = (int) ($duplicateCounts[$order->id]['same_phone'] ?? 0);
-
-            // "سبق أن طلب" — the displayed order itself is excluded so a sent order does not
-            // flag itself; only a sibling that reached the carrier counts.
-            $selfReachedCarrier = $order->shipping_provider_id
-                || $order->delivery_rider_id
-                || in_array($order->status?->key, $carrierKeys, true);
-
-            $arr['repeat_count'] = max(0, (int) ($priorCarrierCounts[(string) $order->customer_id] ?? 0) - ($selfReachedCarrier ? 1 : 0));
-
-            // One signal per row, precedence: duplicate > probable > repeat.
-            $arr['dup_level'] = $arr['duplicate_count'] >= 1
-                ? 'duplicate'
-                : ($arr['duplicate_phone_count'] >= 1
-                    ? 'probable'
-                    : ($arr['repeat_count'] >= 1
-                        ? 'repeat'
-                        : null));
-
-            $arr['transitions'] = $service->availableTransitions($order);
-            $arr['items_summary'] = $order->items
-                ->map(
-                    fn($i) => [
-                        'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
-                        'qty' => $i->quantity,
-                        'price' => $i->price,
-                    ],
-                )
-                ->toArray();
-            $arr['tracking'] = $order->latestTracking
-                ? [
-                    'tracking_number' => $order->latestTracking->tracking_number,
-                    'tracking_status' => $order->latestTracking->tracking_status,
-                    'carrier_status' => $order->latestTracking->carrier_status,
-                    'carrier_label' => $order->latestTracking->carrier_label,
-                    'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
-                    'delivered_at' => $order->latestTracking->delivered_at?->format('Y-m-d H:i'),
-                    'shipping_provider' => $order->latestTracking->shippingProvider?->name,
-                ]
-                : null;
-            return $arr;
-        })
+        ->map(fn($order) => $this->decorateOrder($order, $service, $duplicateCounts, $priorCarrierCounts, $carrierKeys, $membership))
         ->toArray();
 
     $this->orders['filtered_total'] = $paginated->total();
+};
+
+$decorateOrder = function (Order $order, OrderService $service, array $duplicateCounts, array $priorCarrierCounts, array $carrierKeys, ?StoreMembership $membership): array {
+    $arr = $order->toArray();
+    // Status key is resolved through the statuses relation (orders.status_id FK);
+    // blades must read this explicit key instead of nesting $arr['status']['key'].
+    $arr['status_key'] = $order->status?->key;
+    // P29.4 — the row actions column shows the event-log dropdown only to members
+    // allowed to read the audit log (OWNER/ADMIN always, MANAGER when assigned).
+    $arr['can_view_events'] = $membership
+        ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)
+        : false;
+    $arr['duplicate_count'] = (int) ($duplicateCounts[$order->id]['same_product'] ?? 0);
+    $arr['duplicate_phone_count'] = (int) ($duplicateCounts[$order->id]['same_phone'] ?? 0);
+
+    // "سبق أن طلب" — the displayed order itself is excluded so a sent order does not
+    // flag itself; only a sibling that reached the carrier counts.
+    $selfReachedCarrier = $order->shipping_provider_id
+        || $order->delivery_rider_id
+        || in_array($order->status?->key, $carrierKeys, true);
+
+    $arr['repeat_count'] = max(0, (int) ($priorCarrierCounts[(string) $order->customer_id] ?? 0) - ($selfReachedCarrier ? 1 : 0));
+
+    // One signal per row, precedence: duplicate > probable > repeat.
+    $arr['dup_level'] = $arr['duplicate_count'] >= 1
+        ? 'duplicate'
+        : ($arr['duplicate_phone_count'] >= 1
+            ? 'probable'
+            : ($arr['repeat_count'] >= 1
+                ? 'repeat'
+                : null));
+
+    // 31.4 — row-level missing-fields signal: confirm-gate for open (not-yet-confirmed)
+    // orders, send-gate (adds destination + carrier) for confirmed/preparing ones.
+    $statusKey = $order->status?->key;
+    $arr['missing'] = null;
+    $arr['missing_keys'] = [];
+
+    if (in_array($statusKey, \App\Domains\Order\Support\OrderWorkflow::backOffice(), true)) {
+        $forSend = in_array($statusKey, ['confirmed', 'preparing'], true);
+        $missingEntries = app(\App\Domains\Order\Services\OrderCompleteness::class)->missing($order, $forSend);
+
+        if ($missingEntries !== []) {
+            $arr['missing'] = array_column($missingEntries, 'label');
+            $arr['missing_keys'] = array_column($missingEntries, 'key');
+        }
+    }
+
+    $arr['transitions'] = $service->availableTransitions($order);
+    $arr['items_summary'] = $order->items
+        ->map(
+            fn($i) => [
+                'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
+                'qty' => $i->quantity,
+                'price' => $i->price,
+            ],
+        )
+        ->toArray();
+
+    // 31.1 — the "total" column always shows price×qty + shipping − discount
+    // (created orders still store the raw item subtotal; edits persist the
+    // full formula via the inline/modal flows).
+    $arr['items_subtotal'] = round((float) $order->items->sum(fn($i) => (float) $i->price * (int) $i->quantity), 2);
+    $arr['discount_amount'] = (float) $order->discount_amount;
+    $arr['display_total'] = round($arr['items_subtotal'] + (float) ($order->shipping_cost ?? 0) - $arr['discount_amount'], 2);
+    $arr['tracking'] = $order->latestTracking
+        ? [
+            'tracking_number' => $order->latestTracking->tracking_number,
+            'tracking_status' => $order->latestTracking->tracking_status,
+            'carrier_status' => $order->latestTracking->carrier_status,
+            'carrier_label' => $order->latestTracking->carrier_label,
+            'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
+            'delivered_at' => $order->latestTracking->delivered_at?->format('Y-m-d H:i'),
+            'shipping_provider' => $order->latestTracking->shippingProvider?->name,
+        ]
+        : null;
+    return $arr;
+};
+
+$refreshSingleOrder = function (string $orderId): void {
+    $storeId = currentStoreId();
+
+    $with = $this->orderEagerLoads();
+
+    $query = Order::where('store_id', $storeId)->with($with);
+    if ($this->showTrash) {
+        $query->onlyTrashed();
+    } else {
+        $query->withoutTrashed();
+    }
+    $order = $query->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $duplicateCounts = app(\App\Domains\Order\Services\OrderDuplicateService::class)
+        ->countsBySiblings([$order->id], $storeId);
+    $priorCarrierCounts = app(\App\Domains\Order\Services\OrderDuplicateService::class)
+        ->countsPriorCarrierOrders([$order->customer_id]);
+    $carrierKeys = \App\Domains\Order\Support\OrderWorkflow::carrier();
+    $membership = $this->getCurrentMembership();
+    $service = app(OrderService::class);
+
+    $decorated = $this->decorateOrder($order, $service, $duplicateCounts, $priorCarrierCounts, $carrierKeys, $membership);
+
+    foreach (($this->orders['data'] ?? []) as $i => $row) {
+        if (($row['id'] ?? null) === $order->id) {
+            $this->orders['data'][$i] = $decorated;
+            break;
+        }
+    }
 };
 
 $setPage = function (int $page): void {
@@ -706,33 +923,10 @@ $closeBulkSendModal = function (): void {
     $this->bulkSendSkipCount = 0;
 };
 
-// Per-order 29.2 readiness + missing-field list.
-$collectMissingFields = function (Order $order): array {
-    $missing = [];
-
-    if (blank($order->customer?->name)) {
-        $missing[] = __('merchant_panel.customer_name');
-    }
-    if (blank($order->customer?->phone)) {
-        $missing[] = __('merchant_panel.customer_phone');
-    }
-    if (blank($order->state_id)) {
-        $missing[] = __('merchant_panel.state');
-    }
-    if (blank($order->city_id)) {
-        $missing[] = __('merchant_panel.city');
-    }
-    if (blank($order->address) && blank($order->stopdesk_point_id)) {
-        $missing[] = __('merchant_panel.address');
-    }
-    if ($order->items->isEmpty()) {
-        $missing[] = __('merchant_panel.items');
-    }
-    if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
-        $missing[] = __('order_flow.confirm_partner');
-    }
-
-    return $missing;
+// Per-order readiness + missing-field list — single source is the
+// OrderCompleteness domain service (confirm = no carrier, send = + carrier).
+$collectMissingFields = function (Order $order, bool $forSend = true): array {
+    return app(\App\Domains\Order\Services\OrderCompleteness::class)->missingLabels($order, $forSend);
 };
 
 // Single source of truth for bulk eligibility: resolves each order's carrier
@@ -757,7 +951,7 @@ $resolveBulkOrderState = function (Order $order): array {
     }
 
     if (! empty($missing)) {
-        $reasons[] = __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $missing)]);
+        $reasons[] = __('order_flow.bulk_send_reason_missing', ['fields' => implode('طŒ ', $missing)]);
     }
 
     $reasons = array_values(array_unique($reasons));
@@ -806,7 +1000,7 @@ $confirmBulkSend = function (): void {
         $state = $this->resolveBulkOrderState($order);
 
         if (! $state['ready']) {
-            $skipped[] = $order->number . ' (' . implode('؛ ', $state['reasons']) . ')';
+            $skipped[] = $order->number . ' (' . implode('ط› ', $state['reasons']) . ')';
             continue;
         }
 
@@ -940,11 +1134,9 @@ $discardTableSettings = function (): void {
 $saveTableSettings = function (): void {
     $registry = $this->orderColumns();
     $validKeys = collect($registry)->pluck('key')->all();
-    $primaryKeys = collect($registry)->where('default', true)->pluck('key')->all();
 
     $draft = array_values(array_intersect($this->draftColumns, $validKeys));
-    $secondaries = array_values(array_diff($draft, $primaryKeys));
-    $this->visibleColumns = array_unique(array_merge($primaryKeys, $secondaries));
+    $this->visibleColumns = $draft;
     $this->tableStyle = in_array($this->draftStyle, ['default', 'status'], true) ? $this->draftStyle : 'default';
 
     $this->saveColumnPreferences();
@@ -960,6 +1152,14 @@ $saveTableSettings = function (): void {
 };
 
 $toggleDraftColumn = function (string $column): void {
+    $col = $this->orderColumn($column);
+
+    // Required columns are always visible; role-gated columns are toggleable
+    // only by members allowed to see them.
+    if (! $col || ($col['required'] ?? false) || ! $this->columnAllowedForUser($col)) {
+        return;
+    }
+
     if (in_array($column, $this->draftColumns, true)) {
         $this->draftColumns = array_values(array_diff($this->draftColumns, [$column]));
     } else {
@@ -967,8 +1167,39 @@ $toggleDraftColumn = function (string $column): void {
     }
 };
 
+$moveDraftColumn = function (string $column, string $direction): void {
+    $position = array_search($column, $this->draftColumns, true);
+    if ($position === false) {
+        return;
+    }
+
+    $target = $direction === 'up' ? $position - 1 : $position + 1;
+    if ($target < 0 || $target >= count($this->draftColumns)) {
+        return;
+    }
+
+    [$this->draftColumns[$position], $this->draftColumns[$target]] = [$this->draftColumns[$target], $this->draftColumns[$position]];
+};
+
+$reorderDraftColumns = function (array $keys): void {
+    $validKeys = collect($this->orderColumns())->pluck('key')->all();
+    $this->draftColumns = array_values(
+        array_intersect(
+            collect($keys)->unique()->values()->all(),
+            $validKeys,
+        ),
+    );
+};
+
 $resetColumns = function (): void {
-    $this->draftColumns = collect($this->orderColumns())->where('default', true)->pluck('key')->all();
+    $visible = collect($this->orderColumns())
+        ->filter(fn($col) => $this->columnAllowedForUser($col))
+        ->pluck('key')
+        ->all();
+
+    $defaults = ['customer', 'phone', 'verification', 'status', 'shipping_provider', 'delivery_type', 'wilaya', 'city', 'stopdesk_point', 'address', 'products', 'quantity', 'price', 'total', 'confirmation_attempts', 'last_contact'];
+
+    $this->draftColumns = array_values(array_intersect($defaults, $visible));
     $this->draftStyle = 'default';
 };
 
@@ -976,8 +1207,8 @@ $resetColumns = function (): void {
 
 // Authorization (Phase P1): gate each transition by the fine-grained permission
 // for the target status (see App\Support\StoreOrderPermissions::forStatus).
-// Confirmation → order.confirm, cancellation → order.cancel, everything else
-// (ship / deliver / prepare / return-followup…) → order.manage. This closes the
+// Confirmation â†’ order.confirm, cancellation â†’ order.cancel, everything else
+// (ship / deliver / prepare / return-followup…) â†’ order.manage. This closes the
 // gap where $transitionOrder was only checked against the state machine.
 $transitionOrder = function (string $orderId, string $statusKey): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
@@ -1237,6 +1468,16 @@ $submitConfirmOnly = function (): void {
         return;
     }
 
+    $missing = $this->collectMissingFields($order, false);
+
+    if ($missing !== []) {
+        $this->dispatch('swal:toast', [
+            'icon' => 'warning',
+            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode(', ', $missing)]),
+        ]);
+        return;
+    }
+
     $membership = $this->getCurrentMembership();
 
     app(OrderService::class)->confirm($order, $membership);
@@ -1259,6 +1500,16 @@ $submitConfirmAndSend = function (): void {
     $order = Order::where('store_id', currentStoreId())->find($this->confirmOrderId);
 
     if (! $order) {
+        return;
+    }
+
+    $missing = $this->collectMissingFields($order, true);
+
+    if ($missing !== []) {
+        $this->dispatch('swal:toast', [
+            'icon' => 'warning',
+            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode(', ', $missing)]),
+        ]);
         return;
     }
 
@@ -1328,7 +1579,7 @@ $sendConfirmedOrder = function (string $orderId): void {
     if (! empty($missing)) {
         $this->dispatch('swal:toast', [
             'icon' => 'warning',
-            'title' => __('order_flow.send_missing_fields', ['fields' => implode('، ', $missing)]),
+            'title' => __('order_flow.send_missing_fields', ['fields' => implode('طŒ ', $missing)]),
         ]);
         return;
     }
@@ -1618,6 +1869,16 @@ $syncFormSelectedItems = function (): void {
     $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
 };
 
+// 30.3: weight_kg is auto-calculated from variant weights أ— quantities on every item
+// mutation. It stays a manual field otherwise, so a typed override is only overwritten
+// when the items actually change — never on a mere price edit.
+$recalcFormWeight = function (): void {
+    $weight = collect($this->form['items'] ?? [])->sum(
+        fn($i) => (float) ($i['weight'] ?? 0) * (int) ($i['quantity'] ?? 1)
+    );
+    $this->form['weight_kg'] = $weight > 0 ? round($weight, 3) : '';
+};
+
 $loadCities = function (string $stateId): void {
     if (empty($stateId)) {
         $this->allCities = [];
@@ -1631,6 +1892,8 @@ $loadCities = function (string $stateId): void {
 };
 
 $rebuildFormOffices = function (): void {
+    $wasSelected = (string) ($this->form['stopdesk_point_id'] ?? '');
+
     if (empty($this->form['shipping_provider_id'])) {
         $this->formOffices = [];
         $this->form['stopdesk_point_id'] = '';
@@ -1647,7 +1910,19 @@ $rebuildFormOffices = function (): void {
     }
 
     $cityId = $this->form['city_id'] ?? null;
-    $offices = $query->orderBy('name')->get()->sortByDesc(fn($office) => !empty($cityId) && $office->city_id === $cityId ? 1 : 0)->values();
+    // Chain: company â†’ type â†’ wilaya â†’ city â†’ office. When a commune is chosen
+    // the office list is scoped to it (regional null-city offices still show).
+    if (!empty($cityId)) {
+        $query->where(function ($q) use ($cityId) {
+            $q->where('city_id', $cityId)->orWhereNull('city_id');
+        });
+    }
+
+    $offices = $query
+        ->orderBy('name')
+        ->get()
+        ->sortByDesc(fn($office) => !empty($cityId) && $office->city_id === $cityId ? 1 : 0)
+        ->values();
 
     $this->formOffices = $offices
         ->map(function ($office) use ($cityId) {
@@ -1663,11 +1938,17 @@ $rebuildFormOffices = function (): void {
 
     $cityOffices = empty($cityId) ? collect() : $offices->filter(fn($office) => $office->city_id === $cityId);
 
-    // Chain: company → type → wilaya → city → office. When the chosen
+    // Chain: company â†’ type â†’ wilaya â†’ city â†’ office. When the chosen
     // municipality has a single office, auto-select it.
     if (($this->form['delivery_type'] ?? null) === 'stopdesk' && $cityOffices->count() === 1) {
         $this->form['stopdesk_point_id'] = (string) $cityOffices->first()->id;
     } elseif (!collect($this->formOffices)->contains(fn($o) => $o['value'] === ($this->form['stopdesk_point_id'] ?? null))) {
+        // 30.2: never revert a previously valid office silently. When the
+        // selected destination (wilaya/commune) no longer offers the chosen
+        // office, clear it AND surface a visible note so the user knows why.
+        if ($wasSelected !== '' && $this->form['stopdesk_point_id'] === $wasSelected) {
+            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.office_reset_for_destination')]);
+        }
         $this->form['stopdesk_point_id'] = '';
     }
 };
@@ -1679,6 +1960,15 @@ $rebuildFormOffices = function (): void {
 $loadFormOffices = function (?string $providerId = null, bool $preserveOffice = false): void {
     if ($providerId !== null) {
         $this->form['shipping_provider_id'] = $providerId;
+    }
+
+    // Home delivery has no office concept: picking a carrier must not trigger
+    // an office sync/rebuild. Drop any stale selection and options only.
+    if (($this->form['delivery_type'] ?? null) !== 'stopdesk') {
+        $this->form['stopdesk_point_id'] = '';
+        $this->formOffices = [];
+
+        return;
     }
 
     if (!$preserveOffice) {
@@ -1721,9 +2011,16 @@ $changeDeliveryType = function (string $type): void {
     $this->form['delivery_type'] = $type;
 
     if ($type === 'stopdesk') {
-        $this->rebuildFormOffices();
+        // Full sync path when a carrier is already chosen so the office list is
+        // present and scoped the moment the stopdesk fields appear.
+        if (!empty($this->form['shipping_provider_id'])) {
+            $this->loadFormOffices(preserveOffice: true);
+        } else {
+            $this->rebuildFormOffices();
+        }
     } else {
         $this->form['stopdesk_point_id'] = '';
+        $this->formOffices = [];
     }
 };
 
@@ -1754,6 +2051,157 @@ $refreshFormOffices = function (): void {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.office_sync_failed')]);
     } finally {
         $this->loadingOffices = false;
+    }
+};
+
+// ——— Delivery quick-edit modal (30.2): full cascade reusing $this->form's
+//      delivery fields + allStates/allCities/formOffices + the cascade helpers.
+
+$openDeliveryModal = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::with('customer')->where('store_id', currentStoreId())->findOrFail($orderId);
+
+    $shippedSortOrder = \App\Models\Status::where('type', 'order')->where('key', 'shipped')->value('sort_order');
+    if ($order->status && $shippedSortOrder !== null && $order->status->sort_order >= $shippedSortOrder) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.cannot_edit_shipped')]);
+        return;
+    }
+
+    $this->deliveryOrderId = $order->id;
+    $this->form['delivery_type'] = $order->delivery_type;
+    $this->form['shipping_provider_id'] = $order->shipping_provider_id ?? '';
+    $this->form['state_id'] = $order->state_id ?? '';
+    $this->form['city_id'] = $order->city_id ?? '';
+    $this->form['stopdesk_point_id'] = $order->stopdesk_point_id ?? '';
+    $this->allCities = !empty($this->form['state_id'])
+        ? City::where('state_id', $this->form['state_id'])->orderBy('name')->get()->toArray()
+        : [];
+
+    $this->formOffices = [];
+    $this->loadFormOffices($this->form['shipping_provider_id'], preserveOffice: true);
+
+    $this->showDeliveryModal = true;
+    $this->deliverySaving = false;
+};
+
+$closeDeliveryModal = function (): void {
+    $this->showDeliveryModal = false;
+    $this->deliveryOrderId = null;
+    $this->deliverySaving = false;
+};
+
+$saveDeliveryModal = function (): void {
+    if (! $this->deliveryOrderId) {
+        return;
+    }
+
+    $order = Order::with('store')->where('store_id', currentStoreId())->findOrFail($this->deliveryOrderId);
+
+    $shippedSortOrder = \App\Models\Status::where('type', 'order')->where('key', 'shipped')->value('sort_order');
+    if ($order->status && $shippedSortOrder !== null && $order->status->sort_order >= $shippedSortOrder) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.cannot_edit_shipped')]);
+        return;
+    }
+
+    $this->deliverySaving = true;
+
+    try {
+        $data = $this->form;
+        $validator = Validator::make($data, [
+            'delivery_type' => ['required', 'in:home,stopdesk'],
+            'shipping_provider_id' => ['nullable', 'string', 'exists:shipping_providers,id'],
+            'state_id' => ['nullable', 'string', 'exists:states,id'],
+            'city_id' => ['nullable', 'string', 'exists:cities,id'],
+            'stopdesk_point_id' => ['nullable', 'string', 'exists:stopdesk_points,id'],
+        ]);
+
+        if ($validator->fails()) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $validator->errors()->first()]);
+            return;
+        }
+
+        if (!empty($data['city_id']) && empty($data['state_id'])) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.city_without_state')]);
+            return;
+        }
+
+        if (filled($data['city_id'])) {
+            $city = City::find($data['city_id']);
+            if ($city && $city->state_id !== ($data['state_id'] ?? null)) {
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.invalid_city_for_state')]);
+                return;
+            }
+        }
+
+        if (filled($data['stopdesk_point_id'])) {
+            $stopdesk = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())->find($data['stopdesk_point_id']);
+            if (!$stopdesk) {
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.invalid_office')]);
+                return;
+            }
+
+            if ($data['delivery_type'] !== 'stopdesk') {
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.office_home_invalid')]);
+                return;
+            }
+
+            if (filled($data['shipping_provider_id']) && $stopdesk->shipping_provider_id !== $data['shipping_provider_id']) {
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.office_provider_mismatch')]);
+                return;
+            }
+        }
+
+        // Write-collect before applying so we can compare for the audit event.
+        $prev = [
+            'delivery_type' => $order->delivery_type,
+            'shipping_provider_id' => $order->shipping_provider_id,
+            'state_id' => $order->state_id,
+            'city_id' => $order->city_id,
+            'stopdesk_point_id' => $order->stopdesk_point_id,
+        ];
+
+        $order->update([
+            'delivery_type' => $data['delivery_type'],
+            'shipping_provider_id' => filled($data['shipping_provider_id']) ? $data['shipping_provider_id'] : null,
+            'state_id' => filled($data['state_id']) ? $data['state_id'] : null,
+            'city_id' => filled($data['city_id']) ? $data['city_id'] : null,
+            'stopdesk_point_id' => $data['delivery_type'] === 'stopdesk' && filled($data['stopdesk_point_id']) ? $data['stopdesk_point_id'] : null,
+        ]);
+
+        $this->recalculateOrderShipping($order->fresh());
+
+        $dirty = array_keys(array_diff_assoc($prev, [
+            'delivery_type' => $order->delivery_type,
+            'shipping_provider_id' => $order->shipping_provider_id,
+            'state_id' => $order->state_id,
+            'city_id' => $order->city_id,
+            'stopdesk_point_id' => $order->stopdesk_point_id,
+        ]));
+
+        activity(config('activitylog.default_log_name', 'default'))
+            ->event('order_delivery_updated')
+            ->withProperties([
+                'field' => 'order.delivery',
+                'record_id' => $order->id,
+                'before' => $prev,
+                'after' => $order->only(['delivery_type', 'shipping_provider_id', 'state_id', 'city_id', 'stopdesk_point_id']),
+                'changed' => $dirty,
+            ])
+            ->on($order)
+            ->log('Updated order delivery');
+
+        $this->showDeliveryModal = false;
+        $this->deliveryOrderId = null;
+        $this->deliverySaving = false;
+
+        $this->loadOrders();
+        $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant_panel.delivery_updated')]);
+    } finally {
+        $this->deliverySaving = false;
     }
 };
 
@@ -1824,12 +2272,81 @@ $saveOrderPhone = function (): void {
         'applied',
     );
 
+    $orderId = $this->editingId;
+
     $this->resetEditingState();
     $this->phoneEditPhone = '';
     $this->phoneEditSecondary = '';
 
-    $this->loadOrders();
+    $this->refreshSingleOrder($orderId);
     $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant_panel.phone_updated')]);
+};
+
+// ——— Inline customer name edit (30.7) ———
+
+$startOrderNameEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->with('customer')->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $this->nameEditName = (string) ($order->customer?->name ?? '');
+
+    $this->startEdit('order.customer_name', $orderId, $this->nameEditName);
+};
+
+$cancelOrderNameEdit = function (): void {
+    $this->nameEditName = '';
+    $this->cancelEdit();
+};
+
+$saveOrderName = function (): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->editingError = null;
+
+    \Illuminate\Support\Facades\Validator::make(
+        [
+            'name' => $this->nameEditName,
+        ],
+        [
+            'name' => 'required|string|max:255',
+        ],
+    )->validate();
+
+    $order = Order::where('store_id', currentStoreId())->findOrFail($this->editingId);
+
+    $customer = $order->customer;
+    if ($customer) {
+        $customer->update(['name' => $this->nameEditName]);
+    }
+
+    $this->writeInlineAudit(
+        [
+            'field' => 'order.customer_name',
+            'label' => 'order customer name',
+            'audit_event' => 'order_customer_name_updated',
+            'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->with('customer')->find($id),
+        ],
+        ['name' => $this->nameEditName],
+        'applied',
+    );
+    $orderId = $this->editingId;
+
+    $this->resetEditingState();
+    $this->nameEditName = '';
+
+    $this->refreshSingleOrder($orderId);
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant_panel.name_updated')]);
 };
 
 // ——— Inline edits (wilaya / commune / shipping cost override) ———
@@ -1905,6 +2422,8 @@ $saveOrderWilaya = function (?string $stateId = null): void {
         $this->editingValue = $stateId;
     }
 
+    $orderId = $this->editingId;
+
     $this->saveEdit([
         'field' => 'order.wilaya',
         'permission' => StorePermissionEnum::ORDER_MANAGE->value,
@@ -1926,7 +2445,7 @@ $saveOrderWilaya = function (?string $stateId = null): void {
         'audit_event' => 'order_wilaya_updated',
     ]);
 
-    $this->loadOrders();
+    $this->refreshSingleOrder($orderId);
 };
 
 $saveOrderCity = function (?string $cityId = null): void {
@@ -1939,6 +2458,7 @@ $saveOrderCity = function (?string $cityId = null): void {
     }
 
     $order = Order::where('store_id', currentStoreId())->find($this->editingId);
+    $orderId = $this->editingId;
 
     $this->saveEdit([
         'field' => 'order.city',
@@ -1972,7 +2492,554 @@ $saveOrderCity = function (?string $cityId = null): void {
         'audit_event' => 'order_city_updated',
     ]);
 
-    $this->loadOrders();
+    $this->refreshSingleOrder($orderId);
+};
+
+// ——— 31.3 ——— Inline searchable selects (provider / delivery type / shipment type / stopdesk point / agent) ———
+
+$inlineStopdeskOptions = function (Order $order): array {
+    $query = \App\Domains\Shipping\Models\StopdeskPoint::query()
+        ->where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->with('city:id,name');
+
+    // Office selection is scoped to the order's carrier (a company may only serve
+    // its own points; shared points remain available to every carrier).
+    if ($order->shipping_provider_id) {
+        $query->where(function ($q) use ($order) {
+            $q->where('shipping_provider_id', $order->shipping_provider_id)
+                ->orWhereNull('shipping_provider_id');
+        });
+    }
+
+    return $query->orderBy('name')
+        ->get()
+        ->map(fn($p) => [
+            'value' => (string) $p->id,
+            'label' => $p->name . ($p->city?->name ? " ({$p->city->name})" : ''),
+        ])
+        ->all();
+};
+
+$startOrderProviderEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $this->editStopdeskOptions = $this->inlineStopdeskOptions($order);
+    $this->startEdit('order.shipping_provider', $orderId, $order->shipping_provider_id);
+};
+
+$saveOrderProvider = function (?string $providerId = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($providerId !== null) {
+        $this->editingValue = $providerId;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($this->editingId);
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.shipping_provider',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => function (string $field, $value, $id) use ($order): array {
+            return ['value' => ['nullable', function (string $attribute, $candidate, $fail) use ($order): void {
+                if (blank($candidate)) {
+                    return;
+                }
+
+                $providerExists = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+                    ->whereKey($candidate)
+                    ->exists();
+
+                if (!$providerExists) {
+                    $fail(__('Selected shipping company is invalid'));
+                }
+            }]];
+        },
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => function (Order $order, $value): void {
+            $providerId = blank($value) ? null : $value;
+            $data = ['shipping_provider_id' => $providerId];
+
+            // Switching carrier: drop an office no longer served by the new carrier.
+            if ($providerId && $order->delivery_type === Order::DELIVERY_STOPDESK && $order->stopdesk_point_id) {
+                $stillValid = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
+                    ->whereKey($order->stopdesk_point_id)
+                    ->where(fn($q) => $q->where('shipping_provider_id', $providerId)->orWhereNull('shipping_provider_id'))
+                    ->exists();
+
+                if (!$stillValid) {
+                    $data['stopdesk_point_id'] = null;
+                }
+            }
+
+            $order->update($data);
+            $this->recalculateOrderShipping($order->fresh());
+        },
+        'label' => 'order shipping provider',
+        'audit_event' => 'order_shipping_provider_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderDeliveryTypeEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit(
+        'order.delivery_type',
+        $orderId,
+        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('delivery_type'),
+    );
+};
+
+$saveOrderDeliveryType = function (?string $deliveryType = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($deliveryType !== null) {
+        $this->editingValue = $deliveryType;
+    }
+
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.delivery_type',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => ['value' => ['required', 'in:home,stopdesk']],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => function (Order $order, $value): void {
+            $data = ['delivery_type' => $value];
+
+            // Home delivery has no office; only custom-created stopdesk orders
+            // keep one, and the completeness gate re-checks it on send.
+            if ($value === Order::DELIVERY_HOME) {
+                $data['stopdesk_point_id'] = null;
+            }
+
+            $order->update($data);
+            $this->recalculateOrderShipping($order->fresh());
+        },
+        'label' => 'order delivery type',
+        'audit_event' => 'order_delivery_type_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderShipmentTypeEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit(
+        'order.shipment_type',
+        $orderId,
+        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('shipment_type'),
+    );
+};
+
+$saveOrderShipmentType = function (?string $shipmentType = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($shipmentType !== null) {
+        $this->editingValue = $shipmentType;
+    }
+
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.shipment_type',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => ['value' => ['required', 'in:delivery,exchange,pickup']],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => fn(Order $order, $value) => $order->update(['shipment_type' => $value]),
+        'label' => 'order shipment type',
+        'audit_event' => 'order_shipment_type_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderStopdeskEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $this->editStopdeskOptions = $this->inlineStopdeskOptions($order);
+    $this->startEdit('order.stopdesk_point', $orderId, $order->stopdesk_point_id);
+};
+
+$saveOrderStopdesk = function (?string $pointId = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($pointId !== null) {
+        $this->editingValue = $pointId;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($this->editingId);
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.stopdesk_point',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => function (string $field, $value, $id) use ($order): array {
+            return ['value' => ['nullable', function (string $attribute, $candidate, $fail) use ($order): void {
+                if (blank($candidate)) {
+                    return;
+                }
+
+                $point = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
+                    ->whereKey($candidate)
+                    ->first();
+
+                if (!$point) {
+                    $fail(__('Selected point is invalid'));
+                    return;
+                }
+
+                if ($order?->shipping_provider_id
+                    && $point->shipping_provider_id
+                    && $point->shipping_provider_id !== $order->shipping_provider_id) {
+                    $fail(__('Selected point does not belong to this company'));
+                }
+            }]];
+        },
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => fn(Order $order, $value) => $order->update(['stopdesk_point_id' => blank($value) ? null : $value]),
+        'label' => 'order stopdesk point',
+        'audit_event' => 'order_stopdesk_point_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderAgentEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit(
+        'order.assigned_agent',
+        $orderId,
+        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('assigned_to_membership_id'),
+    );
+};
+
+$saveOrderAgent = function (?string $membershipId = null): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    if (!$this->editingId) {
+        return;
+    }
+
+    if ($membershipId !== null) {
+        $this->editingValue = $membershipId;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($this->editingId);
+    $orderId = $this->editingId;
+
+    if (!$order) {
+        $this->cancelEdit();
+        return;
+    }
+
+    $this->saveEdit([
+        'field' => 'order.assigned_agent',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => function (string $field, $value, $id) use ($order): array {
+            return ['value' => ['nullable', function (string $attribute, $candidate, $fail) use ($order): void {
+                if (blank($candidate)) {
+                    return;
+                }
+
+                $member = \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
+                    ->whereKey($candidate)
+                    ->where('is_active', true)
+                    ->exists();
+
+                if (!$member) {
+                    $fail(__('Selected agent is invalid'));
+                }
+            }]];
+        },
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => function (Order $order, $value): void {
+            if (blank($value)) {
+                $order->update([
+                    'assigned_to_membership_id' => null,
+                    'assigned_at' => null,
+                    'assigned_by_membership_id' => null,
+                    'assignment_method' => null,
+                ]);
+                return;
+            }
+
+            // Reuse the manual-reassignment path (no eligibility checks, no shift cap).
+            $target = \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())->find($value);
+
+            if (!$target) {
+                return;
+            }
+
+            $by = $this->getCurrentMembership();
+
+            if (!$by) {
+                return;
+            }
+
+            app(\App\Domains\Order\Services\OrderAssignmentService::class)
+                ->reassign($order, $target, $by);
+        },
+        'label' => 'order assigned agent',
+        'audit_event' => 'order_assigned_agent_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+// ——— 31.4 ——— Inline field edits (address / weight / discount / send-from-warehouse) ———
+
+$startOrderAddressEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit('order.address', $orderId, Order::where('store_id', currentStoreId())->whereKey($orderId)->value('address'));
+};
+
+$saveOrderAddress = function (?string $address = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($address !== null) {
+        $this->editingValue = $address;
+    }
+
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.address',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => ['value' => ['nullable', 'string', 'max:5000']],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => function (Order $order, $value): void {
+            $data = ['address' => blank($value) ? null : $value];
+
+            // Address keep-alive mirrors the customer side: editing it when the
+            // order already moved towards the carrier is blocked by the guard.
+            $order->update($data);
+            $this->recalculateOrderShipping($order->fresh());
+        },
+        'label' => 'order address',
+        'audit_event' => 'order_address_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderWeightEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit(
+        'order.weight',
+        $orderId,
+        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('weight_kg'),
+    );
+};
+
+$saveOrderWeight = function (?string $weight = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($weight !== null) {
+        $this->editingValue = $weight;
+    }
+
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.weight',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => ['value' => ['nullable', 'numeric', 'min:0', 'max:9999']],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => fn(Order $order, $value) => $order->update(['weight_kg' => blank($value) ? null : $value]),
+        'label' => 'order weight',
+        'audit_event' => 'order_weight_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderDiscountEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $this->discountEditType = (string) ($order->discount_type ?? '');
+    $this->discountEditValue = $order->discount_value ?? '';
+    $this->discountEditReason = (string) ($order->discount_reason ?? '');
+    $this->startEdit('order.discount', $orderId, $order->discount_value);
+};
+
+$saveOrderDiscount = function (): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    $orderId = $this->editingId;
+    $type = $this->discountEditType;
+    $value = $this->discountEditValue;
+
+    // Type must be one of the select options; value drives the audit payload.
+    $this->editingValue = $value;
+
+    $this->saveEdit([
+        'field' => 'order.discount',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => [
+            'value' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:999999',
+                function (string $attribute, $candidate, $fail): void {
+                    if ($this->discountEditType === 'percent' && (float) $candidate > 100) {
+                        $fail(__('merchant_panel.discount_percent_max'));
+                    }
+                },
+            ],
+        ],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => function (Order $order, $value): void {
+            $type = $this->discountEditType;
+
+            // No type selected (or a leaked value with no type): clear the discount.
+            if (! in_array($type, ['amount', 'percent'], true) || blank($value)) {
+                $order->update(['discount_type' => null, 'discount_value' => null, 'discount_reason' => null]);
+                return;
+            }
+
+            $order->update([
+                'discount_type' => $type,
+                'discount_value' => $value,
+                'discount_reason' => blank($this->discountEditReason) ? null : $this->discountEditReason,
+            ]);
+        },
+        'label' => 'order discount',
+        'audit_event' => 'order_discount_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$toggleSendFromWarehouse = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $next = ! (bool) $order->send_from_carrier_warehouse;
+    $order->update(['send_from_carrier_warehouse' => $next]);
+
+    activity(config('activitylog.default_log_name', 'default'))
+        ->event('order_send_from_warehouse_updated')
+        ->withProperties(['value' => $next, 'record_id' => $order->id])
+        ->by(auth()->user())
+        ->on($order)
+        ->log('Applied order send from carrier warehouse');
+
+    $this->refreshSingleOrder($orderId);
+};
+
+// Clicking the missing-fields row badge jumps straight to the first missing
+// field that has an inline editor (customer/address/carrier/geo). "items" has
+// no inline editor yet (Phase 31.5) so it opens the full edit modal instead.
+$startMissingFieldEdit = function (string $orderId): void {
+    $order = Order::where('store_id', currentStoreId())->with($this->orderEagerLoads())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    // A shipped order's only actionable missing field is the carrier (send-level),
+    // but stopdesk/address already carry the shipped-blocking guard inside their
+    // save path, so start the first editable one directly.
+    $forSend = $order->status?->key === 'confirmed' || $order->status?->key === 'preparing';
+    $first = collect(app(\App\Domains\Order\Services\OrderCompleteness::class)->missing($order, $forSend))->first();
+
+    if (!$first) {
+        return;
+    }
+
+    $action = match ($first['key']) {
+        'customer_name' => 'startOrderNameEdit',
+        'customer_phone' => 'startOrderPhoneEdit',
+        'state' => 'startOrderWilayaEdit',
+        'city' => 'startOrderCityEdit',
+        'stopdesk_point' => 'startOrderStopdeskEdit',
+        'delivery_address' => 'startOrderAddressEdit',
+        'carrier' => 'startOrderProviderEdit',
+        default => null,
+    };
+
+    if ($action === null) {
+        $this->openEditModal($orderId);
+        return;
+    }
+
+    $this->{$action}($orderId);
 };
 
 // ——— Create Modal ———
@@ -2139,6 +3206,7 @@ $addFormItem = function (string $variantId): void {
         ];
     }
     $this->syncFormSelectedItems();
+    $this->recalcFormWeight();
 };
 
 $addFormItemByBarcode = function (string $code): void {
@@ -2181,6 +3249,7 @@ $addFormItemByBarcode = function (string $code): void {
             $this->form['items'][$idx]['quantity']++;
             $this->form['items'][$idx]['preorder'] = $backorder && $available < $this->form['items'][$idx]['quantity'];
             $this->syncFormSelectedItems();
+            $this->recalcFormWeight();
             return;
         }
     }
@@ -2200,12 +3269,14 @@ $addFormItemByBarcode = function (string $code): void {
         'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
     ];
     $this->syncFormSelectedItems();
+    $this->recalcFormWeight();
 };
 
 $removeFormItem = function (int $index): void {
     unset($this->form['items'][$index]);
     $this->form['items'] = array_values($this->form['items']);
     $this->syncFormSelectedItems();
+    $this->recalcFormWeight();
 };
 
 $updateFormItemQty = function (int $index, int $qty): void {
@@ -2221,6 +3292,8 @@ $updateFormItemQty = function (int $index, int $qty): void {
         $available = (int) $variant->stock;
         $this->form['items'][$index]['preorder'] = \App\Domains\Cart\Support\OrderRules::allowsBackorder($variant->product?->store) && $available < $this->form['items'][$index]['quantity'];
     }
+
+    $this->recalcFormWeight();
 };
 
 $updateFormItemPrice = function (int $index, $price): void {
@@ -2320,8 +3393,9 @@ $submitCreate = function (): void {
             'notes' => $this->form['notes'],
             'phone_secondary' => $this->form['phone_secondary'],
             'weight_kg' => $this->form['weight_kg'] ?: null,
-            // Carrier + office only apply to stopdesk deliveries.
-            'shipping_provider_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['shipping_provider_id'] ?: null) : null,
+            // Carrier applies to both delivery types (dispatch needs it for home too);
+            // the office only applies to stopdesk deliveries.
+            'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
             'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
             'items' => $this->form['items'],
         ],
@@ -2663,7 +3737,7 @@ $submitEdit = function (): void {
                     <button type="button" wire:click="setFilter('source', null)" @click="close()"
                         aria-pressed="{{ empty($this->filters['source']) ? 'true' : 'false' }}"
                         class="edz-dropdown__item justify-between {{ empty($this->filters['source']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>—</span>
+                        {{ __('general.all') }}
                         <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['source']) ? 'opacity-100' : 'opacity-0' }}" />
                     </button>
                     <button type="button" wire:click="setFilter('source', 'store')" @click="close()"
@@ -2685,7 +3759,7 @@ $submitEdit = function (): void {
                     <button type="button" wire:click="setFilter('delivery_type', null)" @click="close()"
                         aria-pressed="{{ empty($this->filters['delivery_type']) ? 'true' : 'false' }}"
                         class="edz-dropdown__item justify-between {{ empty($this->filters['delivery_type']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>—</span>
+                        {{ __('general.all') }}
                         <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['delivery_type']) ? 'opacity-100' : 'opacity-0' }}" />
                     </button>
                     <button type="button" wire:click="setFilter('delivery_type', 'home')" @click="close()"
@@ -2707,7 +3781,7 @@ $submitEdit = function (): void {
                     <button type="button" wire:click="setFilter('shipping_provider', null)" @click="close()"
                         aria-pressed="{{ empty($this->filters['shipping_provider']) ? 'true' : 'false' }}"
                         class="edz-dropdown__item justify-between {{ empty($this->filters['shipping_provider']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>—</span>
+                        {{ __('general.all') }}
                         <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['shipping_provider']) ? 'opacity-100' : 'opacity-0' }}" />
                     </button>
                     @foreach ($this->allProviders as $pr)
@@ -2745,30 +3819,24 @@ $submitEdit = function (): void {
     </div>
 
     {{-- Active filter summary + Clear --}}
-    @if (array_filter($this->filters))
+    @php
+        $hasActiveFilters = collect($this->filters)->filter(function ($v, $k) {
+            if ($k === 'send_from_carrier_warehouse') {
+                return $v !== null;
+            }
+
+            return filled($v);
+        })->isNotEmpty();
+    @endphp
+    @if ($hasActiveFilters)
         <div class="mb-3 flex items-center gap-2 flex-wrap">
-            @if (!empty($this->filters['wilaya']))
-                <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? '' }}
-                    <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled"
-                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
-                </span>
-            @endif
-            @if (!empty($this->filters['city']))
-                <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? '' }}
-                    <button wire:click="setFilter('city', null)" wire:loading.attr="disabled"
-                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
-                </span>
-            @endif
             @if (!empty($this->filters['status']))
                 @foreach ($this->allStatuses as $s)
                     @if (in_array($s['id'], $this->filters['status']))
                         <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                            {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
+                            class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                            <span class="font-semibold opacity-75">{{ __('merchant_panel.status') }}:</span>
+                            <span>{{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}</span>
                             <button wire:click="toggleStatusFilter('{{ $s['id'] }}')"
                                 wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
                                     class="w-3 h-3" /></button>
@@ -2776,82 +3844,133 @@ $submitEdit = function (): void {
                     @endif
                 @endforeach
             @endif
-            @if (!empty($this->filters['assigned_to']))
+            @if (!empty($this->filters['wilaya']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? '' }}
-                    <button wire:click="setFilter('assigned_to', null)" wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.state') }}:</span>
+                    <span>{{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? $this->filters['wilaya'] }}</span>
+                    <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
-            @if (!empty($this->filters['date_from']) || !empty($this->filters['date_to']))
+            @if (!empty($this->filters['city']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}
-                    <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
-                        wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
-                            class="w-3 h-3" /></button>
-                </span>
-            @endif
-            @if (!empty($this->filters['delivery_type']))
-                <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : __('merchant_panel.home_delivery_label') }}
-                    <button wire:click="setFilter('delivery_type', null)" wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.city') }}:</span>
+                    <span>{{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? $this->filters['city'] }}</span>
+                    <button wire:click="setFilter('city', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
             @if (!empty($this->filters['shipping_provider']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? '' }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('order_flow.filter_provider') }}:</span>
+                    <span>{{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? $this->filters['shipping_provider'] }}</span>
                     <button
                         @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
                         wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
                             class="w-3 h-3" /></button>
                 </span>
             @endif
+            @if (!empty($this->filters['stopdesk_point']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.office') }}:</span>
+                    <span>{{ collect($this->allStopdeskPoints)->firstWhere('id', $this->filters['stopdesk_point'])['name'] ?? $this->filters['stopdesk_point'] }}</span>
+                    <button wire:click="setFilter('stopdesk_point', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['delivery_type']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('storefront.delivery_type') }}:</span>
+                    <span>{{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : __('storefront.home_delivery') }}</span>
+                    <button wire:click="setFilter('delivery_type', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
             @if (!empty($this->filters['shipment_type']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ match ($this->filters['shipment_type']) {
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.shipment_type') }}:</span>
+                    <span>{{ match ($this->filters['shipment_type']) {
                         'delivery' => __('merchant_panel.delivery'),
                         'exchange' => __('merchant_panel.exchange_label'),
                         'pickup' => __('merchant_panel.pickup_label'),
                         default => $this->filters['shipment_type'],
-                    } }}
+                    } }}</span>
                     <button wire:click="setFilter('shipment_type', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
-            @if (!empty($this->filters['stopdesk_point']))
+            @if (!empty($this->filters['source']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allStopdeskPoints)->firstWhere('id', $this->filters['stopdesk_point'])['name'] ?? '' }}
-                    <button wire:click="setFilter('stopdesk_point', null)" wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.source') }}:</span>
+                    <span>{{ $this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant.delivery_man') }}</span>
+                    <button wire:click="setFilter('source', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (!empty($this->filters['assigned_to']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.assigned_agent') }}:</span>
+                    <span>{{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['user']['name'] ?? $this->filters['assigned_to'] }}</span>
+                    <button wire:click="setFilter('assigned_to', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
             @if (!empty($this->filters['confirmed_by']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['user']['name'] ?? '' }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.confirmed_by') }}:</span>
+                    <span>{{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['user']['name'] ?? $this->filters['confirmed_by'] }}</span>
                     <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
             @if ($this->filters['send_from_carrier_warehouse'] !== null)
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['send_from_carrier_warehouse'] ? __('buttons.yes') : __('buttons.no') }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.send_from_carrier_warehouse') }}:</span>
+                    <span>{{ $this->filters['send_from_carrier_warehouse'] ? __('buttons.yes') : __('buttons.no') }}</span>
                     <button wire:click="setFilter('send_from_carrier_warehouse', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
+            @if (!empty($this->filters['date_from']) || !empty($this->filters['date_to']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.date') }}:</span>
+                    <span>{{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}</span>
+                    <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
+                        wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if (filled($this->filters['amount_min']) || filled($this->filters['amount_max']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.amount') }}:</span>
+                    <span>{{ $this->filters['amount_min'] ?? '0' }} — {{ $this->filters['amount_max'] ?? 'âˆ‍' }}</span>
+                    @if (filled($this->filters['amount_min']))
+                        <button wire:click="$set('filters.amount_min', '')" wire:loading.attr="disabled"
+                            class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                    @endif
+                    @if (filled($this->filters['amount_max']))
+                        <button wire:click="$set('filters.amount_max', '')" wire:loading.attr="disabled"
+                            class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                    @endif
+                </span>
+            @endif
             @if (filled($this->filters['weight_min']) || filled($this->filters['weight_max']))
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['weight_min'] ?? '0' }} — {{ $this->filters['weight_max'] ?? '∞' }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.weight') }}:</span>
+                    <span>{{ $this->filters['weight_min'] ?? '0' }} — {{ $this->filters['weight_max'] ?? 'âˆ‍' }}</span>
                     @if (filled($this->filters['weight_min']))
                         <button wire:click="$set('filters.weight_min', '')" wire:loading.attr="disabled"
                             class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
@@ -2862,18 +3981,30 @@ $submitEdit = function (): void {
                     @endif
                 </span>
             @endif
+            @if (filled($this->filters['product_id']) || filled($this->filters['product']))
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.product') }}:</span>
+                    <span>{{ filled($this->filters['product']) ? $this->filters['product'] : (collect($this->filterProducts)->firstWhere('id', $this->filters['product_id'])['name'] ?? $this->filters['product_id']) }}</span>
+                    <button @click="$wire.set('filters.product', ''); $wire.set('filters.product_id', null)"
+                        wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
+                            class="w-3 h-3" /></button>
+                </span>
+            @endif
             @if ($this->filters['address'] !== '')
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['address'] }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.address') }}:</span>
+                    <span class="max-w-[14rem] truncate">{{ $this->filters['address'] }}</span>
                     <button wire:click="setFilter('address', '')" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
             @if ($this->filters['notes'] !== '')
                 <span
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
-                    {{ $this->filters['notes'] }}
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.notes') }}:</span>
+                    <span class="max-w-[14rem] truncate">{{ $this->filters['notes'] }}</span>
                     <button wire:click="setFilter('notes', '')" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
@@ -2945,318 +4076,11 @@ $submitEdit = function (): void {
                                         <input type="checkbox" wire:model="selectAll" wire:click="toggleSelectAll"
                                             class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                     </th>
-                                    @if (in_array('number', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.number') }}</th>
-                                    @endif
-                                    @if (in_array('customer', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.customer') }}</th>
-                                    @endif
-                                    @if (in_array('phone', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.phone') }}</th>
-                                    @endif
-                                    @if (in_array('notes', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.notes') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'notes', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ $this->filters['notes'] !== '' ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if ($this->filters['notes'] !== '')
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('meta', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.meta') }}</th>
-                                    @endif
-                                    @if (in_array('wilaya', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.state') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'wilaya', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['wilaya']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['wilaya']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('city', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.city') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'city', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['wilaya']) ? '' : 'opacity-40 pointer-events-none' }} {{ filled($this->filters['city']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['city']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('address', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.address') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'address', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ $this->filters['address'] !== '' ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if ($this->filters['address'] !== '')
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('delivery_type', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.delivery_type') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'delivery_type', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['delivery_type']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['delivery_type']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('shipping_provider', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.shipping_provider') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'shipping_provider', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['shipping_provider']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['shipping_provider']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('stopdesk_point', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.stopdesk_point') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'stopdesk_point', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['shipping_provider']) ? '' : 'opacity-40 pointer-events-none' }} {{ filled($this->filters['stopdesk_point']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['stopdesk_point']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.send_from_carrier_warehouse') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'send_from_carrier_warehouse', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ $this->filters['send_from_carrier_warehouse'] !== null ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if ($this->filters['send_from_carrier_warehouse'] !== null)
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('products', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.products') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'product', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['product']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['product']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('amount', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.amount') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'amount', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['amount_min']) || filled($this->filters['amount_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['amount_min']) || filled($this->filters['amount_max']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('status', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.status') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'status', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ !empty($this->filters['status']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (!empty($this->filters['status']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('tracking_status', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.tracking_status') }}
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('assigned_agent', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.assigned_agent') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'assigned_to', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['assigned_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['assigned_to']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('confirmed_by', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.confirmed_by') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'confirmed_by', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['confirmed_by']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['confirmed_by']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('created_at', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group w-[150px]">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.date') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'date', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['date_from']) || filled($this->filters['date_to']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['date_from']) || filled($this->filters['date_to']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('confirmation_attempts', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.attempts') }}
-                                        </th>
-                                    @endif
-                                    @if (in_array('last_contact', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase">
-                                            {{ __('merchant_panel.last_contact') }}
-                                        </th>
-                                    @endif
-                                    @if (in_array('weight', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.weight') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'weight', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['weight_min']) || filled($this->filters['weight_max']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['weight_min']) || filled($this->filters['weight_max']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
-                                    @if (in_array('shipment_type', $this->visibleColumns))
-                                        <th
-                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
-                                            <div class="flex items-center gap-1">
-                                                {{ __('merchant_panel.shipment') }}
-                                                <button data-filter-btn
-                                                    @click.stop="$dispatch('edz-filter-open', { key: 'shipment_type', el: $event.currentTarget })"
-                                                    class="shrink-0 {{ filled($this->filters['shipment_type']) ? 'text-accent-500' : 'text-ink-muted/40 group-hover:text-ink-muted' }} transition">
-                                                    <x-edz.icon name="filter" class="w-3 h-3" />
-                                                </button>
-                                                @if (filled($this->filters['shipment_type']))
-                                                    <span
-                                                        class="w-1.5 h-1.5 rounded-full bg-accent-500 shrink-0"></span>
-                                                @endif
-                                            </div>
-                                        </th>
-                                    @endif
+                                    @foreach ($this->visibleColumns as $colKey)
+                                        @include('livewire.merchant.orders.partials.orders-table-header', [
+                                            'colKey' => $colKey,
+                                        ])
+                                    @endforeach
                                     <th class="px-4 py-3 text-end text-xs font-semibold text-ink-muted uppercase">
                                         {{ __('merchant_panel.actions') }}</th>
                                 </tr>
@@ -3275,6 +4099,7 @@ $submitEdit = function (): void {
                                                 : '';
                                     @endphp
                                     <tr data-order-id="{{ $orderId }}"
+                                        wire:key="order-row-{{ $orderId }}"
                                         data-order-number="{{ $order['number'] ?? '' }}" x-data="orderRowActions($el)"
                                         class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-tertiary/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle ' : '' }}{{ $orderStatusTone }}">
                                         <td class="px-3 py-3 w-10">
@@ -3283,354 +4108,14 @@ $submitEdit = function (): void {
                                                 {{ in_array($orderId, $this->selectedOrders) ? 'checked' : '' }}
                                                 class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                                         </td>
-                                        @if (in_array('number', $this->visibleColumns))
-                                            <td class="px-4 py-3 font-mono font-semibold text-ink">
-                                                <span class="inline-flex items-center">
-                                                    #{{ $order['number'] }}
-                                                </span>
-                                            </td>
-                                        @endif
-                                        @if (in_array('customer', $this->visibleColumns))
-                                            <td class="px-4 py-3">
-                                                @php
-                                                    $dupTone = match ($order['dup_level'] ?? null) {
-                                                        'duplicate' => 'danger',
-                                                        'probable' => 'warning',
-                                                        'repeat' => 'neutral',
-                                                        default => null,
-                                                    };
-                                                    $dupLabel = match ($order['dup_level'] ?? null) {
-                                                        'duplicate' => __('order_flow.dup_badge_duplicate'),
-                                                        'probable' => __('order_flow.dup_badge_probable'),
-                                                        'repeat' => __('order_flow.dup_badge_repeat'),
-                                                        default => null,
-                                                    };
-                                                    $dupCount = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
-                                                @endphp
-                                                @if (!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupTone)
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <div class="text-ink font-medium text-xs max-w-[120px] truncate"
-                                                            title="{{ $order['customer']['name'] ?? '-' }}">
-                                                            {{ $order['customer']['name'] ?? '-' }}</div>
-                                                        <button type="button"
-                                                            wire:click="openDuplicateScan('{{ $orderId }}')"
-                                                            title="{{ __('order_flow.duplicate_warnings_title') }}"
-                                                            class="edz-badge edz-badge--{{ $dupTone }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
-                                                            <x-edz.icon name="copy" class="w-3 h-3" />
-                                                            {{ $dupLabel }}@if (($order['dup_level'] ?? null) !== 'repeat')
-                                                                ×{{ min($dupCount, 9) }}{{ $dupCount > 9 ? '+' : '' }}
-                                                            @endif
-                                                        </button>
-                                                    </div>
-                                                @else
-                                                    <div class="text-ink font-medium text-xs max-w-[120px] truncate"
-                                                        title="{{ $order['customer']['name'] ?? '-' }}">
-                                                        {{ $order['customer']['name'] ?? '-' }}</div>
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('phone', $this->visibleColumns))
-                                            <td class="px-4 py-3">
-                                                @if ($this->editingField === 'order.phone' && $this->editingId === $orderId)
-                                                    <div class="edz-inline-edit__edit"
-                                                        wire:key="phone-inline-{{ $orderId }}">
-                                                        <input type="tel" wire:model="phoneEditPhone"
-                                                            wire:keydown.enter="saveOrderPhone"
-                                                            placeholder="{{ __('merchant_panel.phone') }}"
-                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                                                        <input type="tel" wire:model="phoneEditSecondary"
-                                                            wire:keydown.enter="saveOrderPhone"
-                                                            placeholder="{{ __('merchant_panel.phone_secondary') }}"
-                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                                                        <div class="edz-inline-edit__actions">
-                                                            <button type="button" class="edz-inline-edit__save"
-                                                                wire:click="saveOrderPhone"
-                                                                wire:loading.attr="disabled">
-                                                                <x-edz.spinner wire:target="saveOrderPhone" />
-                                                                <span wire:loading.remove
-                                                                    wire:target="saveOrderPhone">Save</span>
-                                                            </button>
-                                                            <button type="button" class="edz-inline-edit__cancel"
-                                                                wire:click="cancelOrderPhoneEdit">Cancel</button>
-                                                        </div>
-                                                        @if ($this->editingError)
-                                                            <p class="edz-inline-edit__error">
-                                                                {{ $this->editingError }}</p>
-                                                        @endif
-                                                    </div>
-                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                    <button type="button" class="edz-inline-edit__display"
-                                                        wire:click="startOrderPhoneEdit('{{ $orderId }}')">
-                                                        <span class="edz-inline-edit__value"
-                                                            dir="ltr">{{ $order['customer']['phone'] ?? '—' }}
-                                                            @if (!empty($order['phone_secondary']))
-                                                                <span class="text-ink-muted/60"> ·
-                                                                    {{ $order['phone_secondary'] }}</span>
-                                                            @endif
-                                                        </span>
-                                                    </button>
-                                                @else
-                                                    <span dir="ltr">{{ $order['customer']['phone'] ?? '-' }}
-                                                        @if (!empty($order['phone_secondary']))
-                                                            · {{ $order['phone_secondary'] }}
-                                                        @endif
-                                                    </span>
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('notes', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-                                                title="{{ $order['notes'] ?? '' }}">
-                                                {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('meta', $this->visibleColumns))
-                                            @php
-                                                $metaEntries = collect($order['meta'] ?? [])
-                                                    ->map(fn($v, $k) => "{$k}: {$v}")
-                                                    ->implode(', ');
-                                            @endphp
-                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-                                                title="{{ $metaEntries }}">
-                                                {{ $metaEntries ?: '-' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('wilaya', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
-                                                    <div class="edz-inline-edit__edit"
-                                                        wire:key="wilaya-inline-{{ $orderId }}">
-                                                        <select wire:change="saveOrderWilaya($event.target.value)"
-                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                                                            @foreach ($this->allStates as $st)
-                                                                <option value="{{ $st['id'] }}"
-                                                                    @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
-                                                                    {{ $st['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <div class="edz-inline-edit__actions">
-                                                            <button type="button" class="edz-inline-edit__cancel"
-                                                                @click="$wire.cancelOrderEdit()">Cancel</button>
-                                                        </div>
-                                                        @if ($this->editingError)
-                                                            <p class="edz-inline-edit__error">
-                                                                {{ $this->editingError }}</p>
-                                                        @endif
-                                                    </div>
-                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                    <button type="button" class="edz-inline-edit__display"
-                                                        @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
-                                                        <span
-                                                            class="edz-inline-edit__value">{{ $order['state']['name'] ?? '—' }}</span>
-                                                    </button>
-                                                @else
-                                                    {{ $order['state']['name'] ?? '-' }}
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('city', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                @if ($this->editingField === 'order.city' && $this->editingId === $orderId)
-                                                    <div class="edz-inline-edit__edit"
-                                                        wire:key="city-inline-{{ $orderId }}">
-                                                        <select wire:change="saveOrderCity($event.target.value)"
-                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                                                            @foreach ($this->editCityOptions as $ct)
-                                                                <option value="{{ $ct['id'] }}"
-                                                                    @if ((string) $this->editingValue === (string) $ct['id']) selected @endif>
-                                                                    {{ $ct['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <div class="edz-inline-edit__actions">
-                                                            <button type="button" class="edz-inline-edit__cancel"
-                                                                @click="$wire.cancelOrderEdit()">Cancel</button>
-                                                        </div>
-                                                        @if ($this->editingError)
-                                                            <p class="edz-inline-edit__error">
-                                                                {{ $this->editingError }}</p>
-                                                        @endif
-                                                    </div>
-                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !empty($order['state_id']))
-                                                    <button type="button" class="edz-inline-edit__display"
-                                                        @click="$wire.startOrderCityEdit('{{ $orderId }}')">
-                                                        <span
-                                                            class="edz-inline-edit__value">{{ $order['city']['name'] ?? '—' }}</span>
-                                                    </button>
-                                                @else
-                                                    {{ $order['city']['name'] ?? '-' }}
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('address', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-                                                title="{{ $order['address'] ?? '' }}">
-                                                {{ $order['address'] ? \Illuminate\Support\Str::limit($order['address'], 40) : '-' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('delivery_type', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ $order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $order['delivery_type'] ?? '-') }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('shipping_provider', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ $order['tracking']['shipping_provider'] ?? '-' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('stopdesk_point', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted">
-                                                {{ $order['stopdesk_point']['name'] ?? '-' }}@if (!empty($order['stopdesk_point']['city']['name']))
-                                                    ({{ $order['stopdesk_point']['city']['name'] }})
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
-                                            <td class="px-4 py-3">
-                                                @if ($order['send_from_carrier_warehouse'] ?? false)
-                                                    <x-edz.badge tone="success" sm>
-                                                        <x-edz.icon name="check" class="w-3 h-3" />
-                                                    </x-edz.badge>
-                                                @else
-                                                    <x-edz.badge tone="neutral" sm>
-                                                        <x-edz.icon name="x-mark" class="w-3 h-3" />
-                                                    </x-edz.badge>
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('products', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-                                                title="{{ collect($order['items_summary'] ?? [])->map(fn($i) => $i['name'] . ' ×' . $i['qty'])->implode(', ') }}">
-                                                @foreach ($order['items_summary'] ?? [] as $item)
-                                                    {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)
-                                                        ,
-                                                    @endif
-                                                @endforeach
-                                            </td>
-                                        @endif
-                                        @if (in_array('amount', $this->visibleColumns))
-                                            <td class="px-4 py-3 font-semibold text-ink">
-                                                {{ currency($order['total_amount']) }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('shipping_cost', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                @if ((float) ($order['shipping_cost'] ?? 0) <= 0)
-                                                    <x-edz.badge tone="neutral" sm>
-                                                        <x-edz.icon name="truck" class="w-3 h-3" />
-                                                        {{ __('merchant_panel.shipping_free') }}</x-edz.badge>
-                                                @else
-                                                    <span class="tabular-nums">{{ currency((float) ($order['shipping_cost'] ?? 0)) }}</span>
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('status', $this->visibleColumns))
-                                            <td class="px-4 py-3">
-                                                <div class="relative" @click.away="open = false">
-                                                    <button @click="openStatusMenu()" x-ref="trigger"
-                                                        class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
-                                                        {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
-                                                            null,
-                                                            'w-3 h-3 shrink-0',
-                                                        ) !!}
-                                                        {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
-                                                        <x-edz.icon name="chevron-down" class="w-3 h-3" />
-                                                    </button>
-                                                    <div x-show="open" x-cloak
-                                                        class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
-                                                        @click="open = false"></div>
-                                                    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
-                                                        x-transition:enter-start="opacity-0 translate-y-3"
-                                                        x-transition:enter-end="opacity-100 translate-y-0"
-                                                        x-transition:leave="transition ease-in duration-150"
-                                                        x-transition:leave-start="opacity-100 translate-y-0"
-                                                        x-transition:leave-end="opacity-0 translate-y-3"
-                                                        :style="menuStyle"
-                                                        class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
-                                                               p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
-                                                               sm:inset-x-auto sm:bottom-auto sm:z-[200] sm:w-56 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
-                                                               sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll sm:max-h-64">
-                                                        <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
-                                                        <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
-                                                            <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
-                                                                <x-edz.icon name="chevron-down" class="w-3.5 h-3.5 text-ink-muted" />
-                                                                <span>{{ __('merchant_panel.status') }}</span>
-                                                            </p>
-                                                            <button @click="open = false" type="button"
-                                                                class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                                                                title="{{ __('general.close') }}">
-                                                                <x-edz.icon name="x-mark" class="w-4 h-4" />
-                                                            </button>
-                                                        </div>
-                                                        @foreach ($this->allStatuses as $s)
-                                                            @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
-                                                                <button
-                                                                    wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                    wire:loading.attr="disabled" @click="open = false"
-                                                                    class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                                                    <x-edz.spinner
-                                                                        wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                        class="w-3 h-3" />
-                                                                    {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
-                                                                    <span class="w-2 h-2 rounded-full shrink-0"
-                                                                        style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
-                                                                    {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
-                                                                </button>
-                                                            @endif
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        @endif
-                                        @if (in_array('tracking_status', $this->visibleColumns))
-                                            <td class="px-4 py-3">
-                                                @if (!empty($order['tracking']['tracking_status']))
-                                                    <span
-                                                        class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color() }}">
-                                                        {!! \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
-                                                        {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label() }}
-                                                    </span>
-                                                @else
-                                                    <span class="text-xs text-ink-muted">—</span>
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (in_array('assigned_agent', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted">
-                                                {{ $order['assigned_membership']['user']['name'] ?? '—' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('confirmed_by', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-xs text-ink-muted">
-                                                {{ $order['confirmed_by_history']['changed_by']['user']['name'] ?? '-' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('created_at', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ \Carbon\Carbon::parse($order['created_at'])->format('M d, Y') }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('confirmation_attempts', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ $order['confirmation_attempts'] ?? 0 }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('last_contact', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ $order['last_contact_at'] ? \Carbon\Carbon::parse($order['last_contact_at'])->diffForHumans() : '—' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('weight', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs">
-                                                {{ $order['weight_kg'] ? $order['weight_kg'] . ' kg' : '—' }}
-                                            </td>
-                                        @endif
-                                        @if (in_array('shipment_type', $this->visibleColumns))
-                                            <td class="px-4 py-3 text-ink-muted text-xs capitalize">
-                                                {{ $order['shipment_type'] ?? '—' }}
-                                            </td>
-                                        @endif
+                                        @foreach ($this->visibleColumns as $colKey)
+                                            @include('livewire.merchant.orders.partials.orders-table-cell', [
+                                                'order' => $order,
+                                                'colKey' => $colKey,
+                                                'orderId' => $orderId,
+                                                'transitions' => $transitions,
+                                            ])
+                                        @endforeach
                                         <td class="px-4 py-3 text-right">
                                             <div class="flex items-center justify-end gap-1 flex-nowrap">
                                                 <button wire:click="openOrderDetails('{{ $orderId }}')"
@@ -3673,6 +4158,17 @@ $submitEdit = function (): void {
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
 
+                                                        <button @click="$wire.openDeliveryModal('{{ $orderId }}')"
+                                                            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                            title="{{ __('merchant_panel.edit_delivery') }}"
+                                                            wire:loading.attr="disabled"
+                                                            wire:target="openDeliveryModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openDeliveryModal('{{ $orderId }}')"
+                                                                class="w-3.5 h-3.5" />
+                                                            <x-edz.icon name="truck" wire:loading.remove
+                                                                wire:target="openDeliveryModal('{{ $orderId }}')"
+                                                                class="w-4 h-4 shrink-0" />
+                                                        </button>
                                                         <button @click="$wire.openEditModal('{{ $orderId }}')"
                                                             class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                             title="{{ __('merchant_panel.edit') }}"
@@ -3748,6 +4244,7 @@ $submitEdit = function (): void {
                                         : '';
                             @endphp
                             <div data-order-id="{{ $orderId }}"
+                                wire:key="order-card-{{ $orderId }}"
                                 data-order-number="{{ $order['number'] ?? '' }}" x-data="orderRowActions($el)"
                                 class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle' : '' }} {{ $orderStatusTone }}">
                                 <div class="flex items-start gap-3">
@@ -3778,8 +4275,38 @@ $submitEdit = function (): void {
                                             $dupCountM = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
                                         @endphp
                                         <div class="mt-1 flex items-center gap-1.5 min-w-0">
-                                            <div class="text-sm font-medium text-ink truncate">
-                                                {{ $order['customer']['name'] ?? '-' }}</div>
+                                            @if ($this->editingField === 'order.customer_name' && $this->editingId === $orderId)
+                                                <div class="edz-inline-edit__edit w-full"
+                                                    wire:key="name-inline-card-{{ $orderId }}">
+                                                    <input type="text" wire:model="nameEditName"
+                                                        wire:keydown.enter="saveOrderName"
+                                                        placeholder="{{ __('merchant_panel.name') }}"
+                                                        class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
+                                                    <div class="edz-inline-edit__actions">
+                                                        <button type="button" class="edz-inline-edit__save"
+                                                            wire:click="saveOrderName" wire:loading.attr="disabled">
+                                                            <x-edz.spinner wire:target="saveOrderName" />
+                                                            <span wire:loading.remove
+                                                                wire:target="saveOrderName">Save</span>
+                                                        </button>
+                                                        <button type="button" class="edz-inline-edit__cancel"
+                                                            wire:click="cancelOrderNameEdit">Cancel</button>
+                                                    </div>
+                                                    @if ($this->editingError)
+                                                        <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
+                                                    @endif
+                                                </div>
+                                            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                <button type="button" class="edz-inline-edit__display min-w-0"
+                                                    wire:click="startOrderNameEdit('{{ $orderId }}')"
+                                                    title="{{ $order['customer']['name'] ?? '-' }}">
+                                                    <span
+                                                        class="edz-inline-edit__value text-sm">{{ $order['customer']['name'] ?? '-' }}</span>
+                                                </button>
+                                            @else
+                                                <div class="text-sm font-medium text-ink truncate">
+                                                    {{ $order['customer']['name'] ?? '-' }}</div>
+                                            @endif
                                             @if (!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupToneM)
                                                 <button type="button"
                                                     wire:click="openDuplicateScan('{{ $orderId }}')"
@@ -3787,7 +4314,7 @@ $submitEdit = function (): void {
                                                     class="edz-badge edz-badge--{{ $dupToneM }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
                                                     <x-edz.icon name="copy" class="w-3 h-3" />
                                                     {{ $dupLabelM }}@if (($order['dup_level'] ?? null) !== 'repeat')
-                                                        ×{{ min($dupCountM, 9) }}{{ $dupCountM > 9 ? '+' : '' }}
+                                                        أ—{{ min($dupCountM, 9) }}{{ $dupCountM > 9 ? '+' : '' }}
                                                     @endif
                                                 </button>
                                             @endif
@@ -3824,7 +4351,7 @@ $submitEdit = function (): void {
                                                 <span class="edz-inline-edit__value" dir="ltr">
                                                     {{ $order['customer']['phone'] ?? '—' }}
                                                     @if (!empty($order['phone_secondary']))
-                                                        <span class="text-ink-muted/60"> ·
+                                                        <span class="text-ink-muted/60"> آ·
                                                             {{ $order['phone_secondary'] }}</span>
                                                     @endif
                                                 </span>
@@ -3833,7 +4360,7 @@ $submitEdit = function (): void {
                                             <div class="text-xs text-ink-muted" dir="ltr">
                                                 {{ $order['customer']['phone'] ?? '-' }}
                                                 @if (!empty($order['phone_secondary']))
-                                                    · {{ $order['phone_secondary'] }}
+                                                    آ· {{ $order['phone_secondary'] }}
                                                 @endif
                                             </div>
                                         @endif
@@ -3892,12 +4419,18 @@ $submitEdit = function (): void {
                                                     @endforeach
                                                 </div>
                                             </div>
-                                            @if (in_array('tracking_status', $this->visibleColumns) && !empty($order['tracking']['tracking_status']))
-                                                <span
-                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color() }}">
-                                                    {!! \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
-                                                    {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label() }}
-                                                </span>
+                                            @if (in_array('source', $this->visibleColumns))
+                                                @if (filled($order['created_by_membership_id']))
+                                                    <x-edz.badge tone="neutral" sm>
+                                                        <x-edz.icon name="user" class="w-3 h-3" />
+                                                        {{ __('merchant.delivery_man') }}
+                                                    </x-edz.badge>
+                                                @else
+                                                    <x-edz.badge tone="accent" sm>
+                                                        <x-edz.icon name="shopping-bag" class="w-3 h-3" />
+                                                        {{ __('merchant_panel.store') }}
+                                                    </x-edz.badge>
+                                                @endif
                                             @endif
                                             @if (in_array('wilaya', $this->visibleColumns))
                                                 @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
@@ -3932,11 +4465,11 @@ $submitEdit = function (): void {
                                                         class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
                                                 @endif
                                             @endif
-                                            @if (in_array('amount', $this->visibleColumns))
+                                            @if (in_array('total', $this->visibleColumns))
                                                 <span
-                                                    class="text-sm font-semibold text-ink ms-auto">{{ currency($order['total_amount']) }}</span>
+                                                    class="text-sm font-semibold text-ink ms-auto tabular-nums">{{ currency($order['display_total'] ?? $order['total_amount'] ?? 0) }}</span>
                                             @endif
-                                            @if (in_array('shipping_cost', $this->visibleColumns) && !in_array('amount', $this->visibleColumns))
+                                            @if (in_array('shipping_cost', $this->visibleColumns) && !in_array('total', $this->visibleColumns))
                                                 <span
                                                     class="text-xs text-ink-muted ms-auto inline-flex items-center gap-1">{{ __('merchant_panel.shipping_cost') }}:
                                                     @if ((float) ($order['shipping_cost'] ?? 0) <= 0)
@@ -4024,6 +4557,13 @@ $submitEdit = function (): void {
                                                         </button>
                                                     @endif
                                                     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                        <button @click="$wire.openDeliveryModal('{{ $orderId }}'); close()"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                                                            wire:loading.attr="disabled" wire:target="openDeliveryModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openDeliveryModal('{{ $orderId }}')" class="w-4 h-4" />
+                                                            <x-edz.icon name="truck" wire:loading.remove wire:target="openDeliveryModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
+                                                            {{ __('merchant_panel.edit_delivery') }}
+                                                        </button>
                                                         <button @click="$wire.openEditModal('{{ $orderId }}'); close()"
                                                             class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
                                                             wire:loading.attr="disabled" wire:target="openEditModal('{{ $orderId }}')">
@@ -4137,44 +4677,84 @@ $submitEdit = function (): void {
                     {{-- Tab: Columns --}}
                     <div x-show="tab === 'columns'" x-cloak class="space-y-5">
                         @php
-                            $settingsColumns = $this->orderColumns();
-                            $settingsPrimaries = collect($settingsColumns)->where('default', true)->all();
-                            $settingsSecondaries = collect($settingsColumns)->where('default', false)->all();
+                            $settingsColumns = collect($this->orderColumns())
+                                ->filter(fn($col) => $this->columnAllowedForUser($col))
+                                ->values()
+                                ->all();
+                            $settingsAllKeys = collect($settingsColumns)->pluck('key')->all();
+                            $settingsRequiredKeys = collect($settingsColumns)->where('required', true)->pluck('key')->all();
+                            $settingsVisibleDraft = array_values(array_intersect($this->draftColumns, $settingsAllKeys));
+                            $settingsSortedAll = array_merge(
+                                $settingsVisibleDraft,
+                                collect($settingsColumns)->pluck('key')->reject(fn($k) => in_array($k, $settingsVisibleDraft, true))->values()->all(),
+                            );
                         @endphp
 
-                        {{-- Primary (pinned) columns --}}
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                                    {{ __('merchant_panel.primary_columns') }}</p>
-                                <span
-                                    class="text-[10px] font-medium text-ink-muted">{{ __('merchant_panel.always_visible') }}</span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                @foreach ($settingsPrimaries as $col)
-                                    <div
-                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-surface-secondary/60 border border-surface-border text-sm text-ink">
-                                        <x-edz.icon name="lock-closed" class="w-3.5 h-3.5 text-ink-muted shrink-0" />
-                                        {{ __("merchant_panel.{$col['label_key']}") }}
-                                    </div>
-                                @endforeach
-                            </div>
-                            <p class="mt-1.5 text-xs text-ink-muted">{{ __('merchant_panel.primary_columns_hint') }}
-                            </p>
-                        </div>
-
-                        {{-- Secondary (configurable) columns --}}
                         <div>
                             <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                                {{ __('merchant_panel.secondary_columns') }}</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                @foreach ($settingsSecondaries as $col)
+                                {{ __('merchant_panel.columns') }}</p>
+                            <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.primary_columns_hint') }}</p>
+                            <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.column_order_hint') }}</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5"
+                                x-data="orderColumnReorderDraft()"
+                                @dragstart="onDragStart($event)"
+                                @dragover="onDragOver($event)"
+                                @drop="onDrop($event)"
+                                @dragleave="onDragLeave($event)"
+                                @dragend="onDragEnd()">
+                                @foreach ($settingsSortedAll as $settingsKey)
+                                    @php
+                                        $settingsCol = collect($settingsColumns)->firstWhere('key', $settingsKey);
+                                        $settingsIsChecked = in_array($settingsKey, $settingsVisibleDraft, true);
+                                        $settingsIndex = array_search($settingsKey, $settingsVisibleDraft, true);
+                                        $settingsPos = $settingsIndex !== false ? $settingsIndex + 1 : null;
+                                        $settingsCanUp = $settingsIndex !== false && $settingsIndex > 0;
+                                        $settingsCanDown = $settingsIndex !== false && $settingsIndex < count($settingsVisibleDraft) - 1;
+                                        $settingsIsRequired = in_array($settingsKey, $settingsRequiredKeys, true);
+                                    @endphp
                                     <label
-                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-surface-border hover:bg-surface-secondary cursor-pointer text-sm">
-                                        <input type="checkbox" wire:click="toggleDraftColumn('{{ $col['key'] }}')"
-                                            {{ in_array($col['key'], $this->draftColumns) ? 'checked' : '' }}
-                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                                        {{ __("merchant_panel.{$col['label_key']}") }}
+                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-surface-border hover:bg-surface-secondary cursor-pointer text-sm {{ $settingsIsRequired ? 'bg-surface-secondary/60' : '' }}"
+                                        data-col-key="{{ $settingsKey }}"
+                                        data-col-row="true">
+                                        <span class="cursor-grab text-ink-muted hover:text-ink shrink-0 opacity-70"
+                                            draggable="true"
+                                            title="{{ __('merchant_panel.drag_to_reorder') }}">
+                                            <x-edz.icon name="bars-2" class="w-4 h-4" />
+                                        </span>
+                                        <input type="checkbox" wire:click="toggleDraftColumn('{{ $settingsKey }}')"
+                                            {{ $settingsIsChecked ? 'checked' : '' }}
+                                            @disabled($settingsIsRequired)
+                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500 {{ $settingsIsRequired ? 'opacity-70' : '' }}">
+                                        @if ($settingsIsRequired)
+                                            <x-edz.icon name="lock-closed" class="w-3.5 h-3.5 shrink-0 text-ink-muted"
+                                                title="{{ __('merchant_panel.primary_columns') }}" />
+                                        @endif
+                                        <span class="flex-1 min-w-0 truncate">
+                                            {{ __("merchant_panel.{$settingsCol['label_key']}") }}
+                                            @if ($settingsIsRequired)
+                                                <span class="text-[10px] text-ink-muted font-normal">
+                                                    ({{ __('merchant_panel.always_visible') }})</span>
+                                            @endif
+                                        </span>
+                                        @if ($settingsIsChecked)
+                                            <span class="text-[10px] text-ink-muted tabular-nums shrink-0" wire:key="col-order-{{ $settingsKey }}">
+                                                {{ $settingsPos }}
+                                            </span>
+                                            <span class="flex items-center gap-0.5 shrink-0">
+                                                <button type="button" title="Up"
+                                                    wire:click="moveDraftColumn('{{ $settingsKey }}', 'up')"
+                                                    @disabled(!$settingsCanUp)
+                                                    class="p-1 rounded text-ink-muted hover:text-ink hover:bg-surface-tertiary disabled:opacity-30 disabled:cursor-not-allowed">
+                                                    <x-edz.icon name="arrow-up" class="w-3.5 h-3.5" />
+                                                </button>
+                                                <button type="button" title="Down"
+                                                    wire:click="moveDraftColumn('{{ $settingsKey }}', 'down')"
+                                                    @disabled(!$settingsCanDown)
+                                                    class="p-1 rounded text-ink-muted hover:text-ink hover:bg-surface-tertiary disabled:opacity-30 disabled:cursor-not-allowed">
+                                                    <x-edz.icon name="arrow-down" class="w-3.5 h-3.5" />
+                                                </button>
+                                            </span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
@@ -4276,7 +4856,7 @@ $submitEdit = function (): void {
                 $detailsTracking = $detailsOrder['tracking'] ?? null;
             @endphp
             <div @edz-modal-closed.window="$wire.closeOrderDetails()">
-                <x-edz.modal :isOpen="true" size="md" wire:key="order-details-modal">
+                <x-edz.modal  :isOpen="true" size="md" wire:key="order-details-modal">
                     <div class="p-6">
                         {{-- Header --}}
                         <div class="flex items-start gap-3">
@@ -4315,7 +4895,7 @@ $submitEdit = function (): void {
                         @php
                             $showItems =
                                 !in_array('products', $this->visibleColumns) ||
-                                !in_array('amount', $this->visibleColumns);
+                                !in_array('total', $this->visibleColumns);
                             $showShipping =
                                 !in_array('delivery_type', $this->visibleColumns) ||
                                 !in_array('shipment_type', $this->visibleColumns) ||
@@ -4348,7 +4928,7 @@ $submitEdit = function (): void {
                                         @forelse ($detailsOrder['items_summary'] ?? [] as $item)
                                             <div class="flex items-center justify-between gap-3 px-3 py-2">
                                                 <span class="min-w-0 flex-1 truncate text-ink">{{ $item['name'] }}
-                                                    <span class="text-ink-muted">×{{ $item['qty'] }}</span></span>
+                                                    <span class="text-ink-muted">أ—{{ $item['qty'] }}</span></span>
                                                 <span
                                                     class="font-medium text-ink shrink-0">{{ currency($item['price'] * $item['qty']) }}</span>
                                             </div>
@@ -4357,11 +4937,11 @@ $submitEdit = function (): void {
                                                 {{ __('merchant_panel.no_orders_found') }}</div>
                                         @endforelse
                                     @endif
-                                    @if (!in_array('amount', $this->visibleColumns))
+                                    @if (!in_array('total', $this->visibleColumns))
                                         <div
                                             class="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface font-bold text-ink">
                                             <span>{{ __('merchant_panel.total') }}</span>
-                                            <span>{{ currency($detailsOrder['total_amount']) }}</span>
+                                            <span class="tabular-nums">{{ currency($detailsOrder['display_total'] ?? $detailsOrder['total_amount'] ?? 0) }}</span>
                                         </div>
                                     @endif
                                 </div>
@@ -4610,6 +5190,8 @@ $submitEdit = function (): void {
 
     @include('livewire.merchant.orders.partials.order-form-modal')
 
+    @include('livewire.merchant.orders.partials.delivery-edit-modal')
+
     {{-- Confirmation Drawer (P26) --}}
     @if (canStore(StorePermissionEnum::ORDER_CONFIRM->value) || canStore(StorePermissionEnum::ORDER_MANAGE->value))
         <x-edz.modal :is-open="$showConfirmModal" @close="$wire.closeConfirmModal()" size="lg"
@@ -4665,7 +5247,7 @@ $submitEdit = function (): void {
                                         <span class="text-ink-muted">• {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}</span>
                                     </span>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        ×{{ $dup['total_overlap_qty'] }}
+                                        أ—{{ $dup['total_overlap_qty'] }}
                                     </span>
                                 </li>
                             @endforeach
@@ -4813,7 +5395,7 @@ $submitEdit = function (): void {
                             <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
                                 @foreach (collect($this->bulkSendAnalysis)->where('ready', false) as $entry)
                                     <li class="leading-relaxed break-words">
-                                        #{{ $entry['number'] }} — {{ implode('؛ ', $entry['reasons']) }}
+                                        #{{ $entry['number'] }} — {{ implode('ط› ', $entry['reasons']) }}
                                     </li>
                                 @endforeach
                             </ul>
@@ -4910,7 +5492,7 @@ $submitEdit = function (): void {
                                         </span>
                                     </button>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        ×{{ $dup['total_overlap_qty'] }}
+                                        أ—{{ $dup['total_overlap_qty'] }}
                                     </span>
                                 </li>
                             @endforeach
@@ -5030,7 +5612,7 @@ $submitEdit = function (): void {
         @endif
 
         {{-- Amount --}}
-        @if (in_array('amount', $this->visibleColumns))
+        @if (in_array('total', $this->visibleColumns))
             <div x-show="open === 'amount'" x-cloak>
                 <div class="flex items-center gap-1">
                     <div class="relative flex-1">

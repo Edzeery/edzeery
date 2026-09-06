@@ -125,26 +125,31 @@ function tscOrder(Store $store, bool $withTracking, string $trackingStatus = 'in
     return $order->fresh();
 }
 
-test('tracking-status column shows the carrier badge when the column is enabled', function () {
+test('tracking_status and confirmed_by are no longer valid order-table preference columns', function () {
     [$user, $store, $membership] = tscUser(StoreRoleEnum::OWNER->value);
     $order = tscOrder($store, true, OrderTrackingStatus::DAMAGED->value);
 
+    // A stale preference row (written before the columns were removed) must
+    // be silently dropped instead of rendering unknown columns. prefs_version
+    // matches current layout so the stored list is honoured (intersected
+    // against the valid keys) rather than reset by a legacy migration.
     UserColumnPreference::create([
         'membership_id' => $membership->id,
         'view_key' => 'orders_index',
-        'visible_columns' => ['tracking_status'],
+        'visible_columns' => ['tracking_status', 'confirmed_by', 'number'],
         'table_style' => 'default',
+        'prefs_version' => 2,
     ]);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
-    // 'damaged' is a tracking-only status key, so its label can only ever come
-    // from the badge itself (no order-scope collision).
     Volt::test('merchant.orders.index')
-        ->assertSet('visibleColumns', fn ($cols) => in_array('tracking_status', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => !in_array('tracking_status', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => !in_array('confirmed_by', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => in_array('number', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => count($cols) > 0)
         ->assertSee($order->number)
-        ->assertSee(__('merchant_panel.tracking_status'))
-        ->assertSee(StoreStatus::for('tracking', OrderTrackingStatus::DAMAGED->value)->label());
+        ->assertDontSee(StoreStatus::for('tracking', OrderTrackingStatus::DAMAGED->value)->label());
 });
 
 test('the tracking badge stays hidden while the column is disabled (default view)', function () {
@@ -158,26 +163,20 @@ test('the tracking badge stays hidden while the column is disabled (default view
         ->assertDontSee(StoreStatus::for('tracking', OrderTrackingStatus::DAMAGED->value)->label());
 });
 
-test('orders without a shipment render a dash in the tracking-status column', function () {
+test('orders without a shipment render fine with the default columns (no tracking-status column)', function () {
     [$user, $store, $membership] = tscUser(StoreRoleEnum::OWNER->value);
     $order = tscOrder($store, false);
-
-    UserColumnPreference::create([
-        'membership_id' => $membership->id,
-        'view_key' => 'orders_index',
-        'visible_columns' => ['tracking_status'],
-        'table_style' => 'default',
-    ]);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     $component = Volt::test('merchant.orders.index')
-        ->assertSet('visibleColumns', fn ($cols) => in_array('tracking_status', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => !in_array('tracking_status', $cols, true))
+        ->assertSet('visibleColumns', fn ($cols) => count($cols) > 0)
         ->assertSee($order->number)
         ->assertDontSee(StoreStatus::for('tracking', OrderTrackingStatus::DAMAGED->value)->label());
 
     $html = $component->html();
-    expect($html)->toContain('<span class="text-xs text-ink-muted">—</span>');
+    expect($html)->not->toContain('tracking_status');
 });
 
 test('the tracking column badge on the orders page stays informational only (no tracking-history UI here)', function () {

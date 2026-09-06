@@ -46,7 +46,7 @@
                     </div>
 
                     
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-4 gap-4">
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.name')); ?> *</label>
                             <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
@@ -79,6 +79,10 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             <label class="edz-label"><?php echo e(__('merchant_panel.phone_secondary')); ?></label>
                             <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
                         </div>
+                        <div>
+                            <label class="edz-label"><?php echo e(__('merchant_panel.address')); ?></label>
+                            <input type="text" wire:model="form.address" class="edz-input text-sm">
+                        </div>
                     </div>
 
                     
@@ -88,14 +92,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         <label class="edz-label"><?php echo e(__('merchant_panel.shipping_company')); ?></label>
                         <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => $this->allProviders,'optionValue' => 'id','optionLabel' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => $this->allProviders,'optionValue' => 'id','optionLabel' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','search' => true,'disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allProviders),'option-value' => 'id','option-label' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
+<?php $component->withAttributes(['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allProviders),'option-value' => 'id','option-label' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','search' => true,'disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
@@ -181,14 +185,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                 <label class="edz-label"><?php echo e(__('merchant_panel.state')); ?></label>
                                 <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => $this->allStates,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => $this->allStates,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm','search' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allStates),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm']); ?>
+<?php $component->withAttributes(['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allStates),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm','search' => true]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
@@ -214,14 +218,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                 <label class="edz-label"><?php echo e(__('merchant_panel.city')); ?></label>
                                 <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.city_id','options' => $this->allCities,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.city_id','wire:change' => 'rebuildFormOffices()','options' => $this->allCities,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm','search' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.city_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allCities),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm']); ?>
+<?php $component->withAttributes(['wire:model' => 'form.city_id','wire:change' => 'rebuildFormOffices()','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allCities),'option-value' => 'id','option-label' => 'name','placeholder' => '—','size' => 'sm','search' => true]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
@@ -252,14 +256,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                     <label class="edz-label"><?php echo e(__('merchant_panel.office')); ?></label>
                                     <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.stopdesk_point_id','options' => $this->formOffices,'optionValue' => 'value','optionLabel' => 'label','optionHint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.stopdesk_point_id','options' => $this->formOffices,'optionValue' => 'value','optionLabel' => 'label','optionHint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','search' => true,'disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.stopdesk_point_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->formOffices),'option-value' => 'value','option-label' => 'label','option-hint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
+<?php $component->withAttributes(['wire:model' => 'form.stopdesk_point_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->formOffices),'option-value' => 'value','option-label' => 'label','option-hint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','search' => true,'disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
@@ -272,8 +276,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php endif; ?>
                                 </div>
                                 <button type="button" wire:click="refreshFormOffices"
-                                    wire:loading.attr="disabled" :disabled="$loadingOffices"
-                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
+                                    wire:loading.attr="disabled"
+                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0 disabled:opacity-50 disabled:pointer-events-none <?php echo e($loadingOffices ? 'opacity-50 pointer-events-none' : ''); ?>"
                                     aria-label="<?php echo e(__('merchant_panel.refresh_offices')); ?>">
                                     <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
@@ -338,12 +342,6 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     </div>
 
                     
-                    <div class="mt-5">
-                        <label class="edz-label"><?php echo e(__('merchant_panel.address')); ?></label>
-                        <input type="text" wire:model="form.address" class="edz-input text-sm">
-                    </div>
-
-                    
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.shipment')); ?></label>
@@ -402,6 +400,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         <div>
                             <label class="edz-label"><?php echo e(__('merchant_panel.weight_kg')); ?></label>
                             <input type="number" wire:model="form.weight_kg" step="0.01" class="edz-input text-sm">
+                            <p class="text-xs text-ink-muted mt-1"><?php echo e(__('order_flow.weight_auto_hint')); ?></p>
                         </div>
                     </div>
 
@@ -496,7 +495,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                                             </div>
                                             <div class="text-xs text-ink-muted mt-0.5">
-                                                SKU: <?php echo e($item['sku'] ?? 'â€”'); ?>
+                                                SKU: <?php echo e($item['sku'] ?? '—'); ?>
 
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($item['stock'] ?? 0) <= 0): ?>
                                                     <span
@@ -653,103 +652,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                     
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($form['items'])): ?>
-                        <?php
-                            $subtotal = collect($form['items'])->sum(fn($i) => $i['price'] * $i['quantity']);
-                            $totalWeight = collect($form['items'])->sum(fn($i) => ($i['weight'] ?? 0) * $i['quantity']);
-                            $discount = 0;
-                            if ($form['discount_type'] && $form['discount_value']) {
-                                $discount =
-                                    $form['discount_type'] === 'amount'
-                                        ? (float) $form['discount_value']
-                                        : round(($subtotal * (float) $form['discount_value']) / 100, 2);
-                            }
-                            $grandTotal = max(0, $subtotal - $discount);
-                        ?>
-                        <div class="bg-surface-secondary rounded-lg p-4">
-                            
-                            <div class="flex items-center justify-between gap-4 flex-wrap">
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.items')); ?>:</span>
-                                    <span
-                                        class="font-semibold text-ink"><?php echo e(collect($form['items'])->sum('quantity')); ?></span>
-                                </div>
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.subtotal')); ?>:</span>
-                                    <span class="font-semibold text-ink tabular-nums"><?php echo e(currency($subtotal)); ?></span>
-                                </div>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($totalWeight > 0): ?>
-                                    <div class="flex items-center gap-4 text-sm">
-                                        <span class="text-ink-muted"><?php echo e(__('merchant_panel.total_weight')); ?>:</span>
-                                        <span
-                                            class="font-medium text-ink tabular-nums"><?php echo e(number_format($totalWeight, 2)); ?>
-
-                                            kg</span>
-                                    </div>
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <div class="flex items-center gap-4 text-sm">
-                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.delivery_cost')); ?>:</span>
-                                    <span class="text-success-500 font-medium"><?php echo e(__('merchant_panel.free')); ?></span>
-                                </div>
-                            </div>
-
-                            
-                            <div
-                                class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border">
-                                <div class="flex items-center gap-2">
-                                    <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.discount_type','options' => [
-                                        ['value' => '', 'label' => __('merchant_panel.discount')],
-                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
-                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
-                                    ],'size' => 'sm','class' => 'w-28']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.select'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.discount_type','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([
-                                        ['value' => '', 'label' => __('merchant_panel.discount')],
-                                        ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
-                                        ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
-                                    ]),'size' => 'sm','class' => 'w-28']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($form['discount_type']): ?>
-                                        <input type="number" wire:model="form.discount_value"
-                                            class="edz-input text-xs py-1 w-20" min="0"
-                                            placeholder="<?php echo e($form['discount_type'] === 'percent' ? '%' : 'DZD'); ?>">
-                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($form['discount_type'] && $form['discount_value']): ?>
-                                        <input type="text" wire:model="form.discount_reason"
-                                            class="edz-input text-xs py-1 flex-1 max-w-xs"
-                                            placeholder="<?php echo e(__('merchant_panel.discount_reason')); ?>">
-                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                </div>
-                                <span
-                                    class="text-sm font-medium tabular-nums <?php echo e($discount > 0 ? 'text-danger-500' : 'text-ink-muted'); ?>">
-                                    <?php echo e($discount > 0 ? '-' . currency($discount) : 'â€”'); ?>
-
-                                </span>
-                            </div>
-
-                            
-                            <div
-                                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-border">
-                                <span class="text-base font-bold text-ink"><?php echo e(__('merchant_panel.total')); ?></span>
-                                <span
-                                    class="text-lg font-bold text-ink tabular-nums"><?php echo e(currency($grandTotal)); ?></span>
-                            </div>
-                        </div>
+                        <?php echo $__env->make('livewire.merchant.orders.partials.order-financial-summary', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     
@@ -1076,7 +979,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                                             </div>
                                             <div class="text-xs text-ink-muted mt-0.5 flex items-center gap-1.5">
-                                                <span>SKU: <?php echo e($pv['first_variant']['sku'] ?? 'â€”'); ?></span>
+                                                <span>SKU: <?php echo e($pv['first_variant']['sku'] ?? '—'); ?></span>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($pv['first_variant']['stock_status'] ?? '') === 'out'): ?>
                                                     <span
                                                         class="text-danger-500 font-medium"><?php echo e(__('merchant_panel.out_of_stock')); ?></span>
@@ -1356,7 +1259,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                                 <span><?php echo e($variant['option_labels']); ?></span>
                                                 <span class="text-surface-border">آ·</span>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            <span>SKU: <?php echo e($variant['sku'] ?? 'â€”'); ?></span>
+                                            <span>SKU: <?php echo e($variant['sku'] ?? '—'); ?></span>
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isVariantSelected): ?>
                                                 <span class="text-success-fg font-medium">آ·
                                                     <?php echo e($variantQty); ?>

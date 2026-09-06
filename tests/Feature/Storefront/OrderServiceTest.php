@@ -103,14 +103,76 @@ beforeEach(function () {
 
     $pendingStatus = Status::where('type', 'order')->where('key', 'pending')->first();
 
+    $country = \App\Models\Locations\Country::create([
+        'code' => 'DZ',
+        'name' => 'Algeria',
+        'arabic_name' => 'الجزائر',
+        'is_active' => true,
+    ]);
+
+    $state = \App\Models\Locations\State::create([
+        'country_id' => $country->id,
+        'state_code' => '16',
+        'name' => 'Algiers',
+        'arabic_name' => 'الجزائر العاصمة',
+        'is_active' => true,
+    ]);
+
+    $city = \App\Models\Locations\City::create([
+        'state_id' => $state->id,
+        'name' => 'Algiers Centre',
+        'post_code' => '16000',
+        'is_active' => true,
+    ]);
+
+    $customer = \App\Models\Customer::create([
+        'store_id' => $this->store->id,
+        'name' => 'Test Customer',
+        'phone' => '0550123456',
+        'status' => true,
+    ]);
+
+    $product = Product::create([
+        'store_id' => $this->store->id,
+        'name' => 'Test Product',
+        'slug' => 'test-pr-' . uniqid(),
+        'sku' => 'test-sku-' . uniqid(),
+        'type' => 'simple',
+        'price' => 3000,
+        'is_active' => true,
+    ]);
+
+    $variant = ProductVariant::create([
+        'store_id' => $this->store->id,
+        'product_id' => $product->id,
+        'name' => 'Default',
+        'sku' => 'test-v-' . uniqid(),
+        'price' => 3000,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+
     $this->order = Order::create([
         'store_id' => $this->store->id,
-        'customer_id' => null,
+        'customer_id' => $customer->id,
         'status_id' => $pendingStatus->id,
         'number' => 'ORD-' . now()->format('Ymd') . '-0001',
         'total_amount' => 3000,
         'delivery_type' => 'home',
         'payment_method' => 'cod',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'address' => '12 Rue de Test',
+    ]);
+
+    OrderItem::create([
+        'store_id' => $this->store->id,
+        'order_id' => $this->order->id,
+        'product_variant_id' => $variant->id,
+        'product_id' => $product->id,
+        'quantity' => 1,
+        'price' => 3000,
+        'subtotal' => 3000,
     ]);
 
     $this->service = app(OrderService::class);
