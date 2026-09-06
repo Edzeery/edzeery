@@ -499,6 +499,7 @@ return [
     'announced_rates_desc' => 'Per-state delivery rates announced by each delivery company for your store',
     'announced_provider_desc' => 'Announced delivery rates per state for this company. You can also edit them manually.',
     'select_company' => 'Select a delivery company',
+    'select_company_first' => 'Select a delivery company first',
     'select_company_hint' => 'Choose a delivery company from the list to manage its announced rates',
     'sync_rates' => 'Sync from carrier',
     'syncing_rates' => 'Syncing…',
@@ -578,4 +579,5 @@ return [
     'vehicle_van' => 'Van',
     'rider_own_title' => 'Your store delivery riders',
     'rider_own_desc' => 'These riders belong directly to your store and are used to deliver orders by yourself.',
+    'filters' => 'Filters',
 ];

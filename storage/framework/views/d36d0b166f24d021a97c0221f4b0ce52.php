@@ -85,7 +85,39 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <div x-data="{ delivery: $wire.form.delivery_type }"
                         x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
                         x-effect="delivery = $wire.form.delivery_type">
-                        <label class="edz-label"><?php echo e(__('merchant_panel.delivery')); ?></label>
+                        <label class="edz-label"><?php echo e(__('merchant_panel.shipping_company')); ?></label>
+                        <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => $this->allProviders,'optionValue' => 'id','optionLabel' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allProviders),'option-value' => 'id','option-label' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.shipping_provider_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                            <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
+                        <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                        <label class="edz-label mt-4"><?php echo e(__('merchant_panel.delivery')); ?></label>
                         <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
                             <button type="button"
                                 :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
@@ -116,7 +148,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             </button>
                             <button type="button"
                                 :class="delivery === 'stopdesk' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'stopdesk'"
+                                @click="delivery = 'stopdesk'; $wire.changeDeliveryType('stopdesk')"
                                 class="px-4 py-2 text-sm font-medium transition-colors">
                                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
@@ -144,131 +176,10 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         </div>
 
                         
-                        <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="edz-label"><?php echo e(__('merchant_panel.shipping_company')); ?></label>
+                                <label class="edz-label"><?php echo e(__('merchant_panel.state')); ?></label>
                                 <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => $this->allProviders,'optionValue' => 'id','optionLabel' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.select'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.shipping_provider_id','wire:change' => 'loadFormOffices($event.target.value)','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->allProviders),'option-value' => 'id','option-label' => 'name','placeholder' => ''.e(__('merchant_panel.select_company')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.shipping_provider_id'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                    <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
-                                <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </div>
-                            <div x-show="$wire.form.shipping_provider_id" x-cloak>
-                                <div class="flex items-center gap-2">
-                                    <div class="flex-1">
-                                        <label class="edz-label"><?php echo e(__('merchant_panel.office')); ?></label>
-                                        <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.stopdesk_point_id','options' => $this->formOffices,'optionValue' => 'value','optionLabel' => 'label','optionHint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.select'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'form.stopdesk_point_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->formOffices),'option-value' => 'value','option-label' => 'label','option-hint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
-<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
-<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
-<?php endif; ?>
-                                    </div>
-                                    <button type="button" wire:click="refreshFormOffices"
-                                        wire:loading.attr="disabled" :disabled="$loadingOffices"
-                                        class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
-                                        aria-label="<?php echo e(__('merchant_panel.refresh_offices')); ?>">
-                                        <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-                                    </button>
-                                </div>
-                                <p class="text-xs text-ink-muted mt-1"><?php echo e(__('merchant_panel.office_hint')); ?></p>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.stopdesk_point_id'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                                    <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
-                                <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </div>
-                        </div>
-                    </div>
-
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.state')); ?></label>
-                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.state_id','wire:change' => 'loadCities($event.target.value)','options' => $this->allStates,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
@@ -288,20 +199,20 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
 <?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
 <?php endif; ?>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.state_id'];
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.state_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-                                <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
-                            <?php unset($message);
+                                    <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
+                                <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        </div>
-                        <div>
-                            <label class="edz-label"><?php echo e(__('merchant_panel.city')); ?></label>
-                            <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+                            </div>
+                            <div>
+                                <label class="edz-label"><?php echo e(__('merchant_panel.city')); ?></label>
+                                <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.city_id','options' => $this->allCities,'optionValue' => 'id','optionLabel' => 'name','placeholder' => '—','size' => 'sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
@@ -321,7 +232,99 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 <?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
 <?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
 <?php endif; ?>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.city_id'];
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.city_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                    <span class="text-danger-500 text-xs mt-1"><?php echo e($message); ?></span>
+                                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </div>
+                        </div>
+
+                        
+                        <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    <label class="edz-label"><?php echo e(__('merchant_panel.office')); ?></label>
+                                    <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'form.stopdesk_point_id','options' => $this->formOffices,'optionValue' => 'value','optionLabel' => 'label','optionHint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => $loadingOffices]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'form.stopdesk_point_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->formOffices),'option-value' => 'value','option-label' => 'label','option-hint' => 'hint','placeholder' => ''.e(__('merchant_panel.select_office')).'','size' => 'sm','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($loadingOffices)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+                                </div>
+                                <button type="button" wire:click="refreshFormOffices"
+                                    wire:loading.attr="disabled" :disabled="$loadingOffices"
+                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
+                                    aria-label="<?php echo e(__('merchant_panel.refresh_offices')); ?>">
+                                    <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.spinner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                </button>
+                            </div>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($this->form['shipping_provider_id'])): ?>
+                                <p class="text-xs text-ink-muted mt-1"><?php echo e(__('merchant_panel.select_company_first')); ?></p>
+                            <?php elseif(empty($this->form['city_id'])): ?>
+                                <p class="text-xs text-ink-muted mt-1"><?php echo e(__('storefront.select_city_for_desks')); ?></p>
+                            <?php else: ?>
+                                <p class="text-xs text-ink-muted mt-1"><?php echo e(__('merchant_panel.office_hint')); ?></p>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['form.stopdesk_point_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -332,10 +335,12 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label class="edz-label"><?php echo e(__('merchant_panel.address')); ?></label>
-                            <input type="text" wire:model="form.address" class="edz-input text-sm">
-                        </div>
+                    </div>
+
+                    
+                    <div class="mt-5">
+                        <label class="edz-label"><?php echo e(__('merchant_panel.address')); ?></label>
+                        <input type="text" wire:model="form.address" class="edz-input text-sm">
                     </div>
 
                     

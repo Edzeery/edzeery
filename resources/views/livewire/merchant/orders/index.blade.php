@@ -1661,7 +1661,13 @@ $rebuildFormOffices = function (): void {
         })
         ->all();
 
-    if (!empty($cityId) && !collect($this->formOffices)->contains(fn($o) => $o['value'] === ($this->form['stopdesk_point_id'] ?? null))) {
+    $cityOffices = empty($cityId) ? collect() : $offices->filter(fn($office) => $office->city_id === $cityId);
+
+    // Chain: company → type → wilaya → city → office. When the chosen
+    // municipality has a single office, auto-select it.
+    if (($this->form['delivery_type'] ?? null) === 'stopdesk' && $cityOffices->count() === 1) {
+        $this->form['stopdesk_point_id'] = (string) $cityOffices->first()->id;
+    } elseif (!collect($this->formOffices)->contains(fn($o) => $o['value'] === ($this->form['stopdesk_point_id'] ?? null))) {
         $this->form['stopdesk_point_id'] = '';
     }
 };
@@ -1706,6 +1712,18 @@ $loadFormOffices = function (?string $providerId = null, bool $preserveOffice = 
         $this->rebuildFormOffices();
     } finally {
         $this->loadingOffices = false;
+    }
+};
+
+// Delivery type switch: rebuild office options (which auto-selects the single
+// office of the chosen municipality on stopdesk) without requiring a provider change.
+$changeDeliveryType = function (string $type): void {
+    $this->form['delivery_type'] = $type;
+
+    if ($type === 'stopdesk') {
+        $this->rebuildFormOffices();
+    } else {
+        $this->form['stopdesk_point_id'] = '';
     }
 };
 
@@ -2555,9 +2573,11 @@ $submitEdit = function (): void {
         @endif
         <div class="flex items-center gap-2">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button @click="$wire.openCreateModal()" class="edz-btn edz-btn--primary edz-btn--sm">
-                    <x-edz.icon name="plus" class="w-4 h-4" />
-                    <span>{{ __('merchant_panel.new_order') }}</span>
+                <button @click="$wire.openCreateModal()" class="edz-btn edz-btn--primary edz-btn--sm"
+                    wire:loading.attr="disabled" wire:target="openCreateModal">
+                    <x-edz.spinner wire:target="openCreateModal" class="w-4 h-4" />
+                    <x-edz.icon name="plus" wire:loading.remove wire:target="openCreateModal" class="w-4 h-4" />
+                    <span wire:loading.remove wire:target="openCreateModal">{{ __('merchant_panel.new_order') }}</span>
                 </button>
             @endif
             <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
@@ -2573,7 +2593,7 @@ $submitEdit = function (): void {
         {{-- Main row: search + column toggle + filters toggle --}}
         <div class="flex flex-wrap items-center gap-3">
             {{-- Unified Search --}}
-            <div class="relative flex-1 min-w-[200px]">
+            <div class="relative flex-1 max-w-[230px] min-w-[150px]">
                 <input type="text" wire:model.live.debounce.600ms="search" @keydown.enter="$wire.loadOrders()"
                     placeholder="{{ __('merchant.search_orders') }} — {{ __('merchant_panel.products') }}, SKU, barcode..."
                     class="edz-input text-sm ps-9 pe-9">
@@ -2595,78 +2615,111 @@ $submitEdit = function (): void {
             </div>
 
             {{-- Table Settings --}}
-            <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm">
-                <x-edz.icon name="view-columns" class="w-4 h-4" />
-                {{ __('merchant_panel.columns') }}
-            </button>
-
-            {{-- Source --}}
-            <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['source'] ? 'text-accent-600' : '' }}"
-                    wire:loading.attr="disabled" wire:target="setFilter">
-                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
-                    <x-edz.icon name="user" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
-                    <span wire:loading.remove
-                        wire:target="setFilter">{{ $this->filters['source'] === 'manual' ? __('merchant.delivery_man') : ($this->filters['source'] === 'store' ? __('merchant_panel.store') : __('merchant_panel.source')) }}</span>
-                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
+            <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm"
+                    wire:loading.attr="disabled" wire:target="openTableSettings">
+                    <x-edz.spinner wire:target="openTableSettings" class="w-4 h-4" />
+                    <x-edz.icon name="view-columns" wire:loading.remove wire:target="openTableSettings" class="w-4 h-4" />
+                    <span wire:loading.remove wire:target="openTableSettings">{{ __('merchant_panel.columns') }}</span>
                 </button>
-                <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-40 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
-                    <button wire:click="setFilter('source', null)"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                    <button wire:click="setFilter('source', 'store')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant_panel.store') }}</button>
-                    <button wire:click="setFilter('source', 'manual')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('merchant.delivery_man') }}</button>
+
+            {{-- Quick Filters (grouped popup) --}}
+            @php
+                $quickActiveCount = collect(['source', 'delivery_type', 'shipping_provider'])
+                    ->filter(fn ($k) => filled($this->filters[$k] ?? null))
+                    ->count();
+            @endphp
+            <x-edz.dropdown align="right" width="340px"
+                trigger-class="edz-btn edz-btn--ghost edz-btn--sm {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}">
+                <x-slot name="trigger">
+                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
+                    <x-edz.icon name="funnel" wire:loading.remove wire:target="setFilter"
+                        class="w-4 h-4 {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}" />
+                    <span wire:loading.remove
+                        wire:target="setFilter">{{ __('merchant_panel.filters') }}</span>
+                    @if ($quickActiveCount > 0)
+                        <span wire:loading.remove wire:target="setFilter"
+                            class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
+                            {{ $quickActiveCount }}
+                        </span>
+                    @endif
+                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
+                </x-slot>
+
+                <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+                <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
+                    <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                        <x-edz.icon name="funnel" class="w-3.5 h-3.5 text-ink-muted" />
+                        <span>{{ __('merchant_panel.filters') }}</span>
+                    </p>
+                    <button @click="close()" type="button"
+                        class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                        title="{{ __('general.close') }}">
+                        <x-edz.icon name="x-mark" class="w-4 h-4" />
+                    </button>
                 </div>
-            </div>
 
-            {{-- Delivery Type --}}
-            <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['delivery_type'] ? 'text-accent-600' : '' }}"
-                    wire:loading.attr="disabled" wire:target="setFilter">
-                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
-                    <x-edz.icon name="home" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
-                    <span wire:loading.remove
-                        wire:target="setFilter">{{ $this->filters['delivery_type'] === 'stopdesk' ? __('storefront.stop_desk') : ($this->filters['delivery_type'] === 'home' ? __('storefront.home_delivery') : __('storefront.delivery_type')) }}</span>
-                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
-                </button>
-                <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-44 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5">
-                    <button wire:click="setFilter('delivery_type', null)"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
-                    <button wire:click="setFilter('delivery_type', 'home')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.home_delivery') }}</button>
-                    <button wire:click="setFilter('delivery_type', 'stopdesk')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">{{ __('storefront.stop_desk') }}</button>
+                <div class="edz-dropdown__section">
+                    <p class="edz-dropdown__section-title">{{ __('merchant_panel.source') }}</p>
+                    <button type="button" wire:click="setFilter('source', null)" @click="close()"
+                        aria-pressed="{{ empty($this->filters['source']) ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ empty($this->filters['source']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>—</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['source']) ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                    <button type="button" wire:click="setFilter('source', 'store')" @click="close()"
+                        aria-pressed="{{ ($this->filters['source'] ?? null) === 'store' ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ ($this->filters['source'] ?? null) === 'store' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>{{ __('merchant_panel.store') }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['source'] ?? null) === 'store' ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                    <button type="button" wire:click="setFilter('source', 'manual')" @click="close()"
+                        aria-pressed="{{ ($this->filters['source'] ?? null) === 'manual' ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ ($this->filters['source'] ?? null) === 'manual' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>{{ __('merchant.delivery_man') }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['source'] ?? null) === 'manual' ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
                 </div>
-            </div>
 
-            {{-- Shipping Provider --}}
-            <div x-data="{ open: false }" @click.away="open = false" class="relative">
-                <button @click="open = !open"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->filters['shipping_provider'] ? 'text-accent-600' : '' }}"
-                    wire:loading.attr="disabled" wire:target="setFilter">
-                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
-                    <x-edz.icon name="truck" wire:loading.remove wire:target="setFilter" class="w-4 h-4" />
-                    <span wire:loading.remove
-                        wire:target="setFilter">{{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? __('merchant.assign_delivery_man') }}</span>
-                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
-                </button>
-                <div x-show="open" x-transition
-                    class="absolute z-40 mt-1 w-48 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-60 overflow-y-auto edz-scroll">
-                    <button wire:click="setFilter('shipping_provider', null)"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">—</button>
+                <div class="edz-dropdown__section">
+                    <p class="edz-dropdown__section-title">{{ __('storefront.delivery_type') }}</p>
+                    <button type="button" wire:click="setFilter('delivery_type', null)" @click="close()"
+                        aria-pressed="{{ empty($this->filters['delivery_type']) ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ empty($this->filters['delivery_type']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>—</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['delivery_type']) ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                    <button type="button" wire:click="setFilter('delivery_type', 'home')" @click="close()"
+                        aria-pressed="{{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>{{ __('storefront.home_delivery') }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                    <button type="button" wire:click="setFilter('delivery_type', 'stopdesk')" @click="close()"
+                        aria-pressed="{{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>{{ __('storefront.stop_desk') }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                </div>
+
+                <div class="edz-dropdown__section">
+                    <p class="edz-dropdown__section-title">{{ __('order_flow.filter_provider') }}</p>
+                    <button type="button" wire:click="setFilter('shipping_provider', null)" @click="close()"
+                        aria-pressed="{{ empty($this->filters['shipping_provider']) ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ empty($this->filters['shipping_provider']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span>—</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['shipping_provider']) ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
                     @foreach ($this->allProviders as $pr)
-                        <button wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary">
-                            {{ $pr['name'] }}
+                        <button type="button" wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')" @click="close()"
+                            aria-pressed="{{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'true' : 'false' }}"
+                            class="edz-dropdown__item justify-between {{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                            <span>{{ $pr['name'] }}</span>
+                            <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'opacity-100' : 'opacity-0' }}" />
                         </button>
                     @endforeach
                 </div>
-            </div>
+            </x-edz.dropdown>
 
             {{-- Trash Toggle --}}
             <button wire:click="toggleTrash"
@@ -3484,9 +3537,32 @@ $submitEdit = function (): void {
                                                         {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
                                                         <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                     </button>
-                                                    <div x-show="open" x-transition x-cloak
-                                                        class="fixed z-[200] w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
-                                                        :style="'top:' + top + 'px; left:' + left + 'px'">
+                                                    <div x-show="open" x-cloak
+                                                        class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
+                                                        @click="open = false"></div>
+                                                    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+                                                        x-transition:enter-start="opacity-0 translate-y-3"
+                                                        x-transition:enter-end="opacity-100 translate-y-0"
+                                                        x-transition:leave="transition ease-in duration-150"
+                                                        x-transition:leave-start="opacity-100 translate-y-0"
+                                                        x-transition:leave-end="opacity-0 translate-y-3"
+                                                        :style="menuStyle"
+                                                        class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
+                                                               p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
+                                                               sm:inset-x-auto sm:bottom-auto sm:z-[200] sm:w-56 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
+                                                               sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll sm:max-h-64">
+                                                        <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+                                                        <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
+                                                            <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                                                                <x-edz.icon name="chevron-down" class="w-3.5 h-3.5 text-ink-muted" />
+                                                                <span>{{ __('merchant_panel.status') }}</span>
+                                                            </p>
+                                                            <button @click="open = false" type="button"
+                                                                class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                                                                title="{{ __('general.close') }}">
+                                                                <x-edz.icon name="x-mark" class="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                         @foreach ($this->allStatuses as $s)
                                                             @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
                                                                 <button
@@ -3559,8 +3635,12 @@ $submitEdit = function (): void {
                                             <div class="flex items-center justify-end gap-1 flex-nowrap">
                                                 <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                     class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                    title="{{ __('merchant.order_details') }}">
-                                                    <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0" />
+                                                    title="{{ __('merchant.order_details') }}"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="openOrderDetails('{{ $orderId }}')">
+                                                    <x-edz.spinner wire:target="openOrderDetails('{{ $orderId }}')" class="w-3.5 h-3.5" />
+                                                    <x-edz.icon name="info-circle" wire:loading.remove
+                                                        wire:target="openOrderDetails('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                 </button>
                                                 @include('livewire.merchant.orders.partials.order-events-menu', [
                                                     'orderId' => $orderId,
@@ -3571,24 +3651,38 @@ $submitEdit = function (): void {
                                                  && !$this->showTrash && in_array('confirmed', $order['transitions'] ?? [], true))
                                                     <button wire:click="openConfirmModal('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                        title="{{ __('order_flow.confirm_title') }}">
-                                                        <x-edz.icon name="phone" class="w-4 h-4 shrink-0" />
+                                                        title="{{ __('order_flow.confirm_title') }}"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="openConfirmModal('{{ $orderId }}')">
+                                                        <x-edz.spinner wire:target="openConfirmModal('{{ $orderId }}')" class="w-3.5 h-3.5" />
+                                                        <x-edz.icon name="phone" wire:loading.remove
+                                                            wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                     </button>
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
                                                  && !$this->showTrash && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
                                                     <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                        title="{{ __('order_flow.send_to_carrier') }}">
-                                                        <x-edz.icon name="truck" class="w-4 h-4 shrink-0" />
+                                                        title="{{ __('order_flow.send_to_carrier') }}"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="sendConfirmedOrder('{{ $orderId }}')">
+                                                        <x-edz.spinner wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-3.5 h-3.5" />
+                                                        <x-edz.icon name="truck" wire:loading.remove
+                                                            wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                     </button>
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
 
                                                         <button @click="$wire.openEditModal('{{ $orderId }}')"
                                                             class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                            title="{{ __('merchant_panel.edit') }}">
-                                                            <x-edz.icon name="edit" class="w-4 h-4 shrink-0" />
+                                                            title="{{ __('merchant_panel.edit') }}"
+                                                            wire:loading.attr="disabled"
+                                                            wire:target="openEditModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openEditModal('{{ $orderId }}')"
+                                                                class="w-3.5 h-3.5" />
+                                                            <x-edz.icon name="edit" wire:loading.remove
+                                                                wire:target="openEditModal('{{ $orderId }}')"
+                                                                class="w-4 h-4 shrink-0" />
                                                         </button>
                                                         <button wire:click="openReassignModal('{{ $orderId }}')"
                                                             wire:loading.attr="disabled"
@@ -3754,9 +3848,32 @@ $submitEdit = function (): void {
                                                     {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
                                                     <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                 </button>
-                                                <div x-show="open" x-transition x-cloak
-                                                    class="fixed z-[200] w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
-                                                    :style="'top:' + top + 'px; left:' + left + 'px'">
+                                                <div x-show="open" x-cloak
+                                                    class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
+                                                    @click="open = false"></div>
+                                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+                                                    x-transition:enter-start="opacity-0 translate-y-3"
+                                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                                    x-transition:leave="transition ease-in duration-150"
+                                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                                    x-transition:leave-end="opacity-0 translate-y-3"
+                                                    :style="menuStyle"
+                                                    class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
+                                                           p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
+                                                           sm:inset-x-auto sm:bottom-auto sm:z-[200] sm:w-56 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
+                                                           sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll sm:max-h-64">
+                                                    <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+                                                    <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
+                                                        <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                                                            <x-edz.icon name="chevron-down" class="w-3.5 h-3.5 text-ink-muted" />
+                                                            <span>{{ __('merchant_panel.status') }}</span>
+                                                        </p>
+                                                        <button @click="open = false" type="button"
+                                                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                                                            title="{{ __('general.close') }}">
+                                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                     @foreach ($this->allStatuses as $s)
                                                         @if (in_array($s['key'], $order['transitions'] ?? []) || $s['id'] == $order['status_id'])
                                                             <button
@@ -3838,8 +3955,13 @@ $submitEdit = function (): void {
                                                 class="w-3.5 h-3.5 text-ink-muted" />
                                             <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                 class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                title="{{ __('merchant.order_details') }}">
-                                                <x-edz.icon name="info-circle" class="w-4 h-4" />
+                                                title="{{ __('merchant.order_details') }}"
+                                                wire:loading.attr="disabled"
+                                                wire:target="openOrderDetails('{{ $orderId }}')">
+                                                <x-edz.spinner wire:target="openOrderDetails('{{ $orderId }}')"
+                                                    class="w-3.5 h-3.5" />
+                                                <x-edz.icon name="info-circle" wire:loading.remove
+                                                    wire:target="openOrderDetails('{{ $orderId }}')" class="w-4 h-4" />
                                             </button>
                                             @include('livewire.merchant.orders.partials.order-events-menu', [
                                                 'orderId' => $orderId,
@@ -3855,35 +3977,66 @@ $submitEdit = function (): void {
                                                     title="{{ __('general.more') }}">
                                                     <x-edz.icon name="ellipsis-horizontal" class="w-4 h-4" />
                                                 </button>
-                                                <div x-show="open" x-cloak x-transition
-                                                    class="fixed z-[210] w-60 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5"
-                                                    :style="'top:' + top + 'px; left:' + left   + 'px'">
+                                                <div x-show="open" x-cloak
+                                                    class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
+                                                    @click="close()"></div>
+                                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+                                                    x-transition:enter-start="opacity-0 translate-y-3"
+                                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                                    x-transition:leave="transition ease-in duration-150"
+                                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                                    x-transition:leave-end="opacity-0 translate-y-3"
+                                                    :style="menuStyle"
+                                                    class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
+                                                           p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
+                                                           sm:inset-x-auto sm:bottom-auto sm:w-60 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
+                                                           sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll">
+                                                    <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+                                                    <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
+                                                        <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                                                            <x-edz.icon name="ellipsis-horizontal" class="w-3.5 h-3.5 text-ink-muted" />
+                                                            <span>{{ __('merchant_panel.actions') }}</span>
+                                                        </p>
+                                                        <button @click="close()" type="button"
+                                                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                                                            title="{{ __('general.close') }}">
+                                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true))
                                                         <button wire:click="openConfirmModal('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
-                                                            @click="close()">
-                                                            <x-edz.icon name="phone" class="w-4 h-4 shrink-0" />
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                                                            @click="close()" wire:loading.attr="disabled"
+                                                            wire:target="openConfirmModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4" />
+                                                            <x-edz.icon name="phone" wire:loading.remove wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                             {{ __('order_flow.confirm_title') }}
                                                         </button>
                                                     @endif
                                                     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
                                                         <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
-                                                            @click="close()">
-                                                            <x-edz.icon name="truck" class="w-4 h-4 shrink-0" />
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                                                            @click="close()" wire:loading.attr="disabled"
+                                                            wire:target="sendConfirmedOrder('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4" />
+                                                            <x-edz.icon name="truck" wire:loading.remove wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                             {{ __('order_flow.send_to_carrier') }}
                                                         </button>
                                                     @endif
                                                     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                         <button @click="$wire.openEditModal('{{ $orderId }}'); close()"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary">
-                                                            <x-edz.icon name="edit" class="w-4 h-4 shrink-0" />
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                                                            wire:loading.attr="disabled" wire:target="openEditModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openEditModal('{{ $orderId }}')" class="w-4 h-4" />
+                                                            <x-edz.icon name="edit" wire:loading.remove wire:target="openEditModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                             {{ __('merchant_panel.edit') }}
                                                         </button>
                                                         <button wire:click="openReassignModal('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
-                                                            @click="close()">
-                                                            <x-edz.icon name="arrows-right-left" class="w-4 h-4 shrink-0" />
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
+                                                            @click="close()" wire:loading.attr="disabled"
+                                                            wire:target="openReassignModal('{{ $orderId }}')">
+                                                            <x-edz.spinner wire:target="openReassignModal('{{ $orderId }}')" class="w-4 h-4" />
+                                                            <x-edz.icon name="arrows-right-left" wire:loading.remove wire:target="openReassignModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
                                                             {{ __('merchant_panel.reassign') }}
                                                         </button>
                                                     @endif
@@ -4564,15 +4717,19 @@ $submitEdit = function (): void {
                     </button>
                     @if (canStore(StorePermissionEnum::ORDER_CONFIRM->value))
                         <button wire:click="submitConfirmOnly" type="button"
-                            class="edz-btn edz-btn--ghost">
-                            {{ __('order_flow.confirm_only') }}
+                            class="edz-btn edz-btn--ghost"
+                            wire:loading.attr="disabled" wire:target="submitConfirmOnly">
+                            <x-edz.spinner wire:target="submitConfirmOnly" class="w-3.5 h-3.5" />
+                            <span wire:loading.remove wire:target="submitConfirmOnly">{{ __('order_flow.confirm_only') }}</span>
                         </button>
                     @endif
                     @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
                         <button wire:click="submitConfirmAndSend" type="button"
-                            class="edz-btn edz-btn--primary">
-                            <x-edz.icon name="truck" class="w-4 h-4" />
-                            {{ __('order_flow.confirm_and_send') }}
+                            class="edz-btn edz-btn--primary"
+                            wire:loading.attr="disabled" wire:target="submitConfirmAndSend">
+                            <x-edz.spinner wire:target="submitConfirmAndSend" class="w-4 h-4" />
+                            <x-edz.icon name="truck" wire:loading.remove wire:target="submitConfirmAndSend" class="w-4 h-4" />
+                            <span wire:loading.remove wire:target="submitConfirmAndSend">{{ __('order_flow.confirm_and_send') }}</span>
                         </button>
                     @endif
                 </div>
@@ -4615,8 +4772,10 @@ $submitEdit = function (): void {
                         {{ __('buttons.cancel') }}
                     </button>
                     <button wire:click="submitBulkStatus" type="button"
-                        class="edz-btn edz-btn--primary">
-                        {{ __('buttons.save') }}
+                        class="edz-btn edz-btn--primary"
+                        wire:loading.attr="disabled" wire:target="submitBulkStatus">
+                        <x-edz.spinner wire:target="submitBulkStatus" class="w-4 h-4" />
+                        <span wire:loading.remove wire:target="submitBulkStatus">{{ __('buttons.save') }}</span>
                     </button>
                 </div>
             </div>
@@ -4669,13 +4828,18 @@ $submitEdit = function (): void {
                     </button>
                     @if ($this->bulkSendSkipCount === 0)
                         <button wire:click="confirmBulkSend" type="button"
-                            class="edz-btn edz-btn--primary">
-                            {{ __('order_flow.bulk_send_confirm') }}
+                            class="edz-btn edz-btn--primary"
+                            wire:loading.attr="disabled" wire:target="confirmBulkSend">
+                            <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
+                            <span wire:loading.remove wire:target="confirmBulkSend">{{ __('order_flow.bulk_send_confirm') }}</span>
                         </button>
                     @elseif ($this->bulkSendReadyCount > 0)
                         <button wire:click="confirmBulkSend" type="button"
-                            class="edz-btn edz-btn--primary">
-                            {{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}
+                            class="edz-btn edz-btn--primary"
+                            wire:loading.attr="disabled" wire:target="confirmBulkSend">
+                            <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
+                            <span wire:loading.remove
+                                wire:target="confirmBulkSend">{{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}</span>
                         </button>
                     @else
                         <button type="button" disabled
@@ -4799,21 +4963,44 @@ $submitEdit = function (): void {
     @include('livewire.merchant.orders.partials.order-events-modal')
 
     {{-- Filter Portal — single container, fixed-positioned --}}
-    <div x-data="dropdownPosition()" x-show="open" x-transition @click.away="close()"
-        @edz-filter-open.window="$event.detail && toggle($event, $event.detail)"
-        :style="`top: ${top}px; left: ${left}px`"
-        class="fixed z-50 p-2 bg-surface border border-surface-border rounded-xl shadow-lg"
-        :class="{
-            'max-h-64 overflow-y-auto edz-scroll': open === 'wilaya' || open === 'status' ||
-                open === 'assigned_to' || open === 'city' || open === 'delivery_type' ||
-                open === 'shipping_provider' || open === 'stopdesk_point' ||
-                open === 'shipment_type' || open === 'confirmed_by',
-            'w-48': open === 'product' || open === 'amount' || open === 'address' ||
-                open === 'notes' || open === 'weight' ||
-                open === 'send_from_carrier_warehouse',
-            'w-52': open === 'wilaya' || open === 'status' || open === 'assigned_to' ||
-                open === 'date'
-        }">
+    <div x-data="dropdownPosition()" x-show="open" @click.away="close()"
+        @edz-filter-open.window="$event.detail && toggle($event, $event.detail)">
+        <div x-show="open" x-cloak
+            class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden" @click="close()"></div>
+        <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 translate-y-3"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-3"
+            :style="menuStyle"
+            class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
+                   p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)]
+                   max-h-[75vh] overflow-y-auto edz-scroll
+                   sm:inset-x-auto sm:bottom-auto sm:z-50 sm:w-auto sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg"
+            :class="{
+                'sm:max-h-64': open === 'wilaya' || open === 'status' ||
+                    open === 'assigned_to' || open === 'city' || open === 'delivery_type' ||
+                    open === 'shipping_provider' || open === 'stopdesk_point' ||
+                    open === 'shipment_type' || open === 'confirmed_by',
+                'sm:w-48': open === 'product' || open === 'amount' || open === 'address' ||
+                    open === 'notes' || open === 'weight' ||
+                    open === 'send_from_carrier_warehouse',
+                'sm:w-52': open === 'wilaya' || open === 'status' || open === 'assigned_to' ||
+                    open === 'date'
+            }">
+            <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+            <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
+                <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                    <x-edz.icon name="filter" class="w-3.5 h-3.5 text-ink-muted" />
+                    <span>{{ __('buttons.filter') }}</span>
+                </p>
+                <button @click="close()" type="button"
+                    class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                    title="{{ __('general.close') }}">
+                    <x-edz.icon name="x-mark" class="w-4 h-4" />
+                </button>
+            </div>
 
         {{-- Wilaya --}}
         @if (in_array('wilaya', $this->visibleColumns))

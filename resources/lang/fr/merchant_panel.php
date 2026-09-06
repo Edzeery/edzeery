@@ -497,6 +497,7 @@ return [
     'announced_rates_desc' => 'Tarifs de livraison annoncés par chaque transporteur, par wilaya, pour votre boutique',
     'announced_provider_desc' => 'Tarifs de livraison annoncés par wilaya pour ce transporteur. Vous pouvez aussi les modifier manuellement.',
     'select_company' => 'Choisissez un transporteur',
+    'select_company_first' => 'Choisissez d\'abord un transporteur',
     'select_company_hint' => 'Choisissez un transporteur dans la liste pour gérer ses tarifs annoncés',
     'sync_rates' => 'Synchroniser depuis le transporteur',
     'syncing_rates' => 'Synchronisation…',
@@ -576,4 +577,5 @@ return [
     'vehicle_van' => 'Fourgonnette',
     'rider_own_title' => 'Les livreurs de votre boutique',
     'rider_own_desc' => 'Ces livreurs appartiennent directement à votre boutique et sont utilisés pour livrer les commandes par vos soins.',
+    'filters' => 'Filtres',
 ];

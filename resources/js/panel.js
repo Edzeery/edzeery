@@ -8,6 +8,7 @@ import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
 import orderRowActions, { orderEventsMenu, orderMoreMenu } from "./components/order-row-actions.js";
+import edzDropdown from "./components/edz-dropdown.js";
 import initButtonLoading from "./edz-button-loading.js";
 
 window.flatpickr = flatpickr;
@@ -184,6 +185,9 @@ function registerEdzPanel() {
 
     // --- Mobile card overflow actions popover (P29.7) ---
     Alpine.data("orderMoreMenu", orderMoreMenu);
+
+    // --- Shared navbar dropdown (notifications / user menu) with viewport clamping ---
+    Alpine.data("edzDropdown", edzDropdown);
 
     // --- Reusable product select (searchable, up to N products, frontend search) ---
     Alpine.data("productSelect", productSelect);

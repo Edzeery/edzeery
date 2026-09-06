@@ -586,6 +586,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('loadFormOffices'))->execute(...$arguments);
     }
 
+    public function changeDeliveryType(string $type): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('changeDeliveryType'))->execute(...$arguments);
+    }
+
     public function refreshFormOffices(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];

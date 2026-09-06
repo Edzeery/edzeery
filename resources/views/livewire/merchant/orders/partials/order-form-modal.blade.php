@@ -39,11 +39,21 @@
                         </div>
                     </div>
 
-                    {{-- Delivery — Carrier-first: company → delivery type → office --}}
+                    {{-- Delivery cascade — company → type → wilaya → city → office --}}
                     <div x-data="{ delivery: $wire.form.delivery_type }"
                         x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
                         x-effect="delivery = $wire.form.delivery_type">
-                        <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
+                        <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
+                        <x-edz.select wire:model="form.shipping_provider_id"
+                            wire:change="loadFormOffices($event.target.value)"
+                            :options="$this->allProviders" option-value="id" option-label="name"
+                            placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
+                            :disabled="$loadingOffices" />
+                        @error('form.shipping_provider_id')
+                            <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                        @enderror
+
+                        <label class="edz-label mt-4">{{ __('merchant_panel.delivery') }}</label>
                         <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
                             <button type="button"
                                 :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
@@ -54,76 +64,71 @@
                             </button>
                             <button type="button"
                                 :class="delivery === 'stopdesk' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
-                                @click="delivery = 'stopdesk'"
+                                @click="delivery = 'stopdesk'; $wire.changeDeliveryType('stopdesk')"
                                 class="px-4 py-2 text-sm font-medium transition-colors">
                                 <x-edz.icon name="building-storefront" class="w-4 h-4 inline mr-1" />
                                 {{ __('merchant_panel.stop_desk_label') }}
                             </button>
                         </div>
 
-                        {{-- Carrier + office (office deliveries only) --}}
-                        <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {{-- Wilaya → city --}}
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                                <x-edz.select wire:model="form.shipping_provider_id"
-                                    wire:change="loadFormOffices($event.target.value)"
-                                    :options="$this->allProviders" option-value="id" option-label="name"
-                                    placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                                    :disabled="$loadingOffices" />
-                                @error('form.shipping_provider_id')
+                                <label class="edz-label">{{ __('merchant_panel.state') }}</label>
+                                <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
+                                    :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
+                                    size="sm" />
+                                @error('form.state_id')
                                     <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                                 @enderror
                             </div>
-                            <div x-show="$wire.form.shipping_provider_id" x-cloak>
-                                <div class="flex items-center gap-2">
-                                    <div class="flex-1">
-                                        <label class="edz-label">{{ __('merchant_panel.office') }}</label>
-                                        <x-edz.select wire:model="form.stopdesk_point_id"
-                                            :options="$this->formOffices" option-value="value"
-                                            option-label="label" option-hint="hint"
-                                            placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
-                                            :disabled="$loadingOffices" />
-                                    </div>
-                                    <button type="button" wire:click="refreshFormOffices"
-                                        wire:loading.attr="disabled" :disabled="$loadingOffices"
-                                        class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
-                                        aria-label="{{ __('merchant_panel.refresh_offices') }}">
-                                        <x-edz.spinner wire:target="refreshFormOffices" class="w-4 h-4" />
-                                        <x-edz.icon name="arrow-path" class="w-4 h-4"
-                                            wire:loading.remove wire:target="refreshFormOffices" />
-                                    </button>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.city') }}</label>
+                                <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
+                                    option-label="name" placeholder="—" size="sm" />
+                                @error('form.city_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+
+                        {{-- Office (office deliveries only, scoped to company + municipality) --}}
+                        <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    <label class="edz-label">{{ __('merchant_panel.office') }}</label>
+                                    <x-edz.select wire:model="form.stopdesk_point_id"
+                                        :options="$this->formOffices" option-value="value"
+                                        option-label="label" option-hint="hint"
+                                        placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
+                                        :disabled="$loadingOffices" />
                                 </div>
-                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.office_hint') }}</p>
-                                @error('form.stopdesk_point_id')
-                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                                @enderror
+                                <button type="button" wire:click="refreshFormOffices"
+                                    wire:loading.attr="disabled" :disabled="$loadingOffices"
+                                    class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0"
+                                    aria-label="{{ __('merchant_panel.refresh_offices') }}">
+                                    <x-edz.spinner wire:target="refreshFormOffices" class="w-4 h-4" />
+                                    <x-edz.icon name="arrow-path" class="w-4 h-4"
+                                        wire:loading.remove wire:target="refreshFormOffices" />
+                                </button>
                             </div>
+                            @if (empty($this->form['shipping_provider_id']))
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.select_company_first') }}</p>
+                            @elseif (empty($this->form['city_id']))
+                                <p class="text-xs text-ink-muted mt-1">{{ __('storefront.select_city_for_desks') }}</p>
+                            @else
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.office_hint') }}</p>
+                            @endif
+                            @error('form.stopdesk_point_id')
+                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
                     </div>
 
-                    {{-- Destination --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.state') }}</label>
-                            <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
-                                size="sm" />
-                            @error('form.state_id')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.city') }}</label>
-                            <x-edz.select wire:model="form.city_id" :options="$this->allCities" option-value="id"
-                                option-label="name" placeholder="—" size="sm" />
-                            @error('form.city_id')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div class="sm:col-span-2">
-                            <label class="edz-label">{{ __('merchant_panel.address') }}</label>
-                            <input type="text" wire:model="form.address" class="edz-input text-sm">
-                        </div>
+                    {{-- Address --}}
+                    <div class="mt-5">
+                        <label class="edz-label">{{ __('merchant_panel.address') }}</label>
+                        <input type="text" wire:model="form.address" class="edz-input text-sm">
                     </div>
 
                     {{-- Order Info --}}

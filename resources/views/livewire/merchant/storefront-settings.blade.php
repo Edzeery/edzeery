@@ -414,10 +414,31 @@ $chosenPickerProduct = computed(function () {
                                         x-bind:class="open ? 'rotate-180' : ''" />
                                 </button>
 
-                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-150"
-                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                <div x-show="open" x-cloak class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
+                                    @click="open = false"></div>
+                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 translate-y-3"
                                     x-transition:enter-end="opacity-100 translate-y-0"
-                                    class="absolute z-30 mt-2 w-full rounded-xl border border-surface-border bg-surface shadow-xl overflow-hidden">
+                                    x-transition:leave="transition ease-in duration-150"
+                                    x-transition:leave-start="opacity-100 translate-y-0"
+                                    x-transition:leave-end="opacity-0 translate-y-3"
+                                    class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
+                                           p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)]
+                                           max-h-[70vh] overflow-y-auto edz-scroll
+                                           sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-2 sm:z-30 sm:w-full
+                                           sm:rounded-xl sm:border sm:border-surface-border sm:bg-surface sm:p-0 sm:shadow-xl sm:overflow-hidden">
+                                    <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
+                                    <div class="flex items-center justify-between gap-2 px-1 mb-2 sm:hidden">
+                                        <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
+                                            <x-edz.icon name="shopping-bag" class="w-3.5 h-3.5 text-ink-muted" />
+                                            <span>{{ __('merchant_panel.template_product') }}</span>
+                                        </p>
+                                        <button @click="open = false" type="button"
+                                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                                            title="{{ __('general.close') }}">
+                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
+                                        </button>
+                                    </div>
                                     <div class="p-2 border-b border-surface-border">
                                         <input type="search" wire:model.live.debounce.250ms="picker_query"
                                             placeholder="{{ __('storefront.search_products') }}"

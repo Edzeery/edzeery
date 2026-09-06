@@ -14,12 +14,27 @@
     gap: 1rem;
     height: var(--edz-topbar-height);
     padding-inline: 1.5rem;
-    background-color: var(--edz-glass-bg);
-    backdrop-filter: blur(var(--edz-blur-md));
-    -webkit-backdrop-filter: blur(var(--edz-blur-md));
+    background-color: transparent;
     border-bottom: 1px solid var(--edz-glass-border);
     flex: none;
     transition: background-color 0.25s var(--edz-ease-out-expo);
+
+    // Glass surface lives on ::before instead of this element.
+    // backdrop-filter on the bar itself turns it into a containing block
+    // for `position: fixed` descendants — which is what the topbar
+    // dropdowns (notifications & user menu) use on phones as a bottom
+    // sheet + scrim. That made the sheet open relative to the bar and get
+    // clipped ("opens upward, only bottom part visible"). The pseudo keeps
+    // the blur look without trapping fixed-position descendants.
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-color: var(--edz-glass-bg);
+        backdrop-filter: blur(var(--edz-blur-md));
+        -webkit-backdrop-filter: blur(var(--edz-blur-md));
+    }
 }
 
 .edz-topbar__trigger {

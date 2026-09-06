@@ -497,6 +497,7 @@ return [
     'announced_rates_desc' => 'Tarifas de entrega anunciadas por cada empresa de mensajería, por provincia, para tu tienda',
     'announced_provider_desc' => 'Tarifas de entrega anunciadas por provincia para esta empresa. También puedes editarlas manualmente.',
     'select_company' => 'Selecciona una empresa de mensajería',
+    'select_company_first' => 'Selecciona primero una empresa de mensajería',
     'select_company_hint' => 'Selecciona una empresa de la lista para gestionar sus tarifas anunciadas',
     'sync_rates' => 'Sincronizar desde la empresa',
     'syncing_rates' => 'Sincronizando…',
@@ -576,4 +577,5 @@ return [
     'vehicle_van' => 'Furgoneta',
     'rider_own_title' => 'Los repartidores de tu tienda',
     'rider_own_desc' => 'Estos repartidores pertenecen directamente a tu tienda y se usan para entregar pedidos por ti mismo.',
+    'filters' => 'Filtros',
 ];

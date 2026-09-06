@@ -4,6 +4,7 @@ export default function dropdownPosition() {
         activeKey: null,
         top: 0,
         left: 0,
+        menuStyle: "",
 
         init() {
             // "use" the passed dropdown element via $refs.dropdown when present.
@@ -12,6 +13,13 @@ export default function dropdownPosition() {
 
         positionAt(triggerEl) {
             if (!triggerEl) return;
+            // Phones (<640px): render as a bottom sheet — CSS inset classes drive
+            // the layout, so no inline positioning is emitted.
+            if (window.matchMedia("(max-width: 639px)").matches) {
+                this.menuStyle = "";
+                this.open = true;
+                return;
+            }
             const rect = triggerEl.getBoundingClientRect();
             let top = rect.bottom + 4;
             let left = rect.left;
@@ -25,6 +33,7 @@ export default function dropdownPosition() {
 
             this.top = top;
             this.left = left;
+            this.menuStyle = "top:" + top + "px; left:" + left + "px";
             this.open = true;
         },
 
