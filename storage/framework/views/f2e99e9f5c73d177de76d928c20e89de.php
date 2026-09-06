@@ -103,13 +103,43 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $duplicateWarnings;
 
-    public $detailsEvents;
+    public $showDuplicateScanModal;
+
+    public $duplicateScanNumber;
+
+    public $duplicateScanResults;
+
+    public $duplicateScanPhoneCount;
+
+    public $duplicateScanLevel;
+
+    public $duplicateScanRepeatCount;
+
+    public $eventsPreviewOrderId;
+
+    public $eventsPreview;
+
+    public $eventsFullOrderId;
+
+    public $eventsFull;
+
+    public $eventsFullLabel;
 
     public $showBulkStatusModal;
 
     public $bulkStatusTarget;
 
     public $bulkStatusReason;
+
+    public $showBulkSendModal;
+
+    public $bulkSendSummary;
+
+    public $bulkSendAnalysis;
+
+    public $bulkSendReadyCount;
+
+    public $bulkSendSkipCount;
 
     public $phoneEditPhone;
 
@@ -213,11 +243,39 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('bulkAssignAgent'))->execute(...$arguments);
     }
 
-    public function bulkSendToCarrier(?string $providerId): void
+    public function openBulkSendModal(): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
-        (new Actions\CallMethod('bulkSendToCarrier'))->execute(...$arguments);
+        (new Actions\CallMethod('openBulkSendModal'))->execute(...$arguments);
+    }
+
+    public function closeBulkSendModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeBulkSendModal'))->execute(...$arguments);
+    }
+
+    public function collectMissingFields(\App\Models\Orders\Order $order): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('collectMissingFields'))->execute(...$arguments);
+    }
+
+    public function resolveBulkOrderState(\App\Models\Orders\Order $order): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('resolveBulkOrderState'))->execute(...$arguments);
+    }
+
+    public function confirmBulkSend(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('confirmBulkSend'))->execute(...$arguments);
     }
 
     public function bulkDelete(): void
@@ -353,6 +411,27 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('closeOrderDetails'))->execute(...$arguments);
     }
 
+    public function loadOrderEvents(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('loadOrderEvents'))->execute(...$arguments);
+    }
+
+    public function openOrderEventsModal(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openOrderEventsModal'))->execute(...$arguments);
+    }
+
+    public function closeOrderEventsModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeOrderEventsModal'))->execute(...$arguments);
+    }
+
     public function openConfirmModal(string $orderId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -388,11 +467,32 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('submitConfirmAndSend'))->execute(...$arguments);
     }
 
+    public function sendConfirmedOrder(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('sendConfirmedOrder'))->execute(...$arguments);
+    }
+
     public function refreshDuplicateWarnings(?\App\Models\Orders\Order $order = NULL): void
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('refreshDuplicateWarnings'))->execute(...$arguments);
+    }
+
+    public function openDuplicateScan(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openDuplicateScan'))->execute(...$arguments);
+    }
+
+    public function closeDuplicateScanModal(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeDuplicateScanModal'))->execute(...$arguments);
     }
 
     public function refreshFormDuplicateWarnings(): void

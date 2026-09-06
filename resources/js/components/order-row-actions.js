@@ -31,3 +31,52 @@ export default function orderRowActions(el) {
         },
     };
 }
+
+export function orderEventsMenu(el) {
+    const orderId = el.dataset.orderId;
+    const canView = el.dataset.canView === "1";
+
+    return {
+        open: false,
+        top: 0,
+        left: 0,
+
+        toggle() {
+            if (!canView) return;
+            this.$wire.loadOrderEvents(orderId);
+            const trigger = this.$refs.evTrigger;
+            if (!trigger) return;
+            const r = trigger.getBoundingClientRect();
+            this.top = r.bottom + 4;
+            this.left = r.left;
+            if (this.top + 320 > window.innerHeight) this.top = r.top - 320;
+            this.open = !this.open;
+        },
+
+        close() {
+            this.open = false;
+        },
+    };
+}
+
+export function orderMoreMenu(el) {
+    return {
+        open: false,
+        top: 0,
+        left: 0,
+
+        toggle() {
+            const trigger = this.$refs.moreTrigger;
+            if (!trigger) return;
+            const r = trigger.getBoundingClientRect();
+            this.top = r.bottom + 4;
+            this.left = r.left;
+            if (this.top + 320 > window.innerHeight) this.top = r.top - 320;
+            this.open = !this.open;
+        },
+
+        close() {
+            this.open = false;
+        },
+    };
+}

@@ -232,14 +232,16 @@ test('staff without order.manage permission is forbidden from inline edits', fun
 
     inlineOrderVolt($staff, $store)
         ->call('startOrderWilayaEdit', $order->id)
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
+            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
     inlineOrderVolt($staff, $store)
         ->set('editingField', 'order.wilaya')
         ->set('editingId', $order->id)
         ->set('editingValue', $stateB->id)
         ->call('saveOrderWilaya')
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
+            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
     expect($order->fresh()->state_id)->toBe($stateA->id)
         ->and(Activity::query()->count())->toBe(0);
@@ -266,7 +268,7 @@ test('geography inline edit is blocked for shipped orders', function () {
         ->set('editingValue', $stateB->id)
         ->call('saveOrderWilaya')
         ->assertSet('editingField', 'order.wilaya')
-        ->assertDispatched('swal', type: 'error');
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
     expect($order->fresh()->state_id)->toBe($stateA->id)
         ->and((float) $order->fresh()->shipping_cost)->toBe(0.0)

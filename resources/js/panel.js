@@ -7,7 +7,7 @@ import edzSelect from "./components/edz-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
-import orderRowActions from "./components/order-row-actions.js";
+import orderRowActions, { orderEventsMenu, orderMoreMenu } from "./components/order-row-actions.js";
 import initButtonLoading from "./edz-button-loading.js";
 
 window.flatpickr = flatpickr;
@@ -178,6 +178,12 @@ function registerEdzPanel() {
 
     // --- Order table row actions (status menu + delete confirm) ---
     Alpine.data("orderRowActions", orderRowActions);
+
+    // --- Per-row order event-log dropdown (P29.4) ---
+    Alpine.data("orderEventsMenu", orderEventsMenu);
+
+    // --- Mobile card overflow actions popover (P29.7) ---
+    Alpine.data("orderMoreMenu", orderMoreMenu);
 
     // --- Reusable product select (searchable, up to N products, frontend search) ---
     Alpine.data("productSelect", productSelect);

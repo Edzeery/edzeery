@@ -222,7 +222,7 @@ test('a stopdesk order is created with the selected carrier and office persisted
         ])
         ->call('submitCreate')
         ->assertSet('showCreateModal', false)
-        ->assertDispatched('swal', type: 'success');
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success');
 
     $created = Order::where('store_id', $store->id)->latest('created_at')->first();
 

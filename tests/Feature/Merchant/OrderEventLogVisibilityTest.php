@@ -112,34 +112,82 @@ test('staff can never view the order event log, even when assigned', function ()
     expect(StoreOrderPermissions::canViewOrderEventLog($order, $membership))->toBeFalse();
 });
 
-test('owner sees the audit timeline when opening order details', function () {
+test('owner sees the audit timeline from the row event-log dropdown', function () {
     [$user, $store, $membership] = evUser(StoreRoleEnum::OWNER->value);
     $order = evOrder($store, null, $membership->id);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     $component = Volt::test('merchant.orders.index')
-        ->call('openOrderDetails', $order->id)
-        ->assertSet('canViewOrderDetailsEvents', true)
+        ->call('loadOrderEvents', $order->id)
+        ->assertSet('eventsPreviewOrderId', $order->id)
         ->assertSee(__('order_flow.order_timeline'))
+        ->assertSee(__('order_flow.show_more'))
         ->assertSee($user->name);
 
-    $events = collect($component->get('detailsEvents'));
-    expect($events)->not->toBeEmpty()
-        ->and($events->pluck('message')->contains('Seeded audit event'))->toBeTrue();
+    $preview = collect($component->get('eventsPreview'));
+    expect($preview)->not->toBeEmpty()
+        ->and($preview->pluck('message')->contains('Seeded audit event'))->toBeTrue();
 });
 
-test('staff cannot see the audit timeline when opening order details', function () {
+test('owner opens the full audit timeline in the show-more popup', function () {
+    [$user, $store, $membership] = evUser(StoreRoleEnum::OWNER->value);
+    $order = evOrder($store, null, $membership->id);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('loadOrderEvents', $order->id)
+        ->call('openOrderEventsModal', $order->id)
+        ->assertSet('eventsFullOrderId', $order->id)
+        ->assertSet('eventsFull', fn ($rows) => collect($rows)->pluck('message')->contains('Seeded audit event'))
+        ->assertSee(__('order_flow.order_timeline'));
+});
+
+test('staff cannot load the audit timeline from the row event-log dropdown', function () {
     [$user, $store, $membership] = evUser(StoreRoleEnum::STAFF->value);
     $order = evOrder($store, null, $membership->id);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.orders.index')
-        ->call('openOrderDetails', $order->id)
-        ->assertSet('canViewOrderDetailsEvents', false)
-        ->assertSet('detailsEvents', [])
+        ->call('loadOrderEvents', $order->id)
+        ->assertSet('eventsPreviewOrderId', null)
+        ->assertSet('eventsPreview', [])
+        ->assertDispatched('swal:toast', function ($name, $params) {
+            return ($params[0]['icon'] ?? null) === 'error'
+                && ($params[0]['title'] ?? null) === __('messages.permission_denied');
+        })
         ->assertDontSee(__('order_flow.order_timeline'));
+});
+
+test('the event-log dropdown button renders only for rows the manager can view', function () {
+    [$user, $store, $membership] = evUser(StoreRoleEnum::MANAGER->value);
+
+    $assigned = evOrder($store, $membership->id);
+    $other = evOrder($store, null);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $component = Volt::test('merchant.orders.index');
+
+    $rows = collect($component->get('orders')['data'] ?? [])->pluck('can_view_events', 'id')->all();
+
+    expect($rows[$assigned->id] ?? null)->toBeTrue()
+        ->and($rows[$other->id] ?? null)->toBeFalse()
+        // The dropdown renders once in the desktop row actions and once in the mobile card.
+        ->and(substr_count($component->html(), 'orderEventsMenu'))->toBe(2);
+});
+
+test('the event-log dropdown button is hidden for staff rows entirely', function () {
+    [$user, $store, $membership] = evUser(StoreRoleEnum::STAFF->value);
+    $order = evOrder($store, $membership->id);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $html = Volt::test('merchant.orders.index')->html();
+
+    expect($html)->not->toContain('orderEventsMenu');
 });
 
 test('tracking drawer hides the audit log from staff', function () {

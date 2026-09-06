@@ -78,6 +78,10 @@ return [
     'orders_assigned' => 'Orders assigned',
     'orders_deleted' => 'Orders moved to trash',
     'orders_restored' => 'Orders restored',
+    'order_created' => 'Order created',
+    'order_updated' => 'Order updated',
+    'order_deleted' => 'Order deleted',
+    'order_reassigned' => 'Order reassigned',
     'pending_auto_cancel' => 'Auto-cancel pending orders older than :hours hours',
     'selected' => 'selected',
 ];

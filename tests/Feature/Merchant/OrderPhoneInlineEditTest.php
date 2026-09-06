@@ -138,14 +138,16 @@ test('staff without order.manage permission cannot edit the phone inline', funct
 
     phoneVolt([$staff, $store])
         ->call('startOrderPhoneEdit', $order->id)
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
+            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
     phoneVolt([$staff, $store])
         ->set('editingField', 'order.phone')
         ->set('editingId', $order->id)
         ->set('phoneEditPhone', '0550123456')
         ->call('saveOrderPhone')
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
+            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
     expect($order->fresh()->customer?->phone)->toBe('0550000000');
 });

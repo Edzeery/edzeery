@@ -53,7 +53,7 @@ class OrderDuplicateService
         $query = Order::query()
             ->where('store_id', $storeId)
             ->where('created_at', '>=', $since)
-            ->with('status');
+            ->with(['status', 'items']);
 
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
@@ -101,5 +101,141 @@ class OrderDuplicateService
         }
 
         return array_slice($results, 0, $limit);
+    }
+
+    /**
+     * تعداد «الأخوة» (siblings) لمجموعة قائمة طلبيات — نفس النافذة والنطاق وحالة soft-delete
+     * كشرط findSimilar مع تجاهل الذات، بلا أي ترشيح للحالة. الهاتف فريد ضمن المتجر
+     * (store+phone unique) لذا الأخوة على نفس الرقم == نفس customer_id.
+     *
+     * @param  array<int, string>  $orderIds
+     * @param  string  $storeId
+     * @return array<string, array{same_phone: int, same_product: int}>
+     */
+    public function countsBySiblings(array $orderIds, string $storeId): array
+    {
+        $orderIds = array_values(array_unique(array_filter(array_map('strval', $orderIds))));
+
+        if (empty($orderIds) || empty($storeId)) {
+            return [];
+        }
+
+        $since = Carbon::now()->subDays(self::WINDOW_DAYS);
+
+        $pool = Order::query()
+            ->where('store_id', $storeId)
+            ->where('created_at', '>=', $since)
+            ->with(['items:id,order_id,product_variant_id,product_id,quantity'])
+            ->get(['id', 'customer_id']);
+
+        $byCustomer = [];
+        $poolItems = [];
+
+        foreach ($pool as $order) {
+            $cid = (string) $order->customer_id;
+            $byCustomer[$cid][] = $order->id;
+
+            $variants = [];
+            $products = [];
+            foreach ($order->items as $item) {
+                if ($item->product_variant_id) {
+                    $variants[] = (string) $item->product_variant_id;
+                }
+                if ($item->product_id) {
+                    $products[] = (string) $item->product_id;
+                }
+            }
+            $poolItems[$order->id] = [$variants, $products];
+        }
+
+        $targets = Order::query()
+            ->whereIn('id', $orderIds)
+            ->with(['items:id,order_id,product_variant_id,product_id,quantity'])
+            ->get(['id', 'customer_id']);
+
+        $counts = [];
+
+        foreach ($targets as $target) {
+            $samePhone = 0;
+            $sameProduct = 0;
+
+            $siblingIds = $byCustomer[(string) $target->customer_id] ?? [];
+
+            if (! empty($siblingIds)) {
+                [$targetVariants, $targetProducts] = $this->itemIds($target->items);
+
+                foreach ($siblingIds as $siblingId) {
+                    if ($siblingId === $target->id) {
+                        continue;
+                    }
+
+                    $samePhone++;
+
+                    [$siblingVariants, $siblingProducts] = $poolItems[$siblingId] ?? [[], []];
+
+                    if (array_intersect($targetVariants, $siblingVariants) || array_intersect($targetProducts, $siblingProducts)) {
+                        $sameProduct++;
+                    }
+                }
+            }
+
+            $counts[$target->id] = ['same_phone' => $samePhone, 'same_product' => $sameProduct];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * تعداد طلبياتٍ وصلت للإرسال (ناقل/موصّل مُسند أو حالة sent/delivered) لكل عميل ضمن
+     * القائمة — لأجل إشارة «سبق أن طلب» المحايدة (بأي عمر؛ المستخدم حدد أن الفترة لا تهم).
+     * تُرجع عددًا شامِلًا لكل customer_id (دون استثناء الذات — يستبعدها المتصل لأنه يملك
+     * جاهزية الطلبية المعروضة). بلا ترشيح نافذة زمنية عمدًا.
+     *
+     * @param  array<int, string>  $customerIds
+     * @return array<string, int>
+     */
+    public function countsPriorCarrierOrders(array $customerIds): array
+    {
+        $customerIds = array_values(array_unique(array_filter(array_map('strval', $customerIds))));
+
+        if (empty($customerIds)) {
+            return [];
+        }
+
+        $carrierKeys = \App\Domains\Order\Support\OrderWorkflow::carrier();
+
+        $rows = Order::query()
+            ->whereIn('customer_id', $customerIds)
+            ->where(function ($q) use ($carrierKeys) {
+                $q->whereNotNull('shipping_provider_id')
+                    ->orWhereNotNull('delivery_rider_id')
+                    ->orWhereHas('status', fn($sq) => $sq->whereIn('key', $carrierKeys));
+            })
+            ->selectRaw('customer_id, COUNT(*) as sibling_count')
+            ->groupBy('customer_id')
+            ->get();
+
+        return $rows->mapWithKeys(fn($row) => [(string) $row->customer_id => (int) $row->sibling_count])->all();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Orders\OrderItem>  $items
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function itemIds(iterable $items): array
+    {
+        $variants = [];
+        $products = [];
+
+        foreach ($items as $item) {
+            if ($item->product_variant_id) {
+                $variants[] = (string) $item->product_variant_id;
+            }
+            if ($item->product_id) {
+                $products[] = (string) $item->product_id;
+            }
+        }
+
+        return [array_values(array_unique($variants)), array_values(array_unique($products))];
     }
 }

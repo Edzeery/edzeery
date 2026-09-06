@@ -76,6 +76,10 @@ return [
     'orders_assigned' => 'Commandes assignées',
     'orders_deleted' => 'Commandes supprimées',
     'orders_restored' => 'Commandes restaurées',
+    'order_created' => 'Commande créée',
+    'order_updated' => 'Commande mise à jour',
+    'order_deleted' => 'Commande supprimée',
+    'order_reassigned' => 'Commande réassignée',
     'pending_auto_cancel' => 'Annulation automatique des commandes en attente depuis plus de :hours heures',
     'selected' => 'sélectionné',
 ];

@@ -131,18 +131,33 @@ state([
     'confirmSummary' => null,
     'duplicateWarnings' => [],
 
-    // Details audit log
-    'detailsEvents' => [],
-    'canViewOrderDetailsEvents' => false,
+    // Duplicate scan popup (P29.5): lazy, only computed when the row badge is clicked
+    'showDuplicateScanModal' => false,
+    'duplicateScanNumber' => null,
+    'duplicateScanResults' => [],
+    'duplicateScanPhoneCount' => 0,
+    'duplicateScanLevel' => 'none',
+    'duplicateScanRepeatCount' => 0,
+
+    // Order event log (P29.4) — row action dropdown + full-history popup
+    'eventsPreviewOrderId' => null,
+    'eventsPreview' => [],
+    'eventsFullOrderId' => null,
+    'eventsFull' => [],
+    'eventsFullLabel' => null,
 
     // Bulk status change modal (P29)
     'showBulkStatusModal' => false,
     'bulkStatusTarget' => '',
     'bulkStatusReason' => '',
 
-    // Bulk send-to-carrier modal (P29.3): grouped by each order's own carrier
+    // Bulk send-to-carrier modal (P29.3): grouped by each order's own carrier.
+    // bulkSendAnalysis = per-order eligibility (ready, carrier, explicit reasons).
     'showBulkSendModal' => false,
     'bulkSendSummary' => [],
+    'bulkSendAnalysis' => [],
+    'bulkSendReadyCount' => 0,
+    'bulkSendSkipCount' => 0,
 
     // Inline phone edit (customer phone + order secondary stacked in one cell)
     'phoneEditPhone' => '',
@@ -258,6 +273,7 @@ $orderColumns = function (): array {
         ['key' => 'shipment_type', 'label_key' => 'shipment', 'group' => 'products_financial', 'default' => true],
         // workflow
         ['key' => 'status', 'label_key' => 'status', 'group' => 'workflow', 'default' => true],
+        ['key' => 'tracking_status', 'label_key' => 'tracking_status', 'group' => 'workflow', 'default' => false],
         ['key' => 'assigned_agent', 'label_key' => 'assigned_agent', 'group' => 'workflow', 'default' => true],
         ['key' => 'confirmed_by', 'label_key' => 'confirmed_by', 'group' => 'workflow', 'default' => false],
         ['key' => 'created_at', 'label_key' => 'date', 'group' => 'workflow', 'default' => true],
@@ -446,12 +462,56 @@ $loadOrders = function (): void {
 
     $paginated = $query->orderByDesc('created_at')->paginate(min((int) ($this->perPage ?? 50), 50), ['*'], 'page', $this->page);
 
+    // Duplicate marker (P29.5a): siblings with the SAME phone AND at least one shared product
+    // inside the 30-day window (same scope as findSimilar, self excluded). Phone is unique
+    // per store, so matching by customer_id == matching by phone.
+    $duplicateCounts = app(\App\Domains\Order\Services\OrderDuplicateService::class)
+        ->countsBySiblings($paginated->getCollection()->pluck('id')->all(), $storeId);
+
+    $membership = $this->getCurrentMembership();
+
     $service = app(OrderService::class);
+
+    // P29.6 "ordered before": any prior order of the same phone (== customer) that reached
+    // the carrier — any age, per the user's rule (the period does not matter for this signal).
+    $priorCarrierCounts = app(\App\Domains\Order\Services\OrderDuplicateService::class)
+        ->countsPriorCarrierOrders($paginated->getCollection()->pluck('customer_id')->all());
+
+    $carrierKeys = \App\Domains\Order\Support\OrderWorkflow::carrier();
+
     $this->orders = $paginated->toArray();
     $this->orders['data'] = $paginated
         ->getCollection()
-        ->map(function ($order) use ($service) {
+        ->map(function ($order) use ($service, $duplicateCounts, $priorCarrierCounts, $carrierKeys, $membership) {
             $arr = $order->toArray();
+            // Status key is resolved through the statuses relation (orders.status_id FK);
+            // blades must read this explicit key instead of nesting $arr['status']['key'].
+            $arr['status_key'] = $order->status?->key;
+            // P29.4 — the row actions column shows the event-log dropdown only to members
+            // allowed to read the audit log (OWNER/ADMIN always, MANAGER when assigned).
+            $arr['can_view_events'] = $membership
+                ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)
+                : false;
+            $arr['duplicate_count'] = (int) ($duplicateCounts[$order->id]['same_product'] ?? 0);
+            $arr['duplicate_phone_count'] = (int) ($duplicateCounts[$order->id]['same_phone'] ?? 0);
+
+            // "سبق أن طلب" — the displayed order itself is excluded so a sent order does not
+            // flag itself; only a sibling that reached the carrier counts.
+            $selfReachedCarrier = $order->shipping_provider_id
+                || $order->delivery_rider_id
+                || in_array($order->status?->key, $carrierKeys, true);
+
+            $arr['repeat_count'] = max(0, (int) ($priorCarrierCounts[(string) $order->customer_id] ?? 0) - ($selfReachedCarrier ? 1 : 0));
+
+            // One signal per row, precedence: duplicate > probable > repeat.
+            $arr['dup_level'] = $arr['duplicate_count'] >= 1
+                ? 'duplicate'
+                : ($arr['duplicate_phone_count'] >= 1
+                    ? 'probable'
+                    : ($arr['repeat_count'] >= 1
+                        ? 'repeat'
+                        : null));
+
             $arr['transitions'] = $service->availableTransitions($order);
             $arr['items_summary'] = $order->items
                 ->map(
@@ -465,6 +525,7 @@ $loadOrders = function (): void {
             $arr['tracking'] = $order->latestTracking
                 ? [
                     'tracking_number' => $order->latestTracking->tracking_number,
+                    'tracking_status' => $order->latestTracking->tracking_status,
                     'carrier_status' => $order->latestTracking->carrier_status,
                     'carrier_label' => $order->latestTracking->carrier_label,
                     'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
@@ -575,53 +636,62 @@ $clearSelection = function (): void {
 
 // --- Bulk actions ---
 $bulkAssignAgent = function (?string $membershipId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_ASSIGN->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     if (empty($this->selectedOrders)) {
-        $this->dispatch('swal', type: 'warning', title: __('merchant.no_orders_selected'));
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
         return;
     }
     if ($membershipId && !StoreMembership::where('id', $membershipId)->where('store_id', currentStoreId())->exists()) {
-        $this->dispatch('swal', type: 'error', title: __('merchant_panel.invalid_agent'));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.invalid_agent')]);
         return;
     }
     Order::where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
         ->update(['assigned_to_membership_id' => $membershipId]);
-    $this->dispatch('swal', type: 'success', title: __('merchant.orders_assigned'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_assigned')]);
     $this->clearSelection();
     $this->loadOrders();
 };
 
 // P29.3 — Bulk "send to carrier" grouped by each order's OWN carrier
-// (shipping_provider_id, falling back to delivery_rider_id). Orders with
-// neither are reported as unassigned. The confirmation modal shows a
-// per-carrier summary before anything is sent.
+// (shipping_provider_id, falling back to delivery_rider_id). Orders that are
+// NOT ready (status, missing fields, no carrier) are surfaced explicitly in
+// the confirmation modal BEFORE anything is sent, and are named with their
+// reasons in the result toast. No auto-confirm is ever performed.
 $openBulkSendModal = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     if (empty($this->selectedOrders)) {
         $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
         return;
     }
 
-    $providers = collect($this->allProviders)->keyBy('id');
-
-    $orders = Order::with('customer')
+    $orders = Order::with(['status', 'customer', 'shippingProvider', 'deliveryRider', 'items'])
         ->where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
         ->get();
 
-    $groups = [];
-    foreach ($orders as $order) {
-        $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
-        $name = $carrierKey === 'unassigned'
-            ? __('order_flow.bulk_send_unassigned')
-            : ($providers->get($carrierKey)['name'] ?? __('order_flow.bulk_send_rider'));
+    $this->bulkSendAnalysis = $orders
+        ->map(fn (Order $order) => $this->resolveBulkOrderState($order))
+        ->values()
+        ->all();
 
-        if (! isset($groups[$carrierKey])) {
-            $groups[$carrierKey] = ['key' => $carrierKey, 'name' => $name, 'count' => 0];
+    $ready = collect($this->bulkSendAnalysis)->where('ready', true);
+    $this->bulkSendReadyCount = $ready->count();
+    $this->bulkSendSkipCount = count($this->bulkSendAnalysis) - $ready->count();
+
+    $groups = [];
+    foreach ($ready as $entry) {
+        if (! isset($groups[$entry['carrierKey']])) {
+            $groups[$entry['carrierKey']] = ['key' => $entry['carrierKey'], 'name' => $entry['carrierName'], 'count' => 0];
         }
-        $groups[$carrierKey]['count']++;
+        $groups[$entry['carrierKey']]['count']++;
     }
 
     $this->bulkSendSummary = array_values($groups);
@@ -631,9 +701,12 @@ $openBulkSendModal = function (): void {
 $closeBulkSendModal = function (): void {
     $this->showBulkSendModal = false;
     $this->bulkSendSummary = [];
+    $this->bulkSendAnalysis = [];
+    $this->bulkSendReadyCount = 0;
+    $this->bulkSendSkipCount = 0;
 };
 
-// Per-order 29.2 readiness + missing-field list, reused by the bulk flow.
+// Per-order 29.2 readiness + missing-field list.
 $collectMissingFields = function (Order $order): array {
     $missing = [];
 
@@ -652,7 +725,7 @@ $collectMissingFields = function (Order $order): array {
     if (blank($order->address) && blank($order->stopdesk_point_id)) {
         $missing[] = __('merchant_panel.address');
     }
-    if (! $order->items()->exists()) {
+    if ($order->items->isEmpty()) {
         $missing[] = __('merchant_panel.items');
     }
     if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
@@ -662,11 +735,50 @@ $collectMissingFields = function (Order $order): array {
     return $missing;
 };
 
-$confirmBulkSend = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+// Single source of truth for bulk eligibility: resolves each order's carrier
+// (provider name, fallback rider name) plus explicit "why not ready" reasons.
+$resolveBulkOrderState = function (Order $order): array {
+    $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
+    $carrierName = $order->shippingProvider?->name
+        ?? ($order->deliveryRider?->name ?? __('order_flow.bulk_send_unassigned'));
 
-    $this->showBulkSendModal = false;
-    $this->bulkSendSummary = [];
+    $reasons = [];
+
+    if (! in_array($order->status?->key, ['confirmed', 'preparing'], true)) {
+        $reasons[] = __('order_flow.bulk_send_reason_status', ['status' => status_label('order', $order->status?->key)]);
+    }
+
+    $missing = $this->collectMissingFields($order);
+
+    if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
+        $carrierLabel = __('order_flow.confirm_partner');
+        $missing = array_values(array_filter($missing, fn (string $field) => $field !== $carrierLabel));
+        $reasons[] = __('order_flow.bulk_send_reason_no_carrier');
+    }
+
+    if (! empty($missing)) {
+        $reasons[] = __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $missing)]);
+    }
+
+    $reasons = array_values(array_unique($reasons));
+
+    return [
+        'id' => $order->id,
+        'number' => $order->number,
+        'carrierKey' => $carrierKey,
+        'carrierName' => $carrierName,
+        'ready' => empty($reasons),
+        'reasons' => $reasons,
+    ];
+};
+
+$confirmBulkSend = function (): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->closeBulkSendModal();
 
     if (empty($this->selectedOrders)) {
         $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
@@ -675,31 +787,26 @@ $confirmBulkSend = function (): void {
 
     $membership = $this->getCurrentMembership();
     if (! $membership) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => 'Unauthorized']);
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
 
-    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
-
-    $orders = Order::with('customer')
+    $orders = Order::with(['status', 'customer', 'shippingProvider', 'deliveryRider', 'items'])
         ->where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
         ->get();
+
+    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
 
     $perCarrier = [];
     $sent = 0;
     $skipped = [];
 
     foreach ($orders as $order) {
-        // Skip orders that are not ready/eligible (confirmed/preparing).
-        if (! in_array($order->status?->key, ['confirmed', 'preparing'], true)) {
-            $skipped[] = $order->number;
-            continue;
-        }
+        $state = $this->resolveBulkOrderState($order);
 
-        $missing = $this->collectMissingFields($order);
-        if (! empty($missing)) {
-            $skipped[] = $order->number;
+        if (! $state['ready']) {
+            $skipped[] = $order->number . ' (' . implode('؛ ', $state['reasons']) . ')';
             continue;
         }
 
@@ -710,11 +817,14 @@ $confirmBulkSend = function (): void {
                 changedBy: $membership,
             );
 
-            $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
-            $perCarrier[$carrierKey] = ($perCarrier[$carrierKey] ?? 0) + 1;
+            if (! isset($perCarrier[$state['carrierKey']])) {
+                $perCarrier[$state['carrierKey']] = ['name' => $state['carrierName'], 'count' => 0];
+            }
+            $perCarrier[$state['carrierKey']]['count']++;
             $sent++;
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning("confirmedBulkSend failed for order [{$order->number}]: " . $e->getMessage());
+            $skipped[] = $order->number . ' (' . $e->getMessage() . ')';
         }
     }
 
@@ -722,17 +832,18 @@ $confirmBulkSend = function (): void {
     $this->loadOrders();
 
     $summaryLines = [];
-    foreach ($perCarrier as $carrierKey => $count) {
-        $carrierName = collect($this->allProviders)->firstWhere('id', $carrierKey)['name']
-            ?? __('order_flow.bulk_send_rider');
-        $summaryLines[] = __('order_flow.bulk_send_summary_line', ['carrier' => $carrierName, 'count' => $count]);
+    foreach ($perCarrier as $carrier) {
+        $summaryLines[] = __('order_flow.bulk_send_summary_line', ['carrier' => $carrier['name'], 'count' => $carrier['count']]);
     }
 
-    if ($skipped) {
+    if (! empty($skipped)) {
         $summaryLines[] = __('order_flow.bulk_send_skipped', ['count' => count($skipped)]);
+        foreach ($skipped as $line) {
+            $summaryLines[] = $line;
+        }
     }
 
-    if ($sent > 0 || $skipped) {
+    if ($sent > 0 || ! empty($skipped)) {
         $this->dispatch('swal:toast', [
             'icon' => ! empty($skipped) ? 'warning' : 'success',
             'title' => implode(' • ', $summaryLines),
@@ -741,13 +852,16 @@ $confirmBulkSend = function (): void {
 };
 
 $bulkDelete = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     if (empty($this->selectedOrders)) {
-        $this->dispatch('swal', type: 'warning', title: __('merchant.no_orders_selected'));
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
         return;
     }
     Order::where('store_id', currentStoreId())->whereIn('id', $this->selectedOrders)->delete();
-    $this->dispatch('swal', type: 'success', title: __('merchant.orders_deleted'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_deleted')]);
     $this->clearSelection();
     $this->loadOrders();
 };
@@ -761,23 +875,32 @@ $toggleTrash = function (): void {
 };
 
 $restoreOrder = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     Order::where('store_id', currentStoreId())->withTrashed()->findOrFail($orderId)->restore();
-    $this->dispatch('swal', type: 'success', title: __('merchant.orders_restored'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_restored')]);
     $this->loadOrders();
 };
 
 $restoreAll = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     Order::where('store_id', currentStoreId())->onlyTrashed()->restore();
-    $this->dispatch('swal', type: 'success', title: __('merchant.orders_restored'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_restored')]);
     $this->loadOrders();
 };
 
 $forceDeleteAll = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     Order::where('store_id', currentStoreId())->onlyTrashed()->forceDelete();
-    $this->dispatch('swal', type: 'success', title: __('merchant.empty_trash'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.empty_trash')]);
     $this->loadOrders();
 };
 
@@ -860,12 +983,15 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $membership = $this->getCurrentMembership();
 
-    abort_unless(canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey)), 403);
+    if (! canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey))) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $service = app(OrderService::class);
     $statusKey_translation = status_label('order', $statusKey) ?: __('status.' . $statusKey);
     if (!$service->canTransition($order, $statusKey)) {
-        $this->dispatch('swal', type: 'error', title: __('status_transition.invalid_transition', ['to' => $statusKey_translation ?? '—']));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('status_transition.invalid_transition', ['to' => $statusKey_translation ?? '—'])]);
         return;
     }
 
@@ -874,7 +1000,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $this->page = 1;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('status_transition.order_status_updated', ['new_status' => $statusKey_translation ?? '—']));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('status_transition.order_status_updated', ['new_status' => $statusKey_translation ?? '—'])]);
 };
 
 $loadFilterProducts = function (): void {
@@ -951,6 +1077,7 @@ $openOrderDetails = function (string $orderId): void {
         $arr['tracking'] = $order->latestTracking
             ? [
                 'tracking_number' => $order->latestTracking->tracking_number,
+                'tracking_status' => $order->latestTracking->tracking_status,
                 'carrier_status' => $order->latestTracking->carrier_status,
                 'carrier_label' => $order->latestTracking->carrier_label,
                 'shipped_at' => $order->latestTracking->shipped_at?->format('Y-m-d H:i'),
@@ -962,35 +1089,72 @@ $openOrderDetails = function (string $orderId): void {
         // Prepend so firstWhere in the drawer finds it even on an empty page.
         $this->orders['data'] = array_merge([$arr], $this->orders['data'] ?? []);
     }
+};
 
-    // P29.1 — Event log visibility: only load the audit timeline when this
-    // member is allowed to see it (OWNER/ADMIN always, MANAGER when assigned).
+$closeOrderDetails = function (): void {
+    $this->detailsOrderId = null;
+};
+
+// ——— Order event log (P29.4) — row dropdown preview + "show more" full popup. --—
+$loadOrderEvents = function (string $orderId): void {
+    $order = \App\Models\Orders\Order::where('store_id', currentStoreId())->find($orderId);
     $membership = $this->getCurrentMembership();
-    $this->canViewOrderDetailsEvents = $membership
-        ? \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)
-        : false;
 
-    $this->detailsEvents = $this->canViewOrderDetailsEvents
-        ? \App\Models\Orders\OrderEvent::where('store_id', currentStoreId())
+    if (! $order || ! $membership
+        || ! \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)) {
+        $this->eventsPreviewOrderId = null;
+        $this->eventsPreview = [];
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    if ($this->eventsPreviewOrderId !== $orderId) {
+        $this->eventsPreviewOrderId = $orderId;
+        $this->eventsPreview = \App\Models\Orders\OrderEvent::where('store_id', currentStoreId())
             ->where('order_id', $orderId)
             ->with('actor.user')
             ->orderByDesc('occurred_at')
             ->limit(15)
             ->get()
-            ->toArray()
-        : [];
+            ->toArray();
+    }
 };
 
-$closeOrderDetails = function (): void {
-    $this->detailsOrderId = null;
-    $this->detailsEvents = [];
-    $this->canViewOrderDetailsEvents = false;
+$openOrderEventsModal = function (string $orderId): void {
+    $order = \App\Models\Orders\Order::where('store_id', currentStoreId())->find($orderId);
+    $membership = $this->getCurrentMembership();
+
+    if (! $order || ! $membership
+        || ! \App\Support\StoreOrderPermissions::canViewOrderEventLog($order, $membership)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->eventsFullOrderId = $orderId;
+    $this->eventsFullLabel = $order->number;
+    $this->eventsFull = ($this->eventsPreviewOrderId === $orderId)
+        ? $this->eventsPreview
+        : \App\Models\Orders\OrderEvent::where('store_id', currentStoreId())
+            ->where('order_id', $orderId)
+            ->with('actor.user')
+            ->orderByDesc('occurred_at')
+            ->get()
+            ->toArray();
+};
+
+$closeOrderEventsModal = function (): void {
+    $this->eventsFullOrderId = null;
+    $this->eventsFull = [];
+    $this->eventsFullLabel = null;
 };
 
 // ——— Confirmation drawer (P26) ———
 
 $openConfirmModal = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_CONFIRM->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_CONFIRM->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())
         ->with(['status', 'shippingProvider', 'deliveryRider', 'customer'])
@@ -1023,7 +1187,10 @@ $closeConfirmModal = function (): void {
 };
 
 $bumpConfirmationAttempt = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_CONFIRM->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_CONFIRM->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->find($this->confirmOrderId);
 
@@ -1053,7 +1220,10 @@ $bumpConfirmationAttempt = function (): void {
 };
 
 $submitConfirmOnly = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_CONFIRM->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_CONFIRM->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->find($this->confirmOrderId);
 
@@ -1081,7 +1251,10 @@ $submitConfirmOnly = function (): void {
 };
 
 $submitConfirmAndSend = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->find($this->confirmOrderId);
 
@@ -1103,7 +1276,7 @@ $submitConfirmAndSend = function (): void {
     $membership = $this->getCurrentMembership();
 
     if (! $membership) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => 'Unauthorized']);
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
 
@@ -1123,7 +1296,7 @@ $submitConfirmAndSend = function (): void {
         ]);
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("confirm+send failed for order [{$order->number}]: " . $e->getMessage());
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.send_failed')]);
     }
 };
 
@@ -1132,7 +1305,10 @@ $submitConfirmAndSend = function (): void {
 // Readiness is validated before any transition; incomplete orders get a
 // field-by-field warning and keep their current status.
 $sendConfirmedOrder = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::with('customer')
         ->where('store_id', currentStoreId())
@@ -1147,29 +1323,7 @@ $sendConfirmedOrder = function (string $orderId): void {
         return;
     }
 
-    $missing = [];
-
-    if (blank($order->customer?->name)) {
-        $missing[] = __('merchant_panel.customer_name');
-    }
-    if (blank($order->customer?->phone)) {
-        $missing[] = __('merchant_panel.customer_phone');
-    }
-    if (blank($order->state_id)) {
-        $missing[] = __('merchant_panel.state');
-    }
-    if (blank($order->city_id)) {
-        $missing[] = __('merchant_panel.city');
-    }
-    if (blank($order->address) && blank($order->stopdesk_point_id)) {
-        $missing[] = __('merchant_panel.address');
-    }
-    if (! $order->items()->exists()) {
-        $missing[] = __('merchant_panel.items');
-    }
-    if (blank($order->shipping_provider_id) && blank($order->delivery_rider_id)) {
-        $missing[] = __('order_flow.confirm_partner');
-    }
+    $missing = $this->collectMissingFields($order);
 
     if (! empty($missing)) {
         $this->dispatch('swal:toast', [
@@ -1182,7 +1336,7 @@ $sendConfirmedOrder = function (string $orderId): void {
     $membership = $this->getCurrentMembership();
 
     if (! $membership) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => 'Unauthorized']);
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
 
@@ -1197,7 +1351,7 @@ $sendConfirmedOrder = function (string $orderId): void {
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_sent')]);
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("sendConfirmedOrder failed for order [{$order->number}]: " . $e->getMessage());
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.send_failed')]);
     }
 };
 
@@ -1213,6 +1367,52 @@ $refreshDuplicateWarnings = function (?Order $order = null): void {
 
     $service = app(\App\Domains\Order\Services\OrderDuplicateService::class);
     $this->duplicateWarnings = $service->findSimilar($order);
+};
+
+// Lazy duplicate scan (P29.6): runs findSimilar() + sibling counts only for the clicked order.
+// Classifies the row: duplicate (same phone + shared product in window), probable (same phone,
+// different product in window) or repeat (a prior order of this phone reached the carrier).
+$openDuplicateScan = function (string $orderId): void {
+    $order = Order::where('store_id', currentStoreId())->with(['items.variant', 'status'])->find($orderId);
+
+    if (! $order) {
+        return;
+    }
+
+    $service = app(\App\Domains\Order\Services\OrderDuplicateService::class);
+
+    $counts = $service->countsBySiblings([$orderId], currentStoreId());
+    $samePhone = (int) ($counts[$orderId]['same_phone'] ?? 0);
+    $sameProduct = (int) ($counts[$orderId]['same_product'] ?? 0);
+
+    $selfReachedCarrier = $order->shipping_provider_id
+        || $order->delivery_rider_id
+        || in_array($order->status?->key, \App\Domains\Order\Support\OrderWorkflow::carrier(), true);
+
+    $priorCarrier = $service->countsPriorCarrierOrders([(string) $order->customer_id]);
+    $repeatCount = max(0, (int) ($priorCarrier[(string) $order->customer_id] ?? 0) - ($selfReachedCarrier ? 1 : 0));
+
+    $this->duplicateScanPhoneCount = $samePhone;
+    $this->duplicateScanRepeatCount = $repeatCount;
+    $this->duplicateScanLevel = $sameProduct >= 1
+        ? 'duplicate'
+        : ($samePhone >= 1
+            ? 'probable'
+            : ($repeatCount >= 1
+                ? 'repeat'
+                : 'none'));
+    $this->duplicateScanNumber = $order->number;
+    $this->duplicateScanResults = $service->findSimilar($order);
+    $this->showDuplicateScanModal = true;
+};
+
+$closeDuplicateScanModal = function (): void {
+    $this->showDuplicateScanModal = false;
+    $this->duplicateScanNumber = null;
+    $this->duplicateScanResults = [];
+    $this->duplicateScanPhoneCount = 0;
+    $this->duplicateScanLevel = 'none';
+    $this->duplicateScanRepeatCount = 0;
 };
 
 // Duplicate warnings inside the create/edit form (P28 extended):
@@ -1247,7 +1447,10 @@ $refreshFormDuplicateWarnings = function (): void {
 };
 
 $markOrderDuplicate = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
 
@@ -1269,7 +1472,10 @@ $markOrderDuplicate = function (string $orderId): void {
 // ——— Bulk status change (P29) ———
 
 $openBulkStatusModal = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     if (empty($this->selectedOrders)) {
         $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
@@ -1297,7 +1503,10 @@ $closeBulkStatusModal = function (): void {
 };
 
 $submitBulkStatus = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $statusKey = $this->bulkStatusTarget;
 
@@ -1346,17 +1555,23 @@ $submitBulkStatus = function (): void {
 
 // ——— Reassign ———
 $openReassignModal = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     $this->reassignOrderId = $orderId;
     $this->reassignMembershipId = '';
     $this->showReassignModal = true;
 };
 
 $submitReassign = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     if (empty($this->reassignMembershipId)) {
-        $this->dispatch('swal', type: 'error', title: __('Select an agent'));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.select_agent')]);
         return;
     }
 
@@ -1365,7 +1580,7 @@ $submitReassign = function (): void {
     $byMembership = $this->getCurrentMembership();
 
     if (!$byMembership) {
-        $this->dispatch('swal', type: 'error', title: __('Unauthorized'));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
 
@@ -1375,18 +1590,21 @@ $submitReassign = function (): void {
     $this->showReassignModal = false;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('Order reassigned'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_reassigned')]);
 };
 
 // ——— Delete ———
 $deleteOrder = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $order->delete();
 
     $this->loadOrders();
-    $this->dispatch('swal', type: 'success', title: __('Order deleted'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_deleted')]);
 };
 
 $refreshOrders = function () {
@@ -1524,7 +1742,10 @@ $refreshFormOffices = function (): void {
 // ——— Inline phone edit (customer phone + order secondary, stacked) ———
 
 $startOrderPhoneEdit = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->with('customer')->find($orderId);
 
@@ -1545,7 +1766,10 @@ $cancelOrderPhoneEdit = function (): void {
 };
 
 $saveOrderPhone = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $this->editingError = null;
 
@@ -1618,7 +1842,7 @@ $guardOrderEditable = function (): bool {
     $shippedSortOrder = \App\Models\Status::where('type', 'order')->where('key', 'shipped')->value('sort_order');
 
     if ($order->status && $shippedSortOrder !== null && $order->status->sort_order >= $shippedSortOrder) {
-        $this->dispatch('swal', type: 'error', title: __('Cannot edit shipped/closed orders'));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.cannot_edit_shipped')]);
         return false;
     }
 
@@ -1626,13 +1850,19 @@ $guardOrderEditable = function (): bool {
 };
 
 $startOrderWilayaEdit = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $this->startEdit('order.wilaya', $orderId, Order::where('store_id', currentStoreId())->whereKey($orderId)->value('state_id'));
 };
 
 $startOrderCityEdit = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->find($orderId);
 
@@ -1729,7 +1959,10 @@ $saveOrderCity = function (?string $cityId = null): void {
 
 // ——— Create Modal ———
 $openCreateModal = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
     $this->form = [
         'customer_name' => '',
         'customer_phone' => '',
@@ -1853,7 +2086,7 @@ $addFormItem = function (string $variantId): void {
 
     if ($tracks && !$backorder && $available <= 0) {
         $this->syncFormSelectedItems();
-        $this->dispatch('swal', type: 'error', title: __('merchant_panel.out_of_stock', ['variant' => $variant->name]));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.out_of_stock', ['variant' => $variant->name])]);
         return;
     }
 
@@ -1862,7 +2095,7 @@ $addFormItem = function (string $variantId): void {
         if ($item['product_variant_id'] === $variantId) {
             if ($cap !== null && ($item['quantity'] ?? 0) >= $cap) {
                 $this->syncFormSelectedItems();
-                $this->dispatch('swal', type: 'error', title: __('merchant_panel.max_qty_reached', ['cap' => $cap]));
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.max_qty_reached', ['cap' => $cap])]);
                 return;
             }
             $this->form['items'][$idx]['quantity']++;
@@ -1915,7 +2148,7 @@ $addFormItemByBarcode = function (string $code): void {
 
     if ($tracks && !$backorder && $available <= 0) {
         $this->syncFormSelectedItems();
-        $this->dispatch('swal', type: 'error', title: __('merchant_panel.out_of_stock', ['variant' => $variant->name]));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.out_of_stock', ['variant' => $variant->name])]);
         return;
     }
 
@@ -1924,7 +2157,7 @@ $addFormItemByBarcode = function (string $code): void {
         if ($item['product_variant_id'] === $variant->id) {
             if ($cap !== null && ($item['quantity'] ?? 0) >= $cap) {
                 $this->syncFormSelectedItems();
-                $this->dispatch('swal', type: 'error', title: __('merchant_panel.max_qty_reached', ['cap' => $cap]));
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.max_qty_reached', ['cap' => $cap])]);
                 return;
             }
             $this->form['items'][$idx]['quantity']++;
@@ -1979,7 +2212,10 @@ $updateFormItemPrice = function (int $index, $price): void {
 };
 
 $submitCreate = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $storeId = currentStoreId();
 
@@ -2027,7 +2263,7 @@ $submitCreate = function (): void {
         if ($tracksInventory && !\App\Domains\Cart\Support\OrderRules::allowsBackorder($store)) {
             $available = (int) $variant->stock;
             if ($available < $itemData['quantity']) {
-                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)])]);
                 return;
             }
         }
@@ -2082,12 +2318,15 @@ $submitCreate = function (): void {
     $this->page = 1;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('Order created'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_created')]);
 };
 
 // ——— Edit Modal ———
 $openEditModal = function (string $orderId): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::with(['customer', 'items.product', 'items.variant'])
         ->where('store_id', currentStoreId())
@@ -2146,14 +2385,17 @@ $openEditModal = function (string $orderId): void {
 };
 
 $submitEdit = function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
 
     $order = Order::where('store_id', currentStoreId())->findOrFail($this->editingOrderId);
 
     // Block edit if shipped or later (dynamic: compare sort_order against 'shipped')
     $shippedSortOrder = \App\Models\Status::where('type', 'order')->where('key', 'shipped')->value('sort_order');
     if ($order->status && $shippedSortOrder !== null && $order->status->sort_order >= $shippedSortOrder) {
-        $this->dispatch('swal', type: 'error', title: __('Cannot edit shipped/closed orders'));
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.cannot_edit_shipped')]);
         return;
     }
 
@@ -2248,7 +2490,7 @@ $submitEdit = function (): void {
         if ($delta > 0 && \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store) && !\App\Domains\Cart\Support\OrderRules::allowsBackorder($order->store)) {
             $available = (int) $variant->stock;
             if ($available < $delta) {
-                $this->dispatch('swal', type: 'error', title: __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)]));
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)])]);
                 return;
             }
         }
@@ -2295,7 +2537,7 @@ $submitEdit = function (): void {
     $this->page = 1;
     $this->loadOrders();
 
-    $this->dispatch('swal', type: 'success', title: __('Order updated'));
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_updated')]);
 };
 ?>
 
@@ -2857,6 +3099,14 @@ $submitEdit = function (): void {
                                             </div>
                                         </th>
                                     @endif
+                                    @if (in_array('tracking_status', $this->visibleColumns))
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                {{ __('merchant_panel.tracking_status') }}
+                                            </div>
+                                        </th>
+                                    @endif
                                     @if (in_array('assigned_agent', $this->visibleColumns))
                                         <th
                                             class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
@@ -2982,14 +3232,48 @@ $submitEdit = function (): void {
                                         </td>
                                         @if (in_array('number', $this->visibleColumns))
                                             <td class="px-4 py-3 font-mono font-semibold text-ink">
-                                                #{{ $order['number'] }}
+                                                <span class="inline-flex items-center">
+                                                    #{{ $order['number'] }}
+                                                </span>
                                             </td>
                                         @endif
                                         @if (in_array('customer', $this->visibleColumns))
                                             <td class="px-4 py-3">
-                                                <div class="text-ink font-medium text-xs  max-w-[100px] truncate"
-                                                    title="{{ $order['customer']['name'] ?? '-' }}">
-                                                    {{ $order['customer']['name'] ?? '-' }}</div>
+                                                @php
+                                                    $dupTone = match ($order['dup_level'] ?? null) {
+                                                        'duplicate' => 'danger',
+                                                        'probable' => 'warning',
+                                                        'repeat' => 'neutral',
+                                                        default => null,
+                                                    };
+                                                    $dupLabel = match ($order['dup_level'] ?? null) {
+                                                        'duplicate' => __('order_flow.dup_badge_duplicate'),
+                                                        'probable' => __('order_flow.dup_badge_probable'),
+                                                        'repeat' => __('order_flow.dup_badge_repeat'),
+                                                        default => null,
+                                                    };
+                                                    $dupCount = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
+                                                @endphp
+                                                @if (!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupTone)
+                                                    <div class="flex items-center gap-1.5 min-w-0">
+                                                        <div class="text-ink font-medium text-xs max-w-[120px] truncate"
+                                                            title="{{ $order['customer']['name'] ?? '-' }}">
+                                                            {{ $order['customer']['name'] ?? '-' }}</div>
+                                                        <button type="button"
+                                                            wire:click="openDuplicateScan('{{ $orderId }}')"
+                                                            title="{{ __('order_flow.duplicate_warnings_title') }}"
+                                                            class="edz-badge edz-badge--{{ $dupTone }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
+                                                            <x-edz.icon name="copy" class="w-3 h-3" />
+                                                            {{ $dupLabel }}@if (($order['dup_level'] ?? null) !== 'repeat')
+                                                                ×{{ min($dupCount, 9) }}{{ $dupCount > 9 ? '+' : '' }}
+                                                            @endif
+                                                        </button>
+                                                    </div>
+                                                @else
+                                                    <div class="text-ink font-medium text-xs max-w-[120px] truncate"
+                                                        title="{{ $order['customer']['name'] ?? '-' }}">
+                                                        {{ $order['customer']['name'] ?? '-' }}</div>
+                                                @endif
                                             </td>
                                         @endif
                                         @if (in_array('phone', $this->visibleColumns))
@@ -3223,6 +3507,19 @@ $submitEdit = function (): void {
                                                 </div>
                                             </td>
                                         @endif
+                                        @if (in_array('tracking_status', $this->visibleColumns))
+                                            <td class="px-4 py-3">
+                                                @if (!empty($order['tracking']['tracking_status']))
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color() }}">
+                                                        {!! \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
+                                                        {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label() }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-xs text-ink-muted">—</span>
+                                                @endif
+                                            </td>
+                                        @endif
                                         @if (in_array('assigned_agent', $this->visibleColumns))
                                             <td class="px-4 py-3 text-xs text-ink-muted">
                                                 {{ $order['assigned_membership']['user']['name'] ?? '—' }}
@@ -3265,6 +3562,11 @@ $submitEdit = function (): void {
                                                     title="{{ __('merchant.order_details') }}">
                                                     <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0" />
                                                 </button>
+                                                @include('livewire.merchant.orders.partials.order-events-menu', [
+                                                    'orderId' => $orderId,
+                                                    'order' => $order,
+                                                    'canViewEvents' => $order['can_view_events'] ?? false,
+                                                ])
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
                                                  && !$this->showTrash && in_array('confirmed', $order['transitions'] ?? [], true))
                                                     <button wire:click="openConfirmModal('{{ $orderId }}')"
@@ -3274,7 +3576,7 @@ $submitEdit = function (): void {
                                                     </button>
                                                 @endif
                                                 @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
-                                                 && !$this->showTrash && in_array($order['status']['key'] ?? null, ['confirmed', 'preparing'], true))
+                                                 && !$this->showTrash && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
                                                     <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
                                                         class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
                                                         title="{{ __('order_flow.send_to_carrier') }}">
@@ -3366,22 +3668,152 @@ $submitEdit = function (): void {
                                             <span
                                                 class="text-xs text-ink-muted shrink-0">{{ \Carbon\Carbon::parse($order['created_at'])->format('M d, Y') }}</span>
                                         </div>
-                                        <div class="mt-1 text-sm font-medium text-ink truncate">
-                                            {{ $order['customer']['name'] ?? '-' }}</div>
-                                        <div class="text-xs text-ink-muted" dir="ltr">
-                                            {{ $order['customer']['phone'] ?? '-' }}</div>
+                                        @php
+                                            $dupToneM = match ($order['dup_level'] ?? null) {
+                                                'duplicate' => 'danger',
+                                                'probable' => 'warning',
+                                                'repeat' => 'neutral',
+                                                default => null,
+                                            };
+                                            $dupLabelM = match ($order['dup_level'] ?? null) {
+                                                'duplicate' => __('order_flow.dup_badge_duplicate'),
+                                                'probable' => __('order_flow.dup_badge_probable'),
+                                                'repeat' => __('order_flow.dup_badge_repeat'),
+                                                default => null,
+                                            };
+                                            $dupCountM = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
+                                        @endphp
+                                        <div class="mt-1 flex items-center gap-1.5 min-w-0">
+                                            <div class="text-sm font-medium text-ink truncate">
+                                                {{ $order['customer']['name'] ?? '-' }}</div>
+                                            @if (!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupToneM)
+                                                <button type="button"
+                                                    wire:click="openDuplicateScan('{{ $orderId }}')"
+                                                    title="{{ __('order_flow.duplicate_warnings_title') }}"
+                                                    class="edz-badge edz-badge--{{ $dupToneM }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
+                                                    <x-edz.icon name="copy" class="w-3 h-3" />
+                                                    {{ $dupLabelM }}@if (($order['dup_level'] ?? null) !== 'repeat')
+                                                        ×{{ min($dupCountM, 9) }}{{ $dupCountM > 9 ? '+' : '' }}
+                                                    @endif
+                                                </button>
+                                            @endif
+                                        </div>
+                                        @if ($this->editingField === 'order.phone' && $this->editingId === $orderId)
+                                            <div class="edz-inline-edit__edit mt-1"
+                                                wire:key="phone-inline-card-{{ $orderId }}">
+                                                <input type="tel" wire:model="phoneEditPhone"
+                                                    wire:keydown.enter="saveOrderPhone"
+                                                    placeholder="{{ __('merchant_panel.phone') }}"
+                                                    class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
+                                                <input type="tel" wire:model="phoneEditSecondary"
+                                                    wire:keydown.enter="saveOrderPhone"
+                                                    placeholder="{{ __('merchant_panel.phone_secondary') }}"
+                                                    class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
+                                                <div class="edz-inline-edit__actions">
+                                                    <button type="button" class="edz-inline-edit__save"
+                                                        wire:click="saveOrderPhone" wire:loading.attr="disabled">
+                                                        <x-edz.spinner wire:target="saveOrderPhone" />
+                                                        <span wire:loading.remove
+                                                            wire:target="saveOrderPhone">Save</span>
+                                                    </button>
+                                                    <button type="button" class="edz-inline-edit__cancel"
+                                                        wire:click="cancelOrderPhoneEdit">Cancel</button>
+                                                </div>
+                                                @if ($this->editingError)
+                                                    <p class="edz-inline-edit__error">
+                                                        {{ $this->editingError }}</p>
+                                                @endif
+                                            </div>
+                                        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                            <button type="button" class="edz-inline-edit__display mt-1"
+                                                wire:click="startOrderPhoneEdit('{{ $orderId }}')">
+                                                <span class="edz-inline-edit__value" dir="ltr">
+                                                    {{ $order['customer']['phone'] ?? '—' }}
+                                                    @if (!empty($order['phone_secondary']))
+                                                        <span class="text-ink-muted/60"> ·
+                                                            {{ $order['phone_secondary'] }}</span>
+                                                    @endif
+                                                </span>
+                                            </button>
+                                        @else
+                                            <div class="text-xs text-ink-muted" dir="ltr">
+                                                {{ $order['customer']['phone'] ?? '-' }}
+                                                @if (!empty($order['phone_secondary']))
+                                                    · {{ $order['phone_secondary'] }}
+                                                @endif
+                                            </div>
+                                        @endif
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                                            <span
-                                                class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
-                                                {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
-                                                    null,
-                                                    'w-3.5 h-3.5 shrink-0',
-                                                ) !!}
-                                                {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
-                                            </span>
-                                            @if (in_array('wilaya', $this->visibleColumns))
+                                            <div class="relative" @click.away="open = false">
+                                                <button @click="openStatusMenu()" x-ref="trigger"
+                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
+                                                    {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
+                                                        null,
+                                                        'w-3.5 h-3.5 shrink-0',
+                                                    ) !!}
+                                                    {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
+                                                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
+                                                </button>
+                                                <div x-show="open" x-transition x-cloak
+                                                    class="fixed z-[200] w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
+                                                    :style="'top:' + top + 'px; left:' + left + 'px'">
+                                                    @foreach ($this->allStatuses as $s)
+                                                        @if (in_array($s['key'], $order['transitions'] ?? []) || $s['id'] == $order['status_id'])
+                                                            <button
+                                                                wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
+                                                                wire:loading.attr="disabled" @click="open = false"
+                                                                class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
+                                                                <x-edz.spinner
+                                                                    wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
+                                                                    class="w-3 h-3" />
+                                                                {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
+                                                                <span class="w-2 h-2 rounded-full shrink-0"
+                                                                    style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
+                                                                {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
+                                                            </button>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            @if (in_array('tracking_status', $this->visibleColumns) && !empty($order['tracking']['tracking_status']))
                                                 <span
-                                                    class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
+                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color() }}">
+                                                    {!! \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
+                                                    {{ \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label() }}
+                                                </span>
+                                            @endif
+                                            @if (in_array('wilaya', $this->visibleColumns))
+                                                @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
+                                                    <div class="edz-inline-edit__edit w-full min-w-[180px]"
+                                                        wire:key="wilaya-inline-card-{{ $orderId }}">
+                                                        <select wire:change="saveOrderWilaya($event.target.value)"
+                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
+                                                            @foreach ($this->allStates as $st)
+                                                                <option value="{{ $st['id'] }}"
+                                                                    @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
+                                                                    {{ $st['name'] }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <div class="edz-inline-edit__actions">
+                                                            <button type="button" class="edz-inline-edit__cancel"
+                                                                @click="$wire.cancelOrderEdit()">Cancel</button>
+                                                        </div>
+                                                        @if ($this->editingError)
+                                                            <p class="edz-inline-edit__error">
+                                                                {{ $this->editingError }}</p>
+                                                        @endif
+                                                    </div>
+                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                    <button type="button" class="edz-inline-edit__display"
+                                                        @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
+                                                        <span
+                                                            class="edz-inline-edit__value">{{ $order['state']['name'] ?? '—' }}</span>
+                                                    </button>
+                                                @else
+                                                    <span
+                                                        class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
+                                                @endif
                                             @endif
                                             @if (in_array('amount', $this->visibleColumns))
                                                 <span
@@ -3409,42 +3841,66 @@ $submitEdit = function (): void {
                                                 title="{{ __('merchant.order_details') }}">
                                                 <x-edz.icon name="info-circle" class="w-4 h-4" />
                                             </button>
-                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true))
-                                                <button wire:click="openConfirmModal('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="{{ __('order_flow.confirm_title') }}">
-                                                    <x-edz.icon name="phone" class="w-4 h-4" />
+                                            @include('livewire.merchant.orders.partials.order-events-menu', [
+                                                'orderId' => $orderId,
+                                                'order' => $order,
+                                                'canViewEvents' => $order['can_view_events'] ?? false,
+                                            ])
+
+                                            {{-- Overflow actions popover (P29.7): keeps the card tidy with 44px touch rows --}}
+                                            <div class="relative shrink-0" x-data="orderMoreMenu($el)"
+                                                @click.away="close()">
+                                                <button @click="toggle()" x-ref="moreTrigger"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                    title="{{ __('general.more') }}">
+                                                    <x-edz.icon name="ellipsis-horizontal" class="w-4 h-4" />
                                                 </button>
-                                            @endif
-                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status']['key'] ?? null, ['confirmed', 'preparing'], true))
-                                                <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="{{ __('order_flow.send_to_carrier') }}">
-                                                    <x-edz.icon name="truck" class="w-4 h-4" />
-                                                </button>
-                                            @endif
-                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                <button @click="$wire.openEditModal('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="{{ __('merchant_panel.edit') }}">
-                                                    <x-edz.icon name="edit" class="w-4 h-4" />
-                                                </button>
-                                                <button wire:click="openReassignModal('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="{{ __('merchant_panel.reassign') }}">
-                                                    <x-edz.icon name="arrows-right-left" class="w-4 h-4" />
-                                                </button>
-                                            @endif
-                                            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
-                                                <button x-on:click.prevent="confirmDelete()" :disabled="deleteLoading"
-                                                    :class="deleteLoading ? 'opacity-50' : ''"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600"
-                                                    title="{{ __('merchant.delete_permanently') }}">
-                                                    <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
-                                                    <x-edz.icon name="trash" x-show="!deleteLoading"
-                                                        class="w-4 h-4" />
-                                                </button>
-                                            @endif
+                                                <div x-show="open" x-cloak x-transition
+                                                    class="fixed z-[210] w-60 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5"
+                                                    :style="'top:' + top + 'px; left:' + left   + 'px'">
+                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true))
+                                                        <button wire:click="openConfirmModal('{{ $orderId }}')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <x-edz.icon name="phone" class="w-4 h-4 shrink-0" />
+                                                            {{ __('order_flow.confirm_title') }}
+                                                        </button>
+                                                    @endif
+                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
+                                                        <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <x-edz.icon name="truck" class="w-4 h-4 shrink-0" />
+                                                            {{ __('order_flow.send_to_carrier') }}
+                                                        </button>
+                                                    @endif
+                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                        <button @click="$wire.openEditModal('{{ $orderId }}'); close()"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary">
+                                                            <x-edz.icon name="edit" class="w-4 h-4 shrink-0" />
+                                                            {{ __('merchant_panel.edit') }}
+                                                        </button>
+                                                        <button wire:click="openReassignModal('{{ $orderId }}')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <x-edz.icon name="arrows-right-left" class="w-4 h-4 shrink-0" />
+                                                            {{ __('merchant_panel.reassign') }}
+                                                        </button>
+                                                    @endif
+                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
+                                                        <button x-on:click.prevent="confirmDelete(); close()"
+                                                            :disabled="deleteLoading"
+                                                            :class="deleteLoading ? 'opacity-50' : ''"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary text-danger-600">
+                                                            <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
+                                                            <x-edz.icon name="trash" x-show="!deleteLoading"
+                                                                class="w-4 h-4 shrink-0" />
+                                                            <span
+                                                                x-show="!deleteLoading">{{ __('merchant.delete_permanently') }}</span>
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3945,66 +4401,6 @@ $submitEdit = function (): void {
                             </section>
                         @endif
 
-                        {{-- Order events timeline (audit log) --}}
-                        @if ($this->canViewOrderDetailsEvents && !empty($this->detailsEvents))
-                            @php
-                                $detailsEventDays = collect($this->detailsEvents)
-                                    ->groupBy(fn ($ev) => \Carbon\Carbon::parse($ev['occurred_at'])->format('Y-m-d'));
-                                $detailsNewestEventId = $this->detailsEvents[0]['id'] ?? null;
-                            @endphp
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="clock" class="w-4 h-4" />
-                                    {{ __('order_flow.order_timeline') }}
-                                </h4>
-                                <div
-                                    class="rounded-xl border border-surface-border overflow-hidden bg-surface-tertiary/30">
-                                    @foreach ($detailsEventDays as $dayKey => $dayEvents)
-                                        @php
-                                            $evDay = \Carbon\Carbon::parse($dayKey);
-                                        @endphp
-                                        <div class="px-3 pt-3">
-                                            <p
-                                                class="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                                                @if ($evDay->isToday())
-                                                    {{ __('order_flow.event_day_today') }}
-                                                @elseif ($evDay->isYesterday())
-                                                    {{ __('order_flow.event_day_yesterday') }}
-                                                @else
-                                                    {{ $evDay->translatedFormat('l, M j') }}
-                                                @endif
-                                            </p>
-                                        </div>
-                                        <ol class="divide-y divide-surface-border">
-                                            @foreach ($dayEvents as $ev)
-                                                <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
-                                                    <span
-                                                        class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ ($ev['id'] ?? null) === $detailsNewestEventId ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
-                                                    <div class="min-w-0 flex-1">
-                                                        <p class="text-ink leading-snug">{{ $ev['message'] ?? '—' }}</p>
-                                                        <p
-                                                            class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
-                                                            <span>{{ __('order_flow.event_type_' . ($ev['event_type'] ?? 'note')) }}</span>
-                                                            <span>•</span>
-                                                            <span>{{ \Carbon\Carbon::parse($ev['occurred_at'])->format('H:i') }}</span>
-                                                            @if (!empty($ev['actor']['user']['name']))
-                                                                <span>•</span>
-                                                                <span>{{ $ev['actor']['user']['name'] }}</span>
-                                                            @endif
-                                                            @if (!empty($ev['actor']['role']))
-                                                                <x-role-badge :role="$ev['actor']['role']" />
-                                                            @endif
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            @endforeach
-                                        </ol>
-                                    @endforeach
-                                </div>
-                            </section>
-                        @endif
-
                         {{-- Tracking --}}
                         @if (
                             $detailsTracking &&
@@ -4235,32 +4631,172 @@ $submitEdit = function (): void {
                 <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.bulk_send_summary_title') }}</h3>
                 <p class="text-xs text-ink-muted mb-4">{{ __('order_flow.bulk_send_summary_subtitle') }}</p>
 
-                @if (empty($this->bulkSendSummary))
+                @if (empty($this->bulkSendSummary) && $this->bulkSendSkipCount === 0)
                     <p class="text-sm text-ink-muted">{{ __('order_flow.bulk_send_no_groups') }}</p>
                 @else
-                    <ul class="space-y-2">
-                        @foreach ($this->bulkSendSummary as $g)
-                            <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2">
-                                <span class="text-sm font-medium text-ink">{{ $g['name'] }}</span>
-                                <span class="text-xs font-semibold text-ink-muted">{{ __('order_flow.bulk_send_group_count', ['count' => $g['count']]) }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
+                    @if (! empty($this->bulkSendSummary))
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                            {{ __('order_flow.bulk_send_ready_title') }}
+                        </h4>
+                        <ul class="space-y-2 mb-4">
+                            @foreach ($this->bulkSendSummary as $g)
+                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2">
+                                    <span class="text-sm font-medium text-ink">{{ $g['name'] }}</span>
+                                    <span class="text-xs font-semibold text-ink-muted">{{ __('order_flow.bulk_send_group_count', ['count' => $g['count']]) }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    @if ($this->bulkSendSkipCount > 0)
+                        <x-edz.alert type="warning">
+                            <p class="font-semibold mb-1">{{ __('order_flow.bulk_send_skipped_title', ['count' => $this->bulkSendSkipCount]) }}</p>
+                            <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
+                                @foreach (collect($this->bulkSendAnalysis)->where('ready', false) as $entry)
+                                    <li class="leading-relaxed break-words">
+                                        #{{ $entry['number'] }} — {{ implode('؛ ', $entry['reasons']) }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </x-edz.alert>
+                    @endif
                 @endif
 
-                <div class="mt-6 flex justify-end gap-2">
+                <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
                     <button wire:click="closeBulkSendModal" type="button"
                         class="edz-btn edz-btn--ghost">
                         {{ __('buttons.cancel') }}
                     </button>
-                    <button wire:click="confirmBulkSend" type="button"
-                        class="edz-btn edz-btn--primary">
-                        {{ __('order_flow.bulk_send_confirm') }}
-                    </button>
+                    @if ($this->bulkSendSkipCount === 0)
+                        <button wire:click="confirmBulkSend" type="button"
+                            class="edz-btn edz-btn--primary">
+                            {{ __('order_flow.bulk_send_confirm') }}
+                        </button>
+                    @elseif ($this->bulkSendReadyCount > 0)
+                        <button wire:click="confirmBulkSend" type="button"
+                            class="edz-btn edz-btn--primary">
+                            {{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}
+                        </button>
+                    @else
+                        <button type="button" disabled
+                            class="edz-btn edz-btn--primary opacity-50 cursor-not-allowed">
+                            {{ __('order_flow.bulk_send_confirm_none') }}
+                        </button>
+                    @endif
                 </div>
             </div>
         </x-edz.modal>
     @endif
+
+    {{-- Duplicate scan popup (P29.6): lazy — computed on click via openDuplicateScan() --}}
+    @if ($this->showDuplicateScanModal)
+        <div @edz-modal-closed.window="$wire.closeDuplicateScanModal()">
+            <x-edz.modal :isOpen="true" size="md" wire:key="duplicate-scan-modal">
+                <div class="p-6">
+                    @php
+                        $scanTone = match ($this->duplicateScanLevel) {
+                            'duplicate' => 'danger',
+                            'probable' => 'warning',
+                            'repeat' => 'neutral',
+                            default => null,
+                        };
+                        $scanLabel = match ($this->duplicateScanLevel) {
+                            'duplicate' => __('order_flow.dup_badge_duplicate'),
+                            'probable' => __('order_flow.dup_badge_probable'),
+                            'repeat' => __('order_flow.dup_badge_repeat'),
+                            default => null,
+                        };
+                    @endphp
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="flex items-center justify-center w-10 h-10 rounded-full bg-warning/10 text-warning shrink-0">
+                            <x-edz.icon name="copy" class="w-5 h-5" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-base sm:text-lg font-bold text-ink">
+                                {{ __('order_flow.duplicate_warnings_title') }}
+                            </h3>
+                            @if ($this->duplicateScanNumber)
+                                <p class="mt-0.5 text-xs text-ink-muted dark:text-ink-muted" dir="ltr">
+                                    #{{ $this->duplicateScanNumber }}</p>
+                            @endif
+                            @if ($scanTone)
+                                <span
+                                    class="mt-2 inline-flex items-center gap-1 edz-badge edz-badge--{{ $scanTone }} edz-badge--sm">
+                                    <x-edz.icon name="copy" class="w-3 h-3" />
+                                    {{ $scanLabel }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    @if (!empty($this->duplicateScanResults))
+                        <p class="mt-4 text-sm text-ink">
+                            {{ __('order_flow.duplicate_detected', ['count' => count($this->duplicateScanResults)]) }}
+                        </p>
+                        <ul class="mt-2 space-y-1.5 text-sm">
+                            @foreach ($this->duplicateScanResults as $dup)
+                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-tertiary/40 px-3 py-2">
+                                    <button type="button"
+                                        wire:click="openOrderDetails('{{ $dup['order_id'] }}')"
+                                        class="flex items-center gap-2 text-ink hover:text-brand-600 truncate text-start">
+                                        <span class="truncate">
+                                            #{{ $dup['number'] }}
+                                            <span class="text-ink-muted">• {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}</span>
+                                        </span>
+                                    </button>
+                                    <span class="shrink-0 text-xs text-ink-muted">
+                                        ×{{ $dup['total_overlap_qty'] }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @elseif (($this->duplicateScanPhoneCount ?? 0) > 0)
+                        <div
+                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
+                            <span>
+                                {{ __('order_flow.duplicate_phone_only_orders', ['count' => $this->duplicateScanPhoneCount]) }}
+                            </span>
+                        </div>
+                    @elseif (($this->duplicateScanRepeatCount ?? 0) > 0)
+                        <div
+                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
+                            <span>
+                                {{ __('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount]) }}
+                            </span>
+                        </div>
+                    @else
+                        <div class="mt-4 flex items-center gap-2 text-xs text-ink-muted">
+                            <x-edz.icon name="check-circle" class="w-4 h-4 text-success" />
+                            {{ __('order_flow.no_duplicates') }}
+                        </div>
+                    @endif
+
+                    @if (($this->duplicateScanRepeatCount ?? 0) > 0 && $this->duplicateScanLevel !== 'repeat')
+                        <div
+                            class="mt-3 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
+                            <span>
+                                {{ __('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount]) }}
+                            </span>
+                        </div>
+                    @endif
+
+                    <div class="mt-5 flex justify-end">
+                        <button type="button" wire:click="closeDuplicateScanModal()"
+                            class="edz-btn edz-btn--ghost edz-btn--sm">
+                            {{ __('general.close') }}
+                        </button>
+                    </div>
+                </div>
+            </x-edz.modal>
+        </div>
+    @endif
+
+    {{-- Order event-log popup (P29.4) — extracted partial --}}
+    @include('livewire.merchant.orders.partials.order-events-modal')
 
     {{-- Filter Portal — single container, fixed-positioned --}}
     <div x-data="dropdownPosition()" x-show="open" x-transition @click.away="close()"

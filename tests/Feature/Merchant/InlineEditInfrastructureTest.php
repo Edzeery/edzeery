@@ -124,7 +124,8 @@ test('member without update permission is forbidden from saving an inline edit',
         ->set('editingId', $brand->id)
         ->set('editingValue', 'Hacker Name')
         ->call('saveName')
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
+            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
     expect($brand->fresh()->name)->toBe('Original Brand')
         ->and(Activity::query()->count())->toBe(0);

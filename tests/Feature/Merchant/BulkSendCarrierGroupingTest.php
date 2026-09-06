@@ -201,7 +201,7 @@ test('bulk send modal is denied without order.manage permission', function () {
 
     Volt::test('merchant.orders.index')
         ->call('openBulkSendModal')
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => bscToastTitle($params) === __('messages.permission_denied'));
 });
 
 test('bulk send modal warns when no orders are selected', function () {
@@ -216,7 +216,7 @@ test('bulk send modal warns when no orders are selected', function () {
         ->assertSet('showBulkSendModal', false);
 });
 
-test('groups selected orders by their own carrier (provider, fallback rider, unassigned)', function () {
+test('classifies selected orders into ready groups and flags unassigned ones', function () {
     [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
     $alpha = bscProvider($store, 'Alpha Carrier');
     $beta = bscProvider($store, 'Beta Carrier');
@@ -235,18 +235,28 @@ test('groups selected orders by their own carrier (provider, fallback rider, una
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
-    Volt::test('merchant.orders.index')
+    $test = Volt::test('merchant.orders.index')
         ->set('selectedOrders', [$a1->id, $a2->id, $b1->id, $riderOrder->id, $unassigned->id])
-        ->call('openBulkSendModal')
-        ->assertSet('showBulkSendModal', true)
-        ->assertSet('bulkSendSummary.0.name', 'Alpha Carrier')
-        ->assertSet('bulkSendSummary.0.count', 2)
-        ->assertSet('bulkSendSummary.1.name', 'Beta Carrier')
-        ->assertSet('bulkSendSummary.1.count', 1)
-        ->assertSet('bulkSendSummary.2.name', __('order_flow.bulk_send_rider'))
-        ->assertSet('bulkSendSummary.2.count', 1)
-        ->assertSet('bulkSendSummary.3.name', __('order_flow.bulk_send_unassigned'))
-        ->assertSet('bulkSendSummary.3.count', 1);
+        ->call('openBulkSendModal');
+
+    $test->assertSet('showBulkSendModal', true)
+        ->assertSet('bulkSendReadyCount', 4)
+        ->assertSet('bulkSendSkipCount', 1);
+
+    $summary = collect($test->get('bulkSendSummary'))->keyBy('name');
+    expect($summary['Alpha Carrier']['count'])->toBe(2)
+        ->and($summary['Beta Carrier']['count'])->toBe(1)
+        ->and($summary['Bsc Rider']['count'])->toBe(1);
+
+    $analysis = collect($test->get('bulkSendAnalysis'))->keyBy('number');
+    expect($analysis[$a1->number]['ready'])->toBeTrue()
+        ->and($analysis[$riderOrder->number]['carrierName'])->toBe('Bsc Rider')
+        ->and($analysis[$unassigned->number]['ready'])->toBeFalse()
+        ->and($analysis[$unassigned->number]['reasons'])
+            ->toContain(__('order_flow.bulk_send_reason_no_carrier'));
+
+    $test->assertSee($unassigned->number)
+        ->assertSee(__('order_flow.bulk_send_reason_no_carrier'));
 });
 
 test('sends each confirmed order to its own carrier with a per-carrier summary toast', function () {
@@ -282,7 +292,7 @@ test('sends each confirmed order to its own carrier with a per-carrier summary t
         ->and(OrderEvent::where('order_id', $b1->id)->where('event_type', 'sent_to_carrier')->exists())->toBeTrue();
 });
 
-test('skips pending orders without auto-confirming them during bulk send', function () {
+test('skips pending orders without auto-confirming, naming them explicitly', function () {
     [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
     $alpha = bscProvider($store, 'Alpha Carrier');
 
@@ -293,23 +303,25 @@ test('skips pending orders without auto-confirming them during bulk send', funct
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
-    $test = Volt::test('merchant.orders.index')
+    Volt::test('merchant.orders.index')
         ->set('selectedOrders', [$ready->id, $pending->id])
         ->call('openBulkSendModal')
-        ->call('confirmBulkSend');
+        ->assertSet('bulkSendReadyCount', 1)
+        ->assertSet('bulkSendSkipCount', 1)
+        ->call('confirmBulkSend')
+        ->assertDispatched('swal:toast', function ($name, $params) use ($pending) {
+            $title = bscToastTitle($params) ?? '';
 
-    $test->assertDispatched('swal:toast', function ($name, $params) {
-        $title = bscToastTitle($params) ?? '';
-
-        return bscToastIcon($params) === 'warning'
-            && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]));
-    });
+            return bscToastIcon($params) === 'warning'
+                && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]))
+                && str_contains($title, $pending->number);
+        });
 
     expect($ready->fresh()->status?->key)->toBe('shipped')
         ->and($pending->fresh()->status?->key)->toBe('pending');
 });
 
-test('skips orders with missing readiness fields during bulk send', function () {
+test('skips orders with missing readiness fields, naming them explicitly', function () {
     [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
     $alpha = bscProvider($store, 'Alpha Carrier');
 
@@ -323,19 +335,23 @@ test('skips orders with missing readiness fields during bulk send', function () 
     Volt::test('merchant.orders.index')
         ->set('selectedOrders', [$ready->id, $incomplete->id])
         ->call('openBulkSendModal')
+        ->assertSet('bulkSendReadyCount', 1)
+        ->assertSet('bulkSendSkipCount', 1)
         ->call('confirmBulkSend')
-        ->assertDispatched('swal:toast', function ($name, $params) {
+        ->assertDispatched('swal:toast', function ($name, $params) use ($incomplete) {
             $title = bscToastTitle($params) ?? '';
 
             return bscToastIcon($params) === 'warning'
-                && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]));
+                && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]))
+                && str_contains($title, $incomplete->number)
+                && str_contains($title, __('merchant_panel.address'));
         });
 
     expect($ready->fresh()->status?->key)->toBe('shipped')
         ->and($incomplete->fresh()->status?->key)->toBe('confirmed');
 });
 
-test('sends a rider-only order to its rider during bulk send', function () {
+test('sends a rider-only order to its rider by name', function () {
     [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
 
     $riderOrder = bscOrder($store, 'confirmed', ['with_provider' => false]);
@@ -346,19 +362,20 @@ test('sends a rider-only order to its rider during bulk send', function () {
     Volt::test('merchant.orders.index')
         ->set('selectedOrders', [$riderOrder->id])
         ->call('openBulkSendModal')
-        ->assertSet('bulkSendSummary.0.name', __('order_flow.bulk_send_rider'))
+        ->assertSet('bulkSendReadyCount', 1)
+        ->assertSet('bulkSendSkipCount', 0)
         ->call('confirmBulkSend')
         ->assertDispatched('swal:toast', function ($name, $params) {
             $title = bscToastTitle($params) ?? '';
 
             return bscToastIcon($params) === 'success'
-                && str_contains($title, sprintf('%s (1)', __('order_flow.bulk_send_rider')));
+                && str_contains($title, 'Bsc Rider (1)');
         });
 
     expect($riderOrder->fresh()->status?->key)->toBe('shipped');
 });
 
-test('skips orders with no carrier at all during bulk send', function () {
+test('skips orders with no carrier, showing the explicit reason', function () {
     [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
     $alpha = bscProvider($store, 'Alpha Carrier');
 
@@ -368,17 +385,52 @@ test('skips orders with no carrier at all during bulk send', function () {
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
-    Volt::test('merchant.orders.index')
+    $test = Volt::test('merchant.orders.index')
         ->set('selectedOrders', [$ready->id, $unassigned->id])
         ->call('openBulkSendModal')
-        ->call('confirmBulkSend')
-        ->assertDispatched('swal:toast', function ($name, $params) {
+        ->assertSet('bulkSendReadyCount', 1)
+        ->assertSet('bulkSendSkipCount', 1);
+
+    $analysis = collect($test->get('bulkSendAnalysis'))->keyBy('number');
+    expect($analysis[$unassigned->number]['ready'])->toBeFalse()
+        ->and($analysis[$unassigned->number]['reasons'])
+            ->toContain(__('order_flow.bulk_send_reason_no_carrier'));
+
+    $test->call('confirmBulkSend')
+        ->assertDispatched('swal:toast', function ($name, $params) use ($unassigned) {
             $title = bscToastTitle($params) ?? '';
 
             return bscToastIcon($params) === 'warning'
-                && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]));
+                && str_contains($title, __('order_flow.bulk_send_skipped', ['count' => 1]))
+                && str_contains($title, $unassigned->number);
         });
 
     expect($ready->fresh()->status?->key)->toBe('shipped')
+        ->and($unassigned->fresh()->status?->key)->toBe('confirmed');
+});
+
+test('when nothing is ready, confirm sends nothing and warns explicitly', function () {
+    [$user, $store, $membership] = bscUser(StoreRoleEnum::OWNER->value);
+
+    $pending = bscOrder($store, 'pending');
+    $unassigned = bscOrder($store, 'confirmed', ['with_provider' => false]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('selectedOrders', [$pending->id, $unassigned->id])
+        ->call('openBulkSendModal')
+        ->assertSet('bulkSendReadyCount', 0)
+        ->assertSet('bulkSendSkipCount', 2)
+        ->call('confirmBulkSend')
+        ->assertDispatched('swal:toast', function ($name, $params) use ($pending, $unassigned) {
+            $title = bscToastTitle($params) ?? '';
+
+            return bscToastIcon($params) === 'warning'
+                && str_contains($title, $pending->number)
+                && str_contains($title, $unassigned->number);
+        });
+
+    expect($pending->fresh()->status?->key)->toBe('pending')
         ->and($unassigned->fresh()->status?->key)->toBe('confirmed');
 });

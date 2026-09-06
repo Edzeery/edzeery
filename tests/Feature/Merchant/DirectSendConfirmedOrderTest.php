@@ -195,7 +195,7 @@ test('action is denied without order.manage permission', function () {
 
     Volt::test('merchant.orders.index')
         ->call('sendConfirmedOrder', $order->id)
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => dsoToastTitle($params) === __('messages.permission_denied'));
 
     expect($order->fresh()->status?->key)->toBe('confirmed');
 });

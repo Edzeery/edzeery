@@ -1643,6 +1643,15 @@ use Illuminate\Support\Facades\Validator;
                                             </div>
                                         </th>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('tracking_status', $this->visibleColumns)): ?>
+                                        <th
+                                            class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
+                                            <div class="flex items-center gap-1">
+                                                <?php echo e(__('merchant_panel.tracking_status')); ?>
+
+                                            </div>
+                                        </th>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('assigned_agent', $this->visibleColumns)): ?>
                                         <th
                                             class="px-4 py-3 text-start text-xs font-semibold text-ink-muted uppercase relative group">
@@ -1871,15 +1880,69 @@ use Illuminate\Support\Facades\Validator;
                                         </td>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('number', $this->visibleColumns)): ?>
                                             <td class="px-4 py-3 font-mono font-semibold text-ink">
-                                                #<?php echo e($order['number']); ?>
+                                                <span class="inline-flex items-center">
+                                                    #<?php echo e($order['number']); ?>
 
+                                                </span>
                                             </td>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('customer', $this->visibleColumns)): ?>
                                             <td class="px-4 py-3">
-                                                <div class="text-ink font-medium text-xs  max-w-[100px] truncate"
-                                                    title="<?php echo e($order['customer']['name'] ?? '-'); ?>">
-                                                    <?php echo e($order['customer']['name'] ?? '-'); ?></div>
+                                                <?php
+                                                    $dupTone = match ($order['dup_level'] ?? null) {
+                                                        'duplicate' => 'danger',
+                                                        'probable' => 'warning',
+                                                        'repeat' => 'neutral',
+                                                        default => null,
+                                                    };
+                                                    $dupLabel = match ($order['dup_level'] ?? null) {
+                                                        'duplicate' => __('order_flow.dup_badge_duplicate'),
+                                                        'probable' => __('order_flow.dup_badge_probable'),
+                                                        'repeat' => __('order_flow.dup_badge_repeat'),
+                                                        default => null,
+                                                    };
+                                                    $dupCount = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
+                                                ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupTone): ?>
+                                                    <div class="flex items-center gap-1.5 min-w-0">
+                                                        <div class="text-ink font-medium text-xs max-w-[120px] truncate"
+                                                            title="<?php echo e($order['customer']['name'] ?? '-'); ?>">
+                                                            <?php echo e($order['customer']['name'] ?? '-'); ?></div>
+                                                        <button type="button"
+                                                            wire:click="openDuplicateScan('<?php echo e($orderId); ?>')"
+                                                            title="<?php echo e(__('order_flow.duplicate_warnings_title')); ?>"
+                                                            class="edz-badge edz-badge--<?php echo e($dupTone); ?> edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'copy','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'copy','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                            <?php echo e($dupLabel); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($order['dup_level'] ?? null) !== 'repeat'): ?>
+                                                                ×<?php echo e(min($dupCount, 9)); ?><?php echo e($dupCount > 9 ? '+' : ''); ?>
+
+                                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        </button>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="text-ink font-medium text-xs max-w-[120px] truncate"
+                                                        title="<?php echo e($order['customer']['name'] ?? '-'); ?>">
+                                                        <?php echo e($order['customer']['name'] ?? '-'); ?></div>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             </td>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('phone', $this->visibleColumns)): ?>
@@ -2296,6 +2359,21 @@ use Illuminate\Support\Facades\Validator;
                                                 </div>
                                             </td>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('tracking_status', $this->visibleColumns)): ?>
+                                            <td class="px-4 py-3">
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['tracking']['tracking_status'])): ?>
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color()); ?>">
+                                                        <?php echo \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0'); ?>
+
+                                                        <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label()); ?>
+
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-xs text-ink-muted">—</span>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </td>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('assigned_agent', $this->visibleColumns)): ?>
                                             <td class="px-4 py-3 text-xs text-ink-muted">
                                                 <?php echo e($order['assigned_membership']['user']['name'] ?? '—'); ?>
@@ -2364,6 +2442,11 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                                                 </button>
+                                                <?php echo $__env->make('livewire.merchant.orders.partials.order-events-menu', [
+                                                    'orderId' => $orderId,
+                                                    'order' => $order,
+                                                    'canViewEvents' => $order['can_view_events'] ?? false,
+                                                ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
                                                  && !$this->showTrash && in_array('confirmed', $order['transitions'] ?? [], true)): ?>
                                                     <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
@@ -2379,6 +2462,33 @@ use Illuminate\Support\Facades\Validator;
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['name' => 'phone','class' => 'w-4 h-4 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                    </button>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+                                                 && !$this->showTrash && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true)): ?>
+                                                    <button wire:click="sendConfirmedOrder('<?php echo e($orderId); ?>')"
+                                                        class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                        title="<?php echo e(__('order_flow.send_to_carrier')); ?>">
+                                                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'truck','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'truck','class' => 'w-4 h-4 shrink-0']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -2601,24 +2711,237 @@ use Illuminate\Support\Facades\Validator;
                                             <span
                                                 class="text-xs text-ink-muted shrink-0"><?php echo e(\Carbon\Carbon::parse($order['created_at'])->format('M d, Y')); ?></span>
                                         </div>
-                                        <div class="mt-1 text-sm font-medium text-ink truncate">
-                                            <?php echo e($order['customer']['name'] ?? '-'); ?></div>
-                                        <div class="text-xs text-ink-muted" dir="ltr">
-                                            <?php echo e($order['customer']['phone'] ?? '-'); ?></div>
+                                        <?php
+                                            $dupToneM = match ($order['dup_level'] ?? null) {
+                                                'duplicate' => 'danger',
+                                                'probable' => 'warning',
+                                                'repeat' => 'neutral',
+                                                default => null,
+                                            };
+                                            $dupLabelM = match ($order['dup_level'] ?? null) {
+                                                'duplicate' => __('order_flow.dup_badge_duplicate'),
+                                                'probable' => __('order_flow.dup_badge_probable'),
+                                                'repeat' => __('order_flow.dup_badge_repeat'),
+                                                default => null,
+                                            };
+                                            $dupCountM = (int) ($order['duplicate_count'] ?? $order['repeat_count'] ?? 0);
+                                        ?>
+                                        <div class="mt-1 flex items-center gap-1.5 min-w-0">
+                                            <div class="text-sm font-medium text-ink truncate">
+                                                <?php echo e($order['customer']['name'] ?? '-'); ?></div>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupToneM): ?>
+                                                <button type="button"
+                                                    wire:click="openDuplicateScan('<?php echo e($orderId); ?>')"
+                                                    title="<?php echo e(__('order_flow.duplicate_warnings_title')); ?>"
+                                                    class="edz-badge edz-badge--<?php echo e($dupToneM); ?> edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
+                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'copy','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'copy','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                    <?php echo e($dupLabelM); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($order['dup_level'] ?? null) !== 'repeat'): ?>
+                                                        ×<?php echo e(min($dupCountM, 9)); ?><?php echo e($dupCountM > 9 ? '+' : ''); ?>
+
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                </button>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        </div>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingField === 'order.phone' && $this->editingId === $orderId): ?>
+                                            <div class="edz-inline-edit__edit mt-1"
+                                                wire:key="phone-inline-card-<?php echo e($orderId); ?>">
+                                                <input type="tel" wire:model="phoneEditPhone"
+                                                    wire:keydown.enter="saveOrderPhone"
+                                                    placeholder="<?php echo e(__('merchant_panel.phone')); ?>"
+                                                    class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
+                                                <input type="tel" wire:model="phoneEditSecondary"
+                                                    wire:keydown.enter="saveOrderPhone"
+                                                    placeholder="<?php echo e(__('merchant_panel.phone_secondary')); ?>"
+                                                    class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
+                                                <div class="edz-inline-edit__actions">
+                                                    <button type="button" class="edz-inline-edit__save"
+                                                        wire:click="saveOrderPhone" wire:loading.attr="disabled">
+                                                        <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderPhone']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.spinner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:target' => 'saveOrderPhone']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+                                                        <span wire:loading.remove
+                                                            wire:target="saveOrderPhone">Save</span>
+                                                    </button>
+                                                    <button type="button" class="edz-inline-edit__cancel"
+                                                        wire:click="cancelOrderPhoneEdit">Cancel</button>
+                                                </div>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingError): ?>
+                                                    <p class="edz-inline-edit__error">
+                                                        <?php echo e($this->editingError); ?></p>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
+                                            <button type="button" class="edz-inline-edit__display mt-1"
+                                                wire:click="startOrderPhoneEdit('<?php echo e($orderId); ?>')">
+                                                <span class="edz-inline-edit__value" dir="ltr">
+                                                    <?php echo e($order['customer']['phone'] ?? '—'); ?>
+
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['phone_secondary'])): ?>
+                                                        <span class="text-ink-muted/60"> ·
+                                                            <?php echo e($order['phone_secondary']); ?></span>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                </span>
+                                            </button>
+                                        <?php else: ?>
+                                            <div class="text-xs text-ink-muted" dir="ltr">
+                                                <?php echo e($order['customer']['phone'] ?? '-'); ?>
+
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['phone_secondary'])): ?>
+                                                    · <?php echo e($order['phone_secondary']); ?>
+
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            </div>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
-                                            <span
-                                                class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color()); ?>">
-                                                <?php echo \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
-                                                    null,
-                                                    'w-3.5 h-3.5 shrink-0',
-                                                ); ?>
+                                            <div class="relative" @click.away="open = false">
+                                                <button @click="openStatusMenu()" x-ref="trigger"
+                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color()); ?>">
+                                                    <?php echo \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
+                                                        null,
+                                                        'w-3.5 h-3.5 shrink-0',
+                                                    ); ?>
 
-                                                <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label()); ?>
+                                                    <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label()); ?>
 
-                                            </span>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('wilaya', $this->visibleColumns)): ?>
+                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'chevron-down','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'chevron-down','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                </button>
+                                                <div x-show="open" x-transition x-cloak
+                                                    class="fixed z-[200] w-56 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5 max-h-64 overflow-y-auto edz-scroll"
+                                                    :style="'top:' + top + 'px; left:' + left + 'px'">
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStatuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($s['key'], $order['transitions'] ?? []) || $s['id'] == $order['status_id']): ?>
+                                                            <button
+                                                                wire:click="transitionOrder('<?php echo e($orderId); ?>', '<?php echo e($s['key']); ?>')"
+                                                                wire:loading.attr="disabled" @click="open = false"
+                                                                class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 <?php echo e($s['id'] == $order['status_id'] ? 'font-bold' : ''); ?>">
+                                                                <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'transitionOrder(\''.e($orderId).'\', \''.e($s['key']).'\')','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.spinner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:target' => 'transitionOrder(\''.e($orderId).'\', \''.e($s['key']).'\')','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+                                                                <?php echo \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0'); ?>
+
+                                                                <span class="w-2 h-2 rounded-full shrink-0"
+                                                                    style="background: <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex()); ?>"></span>
+                                                                <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label()); ?>
+
+                                                            </button>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('tracking_status', $this->visibleColumns) && !empty($order['tracking']['tracking_status'])): ?>
                                                 <span
-                                                    class="text-xs text-ink-muted"><?php echo e($order['state']['name'] ?? '-'); ?></span>
+                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-default <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->color()); ?>">
+                                                    <?php echo \Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->icon(null, 'w-3.5 h-3.5 shrink-0'); ?>
+
+                                                    <?php echo e(\Edzeery\MyStatusKit\Facades\Status::for('tracking', $order['tracking']['tracking_status'])->label()); ?>
+
+                                                </span>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('wilaya', $this->visibleColumns)): ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingField === 'order.wilaya' && $this->editingId === $orderId): ?>
+                                                    <div class="edz-inline-edit__edit w-full min-w-[180px]"
+                                                        wire:key="wilaya-inline-card-<?php echo e($orderId); ?>">
+                                                        <select wire:change="saveOrderWilaya($event.target.value)"
+                                                            class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $st): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                                <option value="<?php echo e($st['id']); ?>"
+                                                                    <?php if((string) $this->editingValue === (string) $st['id']): ?> selected <?php endif; ?>>
+                                                                    <?php echo e($st['name']); ?>
+
+                                                                </option>
+                                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        </select>
+                                                        <div class="edz-inline-edit__actions">
+                                                            <button type="button" class="edz-inline-edit__cancel"
+                                                                @click="$wire.cancelOrderEdit()">Cancel</button>
+                                                        </div>
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingError): ?>
+                                                            <p class="edz-inline-edit__error">
+                                                                <?php echo e($this->editingError); ?></p>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    </div>
+                                                <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
+                                                    <button type="button" class="edz-inline-edit__display"
+                                                        @click="$wire.startOrderWilayaEdit('<?php echo e($orderId); ?>')">
+                                                        <span
+                                                            class="edz-inline-edit__value"><?php echo e($order['state']['name'] ?? '—'); ?></span>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span
+                                                        class="text-xs text-ink-muted"><?php echo e($order['state']['name'] ?? '-'); ?></span>
+                                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('amount', $this->visibleColumns)): ?>
                                                 <span
@@ -2720,20 +3043,28 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                                             </button>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true)): ?>
-                                                <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="<?php echo e(__('order_flow.confirm_title')); ?>">
+                                            <?php echo $__env->make('livewire.merchant.orders.partials.order-events-menu', [
+                                                'orderId' => $orderId,
+                                                'order' => $order,
+                                                'canViewEvents' => $order['can_view_events'] ?? false,
+                                            ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+                                            
+                                            <div class="relative shrink-0" x-data="orderMoreMenu($el)"
+                                                @click.away="close()">
+                                                <button @click="toggle()" x-ref="moreTrigger"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                    title="<?php echo e(__('general.more')); ?>">
                                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'phone','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'ellipsis-horizontal','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'phone','class' => 'w-4 h-4']); ?>
+<?php $component->withAttributes(['name' => 'ellipsis-horizontal','class' => 'w-4 h-4']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -2745,21 +3076,23 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                                                 </button>
-                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
-                                                <button @click="$wire.openEditModal('<?php echo e($orderId); ?>')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="<?php echo e(__('merchant_panel.edit')); ?>">
-                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                                <div x-show="open" x-cloak x-transition
+                                                    class="fixed z-[210] w-60 bg-surface border border-surface-border rounded-xl shadow-lg p-1.5"
+                                                    :style="'top:' + top + 'px; left:' + left   + 'px'">
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true)): ?>
+                                                        <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'edit','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'phone','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'edit','class' => 'w-4 h-4']); ?>
+<?php $component->withAttributes(['name' => 'phone','class' => 'w-4 h-4 shrink-0']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -2770,20 +3103,24 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                                                </button>
-                                                <button wire:click="openReassignModal('<?php echo e($orderId); ?>')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs"
-                                                    title="<?php echo e(__('merchant_panel.reassign')); ?>">
-                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                                            <?php echo e(__('order_flow.confirm_title')); ?>
+
+                                                        </button>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true)): ?>
+                                                        <button wire:click="sendConfirmedOrder('<?php echo e($orderId); ?>')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrows-right-left','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'truck','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'arrows-right-left','class' => 'w-4 h-4']); ?>
+<?php $component->withAttributes(['name' => 'truck','class' => 'w-4 h-4 shrink-0']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -2794,14 +3131,69 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                                                </button>
-                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value)): ?>
-                                                <button x-on:click.prevent="confirmDelete()" :disabled="deleteLoading"
-                                                    :class="deleteLoading ? 'opacity-50' : ''"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600"
-                                                    title="<?php echo e(__('merchant.delete_permanently')); ?>">
-                                                    <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+                                                            <?php echo e(__('order_flow.send_to_carrier')); ?>
+
+                                                        </button>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
+                                                        <button @click="$wire.openEditModal('<?php echo e($orderId); ?>'); close()"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary">
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'edit','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'edit','class' => 'w-4 h-4 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                            <?php echo e(__('merchant_panel.edit')); ?>
+
+                                                        </button>
+                                                        <button wire:click="openReassignModal('<?php echo e($orderId); ?>')"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary"
+                                                            @click="close()">
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrows-right-left','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'arrows-right-left','class' => 'w-4 h-4 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                            <?php echo e(__('merchant_panel.reassign')); ?>
+
+                                                        </button>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value)): ?>
+                                                        <button x-on:click.prevent="confirmDelete(); close()"
+                                                            :disabled="deleteLoading"
+                                                            :class="deleteLoading ? 'opacity-50' : ''"
+                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary text-danger-600">
+                                                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['show' => 'deleteLoading','class' => 'w-3.5 h-3.5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.spinner'); ?>
@@ -2821,16 +3213,16 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
 <?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
 <?php endif; ?>
-                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','xShow' => '!deleteLoading','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','xShow' => '!deleteLoading','class' => 'w-4 h-4 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'trash','x-show' => '!deleteLoading','class' => 'w-4 h-4']); ?>
+<?php $component->withAttributes(['name' => 'trash','x-show' => '!deleteLoading','class' => 'w-4 h-4 shrink-0']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -2841,8 +3233,12 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                                                </button>
-                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                            <span
+                                                                x-show="!deleteLoading"><?php echo e(__('merchant.delete_permanently')); ?></span>
+                                                        </button>
+                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3797,58 +4193,6 @@ use Illuminate\Support\Facades\Validator;
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                         
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->detailsEvents)): ?>
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'clock','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'clock','class' => 'w-4 h-4']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-                                    <?php echo e(__('order_flow.order_timeline')); ?>
-
-                                </h4>
-                                <ol
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30">
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->detailsEvents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $ev): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                        <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
-                                            <span
-                                                class="mt-1.5 w-2 h-2 rounded-full shrink-0 <?php echo e($i === 0 ? 'bg-accent-600' : 'bg-surface-border'); ?>"></span>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-ink leading-snug"><?php echo e($ev['message'] ?? '—'); ?></p>
-                                                <p class="text-xs text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2">
-                                                    <span><?php echo e(__('order_flow.event_type_' . ($ev['event_type'] ?? 'note'))); ?></span>
-                                                    <span>•</span>
-                                                    <span><?php echo e(\Carbon\Carbon::parse($ev['occurred_at'])->diffForHumans()); ?></span>
-                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($ev['actor']['user']['name'])): ?>
-                                                        <span>•</span>
-                                                        <span><?php echo e($ev['actor']['user']['name']); ?></span>
-                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                                </p>
-                                            </div>
-                                        </li>
-                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                </ol>
-                            </section>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-
-                        
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(
                             $detailsTracking &&
                                 (!in_array('shipping_provider', $this->visibleColumns) ||
@@ -4262,6 +4606,364 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(StorePermissionEnum::ORDER_MANAGE->value)): ?>
+        <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showBulkSendModal,'@close' => '$wire.closeBulkSendModal()','size' => 'md','showCloseButton' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.modal'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showBulkSendModal),'@close' => '$wire.closeBulkSendModal()','size' => 'md','show-close-button' => true]); ?>
+            <div class="p-5">
+                <h3 class="text-lg font-semibold text-ink mb-1"><?php echo e(__('order_flow.bulk_send_summary_title')); ?></h3>
+                <p class="text-xs text-ink-muted mb-4"><?php echo e(__('order_flow.bulk_send_summary_subtitle')); ?></p>
+
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($this->bulkSendSummary) && $this->bulkSendSkipCount === 0): ?>
+                    <p class="text-sm text-ink-muted"><?php echo e(__('order_flow.bulk_send_no_groups')); ?></p>
+                <?php else: ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($this->bulkSendSummary)): ?>
+                        <h4 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+                            <?php echo e(__('order_flow.bulk_send_ready_title')); ?>
+
+                        </h4>
+                        <ul class="space-y-2 mb-4">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->bulkSendSummary; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $g): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2">
+                                    <span class="text-sm font-medium text-ink"><?php echo e($g['name']); ?></span>
+                                    <span class="text-xs font-semibold text-ink-muted"><?php echo e(__('order_flow.bulk_send_group_count', ['count' => $g['count']])); ?></span>
+                                </li>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </ul>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->bulkSendSkipCount > 0): ?>
+                        <?php if (isset($component)) { $__componentOriginal3d8e2a92a5397217854be10043063322 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal3d8e2a92a5397217854be10043063322 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.alert','data' => ['type' => 'warning']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.alert'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['type' => 'warning']); ?>
+                            <p class="font-semibold mb-1"><?php echo e(__('order_flow.bulk_send_skipped_title', ['count' => $this->bulkSendSkipCount])); ?></p>
+                            <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = collect($this->bulkSendAnalysis)->where('ready', false); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <li class="leading-relaxed break-words">
+                                        #<?php echo e($entry['number']); ?> — <?php echo e(implode('؛ ', $entry['reasons'])); ?>
+
+                                    </li>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            </ul>
+                         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal3d8e2a92a5397217854be10043063322)): ?>
+<?php $attributes = $__attributesOriginal3d8e2a92a5397217854be10043063322; ?>
+<?php unset($__attributesOriginal3d8e2a92a5397217854be10043063322); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal3d8e2a92a5397217854be10043063322)): ?>
+<?php $component = $__componentOriginal3d8e2a92a5397217854be10043063322; ?>
+<?php unset($__componentOriginal3d8e2a92a5397217854be10043063322); ?>
+<?php endif; ?>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
+                    <button wire:click="closeBulkSendModal" type="button"
+                        class="edz-btn edz-btn--ghost">
+                        <?php echo e(__('buttons.cancel')); ?>
+
+                    </button>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->bulkSendSkipCount === 0): ?>
+                        <button wire:click="confirmBulkSend" type="button"
+                            class="edz-btn edz-btn--primary">
+                            <?php echo e(__('order_flow.bulk_send_confirm')); ?>
+
+                        </button>
+                    <?php elseif($this->bulkSendReadyCount > 0): ?>
+                        <button wire:click="confirmBulkSend" type="button"
+                            class="edz-btn edz-btn--primary">
+                            <?php echo e(__('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount])); ?>
+
+                        </button>
+                    <?php else: ?>
+                        <button type="button" disabled
+                            class="edz-btn edz-btn--primary opacity-50 cursor-not-allowed">
+                            <?php echo e(__('order_flow.bulk_send_confirm_none')); ?>
+
+                        </button>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </div>
+            </div>
+         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $attributes = $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->showDuplicateScanModal): ?>
+        <div @edz-modal-closed.window="$wire.closeDuplicateScanModal()">
+            <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'size' => 'md','wire:key' => 'duplicate-scan-modal']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.modal'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['isOpen' => true,'size' => 'md','wire:key' => 'duplicate-scan-modal']); ?>
+                <div class="p-6">
+                    <?php
+                        $scanTone = match ($this->duplicateScanLevel) {
+                            'duplicate' => 'danger',
+                            'probable' => 'warning',
+                            'repeat' => 'neutral',
+                            default => null,
+                        };
+                        $scanLabel = match ($this->duplicateScanLevel) {
+                            'duplicate' => __('order_flow.dup_badge_duplicate'),
+                            'probable' => __('order_flow.dup_badge_probable'),
+                            'repeat' => __('order_flow.dup_badge_repeat'),
+                            default => null,
+                        };
+                    ?>
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="flex items-center justify-center w-10 h-10 rounded-full bg-warning/10 text-warning shrink-0">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'copy','class' => 'w-5 h-5']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'copy','class' => 'w-5 h-5']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-base sm:text-lg font-bold text-ink">
+                                <?php echo e(__('order_flow.duplicate_warnings_title')); ?>
+
+                            </h3>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->duplicateScanNumber): ?>
+                                <p class="mt-0.5 text-xs text-ink-muted dark:text-ink-muted" dir="ltr">
+                                    #<?php echo e($this->duplicateScanNumber); ?></p>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($scanTone): ?>
+                                <span
+                                    class="mt-2 inline-flex items-center gap-1 edz-badge edz-badge--<?php echo e($scanTone); ?> edz-badge--sm">
+                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'copy','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'copy','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                    <?php echo e($scanLabel); ?>
+
+                                </span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                    </div>
+
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->duplicateScanResults)): ?>
+                        <p class="mt-4 text-sm text-ink">
+                            <?php echo e(__('order_flow.duplicate_detected', ['count' => count($this->duplicateScanResults)])); ?>
+
+                        </p>
+                        <ul class="mt-2 space-y-1.5 text-sm">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->duplicateScanResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $dup): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-tertiary/40 px-3 py-2">
+                                    <button type="button"
+                                        wire:click="openOrderDetails('<?php echo e($dup['order_id']); ?>')"
+                                        class="flex items-center gap-2 text-ink hover:text-brand-600 truncate text-start">
+                                        <span class="truncate">
+                                            #<?php echo e($dup['number']); ?>
+
+                                            <span class="text-ink-muted">• <?php echo e(\Carbon\Carbon::parse($dup['created_at'])->diffForHumans()); ?></span>
+                                        </span>
+                                    </button>
+                                    <span class="shrink-0 text-xs text-ink-muted">
+                                        ×<?php echo e($dup['total_overlap_qty']); ?>
+
+                                    </span>
+                                </li>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </ul>
+                    <?php elseif(($this->duplicateScanPhoneCount ?? 0) > 0): ?>
+                        <div
+                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <span>
+                                <?php echo e(__('order_flow.duplicate_phone_only_orders', ['count' => $this->duplicateScanPhoneCount])); ?>
+
+                            </span>
+                        </div>
+                    <?php elseif(($this->duplicateScanRepeatCount ?? 0) > 0): ?>
+                        <div
+                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <span>
+                                <?php echo e(__('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount])); ?>
+
+                            </span>
+                        </div>
+                    <?php else: ?>
+                        <div class="mt-4 flex items-center gap-2 text-xs text-ink-muted">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check-circle','class' => 'w-4 h-4 text-success']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check-circle','class' => 'w-4 h-4 text-success']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <?php echo e(__('order_flow.no_duplicates')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($this->duplicateScanRepeatCount ?? 0) > 0 && $this->duplicateScanLevel !== 'repeat'): ?>
+                        <div
+                            class="mt-3 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'info-circle','class' => 'w-4 h-4 shrink-0 text-brand']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                            <span>
+                                <?php echo e(__('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount])); ?>
+
+                            </span>
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    <div class="mt-5 flex justify-end">
+                        <button type="button" wire:click="closeDuplicateScanModal()"
+                            class="edz-btn edz-btn--ghost edz-btn--sm">
+                            <?php echo e(__('general.close')); ?>
+
+                        </button>
+                    </div>
+                </div>
+             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $attributes = $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__attributesOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef)): ?>
+<?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
+<?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
+<?php endif; ?>
+        </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    
+    <?php echo $__env->make('livewire.merchant.orders.partials.order-events-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     
     <div x-data="dropdownPosition()" x-show="open" x-transition @click.away="close()"

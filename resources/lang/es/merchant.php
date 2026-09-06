@@ -76,6 +76,10 @@ return [
     'orders_assigned' => 'Pedidos asignados',
     'orders_deleted' => 'Pedidos eliminados',
     'orders_restored' => 'Pedidos restaurados',
+    'order_created' => 'Pedido creado',
+    'order_updated' => 'Pedido actualizado',
+    'order_deleted' => 'Pedido eliminado',
+    'order_reassigned' => 'Pedido reasignado',
     'pending_auto_cancel' => 'Cancelación automática de pedidos pendientes mayores de :hours horas',
     'selected' => 'seleccionado',
 ];

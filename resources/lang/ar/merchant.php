@@ -76,6 +76,10 @@ return [
     'orders_assigned' => 'تم تكليف الطلبيات',
     'orders_deleted' => 'تم نقل الطلبيات للسلة',
     'orders_restored' => 'تم استرجاع الطلبيات',
+    'order_created' => 'تم إنشاء الطلبية',
+    'order_updated' => 'تم تحديث الطلبية',
+    'order_deleted' => 'تم حذف الطلبية',
+    'order_reassigned' => 'تمت إعادة التكليف',
     'pending_auto_cancel' => 'إلغاء تلقائي للطلبيات المعلقة منذ أكثر من :hours ساعة',
     'selected' => 'محدد',
 ];

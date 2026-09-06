@@ -93,8 +93,9 @@ trait HasInlineEdit
     {
         $permission = $config['permission'] ?? null;
 
-        if ($permission !== null) {
-            abort_unless(canStore($permission), 403);
+        if ($permission !== null && ! canStore($permission)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+            return;
         }
 
         $this->editingError = null;

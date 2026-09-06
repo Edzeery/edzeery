@@ -522,7 +522,8 @@ use App\Models\Products\Product;
 
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($canViewOrders): ?>
                         <a href="<?php echo e(route('merchant.tracking.index', $store)); ?>" wire:navigate
-                           class="edz-sidebar__sub-link <?php if(request()->routeIs('merchant.tracking.*')): ?> edz-sidebar__sub-link--active <?php endif; ?>">
+                           class="edz-sidebar__sub-link <?php if(request()->routeIs('merchant.tracking.*')): ?>
+                            edz-sidebar__sub-link--active <?php endif; ?>">
                             <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'truck','class' => 'edz-sidebar__icon edz-sidebar__sub-icon']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

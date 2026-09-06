@@ -160,7 +160,7 @@ test('submitCreate rejects quantities above available stock when backorders are 
         ->call('openCreateModal')
         ->set('form', qtyForm($store, $state, $city, $product, $variant, 5, cap: 3))
         ->call('submitCreate')
-        ->assertDispatched('swal', type: 'error')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error')
         ->assertSet('showCreateModal', true);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
@@ -182,7 +182,7 @@ test('backorder-enabled stores accept quantities beyond available stock', functi
         ->set('form', qtyForm($store, $state, $city, $product, $variant, 5, cap: null, preorder: true))
         ->call('submitCreate')
         ->assertSet('showCreateModal', false)
-        ->assertDispatched('swal', type: 'success');
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success');
 
     $created = Order::where('store_id', $store->id)->first();
     expect($created)->not->toBeNull()
@@ -206,7 +206,7 @@ test('the add-instead spinner caps at the available stock when tracking inventor
     }
 
     $volt->call('addFormItem', $variant->id)
-        ->assertDispatched('swal', type: 'error');
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
     $items = $volt->get('form.items');
     expect($items)->toHaveCount(1)
@@ -244,7 +244,7 @@ test('adding an out-of-stock variant is blocked when backorders are disabled', f
 
     qtyVolt([$user, $store])
         ->call('addFormItem', $variant->id)
-        ->assertDispatched('swal', type: 'error');
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
     $volt = qtyVolt([$user, $store])->call('addFormItem', $variant->id);
     expect($volt->get('form.items'))->toHaveCount(0);
