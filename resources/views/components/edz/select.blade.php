@@ -49,6 +49,12 @@
     $errorClass = $error ? 'edz-select--error' : '';
     $searchable = $search;
     $hasBackendSearch = $attributes->has('wire:search');
+
+    // Bound Livewire model path (form.shipping_provider_id, product_id, ...).
+    // wire:model.* variants (.live/.defer/...) must be matched before the
+    // plain wire:model so a modifier twin never shadows the base binding.
+    $modelName = $attributes->whereStartsWith('wire:model.')->first()
+        ?: $attributes->whereStartsWith('wire:model')->first();
 @endphp
 
 <div {{ $attributes->merge(['class' => "edz-select $sizeClass $errorClass $class"])->whereDoesntStartWith('wire:model')->whereDoesntStartWith('x-model')->whereDoesntStartWith('wire:search') }}
@@ -59,7 +65,7 @@
         hasBackendSearch: @js($hasBackendSearch),
         searchMinChars: @js($searchMinChars),
         wireMethodName: @js($attributes->get('wire:search')),
-        initialValue: @js($attributes->get('wire:model', ''))
+        modelName: @js($modelName)
     })" x-init="init()">
 
     <input type="hidden" @if ($name) name="{{ $name }}" @endif

@@ -92,6 +92,12 @@ unset($__defined_vars, $__key, $__value); ?>
     $errorClass = $error ? 'edz-select--error' : '';
     $searchable = $search;
     $hasBackendSearch = $attributes->has('wire:search');
+
+    // Bound Livewire model path (form.shipping_provider_id, product_id, ...).
+    // wire:model.* variants (.live/.defer/...) must be matched before the
+    // plain wire:model so a modifier twin never shadows the base binding.
+    $modelName = $attributes->whereStartsWith('wire:model.')->first()
+        ?: $attributes->whereStartsWith('wire:model')->first();
 ?>
 
 <div <?php echo e($attributes->merge(['class' => "edz-select $sizeClass $errorClass $class"])->whereDoesntStartWith('wire:model')->whereDoesntStartWith('x-model')->whereDoesntStartWith('wire:search')); ?>
@@ -103,7 +109,7 @@ unset($__defined_vars, $__key, $__value); ?>
         hasBackendSearch: <?php echo \Illuminate\Support\Js::from($hasBackendSearch)->toHtml() ?>,
         searchMinChars: <?php echo \Illuminate\Support\Js::from($searchMinChars)->toHtml() ?>,
         wireMethodName: <?php echo \Illuminate\Support\Js::from($attributes->get('wire:search'))->toHtml() ?>,
-        initialValue: <?php echo \Illuminate\Support\Js::from($attributes->get('wire:model', ''))->toHtml() ?>
+        modelName: <?php echo \Illuminate\Support\Js::from($modelName)->toHtml() ?>
     })" x-init="init()">
 
     <input type="hidden" <?php if($name): ?> name="<?php echo e($name); ?>" <?php endif; ?>

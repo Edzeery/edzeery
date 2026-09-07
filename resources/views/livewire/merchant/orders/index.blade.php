@@ -951,7 +951,7 @@ $resolveBulkOrderState = function (Order $order): array {
     }
 
     if (! empty($missing)) {
-        $reasons[] = __('order_flow.bulk_send_reason_missing', ['fields' => implode('طŒ ', $missing)]);
+        $reasons[] = __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $missing)]);
     }
 
     $reasons = array_values(array_unique($reasons));
@@ -1000,7 +1000,7 @@ $confirmBulkSend = function (): void {
         $state = $this->resolveBulkOrderState($order);
 
         if (! $state['ready']) {
-            $skipped[] = $order->number . ' (' . implode('ط› ', $state['reasons']) . ')';
+            $skipped[] = $order->number . ' (' . implode('، ', $state['reasons']) . ')';
             continue;
         }
 
@@ -1273,6 +1273,10 @@ $clearProductFilter = function (): void {
 $openOrderDetails = function (string $orderId): void {
     $this->detailsOrderId = $orderId;
 
+    // A duplicate-scan row opens the details drawer; drop the scan popup so
+    // the drawer is never stacked behind it (P29.6 z-order).
+    $this->showDuplicateScanModal = false;
+
     $order = Order::where('store_id', currentStoreId())
         ->with([
             'customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user',
@@ -1381,6 +1385,17 @@ $closeOrderEventsModal = function (): void {
 
 // ——— Confirmation drawer (P26) ———
 
+// Single source for the store's default shipping company: the explicit
+// is_default flag wins, otherwise the first active provider is used so an
+// order form always lands on a carrier when the store has providers.
+$storeDefaultProviderId = function (): string {
+    return (string) \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->orderByDesc('is_default')
+        ->orderBy('name')
+        ->value('id');
+};
+
 $openConfirmModal = function (string $orderId): void {
     if (! canStore(StorePermissionEnum::ORDER_CONFIRM->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
@@ -1397,6 +1412,9 @@ $openConfirmModal = function (string $orderId): void {
 
     $this->confirmOrderId = $orderId;
     $this->confirmProviderId = $order->shipping_provider_id ?? '';
+    if (blank($this->confirmProviderId)) {
+        $this->confirmProviderId = $this->storeDefaultProviderId();
+    }
     $this->confirmContacted = false;
     $this->confirmSummary = [
         'number' => $order->number,
@@ -1473,7 +1491,7 @@ $submitConfirmOnly = function (): void {
     if ($missing !== []) {
         $this->dispatch('swal:toast', [
             'icon' => 'warning',
-            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode(', ', $missing)]),
+            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode('، ', $missing)]),
         ]);
         return;
     }
@@ -1508,7 +1526,7 @@ $submitConfirmAndSend = function (): void {
     if ($missing !== []) {
         $this->dispatch('swal:toast', [
             'icon' => 'warning',
-            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode(', ', $missing)]),
+            'title' => __('order_flow.confirm_missing_fields', ['fields' => implode('، ', $missing)]),
         ]);
         return;
     }
@@ -1579,7 +1597,7 @@ $sendConfirmedOrder = function (string $orderId): void {
     if (! empty($missing)) {
         $this->dispatch('swal:toast', [
             'icon' => 'warning',
-            'title' => __('order_flow.send_missing_fields', ['fields' => implode('طŒ ', $missing)]),
+            'title' => __('order_flow.send_missing_fields', ['fields' => implode('، ', $missing)]),
         ]);
         return;
     }
@@ -1869,7 +1887,7 @@ $syncFormSelectedItems = function (): void {
     $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
 };
 
-// 30.3: weight_kg is auto-calculated from variant weights أ— quantities on every item
+// 30.3: weight_kg is auto-calculated from variant weights × quantities on every item
 // mutation. It stays a manual field otherwise, so a typed override is only overwritten
 // when the items actually change — never on a mere price edit.
 $recalcFormWeight = function (): void {
@@ -3104,6 +3122,10 @@ $openCreateModal = function (): void {
         'weight_kg' => '',
         'items' => [],
     ];
+
+    // Auto-select the store's default shipping company (is_default) when set.
+    $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
+
     $this->formOffices = [];
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
@@ -4242,7 +4264,7 @@ $submitEdit = function (): void {
                                                     class="edz-badge edz-badge--{{ $dupToneM }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
                                                     <x-edz.icon name="copy" class="w-3 h-3" />
                                                     {{ $dupLabelM }}@if (($order['dup_level'] ?? null) !== 'repeat')
-                                                        أ—{{ min($dupCountM, 9) }}{{ $dupCountM > 9 ? '+' : '' }}
+                                                        ×{{ min($dupCountM, 9) }}{{ $dupCountM > 9 ? '+' : '' }}
                                                     @endif
                                                 </button>
                                             @endif
@@ -4829,7 +4851,7 @@ $submitEdit = function (): void {
                                         @forelse ($detailsOrder['items_summary'] ?? [] as $item)
                                             <div class="flex items-center justify-between gap-3 px-3 py-2">
                                                 <span class="min-w-0 flex-1 truncate text-ink">{{ $item['name'] }}
-                                                    <span class="text-ink-muted">أ—{{ $item['qty'] }}</span></span>
+                                                    <span class="text-ink-muted">×{{ $item['qty'] }}</span></span>
                                                 <span
                                                     class="font-medium text-ink shrink-0">{{ currency($item['price'] * $item['qty']) }}</span>
                                             </div>
@@ -5148,7 +5170,7 @@ $submitEdit = function (): void {
                                         <span class="text-ink-muted">• {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}</span>
                                     </span>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        أ—{{ $dup['total_overlap_qty'] }}
+                                        ×{{ $dup['total_overlap_qty'] }}
                                     </span>
                                 </li>
                             @endforeach
@@ -5174,7 +5196,7 @@ $submitEdit = function (): void {
                     </h4>
                     <x-edz.select wire:model="confirmProviderId"
                         :options="$allProviders"
-                        option-value="id" option-label="name" searchable
+                        option-value="id" option-label="name" search
                         placeholder="{{ __('order_flow.confirm_provider_placeholder') }}" />
                 </div>
 
@@ -5293,7 +5315,7 @@ $submitEdit = function (): void {
                             <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
                                 @foreach (collect($this->bulkSendAnalysis)->where('ready', false) as $entry)
                                     <li class="leading-relaxed break-words">
-                                        #{{ $entry['number'] }} — {{ implode('ط› ', $entry['reasons']) }}
+                                        #{{ $entry['number'] }} — {{ implode('، ', $entry['reasons']) }}
                                     </li>
                                 @endforeach
                             </ul>
@@ -5387,7 +5409,7 @@ $submitEdit = function (): void {
                                         </span>
                                     </button>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        أ—{{ $dup['total_overlap_qty'] }}
+                                        ×{{ $dup['total_overlap_qty'] }}
                                     </span>
                                 </li>
                             @endforeach

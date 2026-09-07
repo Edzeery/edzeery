@@ -505,6 +505,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('closeOrderEventsModal'))->execute(...$arguments);
     }
 
+    public function storeDefaultProviderId(): string
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('storeDefaultProviderId'))->execute(...$arguments);
+    }
+
     public function openConfirmModal(string $orderId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];

@@ -246,7 +246,7 @@
                                         <div class="text-right shrink-0 w-24">
                                             <div class="text-sm font-bold text-ink tabular-nums">
                                                 {{ currency($item['price'] * $item['quantity']) }}</div>
-                                            <div class="text-xs text-ink-muted">{{ $item['quantity'] }} أ—
+                                            <div class="text-xs text-ink-muted">{{ $item['quantity'] }} ×
                                                 {{ currency($item['price']) }}</div>
                                         </div>
 

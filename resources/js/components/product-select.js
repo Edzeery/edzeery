@@ -73,19 +73,31 @@ export default function productSelect(config) {
                     if (v !== null && v !== undefined && v !== "") this.selected = v;
                 } catch (e) {}
             }
+            this._bindServerValue();
             this._syncFromServer();
         },
 
-        // Same morph-resync contract as edzSelect: Livewire updates the
-        // data-options attr in place, and livewire:updated bubbles after each
-        // render so the selected value stays in sync with the server model.
-        syncFromServer() {
-            if (this.modelName && this.$wire) {
+        // Livewire v3 mirrors the bound model path in component.reactive and
+        // mutates it after every round-trip. Watch it (the real v3 primitive —
+        // the old fake livewire:updated listener never fired) so the selected
+        // product stays in sync with whatever the server persisted.
+        _bindServerValue() {
+            if (!this.modelName || !this.$wire) return;
+
+            const read = () => {
+                let v;
                 try {
-                    const v = this.$wire.get(this.modelName);
-                    this.selected = v === null || v === undefined || v === "" ? null : v;
-                } catch (e) {}
-            }
+                    v = this.$wire.get(this.modelName);
+                } catch (e) {
+                    return;
+                }
+                this.selected = v === null || v === undefined || v === "" ? null : v;
+            };
+
+            read();
+            try {
+                this.$wire.$watch(this.modelName, read);
+            } catch (e) {}
         },
 
         _syncFromServer() {

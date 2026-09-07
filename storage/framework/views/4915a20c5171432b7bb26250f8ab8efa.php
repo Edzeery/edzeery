@@ -262,4 +262,4 @@ use Illuminate\Support\Collection;
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire/storefront/variant-matrix.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire\storefront\variant-matrix.blade.php ENDPATH**/ ?>

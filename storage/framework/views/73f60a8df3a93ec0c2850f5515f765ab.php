@@ -87,7 +87,7 @@ unset($__defined_vars, $__key, $__value); ?>
         placeholder: <?php echo \Illuminate\Support\Js::from($placeholder)->toHtml() ?>,
         modelName: <?php echo \Illuminate\Support\Js::from($modelName)->toHtml() ?>,
         fullModelName: <?php echo \Illuminate\Support\Js::from($fullModelName)->toHtml() ?>
-    })" data-options="<?php echo e($optionsAttr); ?>" x-on:livewire:updated="syncFromServer"
+    })" data-options="<?php echo e($optionsAttr); ?>"
     @click.outside="close()">
 
     

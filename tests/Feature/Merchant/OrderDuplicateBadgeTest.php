@@ -300,3 +300,21 @@ test('the count is capped at 9+ when many duplicates share the phone and product
         ->assertSee('edz-badge--danger')
         ->assertSee('×9+');
 });
+
+test('opening order details from a duplicate-scan row closes the scan popup', function () {
+    $us = dbbUser();
+    $st = $us[1];
+    [, $variantA] = dbbProduct($st, 'a');
+
+    $orderA = dbbOrder($st, '0550666020');
+    $orderB = dbbOrder($st, '0550666020');
+    dbbAttachItem($orderA, $variantA);
+    dbbAttachItem($orderB, $variantA);
+
+    dbbVolt($us)
+        ->call('openDuplicateScan', $orderA->id)
+        ->assertSet('showDuplicateScanModal', true)
+        ->call('openOrderDetails', $orderB->id)
+        ->assertSet('showDuplicateScanModal', false)
+        ->assertSet('detailsOrderId', $orderB->id);
+});

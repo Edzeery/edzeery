@@ -1518,7 +1518,7 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                                                     <?php echo e($dupLabelM); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($order['dup_level'] ?? null) !== 'repeat'): ?>
-                                                        أ—<?php echo e(min($dupCountM, 9)); ?><?php echo e($dupCountM > 9 ? '+' : ''); ?>
+                                                        ×<?php echo e(min($dupCountM, 9)); ?><?php echo e($dupCountM > 9 ? '+' : ''); ?>
 
                                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                                 </button>
@@ -2699,7 +2699,7 @@ use Illuminate\Support\Facades\Validator;
                                             <div class="flex items-center justify-between gap-3 px-3 py-2">
                                                 <span class="min-w-0 flex-1 truncate text-ink"><?php echo e($item['name']); ?>
 
-                                                    <span class="text-ink-muted">أ—<?php echo e($item['qty']); ?></span></span>
+                                                    <span class="text-ink-muted">×<?php echo e($item['qty']); ?></span></span>
                                                 <span
                                                     class="font-medium text-ink shrink-0"><?php echo e(currency($item['price'] * $item['qty'])); ?></span>
                                             </div>
@@ -3230,7 +3230,7 @@ use Illuminate\Support\Facades\Validator;
                                         <span class="text-ink-muted">• <?php echo e(\Carbon\Carbon::parse($dup['created_at'])->diffForHumans()); ?></span>
                                     </span>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        أ—<?php echo e($dup['total_overlap_qty']); ?>
+                                        ×<?php echo e($dup['total_overlap_qty']); ?>
 
                                     </span>
                                 </li>
@@ -3298,14 +3298,14 @@ use Illuminate\Support\Facades\Validator;
                     </h4>
                     <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'confirmProviderId','options' => $allProviders,'optionValue' => 'id','optionLabel' => 'name','searchable' => true,'placeholder' => ''.e(__('order_flow.confirm_provider_placeholder')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'confirmProviderId','options' => $allProviders,'optionValue' => 'id','optionLabel' => 'name','search' => true,'placeholder' => ''.e(__('order_flow.confirm_provider_placeholder')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['wire:model' => 'confirmProviderId','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($allProviders),'option-value' => 'id','option-label' => 'name','searchable' => true,'placeholder' => ''.e(__('order_flow.confirm_provider_placeholder')).'']); ?>
+<?php $component->withAttributes(['wire:model' => 'confirmProviderId','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($allProviders),'option-value' => 'id','option-label' => 'name','search' => true,'placeholder' => ''.e(__('order_flow.confirm_provider_placeholder')).'']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
@@ -3521,7 +3521,7 @@ use Illuminate\Support\Facades\Validator;
                             <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = collect($this->bulkSendAnalysis)->where('ready', false); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $entry): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <li class="leading-relaxed break-words">
-                                        #<?php echo e($entry['number']); ?> — <?php echo e(implode('ط› ', $entry['reasons'])); ?>
+                                        #<?php echo e($entry['number']); ?> — <?php echo e(implode('، ', $entry['reasons'])); ?>
 
                                     </li>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -3687,7 +3687,7 @@ use Illuminate\Support\Facades\Validator;
                                         </span>
                                     </button>
                                     <span class="shrink-0 text-xs text-ink-muted">
-                                        أ—<?php echo e($dup['total_overlap_qty']); ?>
+                                        ×<?php echo e($dup['total_overlap_qty']); ?>
 
                                     </span>
                                 </li>

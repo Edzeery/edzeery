@@ -18,6 +18,7 @@ export default function edzSelect(config) {
         hasBackendSearch: config.hasBackendSearch || false,
         searchMinChars: config.searchMinChars || 2,
         wireMethodName: config.wireMethodName || null,
+        modelName: config.modelName || null,
 
         get allOptions() {
             return [...this.options, ...this.backendOptions];
@@ -58,6 +59,8 @@ export default function edzSelect(config) {
 
         init() {
             this.selected = this.$refs.hiddenInput?.value || null;
+            this._bindServerValue();
+
             this._documentClickHandler = (e) => {
                 if (this.open && !this.$el.contains(e.target)) {
                     this.open = false;
@@ -74,6 +77,31 @@ export default function edzSelect(config) {
             document.addEventListener('scroll', this._repositionHandler, true);
             window.addEventListener('resize', this._repositionHandler);
             this._syncFromServer();
+        },
+
+        // Livewire v3 keeps the bound model path inside component.reactive, the
+        // JS mirror of the server state. Read it once at mount, then watch it:
+        // the mirror is mutated after every round-trip, so the trigger label and
+        // the selected check follow whatever the server persisted (numeric-safe
+        // via String()). This is the real v3 primitive — the old fake listener
+        // (livewire:updated) never fired because Livewire ships no such event.
+        _bindServerValue() {
+            if (!this.modelName || !this.$wire) return;
+
+            const read = () => {
+                let v;
+                try {
+                    v = this.$wire.get(this.modelName);
+                } catch (e) {
+                    return;
+                }
+                this.selected = v === null || v === undefined || v === '' ? null : String(v);
+            };
+
+            read();
+            try {
+                this.$wire.$watch(this.modelName, read);
+            } catch (e) {}
         },
 
         // Livewire morphs re-render this element in place: the option list

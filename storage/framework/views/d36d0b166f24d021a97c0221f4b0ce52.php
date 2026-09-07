@@ -540,7 +540,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                         <div class="text-right shrink-0 w-24">
                                             <div class="text-sm font-bold text-ink tabular-nums">
                                                 <?php echo e(currency($item['price'] * $item['quantity'])); ?></div>
-                                            <div class="text-xs text-ink-muted"><?php echo e($item['quantity']); ?> أ—
+                                            <div class="text-xs text-ink-muted"><?php echo e($item['quantity']); ?> ×
                                                 <?php echo e(currency($item['price'])); ?></div>
                                         </div>
 

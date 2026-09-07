@@ -52,7 +52,7 @@
         placeholder: @js($placeholder),
         modelName: @js($modelName),
         fullModelName: @js($fullModelName)
-    })" data-options="{{ $optionsAttr }}" x-on:livewire:updated="syncFromServer"
+    })" data-options="{{ $optionsAttr }}"
     @click.outside="close()">
 
     {{-- Trigger --}}

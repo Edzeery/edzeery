@@ -21,7 +21,7 @@ return [
 
     'confirm_title' => 'تأكيد الطلبية',
     'confirm_summary' => 'ملخص الطلبية',
-    'confirm_partner' => 'شريك التوصيل',
+    'confirm_partner' => 'شركة التوصيل',
     'confirm_provider_placeholder' => 'اختر شركة التوصيل',
     'confirm_with_rider' => 'موصّل خاص',
     'confirm_contacted' => 'تم التواصل مع العميل في هذه المحاولة',
