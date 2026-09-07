@@ -63,6 +63,8 @@ return [
     'bulk_send_carrier' => 'Send to carrier',
     'bulk_delete' => 'Delete selected',
     'bulk_processing' => 'Processing...',
+    'bulk_tasks' => 'Bulk tasks',
+    'bulk_clear' => 'Clear selection',
     'trash_bin' => 'Trash',
     'restore_order' => 'Restore',
     'delete_permanently' => 'Delete forever',

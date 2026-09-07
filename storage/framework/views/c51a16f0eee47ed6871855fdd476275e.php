@@ -181,6 +181,11 @@ use Illuminate\Support\Facades\Validator;
             </div>
 
             
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($this->selectedOrders) > 0): ?>
+                <?php echo $__env->make('livewire.merchant.orders.partials.bulk-actions-bar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+            
             <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm"
                     wire:loading.attr="disabled" wire:target="openTableSettings">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -1210,8 +1215,6 @@ use Illuminate\Support\Facades\Validator;
                 </button>
             </div>
         </div>
-    <?php elseif(count($this->selectedOrders) > 0): ?>
-        <?php echo $__env->make('livewire.merchant.orders.partials.bulk-actions-bar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
@@ -1862,12 +1865,26 @@ use Illuminate\Support\Facades\Validator;
                                                 <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                                                     <button type="button" class="edz-inline-edit__display"
                                                         @click="$wire.startOrderWilayaEdit('<?php echo e($orderId); ?>')">
-                                                        <span
-                                                            class="edz-inline-edit__value"><?php echo e($order['state']['name'] ?? '—'); ?></span>
+                                                        <span class="edz-inline-edit__value">
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['state']['name'])): ?>
+                                                                <?php echo e($order['state']['name']); ?>
+
+                                                            <?php else: ?>
+                                                                <span
+                                                                    class="text-warning font-medium"><?php echo e(__('order_flow.please_select_state')); ?></span>
+                                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                        </span>
                                                     </button>
                                                 <?php else: ?>
-                                                    <span
-                                                        class="text-xs text-ink-muted"><?php echo e($order['state']['name'] ?? '-'); ?></span>
+                                                    <span class="text-xs">
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['state']['name'])): ?>
+                                                            <span
+                                                                class="text-ink-muted"><?php echo e($order['state']['name']); ?></span>
+                                                        <?php else: ?>
+                                                            <span
+                                                                class="text-warning font-medium"><?php echo e(__('order_flow.please_select_state')); ?></span>
+                                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                    </span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('total', $this->visibleColumns)): ?>
@@ -1926,6 +1943,35 @@ use Illuminate\Support\Facades\Validator;
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         </div>
                                         <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $this->showTrash && ($order['can_confirm'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)): ?>
+                                                <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
+                                                    class="edz-btn edz-btn--primary edz-btn--sm"
+                                                    title="<?php echo e(__('order_flow.confirm_title')); ?>"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="openConfirmModal('<?php echo e($orderId); ?>')">
+                                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'phone','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'phone','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                                                    <span><?php echo e(__('order_flow.confirm_title')); ?></span>
+                                                </button>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <button wire:click="openOrderDetails('<?php echo e($orderId); ?>')"
                                                 class="edz-btn edz-btn--ghost edz-btn--xs"
                                                 title="<?php echo e(__('merchant.order_details')); ?>"

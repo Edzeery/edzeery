@@ -3759,6 +3759,11 @@ $submitEdit = function (): void {
                 </button>
             </div>
 
+            {{-- Bulk Tasks (single dropdown trigger, shown once orders are selected) --}}
+            @if (count($this->selectedOrders) > 0)
+                @include('livewire.merchant.orders.partials.bulk-actions-bar')
+            @endif
+
             {{-- Table Settings --}}
             <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm"
                     wire:loading.attr="disabled" wire:target="openTableSettings">
@@ -4085,7 +4090,7 @@ $submitEdit = function (): void {
 
 
 
-    {{-- Bulk action bar (sticky when items selected) --}}
+    {{-- Bulk selection header (trash mode only; bulk tasks live in the toolbar above) --}}
     @if ($this->showTrash)
         <div
             class="mb-4 p-3 bg-warning-surface border border-warning-border rounded-xl flex items-center justify-between">
@@ -4106,8 +4111,6 @@ $submitEdit = function (): void {
                 </button>
             </div>
         </div>
-    @elseif (count($this->selectedOrders) > 0)
-        @include('livewire.merchant.orders.partials.bulk-actions-bar')
     @endif
 
     {{-- Table --}}
@@ -4462,12 +4465,25 @@ $submitEdit = function (): void {
                                                 @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                     <button type="button" class="edz-inline-edit__display"
                                                         @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
-                                                        <span
-                                                            class="edz-inline-edit__value">{{ $order['state']['name'] ?? '—' }}</span>
+                                                        <span class="edz-inline-edit__value">
+                                                            @if (!empty($order['state']['name']))
+                                                                {{ $order['state']['name'] }}
+                                                            @else
+                                                                <span
+                                                                    class="text-warning font-medium">{{ __('order_flow.please_select_state') }}</span>
+                                                            @endif
+                                                        </span>
                                                     </button>
                                                 @else
-                                                    <span
-                                                        class="text-xs text-ink-muted">{{ $order['state']['name'] ?? '-' }}</span>
+                                                    <span class="text-xs">
+                                                        @if (!empty($order['state']['name']))
+                                                            <span
+                                                                class="text-ink-muted">{{ $order['state']['name'] }}</span>
+                                                        @else
+                                                            <span
+                                                                class="text-warning font-medium">{{ __('order_flow.please_select_state') }}</span>
+                                                        @endif
+                                                    </span>
                                                 @endif
                                             @endif
                                             @if (in_array('total', $this->visibleColumns))
@@ -4489,6 +4505,16 @@ $submitEdit = function (): void {
                                             @endif
                                         </div>
                                         <div class="mt-3 flex items-center gap-2 flex-wrap">
+                                            @if (! $this->showTrash && ($order['can_confirm'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value))
+                                                <button wire:click="openConfirmModal('{{ $orderId }}')"
+                                                    class="edz-btn edz-btn--primary edz-btn--sm"
+                                                    title="{{ __('order_flow.confirm_title') }}"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="openConfirmModal('{{ $orderId }}')">
+                                                    <x-edz.icon name="phone" class="w-4 h-4" />
+                                                    <span>{{ __('order_flow.confirm_title') }}</span>
+                                                </button>
+                                            @endif
                                             <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                 class="edz-btn edz-btn--ghost edz-btn--xs"
                                                 title="{{ __('merchant.order_details') }}"

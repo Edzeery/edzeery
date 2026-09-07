@@ -61,6 +61,8 @@ return [
     'bulk_send_carrier' => 'إرسال لشركة التوصيل',
     'bulk_delete' => 'حذف المحدد',
     'bulk_processing' => 'جارٍ المعالجة...',
+    'bulk_tasks' => 'مهام متعددة',
+    'bulk_clear' => 'مسح التحديد',
     'trash_bin' => 'سلة المحذوفات',
     'restore_order' => 'استرجاع',
     'delete_permanently' => 'حذف نهائي',

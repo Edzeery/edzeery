@@ -194,7 +194,7 @@ test('the provider column shows a select hint instead of a dash for required emp
 
     Volt::test('merchant.orders.index')
         ->set('visibleColumns', ['shipping_provider'])
-        ->assertSeeHtml('<span class="text-warning font-medium">'.__('order_flow.select_shipping_provider').'</span>');
+        ->assertSeeHtml('<span class="text-warning font-medium">'.__('order_flow.please_select_shipping_provider').'</span>');
 });
 
 test('the provider column renders the assigned provider name instead of a hint', function () {

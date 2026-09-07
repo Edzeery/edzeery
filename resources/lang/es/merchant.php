@@ -61,6 +61,8 @@ return [
     'bulk_send_carrier' => 'Enviar al transportista',
     'bulk_delete' => 'Eliminar selección',
     'bulk_processing' => 'Procesando...',
+    'bulk_tasks' => 'Tareas múltiples',
+    'bulk_clear' => 'Borrar selección',
     'trash_bin' => 'Papelera',
     'restore_order' => 'Restaurar pedido',
     'delete_permanently' => 'Eliminar permanentemente',

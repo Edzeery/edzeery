@@ -1,5 +1,24 @@
 
 
+<?php
+    $requiredHint = ($isRequired ?? false)
+        ? match ($colKey) {
+            'delivery_type' => __('order_flow.please_select_delivery_type'),
+            'shipping_provider' => __('order_flow.please_select_shipping_provider'),
+            'wilaya' => __('order_flow.please_select_state'),
+            'city' => __('order_flow.please_select_city'),
+            'stopdesk_point' => __('order_flow.please_select_stopdesk'),
+            default => null,
+        }
+        : null;
+    $deliveryTypeLabel = match ($order['delivery_type'] ?? null) {
+        'stopdesk' => __('merchant_panel.stop_desk_label'),
+        'home' => __('merchant_panel.home_delivery_label'),
+        default => null,
+    };
+    $showStopdeskHint = ($colKey === 'stopdesk_point') && ($order['delivery_type'] ?? null) === 'stopdesk';
+?>
+
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php switch($colKey):
     case ('number'): ?>
         <td class="px-4 py-3 font-mono font-semibold text-ink">
@@ -359,11 +378,26 @@
             <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderWilayaEdit('<?php echo e($orderId); ?>')">
-                    <span class="edz-inline-edit__value"><?php echo e($order['state']['name'] ?? '—'); ?></span>
+                    <span class="edz-inline-edit__value">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['state']['name'])): ?>
+                            <?php echo e($order['state']['name']); ?>
+
+                        <?php elseif($requiredHint): ?>
+                            <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </span>
                 </button>
             <?php else: ?>
-                <?php echo e($order['state']['name'] ?? '-'); ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['state']['name'])): ?>
+                    <?php echo e($order['state']['name']); ?>
 
+                <?php elseif($requiredHint): ?>
+                    <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                <?php else: ?>
+                    -
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>
         <?php break; ?>
@@ -635,11 +669,26 @@
             <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !empty($order['state_id'])): ?>
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderCityEdit('<?php echo e($orderId); ?>')">
-                    <span class="edz-inline-edit__value"><?php echo e($order['city']['name'] ?? '—'); ?></span>
+                    <span class="edz-inline-edit__value">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['city']['name'])): ?>
+                            <?php echo e($order['city']['name']); ?>
+
+                        <?php elseif($requiredHint): ?>
+                            <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </span>
                 </button>
             <?php else: ?>
-                <?php echo e($order['city']['name'] ?? '-'); ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['city']['name'])): ?>
+                    <?php echo e($order['city']['name']); ?>
 
+                <?php elseif($requiredHint): ?>
+                    <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                <?php else: ?>
+                    -
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>
         <?php break; ?>
@@ -719,11 +768,26 @@
             <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderDeliveryTypeEdit('<?php echo e($orderId); ?>')">
-                    <span class="edz-inline-edit__value"><?php echo e($order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $order['delivery_type'] ?? '—')); ?></span>
+                    <span class="edz-inline-edit__value">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($deliveryTypeLabel): ?>
+                            <?php echo e($deliveryTypeLabel); ?>
+
+                        <?php elseif($requiredHint): ?>
+                            <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </span>
                 </button>
             <?php else: ?>
-                <?php echo e($order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $order['delivery_type'] ?? '-')); ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($deliveryTypeLabel): ?>
+                    <?php echo e($deliveryTypeLabel); ?>
 
+                <?php elseif($requiredHint): ?>
+                    <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                <?php else: ?>
+                    -
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>
         <?php break; ?>
@@ -771,8 +835,8 @@
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($order['shipping_provider']['name'])): ?>
                             <?php echo e($order['shipping_provider']['name']); ?>
 
-                        <?php elseif($isRequired ?? false): ?>
-                            <span class="text-warning font-medium"><?php echo e(__('order_flow.select_shipping_provider')); ?></span>
+                        <?php elseif($requiredHint): ?>
+                            <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
                         <?php else: ?>
                             —
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -782,8 +846,8 @@
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($order['shipping_provider']['name'])): ?>
                     <?php echo e($order['shipping_provider']['name']); ?>
 
-                <?php elseif($isRequired ?? false): ?>
-                    <span class="text-warning font-medium"><?php echo e(__('order_flow.select_shipping_provider')); ?></span>
+                <?php elseif($requiredHint): ?>
+                    <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
                 <?php else: ?>
                     -
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -830,13 +894,27 @@
             <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderStopdeskEdit('<?php echo e($orderId); ?>')">
-                    <span class="edz-inline-edit__value"><?php echo e($order['stopdesk_point']['name'] ?? '—'); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['city']['name'])): ?>
-                            (<?php echo e($order['stopdesk_point']['city']['name']); ?>)
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?></span>
+                    <span class="edz-inline-edit__value">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['name'])): ?>
+                            <?php echo e($order['stopdesk_point']['name']); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['city']['name'])): ?>
+                                (<?php echo e($order['stopdesk_point']['city']['name']); ?>)
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        <?php elseif($showStopdeskHint && $requiredHint): ?>
+                            <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </span>
                 </button>
             <?php else: ?>
-                <?php echo e($order['stopdesk_point']['name'] ?? '-'); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['city']['name'])): ?>
-                    (<?php echo e($order['stopdesk_point']['city']['name']); ?>)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['name'])): ?>
+                    <?php echo e($order['stopdesk_point']['name']); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($order['stopdesk_point']['city']['name'])): ?>
+                        (<?php echo e($order['stopdesk_point']['city']['name']); ?>)
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php elseif($showStopdeskHint && $requiredHint): ?>
+                    <span class="text-warning font-medium"><?php echo e($requiredHint); ?></span>
+                <?php else: ?>
+                    -
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>

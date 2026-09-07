@@ -1,6 +1,25 @@
 {{-- Orders table body cell: renders the <td> for a single column key.
     Receives: $order (array), $colKey (string), $orderId (string), $transitions (array). --}}
 
+@php
+    $requiredHint = ($isRequired ?? false)
+        ? match ($colKey) {
+            'delivery_type' => __('order_flow.please_select_delivery_type'),
+            'shipping_provider' => __('order_flow.please_select_shipping_provider'),
+            'wilaya' => __('order_flow.please_select_state'),
+            'city' => __('order_flow.please_select_city'),
+            'stopdesk_point' => __('order_flow.please_select_stopdesk'),
+            default => null,
+        }
+        : null;
+    $deliveryTypeLabel = match ($order['delivery_type'] ?? null) {
+        'stopdesk' => __('merchant_panel.stop_desk_label'),
+        'home' => __('merchant_panel.home_delivery_label'),
+        default => null,
+    };
+    $showStopdeskHint = ($colKey === 'stopdesk_point') && ($order['delivery_type'] ?? null) === 'stopdesk';
+@endphp
+
 @switch($colKey)
     @case('number')
         <td class="px-4 py-3 font-mono font-semibold text-ink">
@@ -219,10 +238,24 @@
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
-                    <span class="edz-inline-edit__value">{{ $order['state']['name'] ?? '—' }}</span>
+                    <span class="edz-inline-edit__value">
+                        @if (!empty($order['state']['name']))
+                            {{ $order['state']['name'] }}
+                        @elseif ($requiredHint)
+                            <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                        @else
+                            —
+                        @endif
+                    </span>
                 </button>
             @else
-                {{ $order['state']['name'] ?? '-' }}
+                @if (!empty($order['state']['name']))
+                    {{ $order['state']['name'] }}
+                @elseif ($requiredHint)
+                    <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                @else
+                    -
+                @endif
             @endif
         </td>
         @break
@@ -409,10 +442,24 @@
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !empty($order['state_id']))
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderCityEdit('{{ $orderId }}')">
-                    <span class="edz-inline-edit__value">{{ $order['city']['name'] ?? '—' }}</span>
+                    <span class="edz-inline-edit__value">
+                        @if (!empty($order['city']['name']))
+                            {{ $order['city']['name'] }}
+                        @elseif ($requiredHint)
+                            <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                        @else
+                            —
+                        @endif
+                    </span>
                 </button>
             @else
-                {{ $order['city']['name'] ?? '-' }}
+                @if (!empty($order['city']['name']))
+                    {{ $order['city']['name'] }}
+                @elseif ($requiredHint)
+                    <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                @else
+                    -
+                @endif
             @endif
         </td>
         @break
@@ -472,10 +519,24 @@
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderDeliveryTypeEdit('{{ $orderId }}')">
-                    <span class="edz-inline-edit__value">{{ $order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $order['delivery_type'] ?? '—') }}</span>
+                    <span class="edz-inline-edit__value">
+                        @if ($deliveryTypeLabel)
+                            {{ $deliveryTypeLabel }}
+                        @elseif ($requiredHint)
+                            <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                        @else
+                            —
+                        @endif
+                    </span>
                 </button>
             @else
-                {{ $order['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($order['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $order['delivery_type'] ?? '-') }}
+                @if ($deliveryTypeLabel)
+                    {{ $deliveryTypeLabel }}
+                @elseif ($requiredHint)
+                    <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                @else
+                    -
+                @endif
             @endif
         </td>
         @break
@@ -504,8 +565,8 @@
                     <span class="edz-inline-edit__value">
                         @if (! empty($order['shipping_provider']['name']))
                             {{ $order['shipping_provider']['name'] }}
-                        @elseif ($isRequired ?? false)
-                            <span class="text-warning font-medium">{{ __('order_flow.select_shipping_provider') }}</span>
+                        @elseif ($requiredHint)
+                            <span class="text-warning font-medium">{{ $requiredHint }}</span>
                         @else
                             —
                         @endif
@@ -514,8 +575,8 @@
             @else
                 @if (! empty($order['shipping_provider']['name']))
                     {{ $order['shipping_provider']['name'] }}
-                @elseif ($isRequired ?? false)
-                    <span class="text-warning font-medium">{{ __('order_flow.select_shipping_provider') }}</span>
+                @elseif ($requiredHint)
+                    <span class="text-warning font-medium">{{ $requiredHint }}</span>
                 @else
                     -
                 @endif
@@ -544,13 +605,27 @@
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderStopdeskEdit('{{ $orderId }}')">
-                    <span class="edz-inline-edit__value">{{ $order['stopdesk_point']['name'] ?? '—' }}@if (!empty($order['stopdesk_point']['city']['name']))
-                            ({{ $order['stopdesk_point']['city']['name'] }})
-                        @endif</span>
+                    <span class="edz-inline-edit__value">
+                        @if (!empty($order['stopdesk_point']['name']))
+                            {{ $order['stopdesk_point']['name'] }}@if (!empty($order['stopdesk_point']['city']['name']))
+                                ({{ $order['stopdesk_point']['city']['name'] }})
+                            @endif
+                        @elseif ($showStopdeskHint && $requiredHint)
+                            <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                        @else
+                            —
+                        @endif
+                    </span>
                 </button>
             @else
-                {{ $order['stopdesk_point']['name'] ?? '-' }}@if (!empty($order['stopdesk_point']['city']['name']))
-                    ({{ $order['stopdesk_point']['city']['name'] }})
+                @if (!empty($order['stopdesk_point']['name']))
+                    {{ $order['stopdesk_point']['name'] }}@if (!empty($order['stopdesk_point']['city']['name']))
+                        ({{ $order['stopdesk_point']['city']['name'] }})
+                    @endif
+                @elseif ($showStopdeskHint && $requiredHint)
+                    <span class="text-warning font-medium">{{ $requiredHint }}</span>
+                @else
+                    -
                 @endif
             @endif
         </td>

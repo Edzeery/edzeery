@@ -2,11 +2,10 @@
 
 $__newAttributes = [];
 $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
-    'domain',
-    'status',
-    'storeId' => null,
-    'set'   => null,
-    'class' => '',
+    'tone' => 'neutral',
+    'dot' => false,
+    'sm' => false,
+    'lg' => false,
 ]));
 
 foreach ($attributes->all() as $__key => $__value) {
@@ -23,11 +22,10 @@ unset($__propNames);
 unset($__newAttributes);
 
 foreach (array_filter(([
-    'domain',
-    'status',
-    'storeId' => null,
-    'set'   => null,
-    'class' => '',
+    'tone' => 'neutral',
+    'dot' => false,
+    'sm' => false,
+    'lg' => false,
 ]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
@@ -41,9 +39,14 @@ foreach ($attributes->all() as $__key => $__value) {
 unset($__defined_vars, $__key, $__value); ?>
 
 <?php
-    $statusKey = $status instanceof \BackedEnum ? $status->value : (string) $status;
-    $result = \App\Domains\Status\StatusResolver::resolve($domain, $statusKey, $storeId ?? currentStoreId());
+    $classes = ['edz-badge', "edz-badge--{$tone}"];
+    if ($dot) $classes[] = 'edz-badge--dot';
+    if ($sm) $classes[] = 'edz-badge--sm';
+    if ($lg) $classes[] = 'edz-badge--lg';
 ?>
 
-<span role="img" aria-label="<?php echo e($result->label); ?>"><?php echo $result->renderIcon($set, $class ? $class : null); ?></span>
-<?php /**PATH C:\laragon\www\edzeery\resources\views/vendor/status-kit/components/status-icon.blade.php ENDPATH**/ ?>
+<span <?php echo e($attributes->merge(['class' => implode(' ', $classes)])); ?>>
+    <?php echo e($slot); ?>
+
+</span>
+<?php /**PATH C:\laragon\www\edzeery\resources\views/components/edz/badge.blade.php ENDPATH**/ ?>
