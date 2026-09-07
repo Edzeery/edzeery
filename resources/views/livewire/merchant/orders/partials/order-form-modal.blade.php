@@ -111,9 +111,7 @@
                                     wire:loading.attr="disabled"
                                     class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0 disabled:opacity-50 disabled:pointer-events-none {{ $loadingOffices ? 'opacity-50 pointer-events-none' : '' }}"
                                     aria-label="{{ __('merchant_panel.refresh_offices') }}">
-                                    <x-edz.spinner wire:target="refreshFormOffices" class="w-4 h-4" />
-                                    <x-edz.icon name="arrow-path" class="w-4 h-4"
-                                        wire:loading.remove wire:target="refreshFormOffices" />
+                                    <x-edz.icon name="arrow-path" class="w-4 h-4" />
                                 </button>
                             </div>
                             @if (empty($this->form['shipping_provider_id']))
@@ -314,10 +312,8 @@
                             {{ __('buttons.cancel') }}
                         </button>
                         <button type="submit" class="edz-btn edz-btn--primary" wire:loading.attr="disabled"
-                            wire:loading.class="opacity-50 pointer-events-none" wire:target="submitCreate,submitEdit">
-                            <x-edz.spinner wire:target="submitCreate,submitEdit" />
-                            <span wire:loading.remove
-                                wire:target="submitCreate,submitEdit">{{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}</span>
+                            wire:loading.class="opacity-50 pointer-events-none">
+                            <span>{{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}</span>
                             <span
                                 class="sr-only">{{ $showEditModal ? __('merchant_panel.update') : __('merchant_panel.create') }}</span>
                         </button>

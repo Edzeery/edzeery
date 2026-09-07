@@ -32,6 +32,9 @@
         default => '',
     };
 
+    // Livewire morphs in place; Alpine resyncs the option list from this attr.
+    $optionsAttr = htmlspecialchars(json_encode($jsOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+
     // The selected product model path (e.g. filters.product_id).
     $modelName = $attributes->whereStartsWith('wire:model.')->first()
         ?: $attributes->whereStartsWith('wire:model')->first();
@@ -49,7 +52,8 @@
         placeholder: @js($placeholder),
         modelName: @js($modelName),
         fullModelName: @js($fullModelName)
-    })" @click.outside="close()">
+    })" data-options="{{ $optionsAttr }}" x-on:livewire:updated="syncFromServer"
+    @click.outside="close()">
 
     {{-- Trigger --}}
     <button type="button" x-ref="trigger" class="edz-select__trigger"

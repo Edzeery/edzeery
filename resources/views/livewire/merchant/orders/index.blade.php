@@ -308,7 +308,7 @@ $orderColumns = function (): array {
         ['key' => 'customer', 'label_key' => 'customer', 'group' => 'identity', 'default' => true, 'required' => true, 'editable' => true],
         ['key' => 'phone', 'label_key' => 'phone', 'group' => 'identity', 'default' => true, 'required' => true, 'editable' => true],
         ['key' => 'verification', 'label_key' => 'verification', 'group' => 'identity', 'default' => true, 'required' => false, 'editable' => false, 'info' => true],
-        ['key' => 'notes', 'label_key' => 'notes', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
+        ['key' => 'notes', 'label_key' => 'notes', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => true],
         ['key' => 'meta', 'label_key' => 'meta', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
 
         // products_financial
@@ -2901,9 +2901,46 @@ $saveOrderWeight = function (?string $weight = null): void {
         'permission' => StorePermissionEnum::ORDER_MANAGE->value,
         'rules' => ['value' => ['nullable', 'numeric', 'min:0', 'max:9999']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
-        'apply' => fn(Order $order, $value) => $order->update(['weight_kg' => blank($value) ? null : $value]),
+        'apply' => fn(Order $order, $value) => $order->update(['weight_kg' => blank($value) ? 1.00 : $value]),
         'label' => 'order weight',
         'audit_event' => 'order_weight_updated',
+    ]);
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$startOrderNotesEdit = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->startEdit(
+        'order.notes',
+        $orderId,
+        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('notes'),
+    );
+};
+
+$saveOrderNotes = function (?string $notes = null): void {
+    if (!$this->guardOrderEditable()) {
+        return;
+    }
+
+    if ($notes !== null) {
+        $this->editingValue = $notes;
+    }
+
+    $orderId = $this->editingId;
+
+    $this->saveEdit([
+        'field' => 'order.notes',
+        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'rules' => ['value' => ['nullable', 'string', 'max:500']],
+        'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
+        'apply' => fn(Order $order, $value) => $order->update(['notes' => blank($value) ? null : $value]),
+        'label' => 'order notes',
+        'audit_event' => 'order_notes_updated',
     ]);
 
     $this->refreshSingleOrder($orderId);
@@ -3392,7 +3429,7 @@ $submitCreate = function (): void {
             'discount_reason' => $this->form['discount_reason'] ?: null,
             'notes' => $this->form['notes'],
             'phone_secondary' => $this->form['phone_secondary'],
-            'weight_kg' => $this->form['weight_kg'] ?: null,
+            'weight_kg' => $this->form['weight_kg'] ?: 1.00,
             // Carrier applies to both delivery types (dispatch needs it for home too);
             // the office only applies to stopdesk deliveries.
             'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
@@ -3549,7 +3586,7 @@ $submitEdit = function (): void {
         'discount_reason' => $this->form['discount_reason'] ?: null,
         'notes' => $this->form['notes'],
         'phone_secondary' => $this->form['phone_secondary'],
-        'weight_kg' => $this->form['weight_kg'] ?: null,
+        'weight_kg' => $this->form['weight_kg'] ?: 1.00,
         'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
         // Desk only applies to stopdesk deliveries; clear it on home.
         'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
@@ -3649,15 +3686,13 @@ $submitEdit = function (): void {
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button @click="$wire.openCreateModal()" class="edz-btn edz-btn--primary edz-btn--sm"
                     wire:loading.attr="disabled" wire:target="openCreateModal">
-                    <x-edz.spinner wire:target="openCreateModal" class="w-4 h-4" />
-                    <x-edz.icon name="plus" wire:loading.remove wire:target="openCreateModal" class="w-4 h-4" />
-                    <span wire:loading.remove wire:target="openCreateModal">{{ __('merchant_panel.new_order') }}</span>
+                    <x-edz.icon name="plus" class="w-4 h-4" />
+                    <span>{{ __('merchant_panel.new_order') }}</span>
                 </button>
             @endif
             <button wire:click="refreshOrders" class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
                 wire:loading.class="opacity-50 pointer-events-none" wire:target="refreshOrders">
-                <x-edz.icon name="arrow-path" wire:loading.remove wire:target="refreshOrders" class="w-4 h-4" />
-                <x-edz.spinner wire:target="refreshOrders" class="w-4 h-4" />
+                <x-edz.icon name="arrow-path" class="w-4 h-4" />
             </button>
         </div>
     </div>
@@ -3683,17 +3718,15 @@ $submitEdit = function (): void {
                 <button wire:click="loadOrders" type="button"
                     class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
                     wire:loading.attr="disabled" wire:target="loadOrders">
-                    <x-edz.spinner wire:target="loadOrders" class="w-4 h-4" />
-                    <x-edz.icon name="arrow-right" wire:loading.remove wire:target="loadOrders" class="w-4 h-4" />
+                    <x-edz.icon name="arrow-right" class="w-4 h-4" />
                 </button>
             </div>
 
             {{-- Table Settings --}}
             <button wire:click="openTableSettings" class="edz-btn edz-btn--ghost edz-btn--sm"
                     wire:loading.attr="disabled" wire:target="openTableSettings">
-                    <x-edz.spinner wire:target="openTableSettings" class="w-4 h-4" />
-                    <x-edz.icon name="view-columns" wire:loading.remove wire:target="openTableSettings" class="w-4 h-4" />
-                    <span wire:loading.remove wire:target="openTableSettings">{{ __('merchant_panel.columns') }}</span>
+                    <x-edz.icon name="view-columns" class="w-4 h-4" />
+                    <span>{{ __('merchant_panel.columns') }}</span>
                 </button>
 
             {{-- Quick Filters (grouped popup) --}}
@@ -3705,18 +3738,16 @@ $submitEdit = function (): void {
             <x-edz.dropdown align="right" width="340px"
                 trigger-class="edz-btn edz-btn--ghost edz-btn--sm {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}">
                 <x-slot name="trigger">
-                    <x-edz.spinner wire:target="setFilter" class="w-4 h-4" />
-                    <x-edz.icon name="funnel" wire:loading.remove wire:target="setFilter"
+                    <x-edz.icon name="funnel"
                         class="w-4 h-4 {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}" />
-                    <span wire:loading.remove
-                        wire:target="setFilter">{{ __('merchant_panel.filters') }}</span>
+                    <span>{{ __('merchant_panel.filters') }}</span>
                     @if ($quickActiveCount > 0)
-                        <span wire:loading.remove wire:target="setFilter"
+                        <span
                             class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
                             {{ $quickActiveCount }}
                         </span>
                     @endif
-                    <x-edz.icon name="chevron-down" wire:loading.remove wire:target="setFilter" class="w-3 h-3" />
+                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
                 </x-slot>
 
                 <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
@@ -3799,10 +3830,8 @@ $submitEdit = function (): void {
             <button wire:click="toggleTrash"
                 class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->showTrash ? 'text-danger-600' : '' }}"
                 wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
-                <x-edz.spinner wire:target="toggleTrash" class="w-4 h-4" />
-                <x-edz.icon name="trash" wire:loading.remove wire:target="toggleTrash" class="w-4 h-4" />
-                <span wire:loading.remove
-                    wire:target="toggleTrash">{{ $this->showTrash ? __('buttons.close') . ' ' . __('merchant.trash_bin') : __('merchant.trash_bin') }}</span>
+                <x-edz.icon name="trash" class="w-4 h-4" />
+                <span>{{ $this->showTrash ? __('buttons.close') . ' ' . __('merchant.trash_bin') : __('merchant.trash_bin') }}</span>
             </button>
 
             <div class="flex items-center gap-1 text-xs text-ink-muted" x-data="{ pp: {{ $this->perPage }} }">
@@ -4029,8 +4058,7 @@ $submitEdit = function (): void {
             <div class="flex gap-2">
                 <button wire:click="restoreAll" wire:loading.attr="disabled"
                     wire:loading.class="opacity-50 pointer-events-none" class="edz-btn edz-btn--ghost edz-btn--sm">
-                    <x-edz.spinner wire:target="restoreAll" class="w-3.5 h-3.5" />
-                    <span wire:loading.remove wire:target="restoreAll">{{ __('merchant.restore_all') }}</span>
+                    <span>{{ __('merchant.restore_all') }}</span>
                 </button>
                 <button x-data="{ isLoading: false }"
                     x-on:click.prevent="(async () => { if (!isLoading && await EdzSwal.confirmDelete()) { isLoading = true; await $wire.forceDeleteAll(); isLoading = false; } })()"
@@ -4117,112 +4145,14 @@ $submitEdit = function (): void {
                                             ])
                                         @endforeach
                                         <td class="px-4 py-3 text-right">
-                                            <div class="flex items-center justify-end gap-1 flex-nowrap">
-                                                <button wire:click="openOrderDetails('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                    title="{{ __('merchant.order_details') }}"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="openOrderDetails('{{ $orderId }}')">
-                                                    <x-edz.spinner wire:target="openOrderDetails('{{ $orderId }}')" class="w-3.5 h-3.5" />
-                                                    <x-edz.icon name="info-circle" wire:loading.remove
-                                                        wire:target="openOrderDetails('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                </button>
-                                                @include('livewire.merchant.orders.partials.order-events-menu', [
+                                                @include('livewire.merchant.orders.partials.orders-table-actions-column', [
                                                     'orderId' => $orderId,
                                                     'order' => $order,
-                                                    'canViewEvents' => $order['can_view_events'] ?? false,
+                                                    'transitions' => $transitions,
+                                                    'showTrash' => $this->showTrash,
+                                                    'layout' => 'compact',
+                                                    'events' => true,
                                                 ])
-                                                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
-                                                 && !$this->showTrash && in_array('confirmed', $order['transitions'] ?? [], true))
-                                                    <button wire:click="openConfirmModal('{{ $orderId }}')"
-                                                        class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                        title="{{ __('order_flow.confirm_title') }}"
-                                                        wire:loading.attr="disabled"
-                                                        wire:target="openConfirmModal('{{ $orderId }}')">
-                                                        <x-edz.spinner wire:target="openConfirmModal('{{ $orderId }}')" class="w-3.5 h-3.5" />
-                                                        <x-edz.icon name="phone" wire:loading.remove
-                                                            wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                    </button>
-                                                @endif
-                                                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
-                                                 && !$this->showTrash && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
-                                                    <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
-                                                        class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                        title="{{ __('order_flow.send_to_carrier') }}"
-                                                        wire:loading.attr="disabled"
-                                                        wire:target="sendConfirmedOrder('{{ $orderId }}')">
-                                                        <x-edz.spinner wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-3.5 h-3.5" />
-                                                        <x-edz.icon name="truck" wire:loading.remove
-                                                            wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                    </button>
-                                                @endif
-                                                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
-
-                                                        <button @click="$wire.openDeliveryModal('{{ $orderId }}')"
-                                                            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                            title="{{ __('merchant_panel.edit_delivery') }}"
-                                                            wire:loading.attr="disabled"
-                                                            wire:target="openDeliveryModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openDeliveryModal('{{ $orderId }}')"
-                                                                class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="truck" wire:loading.remove
-                                                                wire:target="openDeliveryModal('{{ $orderId }}')"
-                                                                class="w-4 h-4 shrink-0" />
-                                                        </button>
-                                                        <button @click="$wire.openEditModal('{{ $orderId }}')"
-                                                            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                            title="{{ __('merchant_panel.edit') }}"
-                                                            wire:loading.attr="disabled"
-                                                            wire:target="openEditModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openEditModal('{{ $orderId }}')"
-                                                                class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="edit" wire:loading.remove
-                                                                wire:target="openEditModal('{{ $orderId }}')"
-                                                                class="w-4 h-4 shrink-0" />
-                                                        </button>
-                                                        <button wire:click="openReassignModal('{{ $orderId }}')"
-                                                            wire:loading.attr="disabled"
-                                                            wire:loading.class="opacity-50"
-                                                            wire:target="openReassignModal('{{ $orderId }}')"
-                                                            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
-                                                            title="{{ __('merchant_panel.reassign') }}">
-                                                            <x-edz.spinner
-                                                                wire:target="openReassignModal('{{ $orderId }}')"
-                                                                class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="arrows-right-left" wire:loading.remove
-                                                                wire:target="openReassignModal('{{ $orderId }}')"
-                                                                class="w-4 h-4 shrink-0" />
-                                                        </button>
-                                                @endif
-                                                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
-                                                    @if ($this->showTrash)
-                                                        <button wire:click="restoreOrder('{{ $orderId }}')"
-                                                            wire:loading.attr="disabled"
-                                                            wire:loading.class="opacity-50"
-                                                            wire:target="restoreOrder('{{ $orderId }}')"
-                                                            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 text-success-600"
-                                                            title="{{ __('merchant.restore_order') }}">
-                                                            <x-edz.spinner
-                                                                wire:target="restoreOrder('{{ $orderId }}')"
-                                                                class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="arrow-uturn-left" wire:loading.remove
-                                                                wire:target="restoreOrder('{{ $orderId }}')"
-                                                                class="w-4 h-4 shrink-0" />
-                                                        </button>
-                                                    @else
-                                                        <button
-                                                            class="edz-btn edz-btn--ghost edz-btn--xs text-danger-600 hover:text-danger-700 shrink-0"
-                                                            x-on:click.prevent="confirmDelete()"
-                                                            :disabled="deleteLoading"
-                                                            :class="deleteLoading ? 'opacity-50' : ''"
-                                                            title="{{ __('merchant.delete_permanently') }}">
-                                                            <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="trash" x-show="!deleteLoading"
-                                                                class="w-4 h-4 shrink-0" />
-                                                        </button>
-                                                    @endif
-                                                @endif
-                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -4285,9 +4215,7 @@ $submitEdit = function (): void {
                                                     <div class="edz-inline-edit__actions">
                                                         <button type="button" class="edz-inline-edit__save"
                                                             wire:click="saveOrderName" wire:loading.attr="disabled">
-                                                            <x-edz.spinner wire:target="saveOrderName" />
-                                                            <span wire:loading.remove
-                                                                wire:target="saveOrderName">Save</span>
+                                                            <span>Save</span>
                                                         </button>
                                                         <button type="button" class="edz-inline-edit__cancel"
                                                             wire:click="cancelOrderNameEdit">Cancel</button>
@@ -4333,9 +4261,7 @@ $submitEdit = function (): void {
                                                 <div class="edz-inline-edit__actions">
                                                     <button type="button" class="edz-inline-edit__save"
                                                         wire:click="saveOrderPhone" wire:loading.attr="disabled">
-                                                        <x-edz.spinner wire:target="saveOrderPhone" />
-                                                        <span wire:loading.remove
-                                                            wire:target="saveOrderPhone">Save</span>
+                                                        <span>Save</span>
                                                     </button>
                                                     <button type="button" class="edz-inline-edit__cancel"
                                                         wire:click="cancelOrderPhoneEdit">Cancel</button>
@@ -4407,9 +4333,6 @@ $submitEdit = function (): void {
                                                                 wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                 wire:loading.attr="disabled" @click="open = false"
                                                                 class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                                                <x-edz.spinner
-                                                                    wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                                                    class="w-3 h-3" />
                                                                 {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
                                                                 <span class="w-2 h-2 rounded-full shrink-0"
                                                                     style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
@@ -4419,6 +4342,44 @@ $submitEdit = function (): void {
                                                     @endforeach
                                                 </div>
                                             </div>
+                                            @if (in_array('notes', $this->visibleColumns))
+                                                <div class="mt-2 w-full">
+                                                    @if ($this->editingField === 'order.notes' && $this->editingId === $orderId)
+                                                        <div class="edz-inline-edit__edit"
+                                                            wire:key="notes-inline-card-{{ $orderId }}">
+                                                            <textarea wire:model="editingValue"
+                                                                wire:keydown.enter="saveOrderNotes"
+                                                                rows="2" placeholder="{{ __('merchant_panel.notes') }}"
+                                                                class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif"></textarea>
+                                                            <div class="edz-inline-edit__actions">
+                                                                <button type="button" class="edz-inline-edit__save"
+                                                                    wire:click="saveOrderNotes"
+                                                                    wire:loading.attr="disabled">
+                                                                    <span>{{ __('buttons.save') }}</span>
+                                                                </button>
+                                                                <button type="button" class="edz-inline-edit__cancel"
+                                                                    wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
+                                                            </div>
+                                                            @if ($this->editingError)
+                                                                <p class="edz-inline-edit__error">
+                                                                    {{ $this->editingError }}</p>
+                                                            @endif
+                                                        </div>
+                                                    @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                        <button type="button"
+                                                            class="edz-inline-edit__display w-full text-left"
+                                                            wire:click="startOrderNotesEdit('{{ $orderId }}')"
+                                                            title="{{ $order['notes'] ?? '' }}">
+                                                            <x-edz.icon name="pencil-square" class="w-3 h-3 shrink-0" />
+                                                            <span
+                                                                class="edz-inline-edit__value break-words">{{ $order['notes'] ? $order['notes'] : '—' }}</span>
+                                                        </button>
+                                                    @else
+                                                        <div class="text-xs text-ink-muted break-words">
+                                                            {{ $order['notes'] ?? '-' }}</div>
+                                                    @endif
+                                                </div>
+                                            @endif
                                             @if (in_array('source', $this->visibleColumns))
                                                 @if (filled($order['created_by_membership_id']))
                                                     <x-edz.badge tone="neutral" sm>
@@ -4484,17 +4445,12 @@ $submitEdit = function (): void {
                                             @endif
                                         </div>
                                         <div class="mt-3 flex items-center gap-2 flex-wrap">
-                                            <x-edz.spinner wire:target="transitionOrder('{{ $orderId }}')"
-                                                class="w-3.5 h-3.5 text-ink-muted" />
                                             <button wire:click="openOrderDetails('{{ $orderId }}')"
                                                 class="edz-btn edz-btn--ghost edz-btn--xs"
                                                 title="{{ __('merchant.order_details') }}"
                                                 wire:loading.attr="disabled"
                                                 wire:target="openOrderDetails('{{ $orderId }}')">
-                                                <x-edz.spinner wire:target="openOrderDetails('{{ $orderId }}')"
-                                                    class="w-3.5 h-3.5" />
-                                                <x-edz.icon name="info-circle" wire:loading.remove
-                                                    wire:target="openOrderDetails('{{ $orderId }}')" class="w-4 h-4" />
+                                                <x-edz.icon name="info-circle" class="w-4 h-4" />
                                             </button>
                                             @include('livewire.merchant.orders.partials.order-events-menu', [
                                                 'orderId' => $orderId,
@@ -4536,62 +4492,13 @@ $submitEdit = function (): void {
                                                             <x-edz.icon name="x-mark" class="w-4 h-4" />
                                                         </button>
                                                     </div>
-                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value) && in_array('confirmed', $order['transitions'] ?? [], true))
-                                                        <button wire:click="openConfirmModal('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
-                                                            @click="close()" wire:loading.attr="disabled"
-                                                            wire:target="openConfirmModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4" />
-                                                            <x-edz.icon name="phone" wire:loading.remove wire:target="openConfirmModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                            {{ __('order_flow.confirm_title') }}
-                                                        </button>
-                                                    @endif
-                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
-                                                        <button wire:click="sendConfirmedOrder('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
-                                                            @click="close()" wire:loading.attr="disabled"
-                                                            wire:target="sendConfirmedOrder('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4" />
-                                                            <x-edz.icon name="truck" wire:loading.remove wire:target="sendConfirmedOrder('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                            {{ __('order_flow.send_to_carrier') }}
-                                                        </button>
-                                                    @endif
-                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                        <button @click="$wire.openDeliveryModal('{{ $orderId }}'); close()"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
-                                                            wire:loading.attr="disabled" wire:target="openDeliveryModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openDeliveryModal('{{ $orderId }}')" class="w-4 h-4" />
-                                                            <x-edz.icon name="truck" wire:loading.remove wire:target="openDeliveryModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                            {{ __('merchant_panel.edit_delivery') }}
-                                                        </button>
-                                                        <button @click="$wire.openEditModal('{{ $orderId }}'); close()"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
-                                                            wire:loading.attr="disabled" wire:target="openEditModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openEditModal('{{ $orderId }}')" class="w-4 h-4" />
-                                                            <x-edz.icon name="edit" wire:loading.remove wire:target="openEditModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                            {{ __('merchant_panel.edit') }}
-                                                        </button>
-                                                        <button wire:click="openReassignModal('{{ $orderId }}')"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50"
-                                                            @click="close()" wire:loading.attr="disabled"
-                                                            wire:target="openReassignModal('{{ $orderId }}')">
-                                                            <x-edz.spinner wire:target="openReassignModal('{{ $orderId }}')" class="w-4 h-4" />
-                                                            <x-edz.icon name="arrows-right-left" wire:loading.remove wire:target="openReassignModal('{{ $orderId }}')" class="w-4 h-4 shrink-0" />
-                                                            {{ __('merchant_panel.reassign') }}
-                                                        </button>
-                                                    @endif
-                                                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
-                                                        <button x-on:click.prevent="confirmDelete(); close()"
-                                                            :disabled="deleteLoading"
-                                                            :class="deleteLoading ? 'opacity-50' : ''"
-                                                            class="w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary text-danger-600">
-                                                            <x-edz.spinner show="deleteLoading" class="w-3.5 h-3.5" />
-                                                            <x-edz.icon name="trash" x-show="!deleteLoading"
-                                                                class="w-4 h-4 shrink-0" />
-                                                            <span
-                                                                x-show="!deleteLoading">{{ __('merchant.delete_permanently') }}</span>
-                                                        </button>
-                                                    @endif
+                                                    @include('livewire.merchant.orders.partials.orders-table-actions-column', [
+                                                        'orderId' => $orderId,
+                                                        'order' => $order,
+                                                        'transitions' => $order['transitions'] ?? [],
+                                                        'showTrash' => $this->showTrash,
+                                                        'layout' => 'list',
+                                                    ])
                                                 </div>
                                             </div>
                                         </div>
@@ -4631,11 +4538,8 @@ $submitEdit = function (): void {
                         <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                             wire:click="set('showReassignModal', false)">{{ __('merchant_panel.cancel') }}</button>
                         <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
-                            wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
-                            wire:target="submitReassign">
-                            <x-edz.spinner wire:target="submitReassign" class="w-3.5 h-3.5" />
-                            <span wire:loading.remove
-                                wire:target="submitReassign">{{ __('merchant_panel.reassign') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
+                            <span>{{ __('merchant_panel.reassign') }}</span>
                         </button>
                     </div>
                 </div>
@@ -4829,11 +4733,8 @@ $submitEdit = function (): void {
                             <button type="button" wire:click="discardTableSettings"
                                 class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant_panel.cancel') }}</button>
                             <button wire:click="saveTableSettings" class="edz-btn edz-btn--primary edz-btn--sm"
-                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
-                                wire:target="saveTableSettings">
-                                <x-edz.spinner wire:target="saveTableSettings" class="w-3.5 h-3.5" />
-                                <span wire:loading.remove
-                                    wire:target="saveTableSettings">{{ __('merchant_panel.save_settings') }}</span>
+                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
+                                <span>{{ __('merchant_panel.save_settings') }}</span>
                             </button>
                         </div>
                     </div>
@@ -5300,18 +5201,16 @@ $submitEdit = function (): void {
                     @if (canStore(StorePermissionEnum::ORDER_CONFIRM->value))
                         <button wire:click="submitConfirmOnly" type="button"
                             class="edz-btn edz-btn--ghost"
-                            wire:loading.attr="disabled" wire:target="submitConfirmOnly">
-                            <x-edz.spinner wire:target="submitConfirmOnly" class="w-3.5 h-3.5" />
-                            <span wire:loading.remove wire:target="submitConfirmOnly">{{ __('order_flow.confirm_only') }}</span>
+                            wire:loading.attr="disabled">
+                            <span>{{ __('order_flow.confirm_only') }}</span>
                         </button>
                     @endif
                     @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
                         <button wire:click="submitConfirmAndSend" type="button"
                             class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled" wire:target="submitConfirmAndSend">
-                            <x-edz.spinner wire:target="submitConfirmAndSend" class="w-4 h-4" />
-                            <x-edz.icon name="truck" wire:loading.remove wire:target="submitConfirmAndSend" class="w-4 h-4" />
-                            <span wire:loading.remove wire:target="submitConfirmAndSend">{{ __('order_flow.confirm_and_send') }}</span>
+                            wire:loading.attr="disabled">
+                            <x-edz.icon name="truck" class="w-4 h-4" />
+                            <span>{{ __('order_flow.confirm_and_send') }}</span>
                         </button>
                     @endif
                 </div>
@@ -5355,9 +5254,8 @@ $submitEdit = function (): void {
                     </button>
                     <button wire:click="submitBulkStatus" type="button"
                         class="edz-btn edz-btn--primary"
-                        wire:loading.attr="disabled" wire:target="submitBulkStatus">
-                        <x-edz.spinner wire:target="submitBulkStatus" class="w-4 h-4" />
-                        <span wire:loading.remove wire:target="submitBulkStatus">{{ __('buttons.save') }}</span>
+                        wire:loading.attr="disabled">
+                        <span>{{ __('buttons.save') }}</span>
                     </button>
                 </div>
             </div>
@@ -5411,17 +5309,14 @@ $submitEdit = function (): void {
                     @if ($this->bulkSendSkipCount === 0)
                         <button wire:click="confirmBulkSend" type="button"
                             class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled" wire:target="confirmBulkSend">
-                            <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
-                            <span wire:loading.remove wire:target="confirmBulkSend">{{ __('order_flow.bulk_send_confirm') }}</span>
+                            wire:loading.attr="disabled">
+                            <span>{{ __('order_flow.bulk_send_confirm') }}</span>
                         </button>
                     @elseif ($this->bulkSendReadyCount > 0)
                         <button wire:click="confirmBulkSend" type="button"
                             class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled" wire:target="confirmBulkSend">
-                            <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
-                            <span wire:loading.remove
-                                wire:target="confirmBulkSend">{{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}</span>
+                            wire:loading.attr="disabled">
+                            <span>{{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}</span>
                         </button>
                     @else
                         <button type="button" disabled

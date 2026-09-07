@@ -169,7 +169,7 @@ class OrderService
                 'shipping_cost' => $data['shipping_cost'] ?? 0,
                 'notes' => $data['notes'] ?? null,
                 'phone_secondary' => $data['phone_secondary'] ?? null,
-                'weight_kg' => $data['weight_kg'] ?? null,
+                'weight_kg' => ($data['weight_kg'] ?? null) ?: 1.00,
                 'shipment_type' => $data['shipment_type'] ?? 'delivery',
                 'discount_type' => $data['discount_type'] ?? null,
                 'discount_value' => $data['discount_value'] ?? null,

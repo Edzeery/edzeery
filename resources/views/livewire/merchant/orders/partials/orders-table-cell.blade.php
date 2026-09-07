@@ -33,9 +33,8 @@
                         class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderName"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderName">
-                            <x-edz.spinner wire:target="saveOrderName" />
-                            <span wire:loading.remove wire:target="saveOrderName">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderNameEdit">{{ __('buttons.cancel') }}</button>
@@ -108,9 +107,8 @@
                         class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderPhone"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderPhone">
-                            <x-edz.spinner wire:target="saveOrderPhone" />
-                            <span wire:loading.remove wire:target="saveOrderPhone">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderPhoneEdit">{{ __('buttons.cancel') }}</button>
@@ -150,9 +148,39 @@
         @break
 
     @case('notes')
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-            title="{{ $order['notes'] ?? '' }}">
-            {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]"
+            @if ($this->editingField !== 'order.notes' || $this->editingId !== $orderId)
+                title="{{ $order['notes'] ?? '' }}"
+            @endif>
+            @if ($this->editingField === 'order.notes' && $this->editingId === $orderId)
+                <div class="edz-inline-edit__edit" wire:key="notes-inline-{{ $orderId }}">
+                    <textarea wire:model="editingValue" wire:keydown.enter="saveOrderNotes"
+                        rows="2" placeholder="{{ __('merchant_panel.notes') }}"
+                        class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif"></textarea>
+                    <div class="edz-inline-edit__actions">
+                        <button type="button" class="edz-inline-edit__save" wire:click="saveOrderNotes"
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
+                        </button>
+                        <button type="button" class="edz-inline-edit__cancel"
+                            wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
+                    </div>
+                    @if ($this->editingError)
+                        <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
+                    @endif
+                </div>
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                <button type="button" class="edz-inline-edit__display text-left"
+                    wire:click="startOrderNotesEdit('{{ $orderId }}')"
+                    title="{{ $order['notes'] ?? '' }}">
+                    <span
+                        class="edz-inline-edit__value break-words">{{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 40) : '—' }}</span>
+                </button>
+            @else
+                <span class="truncate block" title="{{ $order['notes'] ?? '' }}">
+                    {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
+                </span>
+            @endif
         </td>
         @break
 
@@ -251,9 +279,8 @@
                     </div>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderDiscount"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderDiscount">
-                            <x-edz.spinner wire:target="saveOrderDiscount" />
-                            <span wire:loading.remove wire:target="saveOrderDiscount">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
@@ -305,9 +332,8 @@
                         class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderWeight"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderWeight">
-                            <x-edz.spinner wire:target="saveOrderWeight" />
-                            <span wire:loading.remove wire:target="saveOrderWeight">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
@@ -338,9 +364,8 @@
                     <x-edz.select wire:model="editingValue" :options="$this->editShipmentTypeOptions" size="sm" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderShipmentType"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderShipmentType">
-                            <x-edz.spinner wire:target="saveOrderShipmentType" />
-                            <span wire:loading.remove wire:target="saveOrderShipmentType">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
@@ -404,9 +429,8 @@
                         class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderAddress"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderAddress">
-                            <x-edz.spinner wire:target="saveOrderAddress" />
-                            <span wire:loading.remove wire:target="saveOrderAddress">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
@@ -435,9 +459,8 @@
                     <x-edz.select wire:model="editingValue" :options="$this->editDeliveryTypeOptions" size="sm" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderDeliveryType"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderDeliveryType">
-                            <x-edz.spinner wire:target="saveOrderDeliveryType" />
-                            <span wire:loading.remove wire:target="saveOrderDeliveryType">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
@@ -465,9 +488,8 @@
                         placeholder="{{ __('merchant_panel.shipping_provider') }}" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderProvider">
-                            <x-edz.spinner wire:target="saveOrderProvider" />
-                            <span wire:loading.remove wire:target="saveOrderProvider">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
@@ -495,9 +517,8 @@
                         placeholder="{{ __('merchant_panel.stop_desk_label') }}" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderStopdesk"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderStopdesk">
-                            <x-edz.spinner wire:target="saveOrderStopdesk" />
-                            <span wire:loading.remove wire:target="saveOrderStopdesk">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
@@ -594,9 +615,6 @@
                                 wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                 wire:loading.attr="disabled" @click="open = false"
                                 class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 {{ $s['id'] == $order['status_id'] ? 'font-bold' : '' }}">
-                                <x-edz.spinner
-                                    wire:target="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
-                                    class="w-3 h-3" />
                                 {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0') !!}
                                 <span class="w-2 h-2 rounded-full shrink-0"
                                     style="background: {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $s['color'] ?? 'gray')->hex() }}"></span>
@@ -617,9 +635,8 @@
                         placeholder="{{ __('merchant_panel.assigned_agent') }}" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderAgent"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderAgent">
-                            <x-edz.spinner wire:target="saveOrderAgent" />
-                            <span wire:loading.remove wire:target="saveOrderAgent">{{ __('buttons.save') }}</span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>

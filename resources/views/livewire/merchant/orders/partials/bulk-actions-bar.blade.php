@@ -30,9 +30,8 @@
         <div x-data="{ open: false }" @click.away="open = false" class="relative">
             <button @click="open = !open" class="edz-btn edz-btn--ghost edz-btn--sm"
                 wire:loading.attr="disabled" wire:target="bulkAssignAgent">
-                <x-edz.spinner wire:target="bulkAssignAgent" class="w-4 h-4" />
-                <x-edz.icon name="user-plus" wire:loading.remove wire:target="bulkAssignAgent" class="w-4 h-4" />
-                <span wire:loading.remove wire:target="bulkAssignAgent">{{ __('merchant.bulk_assign_agent') }}</span>
+                <x-edz.icon name="user-plus" class="w-4 h-4" />
+                <span>{{ __('merchant.bulk_assign_agent') }}</span>
             </button>
             <div x-show="open" x-cloak
                 class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden" @click="open = false"></div>
@@ -74,9 +73,8 @@
         @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
             <button wire:click="openBulkSendModal" class="edz-btn edz-btn--ghost edz-btn--sm"
                 wire:loading.attr="disabled" wire:target="openBulkSendModal,confirmBulkSend">
-                <x-edz.spinner wire:target="confirmBulkSend" class="w-4 h-4" />
-                <x-edz.icon name="truck" wire:loading.remove wire:target="confirmBulkSend" class="w-4 h-4" />
-                <span wire:loading.remove wire:target="confirmBulkSend">{{ __('merchant.bulk_send_carrier') }}</span>
+                <x-edz.icon name="truck" class="w-4 h-4" />
+                <span>{{ __('merchant.bulk_send_carrier') }}</span>
             </button>
         @endif
 
@@ -84,10 +82,8 @@
         @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
             <button wire:click="openBulkStatusModal" class="edz-btn edz-btn--ghost edz-btn--sm"
                 wire:loading.attr="disabled" wire:target="submitBulkStatus,openBulkStatusModal">
-                <x-edz.spinner wire:target="submitBulkStatus" class="w-4 h-4" />
-                <x-edz.icon name="adjustments-horizontal" wire:loading.remove
-                    wire:target="submitBulkStatus" class="w-4 h-4" />
-                <span wire:loading.remove wire:target="submitBulkStatus">{{ __('order_flow.bulk_status_title') }}</span>
+                <x-edz.icon name="adjustments-horizontal" class="w-4 h-4" />
+                <span>{{ __('order_flow.bulk_status_title') }}</span>
             </button>
         @endif
 

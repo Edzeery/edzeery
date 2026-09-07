@@ -279,36 +279,16 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                     wire:loading.attr="disabled"
                                     class="edz-btn edz-btn--ghost edz-btn--sm mt-5 shrink-0 disabled:opacity-50 disabled:pointer-events-none <?php echo e($loadingOffices ? 'opacity-50 pointer-events-none' : ''); ?>"
                                     aria-label="<?php echo e(__('merchant_panel.refresh_offices')); ?>">
-                                    <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'refreshFormOffices','class' => 'w-4 h-4']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
                                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'arrow-path','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'arrow-path','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'refreshFormOffices']); ?>
+<?php $component->withAttributes(['name' => 'arrow-path','class' => 'w-4 h-4']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -669,29 +649,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                         </button>
                         <button type="submit" class="edz-btn edz-btn--primary" wire:loading.attr="disabled"
-                            wire:loading.class="opacity-50 pointer-events-none" wire:target="submitCreate,submitEdit">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'submitCreate,submitEdit']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'submitCreate,submitEdit']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove
-                                wire:target="submitCreate,submitEdit"><?php echo e($showEditModal ? __('merchant_panel.update') : __('merchant_panel.create')); ?></span>
+                            wire:loading.class="opacity-50 pointer-events-none">
+                            <span><?php echo e($showEditModal ? __('merchant_panel.update') : __('merchant_panel.create')); ?></span>
                             <span
                                 class="sr-only"><?php echo e($showEditModal ? __('merchant_panel.update') : __('merchant_panel.create')); ?></span>
                         </button>

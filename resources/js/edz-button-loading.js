@@ -2,9 +2,31 @@ const FLICKER_GUARD_MS = 150;
 const PENDING_TTL_MS = 1500;
 const CLICK_SELECTOR =
     "button[wire\\:click], .edz-btn[wire\\:click], button[wire\\:submit], .edz-btn[wire\\:submit]";
+// Alpine's @click is shorthand for x-on:click. "@click" is NOT a valid CSS
+// attribute selector (closest/querySelectorAll throw on "button[@click]"),
+// so x-on-only attributes are matched with CSS and @click-only attributes are
+// resolved in JS via hasAttribute (see alpineButtonOf / allAlpineButtons).
+const XON_CLICK_SELECTOR = "button[x-on\\:click], .edz-btn[x-on\\:click]";
+const ALPINE_ATTRS = ["@click", "x-on:click"];
+
+const WIRE_CALL_RE = /\$wire\.([A-Za-z_$][\w$]*)/;
 
 let lastClick = { el: null, at: 0 };
 let active = new Map();
+let requestButtons = null;
+
+function alpineHandlerOf(el) {
+    if (!el) return null;
+    for (const name of ALPINE_ATTRS) {
+        const raw = el.getAttribute(name);
+        if (raw) return raw;
+    }
+    return null;
+}
+
+function hasAlpineClick(el) {
+    return ALPINE_ATTRS.some((name) => el.hasAttribute(name));
+}
 
 function methodOf(el) {
     if (!el || !el.isConnected) return null;
@@ -12,6 +34,13 @@ function methodOf(el) {
     if (!raw) {
         const form = el.closest("form[wire\\:submit]");
         if (form) raw = form.getAttribute("wire:submit");
+    }
+    if (!raw) {
+        const alpineRaw = alpineHandlerOf(el);
+        if (alpineRaw) {
+            const call = WIRE_CALL_RE.exec(alpineRaw);
+            if (call) return call[1];
+        }
     }
     if (!raw) return null;
     const match = /^\s*([A-Za-z_$][\w$]*)/.exec(raw);
@@ -33,12 +62,27 @@ function wireCalls(body) {
     return calls.map((c) => c?.method).filter(Boolean);
 }
 
+function allAlpineButtons() {
+    const seen = new Set(document.querySelectorAll(XON_CLICK_SELECTOR));
+    for (const el of document.querySelectorAll("button, .edz-btn")) {
+        if (!seen.has(el) && hasAlpineClick(el)) seen.add(el);
+    }
+    return Array.from(seen).filter((el) => WIRE_CALL_RE.test(alpineHandlerOf(el) || ""));
+}
+
 function allButtons() {
-    const direct = Array.from(document.querySelectorAll(CLICK_SELECTOR));
-    const submitButtons = Array.from(
-        document.querySelectorAll("form[wire\\:submit] button[type=submit]"),
-    );
-    return direct.concat(submitButtons.filter((el) => !direct.includes(el)));
+    if (!requestButtons) {
+        const direct = Array.from(document.querySelectorAll(CLICK_SELECTOR));
+        const alpine = allAlpineButtons();
+        const submitButtons = Array.from(
+            document.querySelectorAll("form[wire\\:submit] button[type=submit]"),
+        );
+        requestButtons = direct.concat(
+            alpine.filter((el) => !direct.includes(el)),
+            submitButtons.filter((el) => !direct.includes(el) && !alpine.includes(el)),
+        );
+    }
+    return requestButtons;
 }
 
 function resolveButtons(methods) {
@@ -151,14 +195,33 @@ function deactivate(element) {
     else element.removeAttribute("aria-busy");
 }
 
+function alpineButtonOf(source) {
+    if (!source || source.nodeType !== 1) return null;
+    const viaCss = source.closest(XON_CLICK_SELECTOR);
+    if (viaCss) return viaCss;
+    let node = source;
+    while (node) {
+        if (node.nodeType === 1) {
+            const isTarget =
+                node.tagName === "BUTTON" ||
+                (node.classList && node.classList.contains("edz-btn"));
+            if (isTarget && hasAlpineClick(node)) return node;
+        }
+        node = node.parentElement;
+    }
+    return null;
+}
+
 function interceptClick(event) {
     const source = event.target && event.target.closest ? event.target : null;
     const button =
         (source && source.closest(CLICK_SELECTOR)) ||
+        alpineButtonOf(source) ||
         (source && source.closest("form[wire\\:submit]")
             ? source.closest("form[wire\\:submit]").querySelector("button[type=submit]")
             : null);
     if (!button) return;
+    if (!methodOf(button)) return;
     if (button.dataset.edzPending) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -190,6 +253,7 @@ function bindRequests() {
     if (typeof window.Livewire === "undefined") return;
     window.Livewire.hook("request", ({ payload, succeed, fail }) => {
         if (!payload) return;
+        requestButtons = null;
         const methods = wireCalls(payload);
         if (!methods.length) return;
         const targets = resolveButtons(methods);
@@ -210,6 +274,7 @@ export function initButtonLoading() {
     document.addEventListener("click", interceptClick, true);
     document.addEventListener("submit", interceptSubmit, true);
     document.addEventListener("livewire:navigated", () => {
+        requestButtons = null;
         for (const element of Array.from(active.keys())) deactivate(element);
         lastClick.el = null;
     });

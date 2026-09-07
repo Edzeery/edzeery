@@ -897,6 +897,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('saveOrderWeight'))->execute(...$arguments);
     }
 
+    public function startOrderNotesEdit(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('startOrderNotesEdit'))->execute(...$arguments);
+    }
+
+    public function saveOrderNotes(?string $notes = NULL): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('saveOrderNotes'))->execute(...$arguments);
+    }
+
     public function startOrderDiscountEdit(string $orderId): void
     {
         $arguments = [static::$__context, $this, func_get_args()];

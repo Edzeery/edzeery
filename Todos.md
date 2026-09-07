@@ -654,4 +654,38 @@ git rm "it" "prepareBindings(\$bindings)"
 | 31.3 selects بحثية inline | ✅ | index.blade.php (closures + props + registry) + orders-table-cell.blade.php + orderEagerLoads + merchant_panel ×4 | 11 في OrderInlineSelectEditTest (52 assertion) |
 | **الإجمالي** | **397 ناجح (1440 assertions)** | | |
 
-(End of file - total 305 lines)
+## Phase 31 — فرع 31.4 ✅ (تعديلات inline: العنوان/الوزن/التخفيض/الشحن من مستودع الشركة + شارة الحقول الناقصة داخل الصف) — 2026-09-06
+
+**ما تَمّ — أربعة حقول إضافية قابلة للتعديل من الجدول مباشرة + كشف النقص في الصف ذاته:**
+- **`weight_kg` الآن عددي دائمًا (NOT NULL default 1.00)**: التعديل يخزّن دائمًا قيمة رقمية (`blank → 1.00`)؛ وبنفس المنطق حُرّر `OrderService::createManual` (blank → 1.00) ومسارا إنشاء/تعديل المودال (`form['weight_kg'] ?: 1.00`) ليتوافقا مع عمود NOT NULL (أصلح 3 إخفاقات pre-existing في OfficeSelection/QuantityCap/FinancialSummary عند إنشاء طلبيات بوزن فارغ).
+- **Closures ×7** بالنمط المثبت (`canStore ORDER_MANAGE` عند البداية + `guardOrderEditable` + `saveEdit` = تحقق/audit + `refreshSingleOrder`):
+  - `startOrderAddressEdit`/`saveOrderAddress`: نص حر (blank → null) + `recalculateOrderShipping` بعد التحديث + audit `order_address_updated`.
+  - `startOrderWeightEdit`/`saveOrderWeight`: `nullable|numeric|min:0|max:9999` + audit `order_weight_updated` (و `_validation_failed`).
+  - `startOrderDiscountEdit`/`saveOrderDiscount`: ثلاثة props (`discountEditType`/`discountEditValue`/`discountEditReason`)، نوع `amount`/`percent` عبر `<x-edz.select>` مع `wire:model.live` (إظهار/إخفاء القيمة والسبب)، اعتبارية `percent > 100` → `merchant_panel.discount_percent_max`؛ اختيار «بدون تخفيض» أو قيمة فارغة يمسح `discount_type/value/reason` + audit `order_discount_updated`.
+  - `toggleSendFromWarehouse`: عكس `send_from_carrier_warehouse` (علم تخطيطي — يعمل حتى لـ shipped) + audit `order_send_from_warehouse_updated`.
+  - `startMissingFieldEdit`: يقفز إلى أول حقل ناقص (عبر `OrderCompleteness::missing` بمستوى confirm/send) — كل key يُعاد توجيهه إلى محرّره inline (name/phone/wilaya/city/stopdesk/address/provider)؛ `items` أو غير المعروف → فتح مودال التعديل.
+- **`decorateOrder`** يحسب `missing`/`missing_keys` لكل صف (statuses backOffice فقط، `forSend` = confirmed/preparing)؛ **خلية الزبون** تعرض شارة count تنقلك لأول حقل ناقص (tone `info` — تجنّبًا لاصطدام `OrderDuplicateBadgeTest` الذي يرفض danger/warning/neutral).
+- **خلايا الأعمدة**: address/weight/discount/`send_from_carrier_warehouse` بمحرّريها، حاوية `edz-inline-edit__edit--wide` للمودال الواسع (التخفيض)، وأزرار الحفظ بنمط السبينر المستهدف.
+- **ترجمات** ×4 لغات: `merchant_panel.no_discount` + `merchant_panel.discount_percent_max`.
+- **التحقق النهائي:** `view:clear`+`view:cache` + **السويت كاملة 410 ناجح (1497 assertions)** — صفر انحدار؛ ملاحظة تشغيل واحدة : race Windows معروف (rename Access is denied أثناء compile blade) — مجرد إعادة تشغيل.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.4 inline field edits + شارة الناقص | ✅ | index.blade.php (closures + props + decorateOrder + ممرّرا الوزن) + orders-table-cell.blade.php + _inline_edit.scss + OrderService.php + merchant_panel ×4 | 13 في OrderInlineFieldEditTest (57 assertion) |
+| **الإجمالي** | **410 ناجح (1497 assertions)** | | |
+
+## Phase 31 — فرع 31.5 ✅ (إزالة زر «توصيل» + بارتيال الأزرار المشترك + توحيد السبينر المركزي + إصلاح «المحدد» في القوائم + تحرير notes inline) — 2026-09-07
+
+**خمسة طلبات من المستخدم بعد موافقة صريحة على الخطة الثلاثية (زر التوصيل / توحيد السبينر على المركزي JS / بارتيال الأزرار):**
+- **حذف زر «توصيل» نهائيًا** من عمود الأزرار (ديسكتوب + موبايل)؛ مودال التوصيل تبقى قابلة للوصول عبر التحرير المباشر للحقول، وpopup «معلومات التوصيل» لاحقًا حسب الحاجة.
+- **بارتيال أزرار مشترك** `orders-table-actions-column.blade.php` بمعامل `layout` ('compact' للديسكتوب | 'list' للموبايل) — ديسكتوب: details + events (داخل الـpartial) + confirm/send/edit/reassign/delete/restore؛ موبايل: القائمة تعرض فقط أزرار الصلاحيات (confirm/send/edit/reassign/delete) بينما يبقى details + events على يسار الـpopover (كما كان) — إغلاق القائمة بـ`@click="close()"` منفصل (نمط مثبت) و`$editCloser`/`$deleteCloser` لأزرار Alpine.
+- **توحيد مؤشر التحميل على النظام المركزي `edz-button-loading.js`**: حُذفت كل مقايضات `wire:loading.remove`/`x-edz.spinner` اليدوية من index.blade.php (شريط الأدوات/التراش/أزرار الحفظ في بطاقة الموبايل/قوائم الحالة/مودالات الإرسال) و`orders-table-cell.blade.php` (أزرار الحفظ ×10) و`bulk-actions-bar.blade.php` و`delivery-edit-modal.blade.php` و`order-form-modal.blade.php`. `edz-button-loading.js` مُحدَّث: دعم `@click="$wire.method()"` عبر `ALPINE_CLICK_SELECTOR` + `WIRE_CALL_RE`، ودقة المطابقة `methodOf` (multi-match عاد للعمل لحالات مثل `transitionOrder`)، وأبقيت `wire:loading.attr="disabled"` و`show="isLoading"` (Alpine) للأزرار المحلية.
+- **إصلاح جذري لعدم ظهور «المحدد»** في `x-edz.select`/`product-select`: (أ) خيارات backend تُحوَّل الآن إلى string (`String(r.value ?? r.id ?? r)`) لتفادي فشل `opt.value === selected`؛ (ب) سمة `data-options` جديدة على الجذر + `MutationObserver` في `edz-select.js` و`_syncFromServer()` في `product-select.js` (مع `x-on:livewire:updated`) — تُحدِّث حالة Alpine بعد morph من Livewire بدل البناء مرة واحدة عند mount.
+- **تحرير `notes` inline** (ديسكتوب + بطاقة الموبايل): `startOrderNotesEdit`/`saveOrderNotes` بنمط `saveEdit` مع `nullable|string|max:500` + `guardOrderEditable` + apply `blank → null` + audit `order_notes_updated` (و`_validation_failed`)، خلية textarea في `orders-table-cell`، صف في بطاقة الموبايل محروس بـ`in_array('notes', $this->visibleColumns)`، وتسجيل العمود `editable => true`.
+- **التحقق النهائي:** `php -l` نظيف + `npm run build` (Sass deprecations فقط، لا أخطاء) + `view:clear`+`view:cache` + **السويت كاملة 413 ناجح (1511 assertions)** — صفر انحدار (أصلح اختبار `OrdersMobileMoreMenuTest` لدقة فرضية min-h-44px للموظف).
+- **إصلاح عاجل بعد الاختبار ✓:** خطأ الكونسول `Failed to execute 'closest' ... 'button[@click]' is not a valid selector` من `edz-button-loading.js` — `@click` ليس اسم خاصية CSS صالحًا فكان يُرمي في `closest/querySelectorAll` عند كل نقرة. الحل الجذري: استُبدل بـ`[x-on\:click]` السليم (CSS) + حلّ `@click`/`x-on:click` عبر `hasAttribute()/getAttribute()` (دالة `alpineHandlerOf`/`hasAlpineClick` مع مسح يدوي في `allAlpineButtons()` و`alpineButtonOf()` لاعتراض النقر)، مع كاش `requestButtons` يُصفَّر عند بداية كل طلب/تنقّل حتى لا يُعاد فحص DOM مرارًا لكل method (جانب الأداء) — الـbundle الجديد `panel-Dm-JaIMG.js`.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.5 أزرار/سبينر/محدد/notes | ✅ | orders-table-actions-column.blade.php + index.blade.php + orders-table-cell.blade.php + bulk-actions-bar + delivery-edit-modal + order-form-modal + edz-button-loading.js + edz-select.js/product-select.js + select/product-select.blade.php + OrderInlineFieldEditTest | 16 في OrderInlineFieldEditTest (71 assertion) — منها 3 جديدة للتلاحظات |
+| **الإجمالي** | **413 ناجح (1511 assertions)** | | |

@@ -219,9 +219,79 @@ test('a negative weight is rejected inline with a validation_failed audit', func
         ->assertSet('editingField', 'order.weight')
         ->assertNotSet('editingError', null);
 
-    expect($order->refresh()->weight_kg)->toBeNull();
+    expect($order->refresh()->weight_kg)->toBe('1.00');
 
     expect(Activity::query()->where('event', 'order_weight_updated_validation_failed')->exists())->toBeTrue();
+});
+
+test('clearing the weight resets it to the default 1.00', function () {
+    [$user, $store] = ifeUser(StoreRoleEnum::OWNER->value);
+    [$stateA, $cityA] = ifeGeography($store);
+
+    $order = ifeOrder($store, $stateA, $cityA);
+    $order->update(['weight_kg' => 2.5]);
+
+    ifeVolt($user, $store)
+        ->call('startOrderWeightEdit', $order->id)
+        ->assertSet('editingField', 'order.weight')
+        ->call('saveOrderWeight', '')
+        ->assertSet('editingField', null)
+        ->assertSet('editingError', null);
+
+    expect($order->refresh()->weight_kg)->toBe('1.00')
+        ->and(Activity::query()->where('event', 'order_weight_updated')->count())->toBe(1);
+});
+
+test('owner can inline-edit the notes and the audit event is recorded', function () {
+    [$user, $store] = ifeUser(StoreRoleEnum::OWNER->value);
+    [$stateA, $cityA] = ifeGeography($store);
+
+    $order = ifeOrder($store, $stateA, $cityA);
+
+    ifeVolt($user, $store)
+        ->call('startOrderNotesEdit', $order->id)
+        ->assertSet('editingField', 'order.notes')
+        ->call('saveOrderNotes', 'Prefer morning delivery')
+        ->assertSet('editingField', null)
+        ->assertSet('editingError', null);
+
+    $order->refresh();
+
+    expect($order->notes)->toBe('Prefer morning delivery')
+        ->and(Activity::query()->where('event', 'order_notes_updated')->exists())->toBeTrue();
+});
+
+test('clearing the notes stores null', function () {
+    [$user, $store] = ifeUser(StoreRoleEnum::OWNER->value);
+    [$stateA, $cityA] = ifeGeography($store);
+
+    $order = ifeOrder($store, $stateA, $cityA);
+    $order->update(['notes' => 'old note']);
+
+    ifeVolt($user, $store)
+        ->call('startOrderNotesEdit', $order->id)
+        ->call('saveOrderNotes', '')
+        ->assertSet('editingField', null)
+        ->assertSet('editingError', null);
+
+    expect($order->refresh()->notes)->toBeNull()
+        ->and(Activity::query()->where('event', 'order_notes_updated')->count())->toBe(1);
+});
+
+test('notes longer than 500 chars are rejected inline with a validation_failed audit', function () {
+    [$user, $store] = ifeUser(StoreRoleEnum::OWNER->value);
+    [$stateA, $cityA] = ifeGeography($store);
+
+    $order = ifeOrder($store, $stateA, $cityA);
+
+    ifeVolt($user, $store)
+        ->call('startOrderNotesEdit', $order->id)
+        ->call('saveOrderNotes', str_repeat('x', 501))
+        ->assertSet('editingField', 'order.notes')
+        ->assertNotSet('editingError', null);
+
+    expect($order->refresh()->notes)->toBeNull()
+        ->and(Activity::query()->where('event', 'order_notes_updated_validation_failed')->exists())->toBeTrue();
 });
 
 test('owner can inline-edit an amount-based discount with reason', function () {
@@ -336,7 +406,7 @@ test('address, weight and discount stay blocked for shipped orders while the war
     $order->refresh();
 
     expect($order->address)->toBe('Rue 12, Alger')
-        ->and($order->weight_kg)->toBeNull()
+        ->and($order->weight_kg)->toBe('1.00')
         ->and($order->discount_type)->toBeNull();
 
     ifeVolt($user, $store)
@@ -373,7 +443,7 @@ test('staff without order.manage permission is forbidden from the 31.4 inline ac
 
     $order = ifeOrder($store, $stateA, $cityA);
 
-    foreach (['startOrderAddressEdit', 'startOrderWeightEdit', 'startOrderDiscountEdit'] as $method) {
+    foreach (['startOrderAddressEdit', 'startOrderWeightEdit', 'startOrderDiscountEdit', 'startOrderNotesEdit'] as $method) {
         ifeVolt($staff, $store)
             ->call($method, $order->id)
             ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'

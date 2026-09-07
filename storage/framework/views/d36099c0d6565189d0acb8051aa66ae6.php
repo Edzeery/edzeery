@@ -79,6 +79,10 @@ unset($__defined_vars, $__key, $__value); ?>
         ->values()
         ->all();
 
+    // Livewire morphs the trigger/opens in place; Alpine reads this attribute
+    // whenever it changes so the option list stays in sync with the server.
+    $optionsAttr = htmlspecialchars(json_encode($jsOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+
     $sizeClass = match ($size) {
         'sm' => 'edz-select--sm',
         'lg' => 'edz-select--lg',
@@ -92,6 +96,7 @@ unset($__defined_vars, $__key, $__value); ?>
 
 <div <?php echo e($attributes->merge(['class' => "edz-select $sizeClass $errorClass $class"])->whereDoesntStartWith('wire:model')->whereDoesntStartWith('x-model')->whereDoesntStartWith('wire:search')); ?>
 
+    data-options="<?php echo e($optionsAttr); ?>"
     x-data="edzSelect({
         options: <?php echo \Illuminate\Support\Js::from($jsOptions)->toHtml() ?>,
         searchable: <?php echo \Illuminate\Support\Js::from($searchable)->toHtml() ?>,

@@ -73,6 +73,46 @@ export default function productSelect(config) {
                     if (v !== null && v !== undefined && v !== "") this.selected = v;
                 } catch (e) {}
             }
+            this._syncFromServer();
+        },
+
+        // Same morph-resync contract as edzSelect: Livewire updates the
+        // data-options attr in place, and livewire:updated bubbles after each
+        // render so the selected value stays in sync with the server model.
+        syncFromServer() {
+            if (this.modelName && this.$wire) {
+                try {
+                    const v = this.$wire.get(this.modelName);
+                    this.selected = v === null || v === undefined || v === "" ? null : v;
+                } catch (e) {}
+            }
+        },
+
+        _syncFromServer() {
+            if (typeof window.MutationObserver === "undefined") return;
+            const applyOptions = () => {
+                const raw = this.$el?.getAttribute("data-options");
+                if (!raw) return;
+                try {
+                    this.options = JSON.parse(raw);
+                } catch (e) {}
+            };
+            applyOptions();
+            this._syncObserver = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.attributeName === "data-options") applyOptions();
+                }
+            });
+            if (this.$el) {
+                this._syncObserver.observe(this.$el, {
+                    attributes: true,
+                    attributeFilter: ["data-options"],
+                });
+            }
+        },
+
+        destroy() {
+            this._syncObserver?.disconnect();
         },
 
         toggle() {

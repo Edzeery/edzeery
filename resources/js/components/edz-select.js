@@ -73,9 +73,62 @@ export default function edzSelect(config) {
             document.addEventListener('click', this._documentClickHandler);
             document.addEventListener('scroll', this._repositionHandler, true);
             window.addEventListener('resize', this._repositionHandler);
+            this._syncFromServer();
+        },
+
+        // Livewire morphs re-render this element in place: the option list
+        // (data-options) and the wire:model value (hidden input `value` attr)
+        // change on the DOM but Alpine state would otherwise stay stale, so the
+        // selected check, the trigger label and the re-built option list would
+        // never reflect the server. Resync from those attributes whenever they
+        // change instead of relying on a (not guaranteed) remount.
+        _syncFromServer() {
+            if (typeof window.MutationObserver === 'undefined') return;
+
+            const input = this.$refs.hiddenInput;
+
+            const applyOptions = () => {
+                const raw = this.$el?.getAttribute('data-options');
+                if (!raw) return;
+                try {
+                    this.options = JSON.parse(raw);
+                } catch (e) {}
+            };
+            const applyValue = () => {
+                const v = input?.getAttribute('value');
+                if (v !== null && v !== undefined && String(this.selected) !== v) {
+                    this.selected = v;
+                }
+            };
+
+            applyOptions();
+
+            this._syncObserver = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.attributeName === 'data-options') {
+                        applyOptions();
+                    } else if (mutation.attributeName === 'value') {
+                        applyValue();
+                    }
+                }
+            });
+
+            if (this.$el) {
+                this._syncObserver.observe(this.$el, {
+                    attributes: true,
+                    attributeFilter: ['data-options'],
+                });
+            }
+            if (input) {
+                this._syncObserver.observe(input, {
+                    attributes: true,
+                    attributeFilter: ['value'],
+                });
+            }
         },
 
         destroy() {
+            this._syncObserver?.disconnect();
             if (this._documentClickHandler) {
                 document.removeEventListener('click', this._documentClickHandler);
             }
@@ -177,7 +230,7 @@ export default function edzSelect(config) {
                 this.$wire.call(this.wireMethodName, q)
                     .then(results => {
                         this.backendOptions = (results || []).map(r => ({
-                            value: r.value ?? r.id ?? r,
+                            value: String(r.value ?? r.id ?? r),
                             label: r.label ?? r.name ?? String(r),
                             hint: r.hint ?? null,
                         }));

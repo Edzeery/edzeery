@@ -108,28 +108,8 @@
                         class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderName"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderName">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderName']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderName']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderName"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderNameEdit"><?php echo e(__('buttons.cancel')); ?></button>
@@ -242,28 +222,8 @@
                         class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderPhone"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderPhone">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderPhone']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderPhone']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderPhone"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderPhoneEdit"><?php echo e(__('buttons.cancel')); ?></button>
@@ -325,10 +285,40 @@
         <?php break; ?>
 
     <?php case ('notes'): ?>
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-            title="<?php echo e($order['notes'] ?? ''); ?>">
-            <?php echo e($order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-'); ?>
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]"
+            <?php if($this->editingField !== 'order.notes' || $this->editingId !== $orderId): ?>
+                title="<?php echo e($order['notes'] ?? ''); ?>"
+            <?php endif; ?>>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingField === 'order.notes' && $this->editingId === $orderId): ?>
+                <div class="edz-inline-edit__edit" wire:key="notes-inline-<?php echo e($orderId); ?>">
+                    <textarea wire:model="editingValue" wire:keydown.enter="saveOrderNotes"
+                        rows="2" placeholder="<?php echo e(__('merchant_panel.notes')); ?>"
+                        class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>"></textarea>
+                    <div class="edz-inline-edit__actions">
+                        <button type="button" class="edz-inline-edit__save" wire:click="saveOrderNotes"
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
+                        </button>
+                        <button type="button" class="edz-inline-edit__cancel"
+                            wire:click="cancelOrderEdit"><?php echo e(__('buttons.cancel')); ?></button>
+                    </div>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->editingError): ?>
+                        <p class="edz-inline-edit__error"><?php echo e($this->editingError); ?></p>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </div>
+            <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
+                <button type="button" class="edz-inline-edit__display text-left"
+                    wire:click="startOrderNotesEdit('<?php echo e($orderId); ?>')"
+                    title="<?php echo e($order['notes'] ?? ''); ?>">
+                    <span
+                        class="edz-inline-edit__value break-words"><?php echo e($order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 40) : '—'); ?></span>
+                </button>
+            <?php else: ?>
+                <span class="truncate block" title="<?php echo e($order['notes'] ?? ''); ?>">
+                    <?php echo e($order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-'); ?>
 
+                </span>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>
         <?php break; ?>
 
@@ -454,28 +444,8 @@
                     </div>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderDiscount"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderDiscount">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderDiscount']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderDiscount']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderDiscount"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit"><?php echo e(__('buttons.cancel')); ?></button>
@@ -566,28 +536,8 @@
                         class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderWeight"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderWeight">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderWeight']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderWeight']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderWeight"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit"><?php echo e(__('buttons.cancel')); ?></button>
@@ -638,28 +588,8 @@
 <?php endif; ?>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderShipmentType"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderShipmentType">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderShipmentType']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderShipmentType']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderShipmentType"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()"><?php echo e(__('buttons.cancel')); ?></button>
@@ -726,28 +656,8 @@
                         class="edz-inline-edit__input <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>">
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderAddress"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderAddress">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderAddress']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderAddress']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderAddress"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             wire:click="cancelOrderEdit"><?php echo e(__('buttons.cancel')); ?></button>
@@ -796,28 +706,8 @@
 <?php endif; ?>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderDeliveryType"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderDeliveryType">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderDeliveryType']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderDeliveryType']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderDeliveryType"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()"><?php echo e(__('buttons.cancel')); ?></button>
@@ -864,28 +754,8 @@
 <?php endif; ?>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderProvider">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderProvider']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderProvider']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderProvider"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()"><?php echo e(__('buttons.cancel')); ?></button>
@@ -932,28 +802,8 @@
 <?php endif; ?>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderStopdesk"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderStopdesk">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderStopdesk']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderStopdesk']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderStopdesk"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()"><?php echo e(__('buttons.cancel')); ?></button>
@@ -1257,26 +1107,6 @@
                                 wire:click="transitionOrder('<?php echo e($orderId); ?>', '<?php echo e($s['key']); ?>')"
                                 wire:loading.attr="disabled" @click="open = false"
                                 class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-tertiary disabled:opacity-50 <?php echo e($s['id'] == $order['status_id'] ? 'font-bold' : ''); ?>">
-                                <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'transitionOrder(\''.e($orderId).'\', \''.e($s['key']).'\')','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'transitionOrder(\''.e($orderId).'\', \''.e($s['key']).'\')','class' => 'w-3 h-3']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
                                 <?php echo \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->icon(null, 'w-3 h-3 shrink-0'); ?>
 
                                 <span class="w-2 h-2 rounded-full shrink-0"
@@ -1317,28 +1147,8 @@
 <?php endif; ?>
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderAgent"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="saveOrderAgent">
-                            <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['wire:target' => 'saveOrderAgent']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.spinner'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['wire:target' => 'saveOrderAgent']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
-<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
-<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
-<?php endif; ?>
-                            <span wire:loading.remove wire:target="saveOrderAgent"><?php echo e(__('buttons.save')); ?></span>
+                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                            <span><?php echo e(__('buttons.save')); ?></span>
                         </button>
                         <button type="button" class="edz-inline-edit__cancel"
                             @click="$wire.cancelOrderEdit()"><?php echo e(__('buttons.cancel')); ?></button>
