@@ -259,3 +259,71 @@ test('bulk tasks dropdown appears in the toolbar only when orders are selected',
         ->assertSee(__('merchant.bulk_send_carrier'))
         ->assertSee(__('merchant.bulk_delete'));
 });
+
+test('mobile card renders the required geography and delivery fields', function () use ($hintSpan) {
+    [$user, $store, $membership] = rchUser(StoreRoleEnum::OWNER->value);
+    $order = rchOrder($store, 'pending', ['state_id' => null, 'city_id' => null, 'shipping_provider_id' => null]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('visibleColumns', ['delivery_type', 'shipping_provider', 'wilaya', 'city', 'address', 'shipping_cost'])
+        ->assertSeeHtml('mt-2 space-y-1.5 text-xs text-ink-muted')
+        ->assertSeeHtml($hintSpan(__('order_flow.please_select_shipping_provider')))
+        ->assertSeeHtml($hintSpan(__('order_flow.please_select_city')))
+        ->assertSee(__('merchant_panel.home_delivery_label'));
+});
+
+test('bulk tasks assigns via a searchable select with an apply button', function () {
+    [$user, $store, $membership] = rchUser(StoreRoleEnum::OWNER->value);
+    $order = rchOrder($store, 'pending');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('selectedOrders', [$order->id])
+        ->assertSee(__('merchant_panel.select_agent'))
+        ->assertSee(__('buttons.apply'));
+});
+
+test('confirm drawer shows contact attempts, last contact and a note field', function () {
+    [$user, $store, $membership] = rchUser(StoreRoleEnum::OWNER->value);
+    $order = rchOrder($store, 'pending');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('openConfirmModal', $order->id)
+        ->assertSee(__('order_flow.confirm_attempts'))
+        ->assertSee(__('order_flow.confirm_last_contact'))
+        ->assertSee('confirm-note', escape: false)
+        ->assertSee(__('order_flow.confirm_note'));
+});
+
+test('confirm drawer persists the note into order meta on confirm only', function () {
+    [$user, $store, $membership] = rchUser(StoreRoleEnum::OWNER->value);
+    $order = rchOrder($store, 'pending');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('openConfirmModal', $order->id)
+        ->set('confirmNote', 'call back tomorrow')
+        ->call('submitConfirmOnly')
+        ->assertSet('showConfirmModal', false);
+
+    expect(Order::find($order->id)->meta['confirm_note'] ?? null)->toBe('call back tomorrow');
+});
+
+test('confirm button appears once per confirmable card, never duplicated in the overflow menu', function () {
+    [$user, $store, $membership] = rchUser(StoreRoleEnum::OWNER->value);
+    $order = rchOrder($store, 'pending');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $html = Volt::test('merchant.orders.index')->html();
+
+    $hits = preg_match_all('/wire:click="openConfirmModal/u', $html);
+
+    expect($hits)->toBe(2);
+});

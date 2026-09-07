@@ -35,6 +35,8 @@ return [
     'confirm_attempts' => 'Contact attempts',
     'confirm_last_contact' => 'Last contact',
     'confirm_record_attempt' => 'Record attempt',
+    'confirm_note' => 'Note',
+    'confirm_note_placeholder' => 'Leave a note about this contact or confirmation…',
     'confirm_only' => 'Confirm only',
     'confirm_and_send' => 'Confirm & hand to carrier',
     'send_to_carrier' => 'Hand to carrier',

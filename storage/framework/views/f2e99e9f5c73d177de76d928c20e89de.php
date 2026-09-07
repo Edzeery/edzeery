@@ -125,6 +125,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $duplicateWarnings;
 
+    public $confirmNote;
+
     public $showDuplicateScanModal;
 
     public $duplicateScanNumber;
@@ -152,6 +154,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     public $bulkStatusTarget;
 
     public $bulkStatusReason;
+
+    public $bulkAssignMembershipId;
 
     public $showBulkSendModal;
 

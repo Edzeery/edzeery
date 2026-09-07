@@ -33,6 +33,8 @@ return [
     'confirm_attempts' => 'Tentatives de contact',
     'confirm_last_contact' => 'Dernier contact',
     'confirm_record_attempt' => 'Enregistrer la tentative',
+    'confirm_note' => 'Note',
+    'confirm_note_placeholder' => 'Laissez une note sur ce contact ou cette confirmation…',
     'confirm_only' => 'Confirmer seulement',
     'confirm_and_send' => 'Confirmer et remettre au transporteur',
     'send_to_carrier' => 'Remettre au transporteur',

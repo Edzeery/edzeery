@@ -33,6 +33,8 @@ return [
     'confirm_attempts' => 'محاولات الاتصال',
     'confirm_last_contact' => 'آخر تواصل',
     'confirm_record_attempt' => 'تسجيل محاولة',
+    'confirm_note' => 'ملاحظة',
+    'confirm_note_placeholder' => 'أضف ملاحظة حول هذا الاتصال أو التأكيد…',
     'confirm_only' => 'تأكيد فقط',
     'confirm_and_send' => 'تأكيد وإرسال لشركة التوصيل',
     'send_to_carrier' => 'إرسال لشركة التوصيل',

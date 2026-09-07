@@ -63,15 +63,17 @@
         <p class="px-2.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
             {{ __('merchant.bulk_assign_agent') }}
         </p>
-        @foreach ($this->allMembers as $m)
-            <button wire:click="bulkAssignAgent('{{ $m['id'] }}')" @click="open = false"
-                type="button"
-                class="w-full text-left px-2.5 min-h-[44px] flex items-center rounded-lg text-sm hover:bg-surface-secondary disabled:opacity-50"
+        <div class="px-2.5 pb-1.5">
+            <x-edz.select wire:model="bulkAssignMembershipId"
+                :options="$this->allMembers" option-value="id" option-label="user.name" search
+                placeholder="{{ __('merchant_panel.select_agent') }}" size="sm" />
+            <button wire:click="bulkAssignAgent($this->bulkAssignMembershipId)" type="button"
+                class="mt-1.5 w-full edz-btn edz-btn--accent edz-btn--sm justify-center"
                 wire:loading.attr="disabled" wire:target="bulkAssignAgent">
-                <x-edz.icon name="user" class="w-4 h-4 shrink-0 text-ink-muted mx-2" />
-                {{ $m['user']['name'] }}
+                <x-edz.icon name="user" class="w-3.5 h-3.5" />
+                <span>{{ __('buttons.apply') }}</span>
             </button>
-        @endforeach
+        </div>
 
         {{-- Send to carrier (P29.3) / change status (P29) --}}
         @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))

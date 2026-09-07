@@ -1887,11 +1887,15 @@ use Illuminate\Support\Facades\Validator;
                                                     </span>
                                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php echo $__env->make('livewire.merchant.orders.partials.orders-mobile-fields', [
+                                                'order' => $order,
+                                                'orderId' => $orderId,
+                                            ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('total', $this->visibleColumns)): ?>
                                                 <span
                                                     class="text-sm font-semibold text-ink ms-auto tabular-nums"><?php echo e(currency($order['display_total'] ?? $order['total_amount'] ?? 0)); ?></span>
                                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('shipping_cost', $this->visibleColumns) && !in_array('total', $this->visibleColumns)): ?>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('shipping_cost', $this->visibleColumns)): ?>
                                                 <span
                                                     class="text-xs text-ink-muted ms-auto inline-flex items-center gap-1"><?php echo e(__('merchant_panel.shipping_cost')); ?>:
                                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((float) ($order['shipping_cost'] ?? 0) <= 0): ?>
@@ -3244,6 +3248,14 @@ use Illuminate\Support\Facades\Validator;
                             <dt class="text-ink-muted"><?php echo e(__('order_flow.confirm_partner')); ?></dt>
                             <dd class="text-ink text-end"><?php echo e($this->confirmSummary['partner']); ?></dd>
                         </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-ink-muted"><?php echo e(__('order_flow.confirm_attempts')); ?></dt>
+                            <dd class="text-ink text-end font-medium tabular-nums"><?php echo e($this->confirmSummary['attempts']); ?></dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-ink-muted"><?php echo e(__('order_flow.confirm_last_contact')); ?></dt>
+                            <dd class="text-ink text-end"><?php echo e($this->confirmSummary['last_contact'] ?? '—'); ?></dd>
+                        </div>
                     </dl>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -3405,6 +3417,16 @@ use Illuminate\Support\Facades\Validator;
                             class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full shadow transition peer-checked:translate-x-4">
                         </div>
                     </label>
+                </div>
+
+                <div class="mt-4">
+                    <label for="confirm-note" class="edz-label">
+                        <?php echo e(__('order_flow.confirm_note')); ?>
+
+                    </label>
+                    <textarea id="confirm-note" wire:model="confirmNote" rows="2"
+                        class="edz-input mt-1 w-full resize-none <?php if($this->editingError): ?> edz-inline-edit__input--error <?php endif; ?>"
+                        placeholder="<?php echo e(__('order_flow.confirm_note_placeholder')); ?>"></textarea>
                 </div>
 
                 <div class="mt-6 flex flex-col-reverse sm:flex-row gap-2 justify-end">

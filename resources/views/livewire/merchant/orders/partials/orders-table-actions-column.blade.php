@@ -40,8 +40,9 @@
         @endif
     @endif
 
-    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
-     && !$showTrash && ($order['can_confirm'] ?? false))
+@if ($layout === 'compact'
+    && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
+    && !$showTrash && ($order['can_confirm'] ?? false))
         <button wire:click="openConfirmModal('{{ $orderId }}')"
             @if ($layout === 'list') @click="close()" @endif
             class="{{ $confirmBtnClass }}"

@@ -146,6 +146,7 @@ state([
     'confirmContacted' => false,
     'confirmSummary' => null,
     'duplicateWarnings' => [],
+    'confirmNote' => '',
 
     // Duplicate scan popup (P29.5): lazy, only computed when the row badge is clicked
     'showDuplicateScanModal' => false,
@@ -166,6 +167,7 @@ state([
     'showBulkStatusModal' => false,
     'bulkStatusTarget' => '',
     'bulkStatusReason' => '',
+    'bulkAssignMembershipId' => '',
 
     // Bulk send-to-carrier modal (P29.3): grouped by each order's own carrier.
     // bulkSendAnalysis = per-order eligibility (ready, carrier, explicit reasons).
@@ -863,6 +865,10 @@ $bulkAssignAgent = function (?string $membershipId): void {
         $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
         return;
     }
+    if (blank($membershipId)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant_panel.select_agent')]);
+        return;
+    }
     if ($membershipId && !StoreMembership::where('id', $membershipId)->where('store_id', currentStoreId())->exists()) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.invalid_agent')]);
         return;
@@ -1425,12 +1431,15 @@ $openConfirmModal = function (string $orderId): void {
         $this->confirmProviderId = $this->storeDefaultProviderId();
     }
     $this->confirmContacted = false;
+    $this->confirmNote = $order->meta['confirm_note'] ?? '';
     $this->confirmSummary = [
         'number' => $order->number,
         'total' => currency($order->total_amount),
         'customer' => $order->customer?->name ?? $order->phone ?? '—',
         'status' => $order->status?->key ? status_label('order', $order->status?->key) : '—',
         'partner' => $order->shippingProvider?->name ?? ($order->deliveryRider?->name ?? '—'),
+        'attempts' => (int) ($order->confirmation_attempts ?? 0),
+        'last_contact' => $order->last_contact_at ? \Carbon\Carbon::parse($order->last_contact_at)->diffForHumans() : null,
     ];
 
     $this->refreshDuplicateWarnings($order);
@@ -1442,6 +1451,7 @@ $closeConfirmModal = function (): void {
     $this->showConfirmModal = false;
     $this->confirmOrderId = null;
     $this->duplicateWarnings = [];
+    $this->confirmNote = '';
 };
 
 $bumpConfirmationAttempt = function (): void {
@@ -1513,6 +1523,10 @@ $submitConfirmOnly = function (): void {
         $order->update(['last_contact_at' => now()]);
     }
 
+    if (! blank($this->confirmNote)) {
+        $order->update(['meta' => array_merge($order->meta ?? [], ['confirm_note' => $this->confirmNote])]);
+    }
+
     $this->showConfirmModal = false;
     $this->loadOrders();
     $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.confirmed_only')]);
@@ -1565,13 +1579,16 @@ $submitConfirmAndSend = function (): void {
             changedBy: $membership,
             confirmFirst: true,
         );
+        if (! blank($this->confirmNote)) {
+        $order->update(['meta' => array_merge($order->meta ?? [], ['confirm_note' => $this->confirmNote])]);
+    }
 
-        $this->showConfirmModal = false;
-        $this->loadOrders();
-        $this->dispatch('swal:toast', [
-            'icon' => 'success',
-            'title' => __('order_flow.confirmed_and_sent'),
-        ]);
+    $this->showConfirmModal = false;
+    $this->loadOrders();
+    $this->dispatch('swal:toast', [
+        'icon' => 'success',
+        'title' => __('order_flow.confirmed_and_sent'),
+    ]);
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("confirm+send failed for order [{$order->number}]: " . $e->getMessage());
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.send_failed')]);
@@ -4486,11 +4503,15 @@ $submitEdit = function (): void {
                                                     </span>
                                                 @endif
                                             @endif
+                                            @include('livewire.merchant.orders.partials.orders-mobile-fields', [
+                                                'order' => $order,
+                                                'orderId' => $orderId,
+                                            ])
                                             @if (in_array('total', $this->visibleColumns))
                                                 <span
                                                     class="text-sm font-semibold text-ink ms-auto tabular-nums">{{ currency($order['display_total'] ?? $order['total_amount'] ?? 0) }}</span>
                                             @endif
-                                            @if (in_array('shipping_cost', $this->visibleColumns) && !in_array('total', $this->visibleColumns))
+                                            @if (in_array('shipping_cost', $this->visibleColumns))
                                                 <span
                                                     class="text-xs text-ink-muted ms-auto inline-flex items-center gap-1">{{ __('merchant_panel.shipping_cost') }}:
                                                     @if ((float) ($order['shipping_cost'] ?? 0) <= 0)
@@ -5199,6 +5220,14 @@ $submitEdit = function (): void {
                             <dt class="text-ink-muted">{{ __('order_flow.confirm_partner') }}</dt>
                             <dd class="text-ink text-end">{{ $this->confirmSummary['partner'] }}</dd>
                         </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-ink-muted">{{ __('order_flow.confirm_attempts') }}</dt>
+                            <dd class="text-ink text-end font-medium tabular-nums">{{ $this->confirmSummary['attempts'] }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 px-3 py-2">
+                            <dt class="text-ink-muted">{{ __('order_flow.confirm_last_contact') }}</dt>
+                            <dd class="text-ink text-end">{{ $this->confirmSummary['last_contact'] ?? '—' }}</dd>
+                        </div>
                     </dl>
                 @endif
 
@@ -5261,6 +5290,15 @@ $submitEdit = function (): void {
                             class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full shadow transition peer-checked:translate-x-4">
                         </div>
                     </label>
+                </div>
+
+                <div class="mt-4">
+                    <label for="confirm-note" class="edz-label">
+                        {{ __('order_flow.confirm_note') }}
+                    </label>
+                    <textarea id="confirm-note" wire:model="confirmNote" rows="2"
+                        class="edz-input mt-1 w-full resize-none @if ($this->editingError) edz-inline-edit__input--error @endif"
+                        placeholder="{{ __('order_flow.confirm_note_placeholder') }}"></textarea>
                 </div>
 
                 <div class="mt-6 flex flex-col-reverse sm:flex-row gap-2 justify-end">

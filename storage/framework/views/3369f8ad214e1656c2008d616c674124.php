@@ -49,8 +49,9 @@
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
-     && !$showTrash && ($order['can_confirm'] ?? false)): ?>
+<?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($layout === 'compact'
+    && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
+    && !$showTrash && ($order['can_confirm'] ?? false)): ?>
         <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
             <?php if($layout === 'list'): ?> @click="close()" <?php endif; ?>
             class="<?php echo e($confirmBtnClass); ?>"
