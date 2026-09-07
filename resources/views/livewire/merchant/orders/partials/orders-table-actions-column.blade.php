@@ -15,6 +15,9 @@
     $btnClass = $layout === 'list'
         ? 'w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50'
         : 'edz-btn edz-btn--ghost edz-btn--xs shrink-0';
+    $confirmBtnClass = $layout === 'list'
+        ? 'w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50'
+        : 'edz-btn edz-btn--primary edz-btn--xs shrink-0';
 @endphp
 
 <div class="{{ $layout === 'list' ? 'flex flex-col gap-0.5' : 'flex items-center justify-end gap-1 flex-nowrap' }}">
@@ -38,10 +41,10 @@
     @endif
 
     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
-     && !$showTrash && in_array('confirmed', $transitions ?? [], true))
+     && !$showTrash && ($order['can_confirm'] ?? false))
         <button wire:click="openConfirmModal('{{ $orderId }}')"
             @if ($layout === 'list') @click="close()" @endif
-            class="{{ $btnClass }}"
+            class="{{ $confirmBtnClass }}"
             title="{{ __('order_flow.confirm_title') }}">
             <x-edz.icon name="phone" class="{{ $icon }}" />
             @if ($layout === 'list')

@@ -74,7 +74,7 @@ class OrderService
 
         $systemTransitions = match ($currentKey) {
             'draft'              => ['pending', 'cancelled'],
-            'pending'            => ['confirmed', 'cancelled', 'no_answer_1', 'wrong_number', 'out_of_stock', 'duplicate'],
+            'pending'            => ['confirmed', 'cancelled', 'postponed', 'no_answer_1', 'wrong_number', 'out_of_stock', 'duplicate'],
             'confirmed'          => ['preparing', 'cancelled', 'on_hold'],
             'no_answer_1'        => ['pending', 'no_answer_2', 'cancelled'],
             'no_answer_2'        => ['pending', 'no_answer_3', 'cancelled'],

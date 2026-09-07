@@ -767,11 +767,26 @@
             <?php elseif(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderProviderEdit('<?php echo e($orderId); ?>')">
-                    <span class="edz-inline-edit__value"><?php echo e($order['shippingProvider']['name'] ?? '—'); ?></span>
+                    <span class="edz-inline-edit__value">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($order['shipping_provider']['name'])): ?>
+                            <?php echo e($order['shipping_provider']['name']); ?>
+
+                        <?php elseif($isRequired ?? false): ?>
+                            <span class="text-warning font-medium"><?php echo e(__('order_flow.select_shipping_provider')); ?></span>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </span>
                 </button>
             <?php else: ?>
-                <?php echo e($order['shippingProvider']['name'] ?? '-'); ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($order['shipping_provider']['name'])): ?>
+                    <?php echo e($order['shipping_provider']['name']); ?>
 
+                <?php elseif($isRequired ?? false): ?>
+                    <span class="text-warning font-medium"><?php echo e(__('order_flow.select_shipping_provider')); ?></span>
+                <?php else: ?>
+                    -
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </td>
         <?php break; ?>
@@ -1102,7 +1117,13 @@
                         </button>
                     </div>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStatuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($s['key'], $transitions) || $s['id'] == $order['status_id']): ?>
+                        <?php
+                            $isCurrentStatus = $s['id'] == $order['status_id'];
+                            $isBlockedConfirm = ($order['confirm_via_drawer'] ?? false)
+                                && ($s['key'] ?? null) === 'confirmed'
+                                && ! $isCurrentStatus;
+                        ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $isBlockedConfirm && (in_array($s['key'], $transitions) || $isCurrentStatus)): ?>
                             <button
                                 wire:click="transitionOrder('<?php echo e($orderId); ?>', '<?php echo e($s['key']); ?>')"
                                 wire:loading.attr="disabled" @click="open = false"

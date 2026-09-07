@@ -1398,6 +1398,7 @@ use Illuminate\Support\Facades\Validator;
                                                 'colKey' => $colKey,
                                                 'orderId' => $orderId,
                                                 'transitions' => $transitions,
+                                                'isRequired' => (bool) ($this->orderColumn($colKey)['required'] ?? false),
                                             ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         <td class="px-4 py-3 text-right">
@@ -1667,7 +1668,13 @@ use Illuminate\Support\Facades\Validator;
                                                         </button>
                                                     </div>
                                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allStatuses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($s['key'], $order['transitions'] ?? []) || $s['id'] == $order['status_id']): ?>
+                                                        <?php
+                                                            $isCurrentStatus = $s['id'] == $order['status_id'];
+                                                            $isBlockedConfirm = ($order['confirm_via_drawer'] ?? false)
+                                                                && ($s['key'] ?? null) === 'confirmed'
+                                                                && ! $isCurrentStatus;
+                                                        ?>
+                                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $isBlockedConfirm && (in_array($s['key'], $order['transitions'] ?? []) || $isCurrentStatus)): ?>
                                                             <button
                                                                 wire:click="transitionOrder('<?php echo e($orderId); ?>', '<?php echo e($s['key']); ?>')"
                                                                 wire:loading.attr="disabled" @click="open = false"
@@ -3146,17 +3153,18 @@ use Illuminate\Support\Facades\Validator;
     <?php echo $__env->make('livewire.merchant.orders.partials.delivery-edit-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(StorePermissionEnum::ORDER_CONFIRM->value) || canStore(StorePermissionEnum::ORDER_MANAGE->value)): ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showConfirmModal): ?>
+        <div @edz-modal-closed.window="$wire.closeConfirmModal()">
         <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showConfirmModal,'@close' => '$wire.closeConfirmModal()','size' => 'lg','showCloseButton' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'size' => 'lg','showCloseButton' => true,'wire:key' => 'confirmation-drawer']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showConfirmModal),'@close' => '$wire.closeConfirmModal()','size' => 'lg','show-close-button' => true]); ?>
+<?php $component->withAttributes(['is-open' => true,'size' => 'lg','show-close-button' => true,'wire:key' => 'confirmation-drawer']); ?>
             <div class="p-5">
                 <div class="flex items-center justify-between mb-5">
                     <div>
@@ -3405,20 +3413,22 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
+        </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(StorePermissionEnum::ORDER_MANAGE->value)): ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showBulkStatusModal): ?>
+        <div @edz-modal-closed.window="$wire.closeBulkStatusModal()">
         <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showBulkStatusModal,'@close' => '$wire.closeBulkStatusModal()','size' => 'md','showCloseButton' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'size' => 'md','showCloseButton' => true,'wire:key' => 'bulk-status-modal']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showBulkStatusModal),'@close' => '$wire.closeBulkStatusModal()','size' => 'md','show-close-button' => true]); ?>
+<?php $component->withAttributes(['is-open' => true,'size' => 'md','show-close-button' => true,'wire:key' => 'bulk-status-modal']); ?>
             <div class="p-5">
                 <h3 class="text-lg font-semibold text-ink mb-4"><?php echo e(__('order_flow.bulk_status_title')); ?></h3>
 
@@ -3470,20 +3480,22 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
+        </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     
-    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(StorePermissionEnum::ORDER_MANAGE->value)): ?>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showBulkSendModal): ?>
+        <div @edz-modal-closed.window="$wire.closeBulkSendModal()">
         <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $showBulkSendModal,'@close' => '$wire.closeBulkSendModal()','size' => 'md','showCloseButton' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => true,'size' => 'md','showCloseButton' => true,'wire:key' => 'bulk-send-modal']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($showBulkSendModal),'@close' => '$wire.closeBulkSendModal()','size' => 'md','show-close-button' => true]); ?>
+<?php $component->withAttributes(['is-open' => true,'size' => 'md','show-close-button' => true,'wire:key' => 'bulk-send-modal']); ?>
             <div class="p-5">
                 <h3 class="text-lg font-semibold text-ink mb-1"><?php echo e(__('order_flow.bulk_send_summary_title')); ?></h3>
                 <p class="text-xs text-ink-muted mb-4"><?php echo e(__('order_flow.bulk_send_summary_subtitle')); ?></p>
@@ -3576,6 +3588,7 @@ use Illuminate\Support\Facades\Validator;
 <?php $component = $__componentOriginal911d914fd97d5405d92c9a7521bf08ef; ?>
 <?php unset($__componentOriginal911d914fd97d5405d92c9a7521bf08ef); ?>
 <?php endif; ?>
+        </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     

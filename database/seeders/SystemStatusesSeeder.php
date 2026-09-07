@@ -31,7 +31,7 @@ class SystemStatusesSeeder extends Seeder
                 'type' => 'order',
                 'key' => 'confirmed',
                 'label' => 'Confirmed',
-                'color' => 'info',
+                'color' => 'success',
                 'is_system' => true,
                 'affects_inventory' => true,
                 'movement_type' => InventoryMovementType::RESERVE->value,

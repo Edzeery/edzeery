@@ -501,10 +501,24 @@
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display"
                     @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
-                    <span class="edz-inline-edit__value">{{ $order['shippingProvider']['name'] ?? '—' }}</span>
+                    <span class="edz-inline-edit__value">
+                        @if (! empty($order['shipping_provider']['name']))
+                            {{ $order['shipping_provider']['name'] }}
+                        @elseif ($isRequired ?? false)
+                            <span class="text-warning font-medium">{{ __('order_flow.select_shipping_provider') }}</span>
+                        @else
+                            —
+                        @endif
+                    </span>
                 </button>
             @else
-                {{ $order['shippingProvider']['name'] ?? '-' }}
+                @if (! empty($order['shipping_provider']['name']))
+                    {{ $order['shipping_provider']['name'] }}
+                @elseif ($isRequired ?? false)
+                    <span class="text-warning font-medium">{{ __('order_flow.select_shipping_provider') }}</span>
+                @else
+                    -
+                @endif
             @endif
         </td>
         @break
@@ -610,7 +624,13 @@
                         </button>
                     </div>
                     @foreach ($this->allStatuses as $s)
-                        @if (in_array($s['key'], $transitions) || $s['id'] == $order['status_id'])
+                        @php
+                            $isCurrentStatus = $s['id'] == $order['status_id'];
+                            $isBlockedConfirm = ($order['confirm_via_drawer'] ?? false)
+                                && ($s['key'] ?? null) === 'confirmed'
+                                && ! $isCurrentStatus;
+                        @endphp
+                        @if (! $isBlockedConfirm && (in_array($s['key'], $transitions) || $isCurrentStatus))
                             <button
                                 wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                 wire:loading.attr="disabled" @click="open = false"

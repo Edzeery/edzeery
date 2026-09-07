@@ -25,6 +25,7 @@ return [
     'confirm_summary' => 'Summary',
     'confirm_partner' => 'Delivery partner',
     'confirm_provider_placeholder' => 'Select delivery company',
+    'select_shipping_provider' => 'Select delivery company',
     'confirm_with_rider' => 'Personal rider',
     'confirm_contacted' => 'Customer contacted on this attempt',
     'confirm_attempts' => 'Contact attempts',

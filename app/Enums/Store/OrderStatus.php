@@ -21,6 +21,7 @@ enum OrderStatus: string
     case OUT_FOR_DELIVERY = 'out_for_delivery';
     case DELIVERED = 'delivered';
     case ON_HOLD = 'on_hold';
+    case POSTPONED = 'postponed';
     case COMPLETED = 'completed';
     case CANCELLED = 'cancelled';
     case CANCELED = 'canceled';
@@ -91,6 +92,7 @@ enum OrderStatus: string
             self::OUT_FOR_DELIVERY => status_label(self::GROUP, 'out_for_delivery'),
             self::DELIVERED => status_label(self::GROUP, 'delivered'),
             self::ON_HOLD => status_label(self::GROUP, 'on_hold'),
+            self::POSTPONED => status_label(self::GROUP, 'postponed'),
             self::COMPLETED => status_label(self::GROUP, 'completed'),
             self::CANCELLED => status_label(self::GROUP, 'cancelled'),
             self::CANCELED => status_label(self::GROUP, 'canceled'),
@@ -116,6 +118,7 @@ enum OrderStatus: string
             self::OUT_FOR_DELIVERY => status_color(self::GROUP, 'out_for_delivery'),
             self::DELIVERED => status_color(self::GROUP, 'delivered'),
             self::ON_HOLD => status_color(self::GROUP, 'on_hold'),
+            self::POSTPONED => status_color(self::GROUP, 'postponed'),
             self::COMPLETED => status_color(self::GROUP, 'completed'),
             self::CANCELLED => status_color(self::GROUP, 'cancelled'),
             self::CANCELED => status_color(self::GROUP, 'canceled'),
@@ -141,6 +144,7 @@ enum OrderStatus: string
             self::OUT_FOR_DELIVERY => status_icon(self::GROUP, 'out_for_delivery'),
             self::DELIVERED => status_icon(self::GROUP, 'delivered'),
             self::ON_HOLD => status_icon(self::GROUP, 'on_hold'),
+            self::POSTPONED => status_icon(self::GROUP, 'postponed'),
             self::COMPLETED => status_icon(self::GROUP, 'completed'),
             self::CANCELLED => status_icon(self::GROUP, 'cancelled'),
             self::CANCELED => status_icon(self::GROUP, 'canceled'),

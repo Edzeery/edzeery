@@ -7,6 +7,9 @@
     $btnClass = $layout === 'list'
         ? 'w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-tertiary disabled:opacity-50'
         : 'edz-btn edz-btn--ghost edz-btn--xs shrink-0';
+    $confirmBtnClass = $layout === 'list'
+        ? 'w-full text-left flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm font-semibold bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50'
+        : 'edz-btn edz-btn--primary edz-btn--xs shrink-0';
 ?>
 
 <div class="<?php echo e($layout === 'list' ? 'flex flex-col gap-0.5' : 'flex items-center justify-end gap-1 flex-nowrap'); ?>">
@@ -47,10 +50,10 @@
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value)
-     && !$showTrash && in_array('confirmed', $transitions ?? [], true)): ?>
+     && !$showTrash && ($order['can_confirm'] ?? false)): ?>
         <button wire:click="openConfirmModal('<?php echo e($orderId); ?>')"
             <?php if($layout === 'list'): ?> @click="close()" <?php endif; ?>
-            class="<?php echo e($btnClass); ?>"
+            class="<?php echo e($confirmBtnClass); ?>"
             title="<?php echo e(__('order_flow.confirm_title')); ?>">
             <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>

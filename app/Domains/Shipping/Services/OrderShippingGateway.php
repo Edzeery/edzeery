@@ -69,7 +69,7 @@ class OrderShippingGateway
                 $order->unsetRelation('status');
             }
 
-            if ($confirmFirst && in_array($order->status?->key, ['pending', 'draft'], true)) {
+            if ($confirmFirst && in_array($order->status?->key, ['pending', 'draft', 'on_hold'], true)) {
                 $order = $this->orders->transition($order, 'confirmed', $reason, $changedBy);
             }
 

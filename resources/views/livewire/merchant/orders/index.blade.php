@@ -692,6 +692,8 @@ $decorateOrder = function (Order $order, OrderService $service, array $duplicate
     }
 
     $arr['transitions'] = $service->availableTransitions($order);
+    $arr['can_confirm'] = in_array('confirmed', $arr['transitions'], true);
+    $arr['confirm_via_drawer'] = in_array($statusKey, ['pending', 'on_hold'], true);
     $arr['items_summary'] = $order->items
         ->map(
             fn($i) => [
@@ -1219,6 +1221,12 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
         return;
     }
 
+    if ($statusKey === 'confirmed' && in_array($order->status?->key, ['pending', 'on_hold'], true)) {
+        $this->openConfirmModal($orderId);
+
+        return;
+    }
+
     $service = app(OrderService::class);
     $statusKey_translation = status_label('order', $statusKey) ?: __('status.' . $statusKey);
     if (!$service->canTransition($order, $statusKey)) {
@@ -1397,6 +1405,7 @@ $storeDefaultProviderId = function (): string {
 };
 
 $openConfirmModal = function (string $orderId): void {
+
     if (! canStore(StorePermissionEnum::ORDER_CONFIRM->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
@@ -1419,8 +1428,8 @@ $openConfirmModal = function (string $orderId): void {
     $this->confirmSummary = [
         'number' => $order->number,
         'total' => currency($order->total_amount),
-        'customer' => $order->customer->name ?? $order->phone ?? '—',
-        'status' => status_label('order', $order->status?->key),
+        'customer' => $order->customer?->name ?? $order->phone ?? '—',
+        'status' => $order->status?->key ? status_label('order', $order->status?->key) : '—',
         'partner' => $order->shippingProvider?->name ?? ($order->deliveryRider?->name ?? '—'),
     ];
 
@@ -1480,7 +1489,7 @@ $submitConfirmOnly = function (): void {
         return;
     }
 
-    if ($order->status?->key !== 'pending') {
+    if (! in_array($order->status?->key, ['pending', 'on_hold'], true)) {
         $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.confirmed_only')]);
         $this->showConfirmModal = false;
         return;
@@ -2552,7 +2561,13 @@ $startOrderProviderEdit = function (string $orderId): void {
     }
 
     $this->editStopdeskOptions = $this->inlineStopdeskOptions($order);
-    $this->startEdit('order.shipping_provider', $orderId, $order->shipping_provider_id);
+
+    $providerId = $order->shipping_provider_id;
+    if (blank($providerId)) {
+        $providerId = $this->storeDefaultProviderId();
+    }
+
+    $this->startEdit('order.shipping_provider', $orderId, blank($providerId) ? null : $providerId);
 };
 
 $saveOrderProvider = function (?string $providerId = null): void {
@@ -4164,6 +4179,7 @@ $submitEdit = function (): void {
                                                 'colKey' => $colKey,
                                                 'orderId' => $orderId,
                                                 'transitions' => $transitions,
+                                                'isRequired' => (bool) ($this->orderColumn($colKey)['required'] ?? false),
                                             ])
                                         @endforeach
                                         <td class="px-4 py-3 text-right">
@@ -4350,7 +4366,13 @@ $submitEdit = function (): void {
                                                         </button>
                                                     </div>
                                                     @foreach ($this->allStatuses as $s)
-                                                        @if (in_array($s['key'], $order['transitions'] ?? []) || $s['id'] == $order['status_id'])
+                                                        @php
+                                                            $isCurrentStatus = $s['id'] == $order['status_id'];
+                                                            $isBlockedConfirm = ($order['confirm_via_drawer'] ?? false)
+                                                                && ($s['key'] ?? null) === 'confirmed'
+                                                                && ! $isCurrentStatus;
+                                                        @endphp
+                                                        @if (! $isBlockedConfirm && (in_array($s['key'], $order['transitions'] ?? []) || $isCurrentStatus))
                                                             <button
                                                                 wire:click="transitionOrder('{{ $orderId }}', '{{ $s['key'] }}')"
                                                                 wire:loading.attr="disabled" @click="open = false"
@@ -5116,9 +5138,9 @@ $submitEdit = function (): void {
     @include('livewire.merchant.orders.partials.delivery-edit-modal')
 
     {{-- Confirmation Drawer (P26) --}}
-    @if (canStore(StorePermissionEnum::ORDER_CONFIRM->value) || canStore(StorePermissionEnum::ORDER_MANAGE->value))
-        <x-edz.modal :is-open="$showConfirmModal" @close="$wire.closeConfirmModal()" size="lg"
-            show-close-button>
+    @if ($showConfirmModal)
+        <div @edz-modal-closed.window="$wire.closeConfirmModal()">
+        <x-edz.modal :is-open="true" size="lg" show-close-button wire:key="confirmation-drawer">
             <div class="p-5">
                 <div class="flex items-center justify-between mb-5">
                     <div>
@@ -5238,12 +5260,13 @@ $submitEdit = function (): void {
                 </div>
             </div>
         </x-edz.modal>
+        </div>
     @endif
 
     {{-- Bulk Status Change (P29) --}}
-    @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
-        <x-edz.modal :is-open="$showBulkStatusModal" @close="$wire.closeBulkStatusModal()" size="md"
-            show-close-button>
+    @if ($showBulkStatusModal)
+        <div @edz-modal-closed.window="$wire.closeBulkStatusModal()">
+        <x-edz.modal :is-open="true" size="md" show-close-button wire:key="bulk-status-modal">
             <div class="p-5">
                 <h3 class="text-lg font-semibold text-ink mb-4">{{ __('order_flow.bulk_status_title') }}</h3>
 
@@ -5282,12 +5305,13 @@ $submitEdit = function (): void {
                 </div>
             </div>
         </x-edz.modal>
+        </div>
     @endif
 
     {{-- Bulk Send to Carrier (P29.3) --}}
-    @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
-        <x-edz.modal :is-open="$showBulkSendModal" @close="$wire.closeBulkSendModal()" size="md"
-            show-close-button>
+    @if ($showBulkSendModal)
+        <div @edz-modal-closed.window="$wire.closeBulkSendModal()">
+        <x-edz.modal :is-open="true" size="md" show-close-button wire:key="bulk-send-modal">
             <div class="p-5">
                 <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.bulk_send_summary_title') }}</h3>
                 <p class="text-xs text-ink-muted mb-4">{{ __('order_flow.bulk_send_summary_subtitle') }}</p>
@@ -5349,6 +5373,7 @@ $submitEdit = function (): void {
                 </div>
             </div>
         </x-edz.modal>
+        </div>
     @endif
 
     {{-- Duplicate scan popup (P29.6): lazy — computed on click via openDuplicateScan() --}}

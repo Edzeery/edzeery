@@ -125,22 +125,32 @@ it('transition success dispatches a success toast', function () {
     $order = dtuOrder($store, 'pending');
 
     dtuVolt([$user, $store])
-        ->call('transitionOrder', $order->id, 'confirmed')
+        ->call('transitionOrder', $order->id, 'postponed')
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success');
 
-    expect(Order::find($order->id)->status?->key)->toBe('confirmed');
+    expect(Order::find($order->id)->status?->key)->toBe('postponed');
+});
+
+it('a direct confirmed transition opens the confirm drawer instead of confirming', function () {
+    [$user, $store] = dtuUser();
+    $order = dtuOrder($store, 'pending');
+
+    dtuVolt([$user, $store])
+        ->call('transitionOrder', $order->id, 'confirmed')
+        ->assertSet('showConfirmModal', true);
+
+    expect(Order::find($order->id)->status?->key)->toBe('pending');
 });
 
 it('invalid transition dispatches an error toast without changing the status', function () {
     [$user, $store] = dtuUser();
     $order = dtuOrder($store, 'pending');
 
-    $t = dtuVolt([$user, $store]);
-    $t->call('transitionOrder', $order->id, 'confirmed');
-    $t->call('transitionOrder', $order->id, 'confirmed')
+    dtuVolt([$user, $store])
+        ->call('transitionOrder', $order->id, 'shipped')
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
-    expect(Order::find($order->id)->status?->key)->toBe('confirmed');
+    expect(Order::find($order->id)->status?->key)->toBe('pending');
 });
 
 it('reassign dispatches a success toast', function () {
