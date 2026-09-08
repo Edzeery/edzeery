@@ -37,6 +37,9 @@ return [
         'cancel' => 'Annuler la commande',
         'confirm' => 'Confirmer la commande',
         'delete' => 'Supprimer la commande',
+        'edit' => [
+            'price' => 'Modifier les prix des produits de la commande',
+        ],
         'manage' => 'Gérer les commandes',
         'view' => 'Voir la commande',
     ],

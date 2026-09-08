@@ -775,3 +775,52 @@ git rm "it" "prepareBindings(\$bindings)"
 | **الإجمالي (جولة نظيفة)** | **445 ناجح (1571 assertions)** | | |
 
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — البطاقة الموبايل تعرض الآن شركة التوصيل/نوعية التوصيل/البلدية/العنوان/سعر التوصيل، قائمة «مهام متعددة» بها بحث عند تكليف عضو، ملخص التأكيد الجديد (محاولات + آخر تواصل + ملاحظة)، وزر تأكيد واحد فقط في البطاقة.
+
+## Phase 31.8 — التعديل المضمّن للمنتجات/المتغيرات/الكمية/السعر + إعداد السماح بتعديل السعر + صلاحية ORDER_EDIT_PRICE + مكوّن Checkbox — 2026-09-07
+
+**بموافقة صريحة («نفذ») بعد خطة مثبّتة بأسئلة المستخدم (قراراته: محرر مدمج موحّد للأعمدة الثلاثة بحفظ واحد؛ احترام السعر المكتوب عند `allow_price_edit` + `ORDER_EDIT_PRICE` مع تعديل قاعدة C3؛ إصلاح مصفوفة صفحة الفريق لتظهر كل حالات الإنم مع شارة custom).**
+
+- **(1) الإعداد + الصلاحية + المكوّن:**
+  - Migration `2026_09_07_000001_add_allow_price_edit_to_store_settings.php` (boolean **false** افتراضيًا) + `StoreSetting` fillable/cast `allow_price_edit`.
+  - `StorePermissionEnum::ORDER_EDIT_PRICE = 'order.edit.price'` + مفاتيح `permissions.order.*` المتداخلة في ar/en/es/fr.
+  - مكوّن جديد `resources/views/components/edz/checkbox.blade.php` (دعم `wire:model`/`wire:click` وحجم sm/md وlabel/hint/disabled) + `.edz-checkbox` SCSS في `resources/css/components/_forms.scss` (كانت 5 استخدامات بلا CSS → أصبحت تُعرض صحيحة تلقائيًا).
+  - إعادة استخدام checkbox: store-settings (تبويب التجارة: `allow_price_edit` الجديد + `guest_checkout` + مخزون) + orders (selectAll/صفوف ديسكتوب/بطاقة موبايل/مودال إعداد الأعمدة) + teams (`is_active` + مصفوفة الصلاحيات).
+  - إصلاح teams: `$allPermissions` = `StorePermissionEnum` كله مجمّعًا (`groupBy` على البادئة) بدل القائمة الجزئية.
+- **(2) المحرر المضمّن للعناصر — `orders/index.blade.php` + partial جديد `orders-inline-items-editor.blade.php`:**
+  - الخلايا الثلاث (products/quantity/price) في `orders-table-cell.blade.php` صارت أزرار `startOrderItemsEdit(orderId)` عند `ORDER_MANAGE` (ديسكتوب + زر «تعديل المنتجات…» في بطاقة الموبايل).
+  - المحرر صف `<tr colspan>` تحت صف الطلب (ديسكتوب) / حقل بالبطاقة (موبايل): كل عنصر بصف (الاسم + SKU، خطوة كمية مطابقة للمودال، سعر الوحدة مقيّدًا، الإجمالي، حذف) + بحث إضافة منتج (`itemsAddSearch` debounce 500ms ← `searchInlineItems` بحد 25، متغير متعدد يعرض قائمة متغيراته inline عبر `toggleInlineAddProduct`, إضافة عبر `addInlineItem`→`addFormItem` لإعادة الاستخدام).
+  - **قاعدة السعر (C3 المعدّلة):** `$saveOrderItems` يقرأ `itemsPriceEditable()` (مُذكَّرة `static` لكل طلب؛ تعادل `allow_price_edit && canStore(ORDER_EDIT_PRICE)`) — عند التفعيل يُحترم السعر المكتوب ويُخزَّن (مع `subtotal`/`total_amount`/إعادة حساب shipping)، وإلا يُفرض سعر DB دائمًا. إزالة/إضافة/تعديل الكميات عبر `OrderItem` مباشرة (نفس نمط `submitEdit`)، مع فحص المخزون (delta) وحارس `guardOrderEditable` (الشحن يعطّل الحفظ).
+  - ترجمات جديدة: `merchant_panel.no_items` / `delete_item` / `edit_items` في 4 لغات.
+- **الاختبارات — `OrderInlineItemsEditTest` (11):** فتح المحرر وتحميل draft، فرض سعر DB بلا الإعداد، احترام السعر عند الإعداد+الصلاحية (owner)، staff مخصص `order.manage` بلا حقل سعر وسعر DB، staff بـ`order.manage+order.edit.price` يحترم السعر، الإعداد وحده يكفي؟ (لا)، إزالة+إضافة عنصرين، حجب backorder، حجب الشحن، رفض بدون `order.manage`، والقيمة الافتراضية false. **فخّ مؤكد:** القوائم المخصصة للعضوية تُلغي صلاحيات الدور كليًا → مجموعة الصلاحيات المختبرة **يجب أن تتضمن `ORDER_VIEW`** وإلا `abort_unless(ORDER_VIEW)` (index.blade.php:512) يقطع العرض خلف «Invalid snapshot» مضلّل في الـharness.
+- **التحقق النهائي:** `view:clear`+`view:cache` سليمة، الجولات المتأثرة (inline edits + roles/gates + settings + query-count) **74 ناجح (427 assertions)** ثم **الجولة الكاملة النظيفة 457 ناجح (1622 assertions)**.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.8 محرر العناصر + إعداد السعر + الصلاحية | ✅ | database/migrations/2026_09_07_000001_add_allow_price_edit_to_store_settings.php + app/Models/Stores/StoreSetting.php + app/Enums/Store/StorePermissionEnum.php + resources/views/components/edz/checkbox.blade.php (جديد) + resources/css/components/_forms.scss + livewire/merchant/store-settings.blade.php + livewire/merchant/teams/index.blade.php + livewire/merchant/orders/index.blade.php + partials/orders-inline-items-editor.blade.php (جديد) + partials/orders-table-cell.blade.php + permissions.php×4 + merchant_panel.php×4 + OrderInlineItemsEditTest (جديد) | 11 في OrderInlineItemsEditTest (40 assertions) + 74 في الجولات المتأثرة (427 assertions) |
+| **الإجمالي (جولة نظيفة)** | **457 ناجح (1622 assertions)** | | |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — فتح المحرر بالنقر على منتج/كمية/سعر (جدول ديسكتوب + زر بطاقة الموبايل)، عناصر المحرر بخطوات الكمية وحذف وبحث الإضافة، إخفاء حقل السعر لعضو بلا `order.edit.price`، ظهور مفتاح «السماح بتعديل السعر» في تبويب التجارة (إعدادات المتجر)، ومصفوفة صفحة الفريق تعرض كل حالات الإنم الجديدة.
+
+---
+
+## Phase 31.9 — بوب أب تعديل بنود الطلبيات لكل عمود على حدة (بدل المحرر المضمّن) + إصلاح خلل Checkbox — 2026-09-08
+
+**بموافقة صريحة («نفذ») بعد فحص السبب الجذري وقرارات المستخدم:** المستخدم وجد التصميم المضمّن السابق (31.8) «سيئًا وغير عمليًا» وأعاد الاتجاه المقرر سابقًا (محرر مدمج بثلاثة أعمدة) → **بوب أب مستقل لكل عمود** (منتجات / كميات / أسعار) بنمط Pattern A، و**كل عمود يعدّل لوحده**. إجابات توضيحية: (أ) الموبايل = زر واحد «تعديل المنتجات…» يفتح ورقة سفلية صغيرة بثلاثة خيارات؛ (ب) عمود السعر عند غياب الصلاحية = **نص ساكن بلا أي زر/قائمة**.
+
+- **(1) إصلاح الـCheckbox — السبب الجذري:** في `components/edz/checkbox.blade.php` كان `$checked !== null ? 'checked' : ''` — مجرد **وجود** الخاصية (أي قيمة) يحسب في HTML بمثابة محدّد، ولهذا بدت الخانات دائمًا محدّدة في: خانات صفوف الطلبيات (ديسكتوب 4454 + موبايل 4516) ومفاتيح مودال إعداد الجدول (~4968). مستخدمات `wire:model` سليمة لأن إدارة Livewire لا تمرر `checked`. **الإصلاح:** `$checked === true ? 'checked' : ''`. أدلة: اختبار ترميز `Blade::render` — `:checked="true"` → تحتوي على `\schecked\b`، و`:checked="false"`/بدونها → لا تحتوي (أُضيف ضمن `OrderInlineItemsEditTest`).
+- **(2) إعادة الهيكلة إلى نوافذ لكل عمود:**
+  - `index.blade.php`: state `itemsModal = null`؛ استبدال `startOrderItemsEdit`/`cancelOrderItemsEdit` بـ`openItemsModal(kind, orderId)`/`closeItemsModal()`. الأول: حارس `ORDER_MANAGE` (توست `permission_denied` عند الرفض)، قائمة أنواع مسموحة (`products/quantity/price`)، منع `price` بلا `itemsPriceEditable()`، وبناء draft من `items_summary` الموجود أصلًا (لا استعلام إضافي) ثم `startEdit('order.items', ...)`؛ الأخير: صفر `itemsModal` + `cancelEdit()` + تصفير البحث + **`form['items'] = []`** (التخلص من النسخة). `saveOrderItems` تُغلق النافذة عبر `closeItemsModal()` بعد النجاح وتبقيها مفتوحة مع `editingError` عند فشل التحقق.
+  - حذف صف `<tr colspan>` (items-editor-row) من الجدول وحقل الموبايل المضمّن مع **حذف اليتيم** `partials/orders-inline-items-editor.blade.php`.
+  - الموبايل: زر واحد «تعديل المنتجات…» يعرض `itemsEditMenu` (مكوّن Alpine جديد في `resources/js/components/order-row-actions.js` + تسجيله في `panel.js`) — ورقة سفلية <639px/لوحة مثبتة sm+ (نمط `orderMoreMenu`)، صفوف products/quantity/price (الأخير شرطي بـ`itemsPriceEditable()`)، أزرار 44px+ وhover واضحة.
+  - الخلايا: products → `openItemsModal('products', …)`؛ quantity → `openItemsModal('quantity', …)`؛ price → زر فقط عند `ORDER_MANAGE && itemsPriceEditable()` وإلا **نص ساكن**؛ حُذفت فروع `editingField === 'order.items'` من `orders-table-cell.blade.php`.
+  - partial جديد `orders-items-edit-modals.blade.php` (ثلاث نوافذ Pattern A عبر `x-edz.modal` + `:is-open="true"` + `wire:key`؛ قوائم `max-h-[45vh]` بحد أقصى، نص «لا منتجات» عند الفراغ) + `orders-items-modal-footer.blade.php` (خطأ التحقق + إلغاء/حفظ مع spinner). **نقطة تقنية مؤكدة:** `:class="…"` على وسوم المكوّنات (`x-edz.*`) يجمّعه Blade كـPHP (اصطدام مع Alpine) → يُستخدم `x-bind:class` (نمط `bulk-actions-bar.blade.php:24`)؛ والسلاسل MUTA-DEFENSIVE `$item['price'] ?? 0`/`$item['quantity'] ?? 1` في كل عرض.
+  - قواعد السلوك (من 31.8 وتبقى كما هي): C3 لفرض/احترام السعر، حارس `guardOrderEditable` (الشحن)، فحص المخزون (delta) لحاجز الـbackorder، `addInlineItem`←`addFormItem`، بحث debounce 500ms بحد 25. لا مفاتيح ترجمة جديدة (كلها قائمة).
+- **الاختبارات — `OrderInlineItemsEditTest` (12/62):** فتح نافذتي products+quantity مع `itemsModal.kind` وتحميل draft ثم إغلاق يصفّر `form.items`؛ فرض سعر DB بلا الإعداد؛ احترام سعر owner عند `allow_price_edit` + إعادة حساب الإجمالي؛ staff `order.manage` بلا نافذة سعر (فقرة ساكنة) وسعر DB؛ staff بـ`order.manage+order.edit.price` يرى ويحترم السعر؛ الإعداد وحده لا يكفي؛ إزالة+إضافة عنصرين؛ حجب backorder؛ حجب الشحن؛ رفض بدون `order.manage`؛ قيمة افتراضية `false`؛ اختبار ترميز checkbox. **الفخّ المؤكد من 31.8 ما زال ساريًا** (قوائم الصلاحيات المخصصة تستلزم `ORDER_VIEW`).
+- **التحقق النهائي:** الجولة الكاملة النظيفة **458 ناجح (1644 assertions)** (كانت 457/1622 — الفرق = اختبار checkbox + 22 تأكيدًا) ثم `view:clear`+`view:cache` سليمة + **`npm run build`** (تغيّرت JS: `panel-C6Dgvy4c.js` / `app-BrEjoHgF.js`).
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 31.9 نوافذ تعديل العناصر + إصلاح Checkbox | ✅ | resources/views/components/edz/checkbox.blade.php (إصلاح) + resources/views/livewire/merchant/orders/index.blade.php (closers/نوافذ/قائمة الموبايل) + partials/orders-items-edit-modals.blade.php (جديد) + partials/orders-items-modal-footer.blade.php (جديد) + partials/orders-table-cell.blade.php (خلايا→openItemsModal) + partials/orders-inline-items-editor.blade.php (حُذف) + resources/js/components/order-row-actions.js + resources/js/panel.js + tests/Feature/Merchant/OrderInlineItemsEditTest.php | 12 في OrderInlineItemsEditTest (62 assertions) + الجولة الكاملة 458 (1644) |
+| **الإجمالي (جولة نظيفة)** | **458 ناجح (1644 assertions)** | | |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — النقر على عمود المنـtجات والكمية يفتح نافذته المعنية، عمود السعر **نص ساكن** لمستخدم بلا صلاحية / نافذة سعر لمن يملكها؛ زر الموبايل «تعديل المنتجات…» يفتح ورقة سفلية بثلاثة خيارات؛ خانات row-select والمفاتيح لم تعد محدّدة صفرًا مسبقًا (الإصلاح)؛ ويبقى تحقق 31.8: مفتاح «السماح بتعديل السعر» في إعدادات المتجر ومصفوفة الفريق بكل حالات الإنم.

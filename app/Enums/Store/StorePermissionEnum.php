@@ -43,6 +43,7 @@ enum StorePermissionEnum: string
     case ORDER_CANCEL = 'order.cancel';
     case ORDER_DELETE = 'order.delete';
     case ORDER_ASSIGN = 'order.assign';
+    case ORDER_EDIT_PRICE = 'order.edit.price';
 
     /*
     |--------------------------------------------------------------------------

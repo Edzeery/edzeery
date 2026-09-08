@@ -8,6 +8,8 @@ return [
     'all_stores' => 'All Stores',
     'allow_backorder' => 'Allow Backorder',
     'allow_backorder_desc' => 'Allow orders even when out of stock',
+    'allow_price_edit' => 'Allow product price editing',
+    'allow_price_edit_desc' => 'Lets authorized members edit order product prices directly from the table',
     'default_min_order_qty' => 'Default minimum order quantity',
     'default_min_order_qty_desc' => 'Applies to all products unless overridden per product',
     'default_max_order_qty' => 'Default maximum order quantity',
@@ -340,6 +342,9 @@ return [
 
     // Order detail expanded section
     'items' => 'Items',
+    'no_items' => 'No items on this order',
+    'delete_item' => 'Delete item',
+    'edit_items' => 'Edit products, quantities and prices',
     'details' => 'Details',
     'assignment' => 'Assignment',
     'method' => 'Method',
@@ -424,6 +429,9 @@ return [
     'out_of_stock' => 'Out of stock',
     'left' => 'left',
     'in_cart' => 'in cart',
+    'please_select_product' => 'Please select a product',
+    'please_select_quantity' => 'Please specify the quantity',
+    'load_more' => 'Load more',
     'search_variants' => 'Search variants...',
     'insufficient_stock' => 'Insufficient stock for :variant (only :available available)',
     'max_qty_reached' => 'Maximum quantity of :cap reached',

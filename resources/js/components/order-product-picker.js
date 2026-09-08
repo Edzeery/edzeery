@@ -84,8 +84,18 @@ export default function orderProductPicker() {
             });
         },
 
+        async loadMore() {
+            if (this.$wire.productChunkLoading || !this.$wire.productHasMore) return;
+            await this.$wire.loadProductChunk();
+            this.recount();
+        },
+
         onSearchInput(event) {
             this.searchTerm = event.target.value;
+            this.recount();
+        },
+
+        recount() {
             this.$nextTick(() => {
                 let count = 0;
                 document.querySelectorAll('[data-search]').forEach(el => {
@@ -97,6 +107,10 @@ export default function orderProductPicker() {
 
         onVariantSearchInput(event) {
             this.variantQuery = event.target.value;
+            this.recountVariants();
+        },
+
+        recountVariants() {
             this.$nextTick(() => {
                 let count = 0;
                 document.querySelectorAll('[data-variant-search]').forEach(el => {

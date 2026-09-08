@@ -7,7 +7,7 @@ import edzSelect from "./components/edz-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
-import orderRowActions, { orderEventsMenu, orderMoreMenu } from "./components/order-row-actions.js";
+import orderRowActions, { orderEventsMenu, orderMoreMenu, itemsEditMenu } from "./components/order-row-actions.js";
 import edzDropdown from "./components/edz-dropdown.js";
 import orderColumnReorderDraft from "./components/order-column-reorder.js";
 import initButtonLoading from "./edz-button-loading.js";
@@ -186,6 +186,9 @@ function registerEdzPanel() {
 
     // --- Mobile card overflow actions popover (P29.7) ---
     Alpine.data("orderMoreMenu", orderMoreMenu);
+
+    // --- Mobile card items-editor menu (P31.9: products/quantity/price modals trigger) ---
+    Alpine.data("itemsEditMenu", itemsEditMenu);
 
     // --- Shared navbar dropdown (notifications / user menu) with viewport clamping ---
     Alpine.data("edzDropdown", edzDropdown);

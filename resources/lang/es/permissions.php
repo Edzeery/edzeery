@@ -37,6 +37,9 @@ return [
         'cancel' => 'Cancelar pedidos',
         'confirm' => 'Confirmar pedidos',
         'delete' => 'Eliminar pedidos',
+        'edit' => [
+            'price' => 'Editar precios de productos del pedido',
+        ],
         'manage' => 'Gestionar pedidos',
         'view' => 'Ver pedido',
     ],

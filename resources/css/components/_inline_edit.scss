@@ -39,6 +39,12 @@
   }
 }
 
+// --- Touch variant (mobile cards): guarantees a ≥44px tall tappable target.
+.edz-inline-edit__display--touch {
+  min-height: 2.75rem;
+  padding-block: 0.625rem;
+}
+
 .edz-inline-edit__icon {
   color: rgb(var(--edz-color-text-soft));
   flex-shrink: 0;

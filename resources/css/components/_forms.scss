@@ -73,6 +73,33 @@ select.edz-select,
 }
 
 // ============================================================
+//  EDZ-CHECKBOX — Edzeery checkbox (project design identity).
+//  Native input kept for accessibility; look is driven by the
+//  accent (indigo) scale with full light/dark support.
+//  Sizing is applied by the caller (Tailwind w-*/h-* utilities,
+//  provided by the edz.checkbox component).
+// ============================================================
+.edz-checkbox {
+  flex-shrink: 0;
+  accent-color: rgb(var(--edz-color-accent-600));
+  border-radius: var(--edz-radius-sm);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid rgb(var(--edz-color-accent-500));
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  .dark & {
+    accent-color: rgb(var(--edz-color-accent-500));
+  }
+}
+
+// ============================================================
 //  EDZ-SELECT — Custom dropdown component (Apple HIG-inspired)
 //  Fixed positioning, keyboard navigation, search, RTL-aware.
 // ============================================================

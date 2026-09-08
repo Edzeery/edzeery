@@ -37,6 +37,9 @@ return [
         'cancel' => 'Cancel Order',
         'confirm' => 'Confirm Order',
         'delete' => 'Delete Order',
+        'edit' => [
+            'price' => 'Edit Order Product Prices',
+        ],
         'manage' => 'Manage Orders',
         'view' => 'Order View',
     ],

@@ -21,7 +21,7 @@ use function Livewire\Volt\uses;
 
 layout('components.layouts.store');
 
-uses([\App\Livewire\Concerns\HasInlineEdit::class]);
+uses([\App\Livewire\Concerns\HasInlineEdit::class, \App\Livewire\Concerns\HasOrderProductPicker::class]);
 
 state([
     'search' => '',
@@ -79,6 +79,19 @@ state([
     'discountEditType' => '',
     'discountEditValue' => '',
     'discountEditReason' => '',
+
+    // 31.9 — Items edit modals (products / quantity / price). One modal is
+    // open at a time: ['kind' => 'products'|'quantity'|'price', 'orderId' => …]
+    // or null. The draft rows live in $this->form['items']; product selection
+    // goes through the shared order product picker (HasOrderProductPicker)
+    // instead of a per-keystroke server search.
+    'itemsModal' => null,
+
+    // Order product picker pool (HasOrderProductPicker). The picker list is
+    // filled once per open with loadProducts() and lazily extended with
+    // loadProductChunk(); formProductResults holds the whole pool.
+    'productChunkLoading' => false,
+    'productHasMore' => true,
 
     // Bulk operations
     'selectedOrders' => [],
@@ -246,6 +259,208 @@ updated([
         $this->loadOrders();
     },
 ]);
+
+// ============================================================
+// 31.9 — Items edit modals (products / quantity / price)
+// The draft reuses $this->form['items'] so $addFormItem / $updateFormItemQty
+// work unchanged. $saveOrderItems mirrors submitEdit's item sync and honors
+// the C3 gate: FORM_EDITED (the store owner) OR (allow_price_edit AND the
+// member holds ORDER_EDIT_PRICE). The owner therefore keeps price editing on
+// 31.10 even when the store setting forbids it, but archived orders stay
+// locked (guarded separately).
+// ============================================================
+$itemsPriceEditable = function (): bool {
+    static $cached = null;
+    if ($cached === null) {
+        $store = currentStore();
+        $isOwner = $this->getCurrentMembership()?->isOwner() ?? false;
+        $cached = $isOwner
+            || ($store !== null
+                && (bool) ($store->settings?->allow_price_edit ?? false)
+                && canStore(StorePermissionEnum::ORDER_EDIT_PRICE->value));
+    }
+    return $cached;
+};
+
+$openItemsModal = function (string $kind, string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+    if (! in_array($kind, ['products', 'quantity', 'price'], true)) {
+        return;
+    }
+    if ($kind === 'price' && ! $this->itemsPriceEditable()) {
+        return;
+    }
+
+    $order = collect($this->orders['data'] ?? [])->firstWhere('id', $orderId);
+
+    $this->form['items'] = collect($order['items_summary'] ?? [])
+        ->map(fn ($i) => [
+            'product_variant_id' => $i['variant_id'] ?? null,
+            'product_id' => $i['product_id'] ?? null,
+            'name' => $i['name'] ?? '',
+            'sku' => $i['sku'] ?? '',
+            'price' => (float) ($i['price'] ?? 0),
+            'quantity' => max(1, (int) ($i['qty'] ?? 1)),
+            'stock' => 0,
+            'cap' => null,
+            'preorder' => false,
+            'image_url' => asset('img/icons/noimg.png'),
+        ])
+        ->values()
+        ->toArray();
+
+    $this->itemsModal = ['kind' => $kind, 'orderId' => $orderId];
+    $this->syncFormSelectedItems();
+    $this->startEdit('order.items', $orderId);
+};
+
+$closeItemsModal = function (): void {
+    $this->itemsModal = null;
+    $this->cancelEdit();
+    $this->form['items'] = [];
+};
+
+$removeInlineItem = function (int $index): void {
+    unset($this->form['items'][$index]);
+    $this->form['items'] = array_values($this->form['items']);
+};
+
+$updateInlineItemPrice = function (int $index, $price): void {
+    if (! $this->itemsPriceEditable()) {
+        return;
+    }
+    if (isset($this->form['items'][$index])) {
+        $this->form['items'][$index]['price'] = max(0, (float) $price);
+    }
+};
+
+$addInlineItem = function (string $variantId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+    $this->addFormItem($variantId);
+};
+
+$saveOrderItems = function (): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $orderId = $this->editingId;
+    if (! $orderId) {
+        return;
+    }
+
+    if (! $this->guardOrderEditable()) {
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
+
+    $validator = Validator::make($this->form, [
+        'items' => 'required|array|min:1',
+        'items.*.product_variant_id' => 'required|string',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.price' => 'required|numeric|min:0',
+    ]);
+
+    if ($validator->fails()) {
+        $this->editingError = $validator->errors()->first('items');
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.validation_error')]);
+        return;
+    }
+
+    $storeId = currentStoreId();
+    $priceEditable = $this->itemsPriceEditable();
+
+    $incomingVariantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
+    $existingItems = $order->items()->get()->keyBy('product_variant_id');
+    $variantMap = ProductVariant::whereIn('id', $incomingVariantIds)->get()->keyBy('id');
+
+    foreach ($this->form['items'] as $idx => $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        if (! $vid || ! $variantMap->has($vid)) {
+            continue;
+        }
+
+        $variant = $variantMap[$vid];
+
+        // C3 revisited: honor a submitted price only when the store setting
+        // allows price editing AND the member holds ORDER_EDIT_PRICE; otherwise
+        // always fall back to the DB price (historical behavior).
+        if (! $priceEditable) {
+            $this->form['items'][$idx]['price'] = $variant->price ?? $itemData['price'];
+        }
+        $this->form['items'][$idx]['product_id'] = $variant->product_id;
+
+        // C4: stock check for new items or increased quantities.
+        $prevQty = isset($existingItems[$vid]) ? $existingItems[$vid]->quantity : 0;
+        $delta = (int) $itemData['quantity'] - $prevQty;
+        if ($delta > 0
+            && \App\Domains\Cart\Support\OrderRules::tracksInventory($order->store)
+            && ! \App\Domains\Cart\Support\OrderRules::allowsBackorder($order->store)) {
+            $available = (int) $variant->stock;
+            if ($available < $delta) {
+                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.insufficient_stock', ['variant' => $variant->name, 'available' => max(0, $available)])]);
+                return;
+            }
+        }
+    }
+
+    // Remove items no longer present.
+    foreach ($existingItems as $variantId => $item) {
+        if (! in_array($variantId, $incomingVariantIds, true)) {
+            $item->delete();
+        }
+    }
+
+    // Add or update items (existing rows are already keyed by variant id, so
+    // no per-item re-query is needed).
+    foreach ($this->form['items'] as $itemData) {
+        $vid = $itemData['product_variant_id'] ?? null;
+        $quantity = (int) ($itemData['quantity'] ?? 1);
+        $price = (float) ($itemData['price'] ?? 0);
+
+        if ($existingItems->has($vid)) {
+            $existingItems[$vid]->update([
+                'quantity' => $quantity,
+                'price' => $price,
+                'subtotal' => $quantity * $price,
+            ]);
+        } else {
+            $order->items()->create([
+                'store_id' => $storeId,
+                'product_variant_id' => $vid,
+                'product_id' => $itemData['product_id'] ?? null,
+                'quantity' => $quantity,
+                'price' => $price,
+                'subtotal' => $quantity * $price,
+            ]);
+        }
+    }
+
+    // Recompute the structured shipping cost after item/destination changes.
+    $order->refresh();
+    $this->recalculateOrderShipping($order);
+
+    // Keep the stored total consistent with the new items + shipping − discount.
+    $order->refresh();
+    $itemsSubtotal = (float) $order->items->sum(fn ($i) => (float) $i->subtotal);
+    $order->update([
+        'total_amount' => round($itemsSubtotal + (float) $order->shipping_cost - (float) $order->discount_amount, 2),
+    ]);
+
+    $this->closeItemsModal();
+    $this->page = 1;
+    $this->loadOrders();
+
+    $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_updated')]);
+};
 
 mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
@@ -702,6 +917,9 @@ $decorateOrder = function (Order $order, OrderService $service, array $duplicate
                 'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
                 'qty' => $i->quantity,
                 'price' => $i->price,
+                'variant_id' => $i->product_variant_id,
+                'product_id' => $i->product_id,
+                'sku' => $i->variant?->sku,
             ],
         )
         ->toArray();
@@ -1906,22 +2124,8 @@ $refreshOrders = function () {
     $this->loadOrders();
 };
 
-// ——— Order form modal (Phase 9 @include partial — logic lives here on the parent instance) ———
-
-$syncFormSelectedItems = function (): void {
-    $this->formSelectedItems = collect($this->form['items'])->pluck('quantity', 'product_variant_id')->toArray();
-    $this->dispatch('selected-items-updated', items: $this->formSelectedItems);
-};
-
-// 30.3: weight_kg is auto-calculated from variant weights × quantities on every item
-// mutation. It stays a manual field otherwise, so a typed override is only overwritten
-// when the items actually change — never on a mere price edit.
-$recalcFormWeight = function (): void {
-    $weight = collect($this->form['items'] ?? [])->sum(
-        fn($i) => (float) ($i['weight'] ?? 0) * (int) ($i['quantity'] ?? 1)
-    );
-    $this->form['weight_kg'] = $weight > 0 ? round($weight, 3) : '';
-};
+// ——— Order form modal (Phase 9 @include partial — logic lives in
+// HasOrderProductPicker / HasInlineEdit; state is kept on the parent instance) ———
 
 $loadCities = function (string $stateId): void {
     if (empty($stateId)) {
@@ -3166,233 +3370,6 @@ $openCreateModal = function (): void {
     $this->showCreateModal = true;
 };
 
-$loadProducts = function (): void {
-    $storeId = currentStoreId();
-    $this->formProductResults = Product::with(['primaryImage', 'variants:id,product_id,name,sku,price,stock'])
-        ->select('id', 'name', 'price', 'type')
-        ->where('store_id', $storeId)
-        ->where('is_active', true)
-        ->orderByDesc('sort_order')
-        ->orderByDesc('created_at')
-        ->limit(100)
-        ->get()
-        ->map(function ($product) use ($storeId) {
-            $variants = $product->variants;
-            $prices = $variants->pluck('price')->filter();
-            $imageUrl = $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png');
-            $minPrice = $prices->min() ?? ($product->price ?? 0);
-            $maxPrice = $prices->max() ?? ($product->price ?? 0);
-            $firstVariant = $variants->count() === 1 ? $variants->first() : null;
-            return [
-                'id' => $firstVariant?->id ?? null,
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'image_url' => $imageUrl,
-                'variant_count' => $variants->count(),
-                'min_price' => $minPrice,
-                'max_price' => $maxPrice,
-                'price_range' => $minPrice != $maxPrice ? currency($minPrice) . ' — ' . currency($maxPrice) : currency($minPrice),
-                'has_variants' => $product->hasVariants(),
-                'first_variant' => $firstVariant
-                    ? [
-                        'id' => $firstVariant->id,
-                        'name' => $firstVariant->name,
-                        'sku' => $firstVariant->sku,
-                        'price' => $firstVariant->price,
-                        'price_formatted' => currency($firstVariant->price),
-                        'stock' => $firstVariant->stock,
-                        'stock_status' => $firstVariant->stock <= 0 ? 'out' : ($firstVariant->stock <= 5 ? 'low' : 'ok'),
-                        'stock_text' => $firstVariant->stock <= 0 ? __('merchant_panel.out_of_stock') : $firstVariant->stock . ' ' . __('merchant_panel.left'),
-                    ]
-                    : null,
-            ];
-        })
-        ->toArray();
-};
-
-$selectProduct = function (string $productId): void {
-    $product = Product::with(['primaryImage', 'variants.optionValues.option'])
-        ->where('id', $productId)
-        ->where('store_id', currentStoreId())
-        ->first();
-
-    if (!$product) {
-        return;
-    }
-
-    $imageUrl = $product->primaryImage?->path ? Storage::disk('public')->url($product->primaryImage->path) : asset('img/icons/noimg.png');
-
-    $this->formSelectedProduct = [
-        'id' => $product->id,
-        'name' => $product->name,
-        'image_url' => $imageUrl,
-        'variants' => $product->variants
-            ->map(function ($v) {
-                $optionLabels = $v->optionValues->map(fn($ov) => ($ov->option?->name ?? '') . ': ' . $ov->value)->implode(', ');
-                return [
-                    'id' => $v->id,
-                    'name' => $v->name,
-                    'option_labels' => $optionLabels,
-                    'sku' => $v->sku,
-                    'price' => $v->price,
-                    'stock' => $v->stock,
-                    'is_active' => $v->is_active,
-                ];
-            })
-            ->toArray(),
-    ];
-    $this->formProductView = 'variants';
-};
-
-$backToProducts = function (): void {
-    $this->formProductView = 'list';
-    $this->formSelectedProduct = null;
-};
-
-$addFormItem = function (string $variantId): void {
-    $variant = ProductVariant::with(['product', 'product.primaryImage'])
-        ->where('store_id', currentStoreId())
-        ->findOrFail($variantId);
-
-    $store = $variant->product?->store;
-    $cap = \App\Domains\Cart\Support\OrderRules::lineCap($variant, $store);
-    $available = (int) $variant->stock;
-    $tracks = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
-    $backorder = \App\Domains\Cart\Support\OrderRules::allowsBackorder($store);
-
-    if ($tracks && !$backorder && $available <= 0) {
-        $this->syncFormSelectedItems();
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.out_of_stock', ['variant' => $variant->name])]);
-        return;
-    }
-
-    $found = false;
-    foreach ($this->form['items'] as $idx => &$item) {
-        if ($item['product_variant_id'] === $variantId) {
-            if ($cap !== null && ($item['quantity'] ?? 0) >= $cap) {
-                $this->syncFormSelectedItems();
-                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.max_qty_reached', ['cap' => $cap])]);
-                return;
-            }
-            $this->form['items'][$idx]['quantity']++;
-            $this->form['items'][$idx]['preorder'] = $backorder && $available < $this->form['items'][$idx]['quantity'];
-            $found = true;
-            break;
-        }
-    }
-    unset($item);
-    if (!$found) {
-        $this->form['items'][] = [
-            'product_variant_id' => $variant->id,
-            'product_id' => $variant->product_id,
-            'name' => ($variant->product?->name ?? '') . ' — ' . $variant->name,
-            'sku' => $variant->sku ?? '',
-            'price' => $variant->price ?? ($variant->product?->price ?? 0),
-            'quantity' => 1,
-            'stock' => $variant->stock ?? 0,
-            'weight' => $variant->weight ?? 0,
-            'cap' => $cap,
-            'preorder' => $backorder && $available < 1,
-            'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
-        ];
-    }
-    $this->syncFormSelectedItems();
-    $this->recalcFormWeight();
-};
-
-$addFormItemByBarcode = function (string $code): void {
-    if (strlen($code) < 2) {
-        return;
-    }
-    $storeId = currentStoreId();
-    $variant = ProductVariant::with(['product', 'product.primaryImage'])
-        ->whereHas('product', fn($q) => $q->where('store_id', $storeId))
-        ->where(function ($q) use ($code) {
-            $q->where('barcode', $code)->orWhere('sku', $code);
-        })
-        ->first();
-
-    if (!$variant) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.product_not_found')]);
-        return;
-    }
-
-    $store = $variant->product?->store;
-    $cap = \App\Domains\Cart\Support\OrderRules::lineCap($variant, $store);
-    $available = (int) $variant->stock;
-    $tracks = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
-    $backorder = \App\Domains\Cart\Support\OrderRules::allowsBackorder($store);
-
-    if ($tracks && !$backorder && $available <= 0) {
-        $this->syncFormSelectedItems();
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.out_of_stock', ['variant' => $variant->name])]);
-        return;
-    }
-
-    // Check if already in items
-    foreach ($this->form['items'] as $idx => &$item) {
-        if ($item['product_variant_id'] === $variant->id) {
-            if ($cap !== null && ($item['quantity'] ?? 0) >= $cap) {
-                $this->syncFormSelectedItems();
-                $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.max_qty_reached', ['cap' => $cap])]);
-                return;
-            }
-            $this->form['items'][$idx]['quantity']++;
-            $this->form['items'][$idx]['preorder'] = $backorder && $available < $this->form['items'][$idx]['quantity'];
-            $this->syncFormSelectedItems();
-            $this->recalcFormWeight();
-            return;
-        }
-    }
-    unset($item);
-
-    $this->form['items'][] = [
-        'product_variant_id' => $variant->id,
-        'product_id' => $variant->product_id,
-        'name' => ($variant->product?->name ?? '') . ' — ' . $variant->name,
-        'sku' => $variant->sku ?? '',
-        'price' => $variant->price ?? ($variant->product?->price ?? 0),
-        'quantity' => 1,
-        'stock' => $variant->stock ?? 0,
-        'weight' => $variant->weight ?? 0,
-        'cap' => $cap,
-        'preorder' => $backorder && $available < 1,
-        'image_url' => $variant->product?->primaryImage?->path ? Storage::disk('public')->url($variant->product->primaryImage->path) : asset('img/icons/noimg.png'),
-    ];
-    $this->syncFormSelectedItems();
-    $this->recalcFormWeight();
-};
-
-$removeFormItem = function (int $index): void {
-    unset($this->form['items'][$index]);
-    $this->form['items'] = array_values($this->form['items']);
-    $this->syncFormSelectedItems();
-    $this->recalcFormWeight();
-};
-
-$updateFormItemQty = function (int $index, int $qty): void {
-    if (!isset($this->form['items'][$index])) {
-        return;
-    }
-
-    $cap = $this->form['items'][$index]['cap'] ?? null;
-    $this->form['items'][$index]['quantity'] = min(max(1, $qty), $cap ?? PHP_INT_MAX);
-
-    $variant = ProductVariant::find($this->form['items'][$index]['product_variant_id']);
-    if ($variant) {
-        $available = (int) $variant->stock;
-        $this->form['items'][$index]['preorder'] = \App\Domains\Cart\Support\OrderRules::allowsBackorder($variant->product?->store) && $available < $this->form['items'][$index]['quantity'];
-    }
-
-    $this->recalcFormWeight();
-};
-
-$updateFormItemPrice = function (int $index, $price): void {
-    if (isset($this->form['items'][$index])) {
-        $this->form['items'][$index]['price'] = max(0, (float) $price);
-    }
-};
-
 $submitCreate = function (): void {
     if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
@@ -4158,8 +4135,7 @@ $submitEdit = function (): void {
                             <thead class="bg-secondary">
                                 <tr>
                                     <th class="px-3 py-3 w-10">
-                                        <input type="checkbox" wire:model="selectAll" wire:click="toggleSelectAll"
-                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                                        <x-edz.checkbox size="sm" wire:model="selectAll" wire:click="toggleSelectAll" />
                                     </th>
                                     @foreach ($this->visibleColumns as $colKey)
                                         @include('livewire.merchant.orders.partials.orders-table-header', [
@@ -4188,10 +4164,8 @@ $submitEdit = function (): void {
                                         data-order-number="{{ $order['number'] ?? '' }}" x-data="orderRowActions($el)"
                                         class="{{ $this->tableStyle === 'status' ? '' : 'hover:bg-surface-tertiary/50 ' }}{{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle ' : '' }}{{ $orderStatusTone }}">
                                         <td class="px-3 py-3 w-10">
-                                            <input type="checkbox" value="{{ $orderId }}"
-                                                wire:click="toggleSelectOrder('{{ $orderId }}')"
-                                                {{ in_array($orderId, $this->selectedOrders) ? 'checked' : '' }}
-                                                class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                                            <x-edz.checkbox size="sm" :checked="in_array($orderId, $this->selectedOrders)"
+                                                value="{{ $orderId }}" wire:click="toggleSelectOrder('{{ $orderId }}')" />
                                         </td>
                                         @foreach ($this->visibleColumns as $colKey)
                                             @include('livewire.merchant.orders.partials.orders-table-cell', [
@@ -4218,8 +4192,10 @@ $submitEdit = function (): void {
                         </table>
                     </div>
 
-                    {{-- Mobile cards (Apple Adaptive Layout): below lg only --}}
-                    <div class="lg:hidden divide-y divide-surface-border">
+                    {{-- Mobile/tablet cards (Apple Adaptive Layout): below lg only.
+                       md puts tablets on a 2-column grid with gap + gutters. --}}
+                    <div
+                        class="lg:hidden grid grid-cols-1 divide-y divide-surface-border md:grid-cols-2 md:gap-3 md:divide-y-0 md:p-3">
                         @foreach ($orders['data'] as $order)
                             @php
                                 $orderId = $order['id'] ?? '';
@@ -4236,10 +4212,11 @@ $submitEdit = function (): void {
                                 data-order-number="{{ $order['number'] ?? '' }}" x-data="orderRowActions($el)"
                                 class="px-4 py-4 {{ $this->tableStyle !== 'status' && $orderSelected ? 'bg-accent-surface-subtle' : '' }} {{ $orderStatusTone }}">
                                 <div class="flex items-start gap-3">
-                                    <input type="checkbox" value="{{ $orderId }}"
-                                        wire:click="toggleSelectOrder('{{ $orderId }}')"
-                                        {{ in_array($orderId, $this->selectedOrders) ? 'checked' : '' }}
-                                        class="mt-1 rounded border-gray-300 text-accent-600 focus:ring-accent-500 shrink-0">
+                                    <span
+                                        class="inline-flex items-start shrink-0 min-h-11 min-w-11 pt-2.5">
+                                        <x-edz.checkbox size="sm" :checked="in_array($orderId, $this->selectedOrders)"
+                                            value="{{ $orderId }}" wire:click="toggleSelectOrder('{{ $orderId }}')" />
+                                    </span>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-2">
                                             <span
@@ -4283,7 +4260,7 @@ $submitEdit = function (): void {
                                                     @endif
                                                 </div>
                                             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                <button type="button" class="edz-inline-edit__display min-w-0"
+                                                <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch min-w-0"
                                                     wire:click="startOrderNameEdit('{{ $orderId }}')"
                                                     title="{{ $order['customer']['name'] ?? '-' }}">
                                                     <span
@@ -4330,12 +4307,12 @@ $submitEdit = function (): void {
                                                 @endif
                                             </div>
                                         @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                            <button type="button" class="edz-inline-edit__display mt-1"
+                                            <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch mt-1"
                                                 wire:click="startOrderPhoneEdit('{{ $orderId }}')">
                                                 <span class="edz-inline-edit__value" dir="ltr">
                                                     {{ $order['customer']['phone'] ?? '—' }}
                                                     @if (!empty($order['phone_secondary']))
-                                                        <span class="text-ink-muted/60"> آ·
+                                                        <span class="text-ink-muted/60"> ·
                                                             {{ $order['phone_secondary'] }}</span>
                                                     @endif
                                                 </span>
@@ -4344,14 +4321,14 @@ $submitEdit = function (): void {
                                             <div class="text-xs text-ink-muted" dir="ltr">
                                                 {{ $order['customer']['phone'] ?? '-' }}
                                                 @if (!empty($order['phone_secondary']))
-                                                    آ· {{ $order['phone_secondary'] }}
+                                                    · {{ $order['phone_secondary'] }}
                                                 @endif
                                             </div>
                                         @endif
                                         <div class="mt-2 flex flex-wrap items-center gap-2">
                                             <div class="relative" @click.away="open = false">
                                                 <button @click="openStatusMenu()" x-ref="trigger"
-                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
+                                                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 min-h-11 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
                                                     {!! \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->icon(
                                                         null,
                                                         'w-3.5 h-3.5 shrink-0',
@@ -4359,32 +4336,10 @@ $submitEdit = function (): void {
                                                     {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $order['status']['key'] ?? 'default')->label() }}
                                                     <x-edz.icon name="chevron-down" class="w-3 h-3" />
                                                 </button>
-                                                <div x-show="open" x-cloak
-                                                    class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
-                                                    @click="open = false"></div>
-                                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
-                                                    x-transition:enter-start="opacity-0 translate-y-3"
-                                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                                    x-transition:leave="transition ease-in duration-150"
-                                                    x-transition:leave-start="opacity-100 translate-y-0"
-                                                    x-transition:leave-end="opacity-0 translate-y-3"
-                                                    :style="menuStyle"
-                                                    class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
-                                                           p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
-                                                           sm:inset-x-auto sm:bottom-auto sm:z-[200] sm:w-56 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
-                                                           sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll sm:max-h-64">
-                                                    <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
-                                                    <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
-                                                        <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
-                                                            <x-edz.icon name="chevron-down" class="w-3.5 h-3.5 text-ink-muted" />
-                                                            <span>{{ __('merchant_panel.status') }}</span>
-                                                        </p>
-                                                        <button @click="open = false" type="button"
-                                                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                                                            title="{{ __('general.close') }}">
-                                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                <x-edz.mobile-bottom-sheet :title="__('merchant_panel.status')"
+                                                    icon="chevron-down" close-expr="open = false"
+                                                    sm-width="sm:w-56" sm-max-height="sm:max-h-64"
+                                                    sm-pad="sm:p-1.5 sm:pb-1.5" sm-z="sm:z-[200]">
                                                     @foreach ($this->allStatuses as $s)
                                                         @php
                                                             $isCurrentStatus = $s['id'] == $order['status_id'];
@@ -4404,7 +4359,7 @@ $submitEdit = function (): void {
                                                             </button>
                                                         @endif
                                                     @endforeach
-                                                </div>
+                                                </x-edz.mobile-bottom-sheet>
                                             </div>
                                             @if (in_array('notes', $this->visibleColumns))
                                                 <div class="mt-2 w-full">
@@ -4431,7 +4386,8 @@ $submitEdit = function (): void {
                                                         </div>
                                                     @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                                                         <button type="button"
-                                                            class="edz-inline-edit__display w-full text-left"
+                                                            class="edz-inline-edit__display
+                                                             edz-inline-edit__display--touch w-full text-left"
                                                             wire:click="startOrderNotesEdit('{{ $orderId }}')"
                                                             title="{{ $order['notes'] ?? '' }}">
                                                             <x-edz.icon name="pencil-square" class="w-3 h-3 shrink-0" />
@@ -4480,7 +4436,7 @@ $submitEdit = function (): void {
                                                         @endif
                                                     </div>
                                                 @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                                                    <button type="button" class="edz-inline-edit__display"
+                                                    <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch"
                                                         @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
                                                         <span class="edz-inline-edit__value">
                                                             @if (!empty($order['state']['name']))
@@ -4525,10 +4481,50 @@ $submitEdit = function (): void {
                                                 </span>
                                             @endif
                                         </div>
+                                        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                            <div class="relative mt-2" x-data="itemsEditMenu($el)"
+                                                @click.away="close()">
+                                                <button @click="toggle()" x-ref="itemsMenuTrigger"
+                                                    class="edz-btn edz-btn--ghost edz-btn--sm min-h-11 w-full"
+                                                    title="{{ __('merchant_panel.edit_items') }}">
+                                                    <x-edz.icon name="cart" class="w-4 h-4" />
+                                                    <span>{{ __('merchant_panel.edit_items') }}</span>
+                                                    <x-edz.icon name="chevron-up"
+                                                        class="w-4 h-4 ms-auto transition-transform"
+                                                        x-bind:class="open ? 'rotate-180 text-ink' : 'text-ink-muted'" />
+                                                </button>
+                                                <x-edz.mobile-bottom-sheet :title="__('merchant_panel.edit_items')"
+                                                    icon="cart" close-expr="close()" sm-width="sm:w-60">
+                                                    <button type="button"
+                                                        wire:click="openItemsModal('products', '{{ $orderId }}')"
+                                                        @click="close()"
+                                                        class="w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-lg text-sm text-ink hover:bg-surface-tertiary transition-colors text-start">
+                                                        <x-edz.icon name="shopping-bag" class="w-4 h-4 text-ink-muted shrink-0" />
+                                                        <span>{{ __('merchant_panel.products') }}</span>
+                                                    </button>
+                                                    <button type="button"
+                                                        wire:click="openItemsModal('quantity', '{{ $orderId }}')"
+                                                        @click="close()"
+                                                        class="w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-lg text-sm text-ink hover:bg-surface-tertiary transition-colors text-start">
+                                                        <x-edz.icon name="list-bullet" class="w-4 h-4 text-ink-muted shrink-0" />
+                                                        <span>{{ __('merchant_panel.quantity') }}</span>
+                                                    </button>
+                                                    @if ($this->itemsPriceEditable())
+                                                        <button type="button"
+                                                            wire:click="openItemsModal('price', '{{ $orderId }}')"
+                                                            @click="close()"
+                                                            class="w-full flex items-center gap-2.5 px-2.5 py-2 min-h-[44px] rounded-lg text-sm text-ink hover:bg-surface-tertiary transition-colors text-start">
+                                                            <x-edz.icon name="tag" class="w-4 h-4 text-ink-muted shrink-0" />
+                                                            <span>{{ __('merchant_panel.price') }}</span>
+                                                        </button>
+                                                    @endif
+                                                </x-edz.mobile-bottom-sheet>
+                                            </div>
+                                        @endif
                                         <div class="mt-3 flex items-center gap-2 flex-wrap">
                                             @if (! $this->showTrash && ($order['can_confirm'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value))
                                                 <button wire:click="openConfirmModal('{{ $orderId }}')"
-                                                    class="edz-btn edz-btn--primary edz-btn--sm"
+                                                    class="edz-btn edz-btn--primary edz-btn--sm min-h-11"
                                                     title="{{ __('order_flow.confirm_title') }}"
                                                     wire:loading.attr="disabled"
                                                     wire:target="openConfirmModal('{{ $orderId }}')">
@@ -4537,7 +4533,7 @@ $submitEdit = function (): void {
                                                 </button>
                                             @endif
                                             <button wire:click="openOrderDetails('{{ $orderId }}')"
-                                                class="edz-btn edz-btn--ghost edz-btn--xs"
+                                                class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 min-h-11 min-w-11"
                                                 title="{{ __('merchant.order_details') }}"
                                                 wire:loading.attr="disabled"
                                                 wire:target="openOrderDetails('{{ $orderId }}')">
@@ -4547,42 +4543,21 @@ $submitEdit = function (): void {
                                                 'orderId' => $orderId,
                                                 'order' => $order,
                                                 'canViewEvents' => $order['can_view_events'] ?? false,
+                                                'touch' => true,
                                             ])
 
                                             {{-- Overflow actions popover (P29.7): keeps the card tidy with 44px touch rows --}}
                                             <div class="relative shrink-0" x-data="orderMoreMenu($el)"
                                                 @click.away="close()">
                                                 <button @click="toggle()" x-ref="moreTrigger"
-                                                    class="edz-btn edz-btn--ghost edz-btn--xs shrink-0"
+                                                    class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 min-h-11 min-w-11"
                                                     title="{{ __('general.more') }}">
                                                     <x-edz.icon name="ellipsis-horizontal" class="w-4 h-4" />
                                                 </button>
-                                                <div x-show="open" x-cloak
-                                                    class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden"
-                                                    @click="close()"></div>
-                                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
-                                                    x-transition:enter-start="opacity-0 translate-y-3"
-                                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                                    x-transition:leave="transition ease-in duration-150"
-                                                    x-transition:leave-start="opacity-100 translate-y-0"
-                                                    x-transition:leave-end="opacity-0 translate-y-3"
-                                                    :style="menuStyle"
-                                                    class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
-                                                           p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]
-                                                           sm:inset-x-auto sm:bottom-auto sm:w-60 sm:rounded-xl sm:border-b sm:p-1.5 sm:pb-1.5
-                                                           sm:shadow-lg shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)] max-h-[70vh] overflow-y-auto edz-scroll">
-                                                    <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
-                                                    <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
-                                                        <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
-                                                            <x-edz.icon name="ellipsis-horizontal" class="w-3.5 h-3.5 text-ink-muted" />
-                                                            <span>{{ __('merchant_panel.actions') }}</span>
-                                                        </p>
-                                                        <button @click="close()" type="button"
-                                                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                                                            title="{{ __('general.close') }}">
-                                                            <x-edz.icon name="x-mark" class="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                <x-edz.mobile-bottom-sheet :title="__('merchant_panel.actions')"
+                                                    icon="ellipsis-horizontal" close-expr="close()"
+                                                    sm-width="sm:w-60" sm-max-height="" sm-pad="sm:p-1.5 sm:pb-1.5"
+                                                    sm-z="">
                                                     @include('livewire.merchant.orders.partials.orders-table-actions-column', [
                                                         'orderId' => $orderId,
                                                         'order' => $order,
@@ -4590,7 +4565,7 @@ $submitEdit = function (): void {
                                                         'showTrash' => $this->showTrash,
                                                         'layout' => 'list',
                                                     ])
-                                                </div>
+                                                </x-edz.mobile-bottom-sheet>
                                             </div>
                                         </div>
                                     </div>
@@ -4716,10 +4691,9 @@ $submitEdit = function (): void {
                                             title="{{ __('merchant_panel.drag_to_reorder') }}">
                                             <x-edz.icon name="bars-2" class="w-4 h-4" />
                                         </span>
-                                        <input type="checkbox" wire:click="toggleDraftColumn('{{ $settingsKey }}')"
-                                            {{ $settingsIsChecked ? 'checked' : '' }}
-                                            @disabled($settingsIsRequired)
-                                            class="rounded border-gray-300 text-accent-600 focus:ring-accent-500 {{ $settingsIsRequired ? 'opacity-70' : '' }}">
+                                        <x-edz.checkbox size="sm" wire:click="toggleDraftColumn('{{ $settingsKey }}')"
+                                            :checked="$settingsIsChecked" :disabled="$settingsIsRequired"
+                                            :class="$settingsIsRequired ? 'opacity-70' : ''" />
                                         @if ($settingsIsRequired)
                                             <x-edz.icon name="lock-closed" class="w-3.5 h-3.5 shrink-0 text-ink-muted"
                                                 title="{{ __('merchant_panel.primary_columns') }}" />
@@ -5469,7 +5443,7 @@ $submitEdit = function (): void {
                                 {{ __('order_flow.duplicate_warnings_title') }}
                             </h3>
                             @if ($this->duplicateScanNumber)
-                                <p class="mt-0.5 text-xs text-ink-muted dark:text-ink-muted" dir="ltr">
+                                <p class="mt-0.5 text-xs text-ink-muted" dir="ltr">
                                     #{{ $this->duplicateScanNumber }}</p>
                             @endif
                             @if ($scanTone)
@@ -5546,6 +5520,12 @@ $submitEdit = function (): void {
             </x-edz.modal>
         </div>
     @endif
+
+{{-- 31.9 — Items edit modals (products / quantity / price), one per column --}}
+    @include('livewire.merchant.orders.partials.orders-items-edit-modals')
+
+    {{-- Shared order product picker (create / edit / items-edit all reuse these two modals) --}}
+    @include('livewire.merchant.orders.partials.orders-product-picker')
 
     {{-- Order event-log popup (P29.4) — extracted partial --}}
     @include('livewire.merchant.orders.partials.order-events-modal')

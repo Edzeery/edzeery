@@ -85,7 +85,7 @@ it('mobile card mirrors the desktop status transitions dropdown', function () {
 
     // One openStatusMenu trigger per row layout (desktop <tr> + mobile card).
     expect(substr_count($html, 'openStatusMenu()'))->toBe(2)
-        ->and($html)->toContain('lg:hidden divide-y divide-surface-border');
+        ->and($html)->toContain('lg:hidden grid grid-cols-1 divide-y divide-surface-border');
 });
 
 it('mobile card phone editor renders in the card and cancels cleanly', function () {
@@ -126,4 +126,44 @@ it('mobile card phone affordance is reachable with order.manage permission', fun
 
     // Desktop phone cell + card phone line both render the editable display.
     expect(substr_count($html, 'startOrderPhoneEdit'))->toBe(2);
+});
+
+it('mobile card renders the missing parity fields when their columns are visible', function () {
+    [$user, $store] = dcmUser();
+    $order = dcmOrder($store, 'pending');
+
+    $t = dcmVolt([$user, $store]);
+
+    // The four parity fields are opt-in via the column registry; expose them so
+    // the card face has to render each inline editor (weight/shipment_type),
+    // the carrier-warehouse toggle, and the meta key:value list.
+    $t->set('visibleColumns', [
+        'customer', 'phone', 'status',
+        'weight', 'shipment_type', 'send_from_carrier_warehouse', 'meta',
+    ]);
+    $html = $t->html();
+
+    // Every sheet now reuses the shared mobile-bottom-sheet chrome, bound to the
+    // caller's Alpine menuStyle: status + overflow + events on the card, plus the
+    // events dropdown on the desktop row = 4 anchored panels per row (other page
+    // components bind menuStyle too, so only the lower bound is asserted).
+    expect(substr_count($html, ':style="menuStyle"'))->toBeGreaterThanOrEqual(4);
+
+    // Weight / shipment type / carrier-warehouse toggle / meta all render in
+    // the mobile card when their columns are on (defaults via visibleColumns).
+    expect($html)->toContain('startOrderWeightEdit')
+        ->toContain('startOrderShipmentTypeEdit')
+        ->toContain('toggleSendFromWarehouse')
+        ->toContain('send_from_carrier_warehouse');
+
+    // The weight editor surfaces its "كغ" suffix hint alongside the numeric
+    // input, mirroring the desktop row's unit labeling.
+    expect($html)->toContain('wire:click="startOrderWeightEdit')
+        ->and($html)->toContain('كغ');
+
+    // All three card chrome instances survive the refactor: the status dropdown
+    // keeps its trigger ref, the overflow menu and the events menu their own.
+    expect($html)->toContain('x-ref="trigger"')
+        ->toContain('x-ref="moreTrigger"')
+        ->toContain('x-ref="evTrigger"');
 });

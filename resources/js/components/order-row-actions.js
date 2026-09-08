@@ -126,3 +126,40 @@ export function orderMoreMenu(el) {
         },
     };
 }
+
+export function itemsEditMenu(el) {
+    const PANEL_W = 240; // w-60
+    const PANEL_H = 260; // max-h-64
+
+    return {
+        open: false,
+        top: 0,
+        left: 0,
+        menuStyle: "",
+
+        toggle() {
+            const trigger = this.$refs.itemsMenuTrigger;
+            if (!trigger) return;
+            if (window.matchMedia("(max-width: 639px)").matches) {
+                this.menuStyle = "";
+                this.open = !this.open;
+                return;
+            }
+            const r = trigger.getBoundingClientRect();
+            let top = r.bottom + 4;
+            if (top + PANEL_H > window.innerHeight) top = Math.max(8, r.top - PANEL_H);
+            let left = r.left;
+            const maxLeft = Math.min(r.right, window.innerWidth - PANEL_W - 8);
+            if (left > maxLeft) left = maxLeft;
+            if (left < 8) left = 8;
+            this.top = top;
+            this.left = left;
+            this.menuStyle = "top:" + top + "px; left:" + left + "px";
+            this.open = !this.open;
+        },
+
+        close() {
+            this.open = false;
+        },
+    };
+}

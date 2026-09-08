@@ -263,25 +263,89 @@
     @case('products')
         <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
             title="{{ collect($order['items_summary'] ?? [])->map(fn($i) => $i['name'] . ' ×' . $i['qty'])->implode(', ') }}">
-            @foreach ($order['items_summary'] ?? [] as $item)
-                {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last),@endif
-            @endforeach
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                <button type="button" class="edz-inline-edit__display w-full text-start truncate"
+                    wire:click="openItemsModal('products', '{{ $orderId }}')"
+                    title="{{ __('merchant_panel.edit_items') }}">
+                    <span class="edz-inline-edit__value truncate">
+                        @forelse ($order['items_summary'] ?? [] as $item)
+                            @if (!empty($item['name']))
+                                {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last),@endif
+                            @else
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last),@endif
+                            @endif
+                        @empty
+                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                        @endforelse
+                    </span>
+                </button>
+            @else
+                @forelse ($order['items_summary'] ?? [] as $item)
+                    @if (!empty($item['name']))
+                        {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last),@endif
+                    @else
+                        <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last),@endif
+                    @endif
+                @empty
+                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                @endforelse
+            @endif
         </td>
         @break
 
     @case('quantity')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums text-center">
-            @foreach ($order['items_summary'] ?? [] as $item)
-                <div>{{ $item['qty'] }}</div>
-            @endforeach
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                <button type="button" class="edz-inline-edit__display w-full text-center"
+                    wire:click="openItemsModal('quantity', '{{ $orderId }}')"
+                    title="{{ __('merchant_panel.edit_items') }}">
+                    <span class="edz-inline-edit__value">
+                        @forelse ($order['items_summary'] ?? [] as $item)
+                            {{ $item['qty'] }}@if (!$loop->last)·@endif
+                        @empty
+                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_quantity') }}</span>
+                        @endforelse
+                    </span>
+                </button>
+            @else
+                @forelse ($order['items_summary'] ?? [] as $item)
+                    <div>{{ $item['qty'] }}</div>
+                @empty
+                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_quantity') }}</span>
+                @endforelse
+            @endif
         </td>
         @break
 
     @case('price')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums">
-            @foreach ($order['items_summary'] ?? [] as $item)
-                <div>{{ currency($item['price']) }}</div>
-            @endforeach
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->itemsPriceEditable())
+                <button type="button" class="edz-inline-edit__display w-full text-start"
+                    wire:click="openItemsModal('price', '{{ $orderId }}')"
+                    title="{{ __('merchant_panel.edit_items') }}">
+                    <span class="edz-inline-edit__value">
+                        @forelse ($order['items_summary'] ?? [] as $item)
+                            @if ((float) ($item['price'] ?? 0) > 0)
+                                {{ currency($item['price']) }}@if (!$loop->last)·@endif
+                            @else
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
+                            @endif
+                        @empty
+                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                        @endforelse
+                    </span>
+                </button>
+            @else
+                @forelse ($order['items_summary'] ?? [] as $item)
+                    @if ((float) ($item['price'] ?? 0) > 0)
+                        <div>{{ currency($item['price']) }}</div>
+                    @else
+                        <div><span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span></div>
+                    @endif
+                @empty
+                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                @endforelse
+            @endif
         </td>
         @break
 

@@ -8,6 +8,8 @@ return [
     'all_stores' => 'جميع المتاجر',
     'allow_backorder' => 'السماح بالطلب مسبقاً',
     'allow_backorder_desc' => 'السماح بالطلبات حتى عند نفاد المخزون',
+    'allow_price_edit' => 'السماح بتعديل سعر المنتج',
+    'allow_price_edit_desc' => 'يسمح بتعديل أسعار منتجات الطلب مباشرة من الجدول (للأعضاء الحاصلين على الصلاحية)',
     'default_min_order_qty' => 'الحد الأدنى الافتراضي للطلب',
     'default_min_order_qty_desc' => 'يطبق على كل المنتجات ما لم يتجاوزه المنتج',
     'default_max_order_qty' => 'الحد الأقصى الافتراضي للطلب',
@@ -340,6 +342,9 @@ return [
 
     // Order detail expanded section
     'items' => 'المنتجات',
+    'no_items' => 'لا توجد عناصر في الطلب',
+    'delete_item' => 'حذف العنصر',
+    'edit_items' => 'تعديل المنتجات والكميات والأسعار',
     'details' => 'التفاصيل',
     'assignment' => 'التكليف',
     'method' => 'الطريقة',
@@ -424,6 +429,9 @@ return [
     'out_of_stock' => 'نفدت',
     'left' => 'متبقي',
     'in_cart' => 'بالسلة',
+    'please_select_product' => 'يرجى تحديد منتج',
+    'please_select_quantity' => 'يرجى تحديد الكمية',
+    'load_more' => 'تحميل المزيد',
     'search_variants' => 'ابحث عن متغير...',
     'insufficient_stock' => 'المخزون غير كافٍ لـ :variant (المتوفر :available فقط)',
     'max_qty_reached' => 'تم الوصول للحد الأقصى للكمية :cap',

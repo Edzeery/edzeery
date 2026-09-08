@@ -8,6 +8,8 @@ return [
     'algerian_dinar' => 'Dinar algérien',
     'allow_backorder' => 'Autoriser les commandes en rupture',
     'allow_backorder_desc' => 'Autoriser les commandes même en rupture de stock',
+    'allow_price_edit' => 'Autoriser la modification du prix du produit',
+    'allow_price_edit_desc' => 'Permet aux membres autorisés de modifier les prix des produits d\'une commande directement depuis le tableau',
     'default_min_order_qty' => 'Quantité minimale de commande par défaut',
     'default_min_order_qty_desc' => 'S\'applique à tous les produits sauf si le produit le remplace',
     'default_max_order_qty' => 'Quantité maximale de commande par défaut',
@@ -338,6 +340,9 @@ return [
 
     // Order detail expanded section
     'items' => 'Articles',
+    'no_items' => 'Aucun article sur cette commande',
+    'delete_item' => 'Supprimer l\'article',
+    'edit_items' => 'Modifier les produits, quantités et prix',
     'details' => 'Détails',
     'assignment' => 'Affectation',
     'method' => 'Méthode',
@@ -422,6 +427,9 @@ return [
     'out_of_stock' => 'Rupture de stock',
     'left' => 'restant',
     'in_cart' => 'dans le panier',
+    'please_select_product' => 'Veuillez sélectionner un produit',
+    'please_select_quantity' => 'Veuillez préciser la quantité',
+    'load_more' => 'Charger plus',
     'search_variants' => 'Rechercher des variantes...',
     'insufficient_stock' => 'Stock insuffisant pour :variant (seulement :available disponibles)',
     'max_qty_reached' => 'Quantité maximale de :cap atteinte',

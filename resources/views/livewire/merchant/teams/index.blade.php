@@ -218,15 +218,12 @@ $allPermissions = computed(function () {
         return collect();
     }
 
-    try {
-        $role = StoreRoleEnum::from($this->store_role);
-    } catch (\ValueError) {
-        return collect();
-    }
-
-    $all = \App\Support\StoreRoles::permissions($role);
-
-    return collect($all)->groupBy(fn ($p) => explode('.', $p)[0]);
+    // Decision #8B — always render every StorePermissionEnum case so custom
+    // permissions granted outside the role template (e.g. ORDER_EDIT_PRICE to a
+    // specific member) are visible and assignable; non-template cases carry the
+    // `custom_badge` via $roleTemplatePermissions.
+    return collect(\App\Enums\Store\StorePermissionEnum::values())
+        ->groupBy(fn ($p) => explode('.', $p)[0]);
 });
 
 // Template permissions for the currently selected role, used to flag any
@@ -340,7 +337,7 @@ $roleTemplatePermissions = computed(function (): array {
 
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2 text-sm font-medium text-ink">
-                        <input type="checkbox" wire:model="isActive" class="h-4 w-4 rounded border-surface-border">
+                        <x-edz.checkbox size="sm" wire:model="isActive" />
                         {{ __('general.active') }}
                     </label>
                 </div>
@@ -365,7 +362,7 @@ $roleTemplatePermissions = computed(function (): array {
                                     <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-400">{{ ucfirst($group) }}</p>
                                     @foreach ($perms as $perm)
                                         <label class="flex items-center gap-2 py-0.5 text-sm text-ink">
-                                            <input type="checkbox" wire:model="permissions" value="{{ $perm }}" class="h-3.5 w-3.5 rounded border-surface-border">
+                                            <x-edz.checkbox size="sm" wire:model="permissions" value="{{ $perm }}" />
                                             {{ is_string($permLabel = __("permissions.{$perm}")) ? $permLabel : $perm }}
                                             @if (! in_array($perm, $this->roleTemplatePermissions, true))
                                                 <span class="edz-badge edz-badge--neutral !text-[10px]">{{ __('teams.custom_badge') }}</span>

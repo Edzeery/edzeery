@@ -29,6 +29,7 @@ state([
     'inventory_tracking' => true,
     'show_out_of_stock' => false,
     'allow_backorder' => false,
+    'allow_price_edit' => false,
     'min_order_qty' => null,
     'max_order_qty' => null,
 ]);
@@ -52,6 +53,7 @@ mount(function (): void {
     $this->inventory_tracking = $settings->inventory_tracking ?? true;
     $this->show_out_of_stock = $settings->show_out_of_stock ?? false;
     $this->allow_backorder = $settings->allow_backorder ?? false;
+    $this->allow_price_edit = $settings->allow_price_edit ?? false;
     if (Schema::hasColumn('store_settings', 'min_order_qty')) {
         $this->min_order_qty = $settings->min_order_qty;
         $this->max_order_qty = $settings->max_order_qty;
@@ -111,6 +113,7 @@ $save = function (): void {
         'inventory_tracking' => $this->inventory_tracking,
         'show_out_of_stock' => $this->show_out_of_stock,
         'allow_backorder' => $this->allow_backorder,
+        'allow_price_edit' => $this->allow_price_edit,
     ];
 
     if (Schema::hasColumn('store_settings', 'supported_languages')) {
@@ -346,10 +349,16 @@ $save = function (): void {
                                 </select>
                             </div>
 
-                            <div class="flex items-center gap-3 pt-6">
-                                <input type="checkbox" id="guest_checkout" wire:model="guest_checkout" class="edz-checkbox" />
-                                <label for="guest_checkout" class="edz-label mb-0">{{ __('merchant_panel.guest_checkout') }}</label>
+                            <div class="flex items-center pt-6">
+                                <x-edz.checkbox id="guest_checkout" wire:model="guest_checkout"
+                                    label="{{ __('merchant_panel.guest_checkout') }}" />
                             </div>
+                        </div>
+
+                        <div class="mt-5 pt-5 border-t border-surface-border">
+                            <x-edz.checkbox id="allow_price_edit" wire:model="allow_price_edit"
+                                label="{{ __('merchant_panel.allow_price_edit') }}"
+                                hint="{{ __('merchant_panel.allow_price_edit_desc') }}" />
                         </div>
                     </div>
                 </div>
@@ -366,8 +375,7 @@ $save = function (): void {
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                                 {{ $inventory_tracking ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
-                                <input type="checkbox" wire:model="inventory_tracking"
-                                    class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
+                                <x-edz.checkbox wire:model="inventory_tracking" class="mt-0.5" />
                                 <div>
                                     <p class="text-sm font-medium text-ink">{{ __('merchant_panel.inventory_tracking') }}</p>
                                     <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.inventory_tracking_desc') }}</p>
@@ -377,8 +385,7 @@ $save = function (): void {
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                                 {{ $allow_backorder ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
-                                <input type="checkbox" wire:model="allow_backorder"
-                                    class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
+                                <x-edz.checkbox wire:model="allow_backorder" class="mt-0.5" />
                                 <div>
                                     <p class="text-sm font-medium text-ink">{{ __('merchant_panel.allow_backorder') }}</p>
                                     <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.allow_backorder_desc') }}</p>
@@ -388,8 +395,7 @@ $save = function (): void {
                             <label
                                 class="flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer
                                 {{ $show_out_of_stock ? 'border-accent-500 bg-accent-surface-subtle' : 'border-surface-border' }}">
-                                <input type="checkbox" wire:model="show_out_of_stock"
-                                    class="mt-0.5 rounded border-neutral-border text-accent-600 focus:ring-accent-500" />
+                                <x-edz.checkbox wire:model="show_out_of_stock" class="mt-0.5" />
                                 <div>
                                     <p class="text-sm font-medium text-ink">{{ __('merchant_panel.show_out_of_stock') }}</p>
                                     <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.show_out_of_stock_desc') }}</p>
