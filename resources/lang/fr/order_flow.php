@@ -119,4 +119,5 @@ return [
     'weight_auto_hint' => 'Calculé automatiquement à partir des produits — modifiable',
 
     'office_reset_for_destination' => "Le bureau précédemment sélectionné n'est plus disponible pour la nouvelle destination, le choix a été effacé",
+    'shipment_type_reset_for_carrier' => "Le type d'expédition sélectionné n'est pas pris en charge par ce transporteur, il a donc été réinitialisé à livraison",
 ];

@@ -119,4 +119,5 @@ return [
     'weight_auto_hint' => 'Calculado automáticamente a partir de los productos — editable',
 
     'office_reset_for_destination' => 'La oficina seleccionada anteriormente no está disponible para el nuevo destino, por lo que la selección se eliminó',
+    'shipment_type_reset_for_carrier' => 'El tipo de envío seleccionado no es compatible con esta empresa, por lo que se restableció a entrega',
 ];

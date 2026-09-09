@@ -91,12 +91,14 @@ $loadData = function (): void {
 
     $this->providers = ShippingProvider::where('store_id', $storeId)
         ->withCount('deliveryRates')
+        ->with('carrier')
         ->orderBy('name')
         ->get()
         ->map(fn ($p) => [
             'id' => $p->id,
             'name' => $p->name,
             'carrier' => $p->carrier?->name,
+            'carrier_capabilities' => $p->carrier ? $p->carrier->capabilityList() : null,
             'is_default' => $p->is_default,
             'is_active' => $p->is_active,
             'rates_count' => $p->delivery_rates_count,
@@ -763,15 +765,19 @@ $closeListStatePopup = function (): void {
                                 </div>
                             </div>
 
-                            <button type="button" wire:click="syncProvider"
-                                class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
-                                wire:loading.class="opacity-50 pointer-events-none" wire:target="syncProvider">
-                                <x-edz.spinner wire:target="syncProvider" />
-                                <span wire:loading.remove wire:target="syncProvider">
-                                    <x-edz.icon name="arrow-path" class="w-4 h-4" />
-                                </span>
-                                <span>{{ $syncing ? __('merchant_panel.syncing_rates') : __('merchant_panel.sync_rates') }}</span>
-                            </button>
+                            @if ($currentProvider['carrier_capabilities']['price_sync'] ?? false)
+                                <button type="button" wire:click="syncProvider"
+                                    class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
+                                    wire:loading.class="opacity-50 pointer-events-none" wire:target="syncProvider">
+                                    <x-edz.spinner wire:target="syncProvider" />
+                                    <span wire:loading.remove wire:target="syncProvider">
+                                        <x-edz.icon name="arrow-path" class="w-4 h-4" />
+                                    </span>
+                                    <span>{{ $syncing ? __('merchant_panel.syncing_rates') : __('merchant_panel.sync_rates') }}</span>
+                                </button>
+                            @else
+                                <span class="text-xs text-ink-muted">{{ __('merchant_panel.price_sync_not_supported') }}</span>
+                            @endif
                         </div>
                     </div>
 

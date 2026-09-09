@@ -131,11 +131,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.shipment') }}</label>
-                            <x-edz.select wire:model="form.shipment_type" :options="[
-                                ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
-                                ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
-                                ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
-                            ]" size="sm" />
+                            <x-edz.select wire:model="form.shipment_type" :options="$this->formShipmentTypeOptions()" size="sm" />
                         </div>
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.payment_method') }}</label>

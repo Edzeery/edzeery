@@ -16,13 +16,27 @@ class Carrier extends Model
         'code',
         'credential_fields',
         'is_active',
+        'supports_delivery',
+        'supports_exchange',
+        'supports_pickup',
+        'supports_free_shipping_mode',
+        'supports_express_economic',
+        'supports_api_notes',
+        'supports_price_sync',
         'sort_order',
     ];
 
     protected $casts = [
-        'credential_fields' => 'array',
-        'is_active'         => 'boolean',
-        'sort_order'        => 'integer',
+        'credential_fields'             => 'array',
+        'is_active'                     => 'boolean',
+        'supports_delivery'             => 'boolean',
+        'supports_exchange'             => 'boolean',
+        'supports_pickup'               => 'boolean',
+        'supports_free_shipping_mode'   => 'boolean',
+        'supports_express_economic'     => 'boolean',
+        'supports_api_notes'            => 'boolean',
+        'supports_price_sync'           => 'boolean',
+        'sort_order'                    => 'integer',
     ];
 
     public function platform(): BelongsTo
@@ -44,5 +58,25 @@ class Carrier extends Model
         return is_array($this->credential_fields)
             ? array_values($this->credential_fields)
             : [];
+    }
+
+    /**
+     * Normalised capability flags keyed by a stable short name. Single source
+     * of truth reused by the merchant Blade view and the Filament admin, so
+     * raw column-name strings never leak across layers.
+     *
+     * @return array{delivery: bool, exchange: bool, pickup: bool, free_shipping_mode: bool, express_economic: bool, api_notes: bool, price_sync: bool}
+     */
+    public function capabilityList(): array
+    {
+        return [
+            'delivery'           => (bool) $this->supports_delivery,
+            'exchange'           => (bool) $this->supports_exchange,
+            'pickup'             => (bool) $this->supports_pickup,
+            'free_shipping_mode' => (bool) $this->supports_free_shipping_mode,
+            'express_economic'   => (bool) $this->supports_express_economic,
+            'api_notes'          => (bool) $this->supports_api_notes,
+            'price_sync'         => (bool) $this->supports_price_sync,
+        ];
     }
 }

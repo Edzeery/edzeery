@@ -12,6 +12,7 @@ use App\Domains\Shipping\Contracts\DefaultDeliveryRatesAdapter;
 
 return [
     'adapters' => [
+        'noest' => \App\Domains\Shipping\Adapters\NoestDeliveryRatesAdapter::class,
         // 'ecotrack' => \App\Domains\Shipping\Adapters\EcotrackAdapter::class,
         // 'zrexpress' => \App\Domains\Shipping\Adapters\ZRExpressAdapter::class,
         '*' => DefaultDeliveryRatesAdapter::class,

@@ -26,6 +26,27 @@ class CarriersTable
                     ->placeholder('—'),
                 TextColumn::make('credential_fields')
                     ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', array_column($state, 'key')) : '—'),
+                IconColumn::make('supports_delivery')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_exchange')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_pickup')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_free_shipping_mode')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_express_economic')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_api_notes')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_price_sync')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('is_active')
                     ->boolean(),
                 TextColumn::make('sort_order')

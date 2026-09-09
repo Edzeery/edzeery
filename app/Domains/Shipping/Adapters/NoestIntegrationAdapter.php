@@ -138,6 +138,45 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         Cache::forget($this->desksCacheKey($provider));
     }
 
+    public function testConnection(ShippingProvider $provider): array
+    {
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+
+        if ($token === '') {
+            return ['ok' => false, 'message' => __('merchant_panel.connection_missing_credentials')];
+        }
+
+        // Cheapest read-only endpoint (per ApiService.testConnection() in the
+        // reference userscript). Deliberately bypasses the desks cache so the
+        // test always reflects the live network state.
+        $url = rtrim($this->baseUrl($provider), '/').'/get/wilayas';
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Authorization' => "Bearer {$token}"])
+                ->get($url);
+
+            $data = $response->json();
+
+            if ($response->failed()) {
+                $message = (string) ($data['message'] ?? $data['error'] ?? "HTTP {$response->status()}");
+
+                return ['ok' => false, 'message' => $message];
+            }
+
+            if (! is_array($data) || $data === []) {
+                return ['ok' => false, 'message' => __('merchant_panel.connection_invalid_response')];
+            }
+
+            return [
+                'ok' => true,
+                'message' => __('merchant_panel.connection_ok', ['count' => count($data)]),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     /* ───────────────────────── Internal ───────────────────────── */
 
     protected function baseUrl(ShippingProvider $provider): string

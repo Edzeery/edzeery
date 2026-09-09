@@ -2127,6 +2127,62 @@ $refreshOrders = function () {
 // ——— Order form modal (Phase 9 @include partial — logic lives in
 // HasOrderProductPicker / HasInlineEdit; state is kept on the parent instance) ———
 
+// Shipment-type picker options gated by the selected carrier's capabilities.
+// Legacy/manual providers (carrier_id = null) keep all three options, and the
+// current selection is reset to 'delivery' with a toast when a carrier switch
+// makes it invalid, mirroring the office-reset behaviour.
+$formShipmentTypeOptions = function (): array {
+    $defaultOptions = [
+        ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+        ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
+        ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
+    ];
+
+    $providerId = $this->form['shipping_provider_id'] ?? null;
+
+    if (! $providerId) {
+        return $defaultOptions;
+    }
+
+    $provider = \App\Domains\Shipping\Models\ShippingProvider::query()
+        ->where('store_id', currentStoreId())
+        ->with('carrier')
+        ->find($providerId);
+
+    $carrier = $provider?->carrier;
+
+    if (! $carrier) {
+        return $defaultOptions;
+    }
+
+    $caps = $carrier->capabilityList();
+
+    $enabled = array_filter([
+        'delivery' => $caps['delivery'] ?? false,
+        'exchange' => $caps['exchange'] ?? false,
+        'pickup'   => $caps['pickup'] ?? false,
+    ]);
+
+    $options = array_values(array_filter(
+        $defaultOptions,
+        fn ($opt) => ! empty($enabled[$opt['value']]),
+    ));
+
+    if ($options === []) {
+        $options = $defaultOptions;
+    }
+
+    $availableValues = array_column($options, 'value');
+    $current = (string) ($this->form['shipment_type'] ?? 'delivery');
+
+    if (! in_array($current, $availableValues, true)) {
+        $this->form['shipment_type'] = 'delivery';
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.shipment_type_reset_for_carrier')]);
+    }
+
+    return $options;
+};
+
 $loadCities = function (string $stateId): void {
     if (empty($stateId)) {
         $this->allCities = [];

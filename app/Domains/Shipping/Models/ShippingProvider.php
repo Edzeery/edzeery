@@ -21,6 +21,7 @@ class ShippingProvider extends Model
         'carrier_platform_id',
         'carrier_id',
         'credentials',
+        'shipment_types_enabled',
         'is_active',
         'is_default',
         'flat_rate',
@@ -29,10 +30,11 @@ class ShippingProvider extends Model
     ];
 
     protected $casts = [
-        'credentials' => 'array',
-        'is_active'   => 'boolean',
-        'is_default'  => 'boolean',
-        'flat_rate'   => 'decimal:2',
+        'credentials'             => 'array',
+        'shipment_types_enabled'  => 'array',
+        'is_active'               => 'boolean',
+        'is_default'              => 'boolean',
+        'flat_rate'               => 'decimal:2',
     ];
 
     /* =========================

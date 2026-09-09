@@ -125,4 +125,5 @@ return [
     'weight_auto_hint' => 'Auto-calculated from products — editable',
 
     'office_reset_for_destination' => 'The previously selected office is not available for the new destination, so the choice was cleared',
+    'shipment_type_reset_for_carrier' => 'The selected shipment type is not supported by this carrier, so it was reset to delivery',
 ];

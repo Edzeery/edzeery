@@ -6,6 +6,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Schema;
 
 class CarrierForm
@@ -37,7 +38,7 @@ class CarrierForm
                             ->maxLength(120),
                         Select::make('type')
                             ->options([
-                                'text'     => 'Text',
+                                'text' => 'Text',
                                 'password' => 'Password / Token',
                             ])
                             ->default('text'),
@@ -46,6 +47,17 @@ class CarrierForm
                     ])
                     ->columns(4)
                     ->default([]),
+                Fieldset::make('Carrier capabilities')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('supports_delivery')->label('Delivery'),
+                        Toggle::make('supports_exchange')->label('Exchange'),
+                        Toggle::make('supports_pickup')->label('Pickup'),
+                        Toggle::make('supports_free_shipping_mode')->label('Free shipping mode'),
+                        Toggle::make('supports_express_economic')->label('Express / Economic'),
+                        Toggle::make('supports_api_notes')->label('API notes'),
+                        Toggle::make('supports_price_sync')->label('Price sync'),
+                    ]),
                 Toggle::make('is_active')
                     ->default(true),
                 TextInput::make('sort_order')

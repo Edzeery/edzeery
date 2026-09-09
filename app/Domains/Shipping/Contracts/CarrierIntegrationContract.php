@@ -50,4 +50,13 @@ interface CarrierIntegrationContract
      * Bust any internal cache (e.g. office lists) for this provider.
      */
     public function forgetCache(ShippingProvider $provider): void;
+
+    /**
+     * Lightweight credential check — must not create side effects on the
+     * carrier's system (no order creation). Returns a normalized result so
+     * every adapter can report success/failure uniformly to the UI.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function testConnection(ShippingProvider $provider): array;
 }

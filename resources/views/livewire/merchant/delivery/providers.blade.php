@@ -5,6 +5,7 @@ use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
 use Illuminate\Support\Facades\DB;
+use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -29,6 +30,10 @@ state([
         'is_active' => true,
         'is_default' => false,
     ],
+
+    // Connection test
+    'testingConnection' => false,
+    'connectionTestResult' => null,
 ]);
 
 mount(function (): void {
@@ -129,16 +134,33 @@ $selectedCarrier = function (): ?array {
     return collect($this->providerCarrierOptions())->firstWhere('id', $carrierId);
 };
 
+$hasIntegrationAdapter = computed(function (): bool {
+    $carrier = $this->selectedCarrier();
+
+    if (! $carrier || empty($carrier['code'])) {
+        return false;
+    }
+
+    $adapterClass = config(
+        "delivery.carrier_integrations.{$carrier['code']}",
+        config('delivery.carrier_integrations.*'),
+    );
+
+    return $adapterClass && class_exists($adapterClass);
+});
+
 $selectProviderPlatform = function (string $platformId): void {
     $this->providerForm['platform_id'] = $platformId;
     $this->providerForm['carrier_id'] = '';
     $this->providerForm['name'] = '';
     $this->providerForm['credential_values'] = [];
+    $this->connectionTestResult = null;
 };
 
 $selectProviderCarrier = function (string $carrierId): void {
     $this->providerForm['carrier_id'] = $carrierId;
     $this->providerForm['credential_values'] = [];
+    $this->connectionTestResult = null;
 
     $carrier = collect($this->providerCarrierOptions())->firstWhere('id', $carrierId);
 
@@ -148,6 +170,45 @@ $selectProviderCarrier = function (string $carrierId): void {
         foreach ($carrier['credential_fields'] as $field) {
             $this->providerForm['credential_values'][$field['key']] = '';
         }
+    }
+};
+
+$testProviderConnection = function (): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+
+    $this->connectionTestResult = null;
+
+    $carrier = $this->selectedCarrier();
+
+    if (! $carrier || empty($carrier['code'])) {
+        $this->connectionTestResult = ['ok' => false, 'message' => __('merchant_panel.connection_not_supported')];
+        return;
+    }
+
+    $adapterClass = config(
+        "delivery.carrier_integrations.{$carrier['code']}",
+        config('delivery.carrier_integrations.*'),
+    );
+
+    if (! $adapterClass || ! class_exists($adapterClass)) {
+        $this->connectionTestResult = ['ok' => false, 'message' => __('merchant_panel.connection_not_supported')];
+        return;
+    }
+
+    $this->testingConnection = true;
+
+    try {
+        $adapter = app($adapterClass);
+
+        // Throwaway provider built from the currently-typed, unsaved
+        // credentials so the merchant can test before saving.
+        $probe = new ShippingProvider(['credentials' => $this->providerForm['credential_values'] ?? []]);
+
+        $this->connectionTestResult = $adapter->testConnection($probe);
+    } catch (\Throwable $e) {
+        $this->connectionTestResult = ['ok' => false, 'message' => $e->getMessage()];
+    } finally {
+        $this->testingConnection = false;
     }
 };
 
@@ -432,6 +493,26 @@ $deleteProvider = function (string $id): void {
                                     </div>
                                 @endforeach
                             </div>
+                            @if ($this->hasIntegrationAdapter)
+                                <div class="mt-3">
+                                    <button type="button" wire:click="testProviderConnection"
+                                        class="edz-btn edz-btn--ghost edz-btn--sm" wire:loading.attr="disabled"
+                                        wire:loading.class="opacity-50 pointer-events-none" wire:target="testProviderConnection">
+                                        <x-edz.spinner wire:target="testProviderConnection" />
+                                        <span wire:loading.remove wire:target="testProviderConnection">
+                                            <x-edz.icon name="shield-check" class="w-4 h-4" />
+                                        </span>
+                                        <span>{{ $testingConnection ? __('merchant_panel.testing_connection') : __('merchant_panel.test_connection') }}</span>
+                                    </button>
+                                    @if ($connectionTestResult)
+                                        <div class="mt-2">
+                                            <x-edz.badge :tone="$connectionTestResult['ok'] ? 'success' : 'danger'">
+                                                {{ $connectionTestResult['message'] }}
+                                            </x-edz.badge>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     @else
                         <div class="border-t border-surface-border pt-4">
