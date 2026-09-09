@@ -47,6 +47,15 @@ interface CarrierIntegrationContract
     public function createOrder(ShippingProvider $provider, Order $order): array;
 
     /**
+     * Send a free-text note/remark to the carrier against an existing shipment.
+     * Must inspect the response body for success — some carriers (NOEST included)
+     * return HTTP 200 even on logical failure.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function addNote(ShippingProvider $provider, string $trackingNumber, string $content): array;
+
+    /**
      * Bust any internal cache (e.g. office lists) for this provider.
      */
     public function forgetCache(ShippingProvider $provider): void;

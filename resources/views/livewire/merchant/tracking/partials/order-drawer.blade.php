@@ -137,6 +137,9 @@
                     </section>
                 @endif
 
+                {{-- Carrier note composer (P33.2) — own dedicated section --}}
+                @include('livewire.merchant.tracking.partials.carrier-note-composer')
+
                 {{-- Tracking history — shared partial --}}
                 @include('livewire.merchant.tracking.partials.tracking-history-timeline', [
                     'histories' => $this->drawerStatusHistories,

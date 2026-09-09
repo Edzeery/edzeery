@@ -138,6 +138,50 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         Cache::forget($this->desksCacheKey($provider));
     }
 
+    public function addNote(ShippingProvider $provider, string $trackingNumber, string $content): array
+    {
+        $content = trim($content);
+
+        // Local validation — mirrors the carrier's 255-char server-side limit
+        // so an oversized note never leaves the app.
+        if ($content === '' || mb_strlen($content) > 255) {
+            return ['ok' => false, 'message' => __('order_flow.note_too_long')];
+        }
+
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+
+        if ($token === '' || $trackingNumber === '') {
+            return ['ok' => false, 'message' => __('merchant_panel.connection_missing_credentials')];
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Authorization' => "Bearer {$token}"])
+                ->post(rtrim($this->baseUrl($provider), '/').'/add/maj', [
+                    'tracking' => $trackingNumber,
+                    'content' => $content,
+                ]);
+
+            $data = $response->json() ?? [];
+
+            // NOEST quirk (documented learnings): the API returns HTTP 200 even
+            // when the logical call failed (e.g. "Commande inexistante"), so
+            // inspect the body — never rely on the status code alone.
+            if (($data['success'] ?? false) === true) {
+                return [
+                    'ok' => true,
+                    'message' => (string) ($data['message'] ?? __('order_flow.note_sent')),
+                ];
+            }
+
+            $message = (string) ($data['message'] ?? $data['error'] ?? __('order_flow.note_failed'));
+
+            return ['ok' => false, 'message' => $message];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     public function testConnection(ShippingProvider $provider): array
     {
         $token = (string) ($provider->credentials['api_token'] ?? '');

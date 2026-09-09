@@ -36,6 +36,10 @@ state([
     'drawerEvents' => [],
     'canViewDrawerEvents' => false,
 
+    // Carrier note composer (P33.2)
+    'noteDraft' => '',
+    'sendingNote' => false,
+
     // Tracking-status popup (P29.4)
     'statusHistoryFor' => null,
     'statusHistory' => [],
@@ -133,11 +137,26 @@ $resetFilters = function (): void {
     $this->loadShipments();
 };
 
+$loadDrawerHistories = function (string $trackingId): void {
+    $this->drawerStatusHistories = OrderTrackingHistory::where('store_id', currentStoreId())
+        ->where('order_tracking_id', $trackingId)
+        ->with('changedBy.user')
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn ($h) => [
+            'status' => $h->status,
+            'notes' => $h->notes,
+            'created_at' => $h->created_at,
+            'by' => $h->changedBy?->user?->name ?? null,
+        ])
+        ->all();
+};
+
 $openDrawer = function (string $orderId): void {
     abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
 
     $order = Order::where('store_id', currentStoreId())
-        ->with(['customer', 'status', 'shippingProvider', 'deliveryRider', 'city', 'state'])
+        ->with(['customer', 'status', 'shippingProvider.carrier', 'deliveryRider', 'city', 'state'])
         ->find($orderId);
 
     if (! $order) {
@@ -149,6 +168,7 @@ $openDrawer = function (string $orderId): void {
     $this->drawerOrderId = $orderId;
 
     $this->drawerTracking = [
+        'tracking_id' => $tracking?->id,
         'order_id' => $order->id,
         'number' => $order->number,
         'customer' => $order->customer?->name ?? '—',
@@ -162,21 +182,11 @@ $openDrawer = function (string $orderId): void {
         'shipped_at' => $tracking?->shipped_at,
         'delivered_at' => $tracking?->delivered_at,
         'returned_at' => $tracking?->returned_at,
+        'carrier_supports_api_notes' => (bool) ($order->shippingProvider?->carrier?->capabilityList()['api_notes'] ?? false),
     ];
 
     if ($tracking) {
-        $this->drawerStatusHistories = OrderTrackingHistory::where('store_id', currentStoreId())
-            ->where('order_tracking_id', $tracking->id)
-            ->with('changedBy.user')
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn ($h) => [
-                'status' => $h->status,
-                'notes' => $h->notes,
-                'created_at' => $h->created_at,
-                'by' => $h->changedBy?->user?->name ?? null,
-            ])
-            ->all();
+        $this->loadDrawerHistories($tracking->id);
     }
 
     // P29.1 — Event log visibility: same rule as the orders details drawer.
@@ -301,6 +311,77 @@ $trackingAction = function (string $orderId, string $action): void {
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("tracking action [{$action}] failed for order [{$order->number}]: " . $e->getMessage());
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
+    }
+};
+
+// ——— Carrier note composer (P33.2) ———
+$sendCarrierNote = function (string $trackingId): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $this->validate([
+        'noteDraft' => ['required', 'string', 'max:255'],
+    ]);
+
+    $tracking = OrderTracking::where('store_id', currentStoreId())
+        ->with('shippingProvider.carrier')
+        ->find($trackingId);
+
+    if (! $tracking || ! $tracking->shippingProvider?->carrier) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.note_failed')]);
+        return;
+    }
+
+    // Server-side capability guard — the action must be unreachable when the
+    // carrier can't take notes, not just hidden in the UI.
+    if (! $tracking->shippingProvider->carrier->supports_api_notes) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.carrier_note_not_supported')]);
+        return;
+    }
+
+    if (! $tracking->tracking_number) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.note_failed')]);
+        return;
+    }
+
+    $this->sendingNote = true;
+
+    try {
+        $carrier = $tracking->shippingProvider->carrier;
+
+        $adapterClass = config(
+            "delivery.carrier_integrations.{$carrier->code}",
+            config('delivery.carrier_integrations.*'),
+        );
+
+        $result = $adapterClass && class_exists($adapterClass)
+            ? app($adapterClass)->addNote($tracking->shippingProvider, $tracking->tracking_number, (string) $this->noteDraft)
+            : ['ok' => false, 'message' => __('order_flow.note_failed')];
+
+        if (($result['ok'] ?? false)) {
+            OrderTrackingHistory::create([
+                'store_id'                 => $tracking->store_id,
+                'order_id'                 => $tracking->order_id,
+                'order_tracking_id'        => $tracking->id,
+                'status'                   => 'carrier_note',
+                'changed_by_membership_id' => currentMembership()?->id,
+                'notes'                    => (string) $this->noteDraft,
+                'payload'                  => ['carrier_response' => $result],
+                'created_at'               => now(),
+            ]);
+
+            $this->noteDraft = '';
+
+            $this->loadDrawerHistories($tracking->id);
+
+            $this->dispatch('swal:toast', ['icon' => 'success', 'title' => ($result['message'] ?? __('order_flow.note_sent'))]);
+        } else {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => ($result['message'] ?? __('order_flow.note_failed'))]);
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning("carrier note failed for tracking [{$tracking->tracking_number}]: " . $e->getMessage());
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
+    } finally {
+        $this->sendingNote = false;
     }
 };
 

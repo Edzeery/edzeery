@@ -13,13 +13,16 @@
         <ol class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30">
             @foreach ($trkHistories as $trkI => $trkH)
                 <li class="flex items-start gap-3 px-3 py-2.5 text-sm">
-                    <span class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ $trkI === 0 ? 'bg-accent-600' : 'bg-surface-border' }}"></span>
+                    <span class="mt-1.5 w-2 h-2 rounded-full shrink-0 {{ ($trkH['status'] ?? null) === 'carrier_note' ? 'bg-accent-500' : ($trkI === 0 ? 'bg-accent-600' : 'bg-surface-border') }}"></span>
                     <div class="min-w-0 flex-1">
                         <p class="text-ink leading-snug">
                             @php
                                 $trkStatus = \App\Enums\Store\OrderTrackingStatus::tryFrom($trkH['status'] ?? null);
+                                $trkLabel = ($trkH['status'] ?? null) === 'carrier_note'
+                                    ? __('order_flow.carrier_note_status')
+                                    : ($trkStatus?->label() ?? ($trkH['status'] ?? '—'));
                             @endphp
-                            {{ $trkStatus?->label() ?? ($trkH['status'] ?? '—') }}
+                            {{ $trkLabel }}
                             @if (!empty($trkH['notes']))
                                 <span class="text-ink-muted">— {{ $trkH['notes'] }}</span>
                             @endif
