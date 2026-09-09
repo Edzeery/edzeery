@@ -521,7 +521,7 @@ test('the delivery quick-edit modal is blocked for shipped orders', function () 
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 });
 
-test('office options are strictly scoped to the chosen commune in the delivery quick-edit modal', function () {
+test('the delivery quick-edit modal merges the commune offices with the wilaya-wide hubs and excludes other communes', function () {
     [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = officeGeography();
 
@@ -564,8 +564,8 @@ test('office options are strictly scoped to the chosen commune in the delivery q
     $offerOfficeIds = collect(data_get($volt->get('formOffices'), '*.value'));
 
     expect($offerOfficeIds)->toContain($pointCityB->id)
-        ->and($offerOfficeIds)->not->toContain($pointCityA->id)
-        ->and($offerOfficeIds)->not->toContain($pointRegional->id);
+        ->and($offerOfficeIds)->toContain($pointRegional->id)
+        ->and($offerOfficeIds)->not->toContain($pointCityA->id);
 });
 
 // ——— 30.2: never revert a previously valid office silently ———
@@ -686,7 +686,7 @@ test('a still-valid office is kept and no reset toast is emitted', function () {
 
 // ——— Strict geo scoping of pick-up points (B) ———
 
-test('the inline stopdesk editor only offers offices of the order state and commune', function () {
+test('the inline stopdesk editor offers the order commune offices plus the wilaya-wide hubs and excludes other communes', function () {
     [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = officeGeography();
 
@@ -726,8 +726,8 @@ test('the inline stopdesk editor only offers offices of the order state and comm
     $optionIds = collect(data_get($volt->get('editStopdeskOptions'), '*.value'));
 
     expect($optionIds)->toContain((string) $point->id)
-        ->and($optionIds)->not->toContain((string) $pointOtherCity->id)
-        ->and($optionIds)->not->toContain((string) $pointRegional->id);
+        ->and($optionIds)->toContain((string) $pointRegional->id)
+        ->and($optionIds)->not->toContain((string) $pointOtherCity->id);
 });
 
 test('the inline stopdesk editor hides offices of a different state', function () {
@@ -821,4 +821,51 @@ test('the create form scopes offices to the chosen wilaya when no commune is set
     expect($optionIds)->toContain($pointA->id)
         ->and($optionIds)->toContain($pointB->id)
         ->and($volt->get('form.shipping_provider_id'))->toBe($provider->id);
+});
+
+test('the create-form office list ranks the commune offices before the wilaya-wide hubs and hides other communes', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+
+    $cityB = City::create([
+        'state_id' => $state->id,
+        'name' => 'Cheraga',
+        'post_code' => '16027',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $provider = officeProvider($store);
+    $pointCommune = officePoint($store, $provider, $state, $city);
+    $pointHub = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => null,
+        'name' => 'Regional Hub',
+        'address' => '',
+        'is_active' => true,
+    ]);
+    $pointOtherCity = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $cityB->id,
+        'name' => 'Point Cheraga',
+        'address' => '',
+        'is_active' => true,
+    ]);
+
+    $volt = officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->call('loadFormOffices', $provider->id);
+
+    $optionIds = collect(data_get($volt->get('formOffices'), '*.value'));
+
+    expect($optionIds)->toContain((string) $pointCommune->id)
+        ->and($optionIds)->toContain((string) $pointHub->id)
+        ->and($optionIds)->not->toContain((string) $pointOtherCity->id)
+        ->and((string) $optionIds->first())->toBe((string) $pointCommune->id);
 });

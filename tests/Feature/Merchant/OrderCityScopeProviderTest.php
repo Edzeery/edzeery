@@ -2,6 +2,8 @@
 
 use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\CarrierPlatform;
+use App\Domains\Shipping\Models\DeliveryRate;
+use App\Domains\Shipping\Models\DeliveryRateCity;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Enums\Store\StoreRoleEnum;
@@ -271,4 +273,88 @@ test('the inline city editor is scoped to the order shipping company', function 
     sort($expected);
 
     expect(cityScopeSortedIds($volt->get('editCityOptions')))->toBe($expected);
+});
+
+test('home delivery scopes communes to announced per-commune rates when no state-level rate exists', function () {
+    [$user, $store] = cityScopeUser(StoreRoleEnum::OWNER->value);
+    [, $state] = cityScopeGeography();
+
+    $cityPriced = cityScopeCity($state, 'Bab Ezzouar');
+    $cityFree = cityScopeCity($state, 'Cheraga');
+
+    $provider = cityScopeProvider($store);
+
+    DeliveryRateCity::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $cityPriced->id,
+        'home_cost' => 400,
+        'is_active' => true,
+    ]);
+
+    $volt = cityScopeVolt([$user, $store])
+        ->set('form.delivery_type', 'home')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->call('loadCities', (string) $state->id);
+
+    expect(cityScopeSortedIds($volt->get('allCities')))->toBe([(string) $cityPriced->id])
+        ->and($volt->get('formCoverageHint'))->toBe('');
+});
+
+test('home delivery with a state-level announced rate keeps all communes', function () {
+    [$user, $store] = cityScopeUser(StoreRoleEnum::OWNER->value);
+    [, $state] = cityScopeGeography();
+
+    $cityA = cityScopeCity($state, 'Bab Ezzouar');
+    $cityB = cityScopeCity($state, 'Cheraga');
+    $cityC = cityScopeCity($state, 'Dar El Beida');
+
+    $provider = cityScopeProvider($store);
+
+    DeliveryRate::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'home_cost' => 300,
+        'is_active' => true,
+    ]);
+
+    $volt = cityScopeVolt([$user, $store])
+        ->set('form.delivery_type', 'home')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->call('loadCities', (string) $state->id);
+
+    $expected = array_map(strval(...), [$cityA->id, $cityB->id, $cityC->id]);
+    sort($expected);
+
+    expect(cityScopeSortedIds($volt->get('allCities')))->toBe($expected)
+        ->and($volt->get('formCoverageHint'))->toBe('');
+});
+
+test('home delivery scopes the wilaya list to the states with home prices', function () {
+    [$user, $store] = cityScopeUser(StoreRoleEnum::OWNER->value);
+    [, $stateAlger, $sisterOran] = cityScopeGeography();
+
+    cityScopeCity($stateAlger, 'Bab Ezzouar');
+    cityScopeCity($sisterOran, 'Oran City');
+
+    $provider = cityScopeProvider($store);
+
+    DeliveryRate::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $stateAlger->id,
+        'home_cost' => 300,
+        'is_active' => true,
+    ]);
+
+    $volt = cityScopeVolt([$user, $store])
+        ->set('form.delivery_type', 'home')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->call('loadFormScope');
+
+    $scoped = collect($volt->get('formAvailableStates'))->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+    expect($scoped)->toBe([(string) $stateAlger->id]);
 });

@@ -473,7 +473,7 @@ mount(function (): void {
 
     $this->allMembers = StoreMembership::where('store_id', $storeId)->where('is_active', true)->with('user')->get()->toArray();
 
-    $this->allStates = State::active()->orderBy('name')->get()->toArray();
+    $this->allStates = State::active()->orderedByCode()->get()->toArray();
 
     // Shipping providers for filter dropdown.
     $this->allProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
@@ -2224,11 +2224,31 @@ $loadCities = function (string $stateId, bool $resetCity = true): void {
 
     // Office (stopdesk) deliveries scope the communes to those served by the
     // selected carrier in that wilaya (synced points + regional points with
-    // null city). Home deliveries and carriers without offices keep all cities.
+    // null city). Home deliveries scope to the carrier home price coverage.
     $type = (string) ($this->form['delivery_type'] ?? 'home');
     $providerId = (string) ($this->form['shipping_provider_id'] ?? '');
 
     $this->allCities = City::where('state_id', $stateId)->orderBy('name')->get()->toArray();
+
+    // Home delivery mirrors the announced-price priority: a state-level rate
+    // covers the whole wilaya; per-commune rates restrict the list to the priced
+    // communes. Carriers with no home price data stay unrestricted.
+    if ($type === 'home' && $providerId !== '') {
+        $covered = $this->homeCoveredCityIds($providerId, $stateId);
+
+        if ($covered !== null) {
+            $coveredIds = $covered->map(fn ($cid) => (string) $cid)->all();
+
+            $this->allCities = collect($this->allCities)
+                ->filter(fn ($city) => in_array((string) $city['id'], $coveredIds, true))
+                ->values()
+                ->toArray();
+
+            if ($this->allCities === []) {
+                $this->formCoverageHint = 'no_home_coverage';
+            }
+        }
+    }
 
     if ($type === 'stopdesk' && $providerId !== '') {
         $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
@@ -2296,21 +2316,21 @@ $rebuildFormOffices = function (): void {
         return;
     }
 
-    // Strict chain: company → type → wilaya → city → office. The office list is
-    // restricted to the chosen wilaya/commune only; offices without geo data are no
-    // longer offered for dispatch (they stay manageable on the stopdesk page).
+    // Chain: company → type → wilaya → city → office. The office list is scoped to
+    // the chosen wilaya. When a commune is selected, the commune's offices rank
+    // first, then the wilaya-wide offices (no commune) stay offered under every
+    // commune of the wilaya. Offices of another commune of that wilaya are excluded.
     $query->where('state_id', $stateId);
 
     $cityId = $this->form['city_id'] ?? null;
     if (!empty($cityId)) {
-        $query->where('city_id', $cityId);
+        $query->where(fn($q) => $q->where('city_id', $cityId)->orWhereNull('city_id'));
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, name', [(int) $cityId]);
+    } else {
+        $query->orderBy('name');
     }
 
-    $offices = $query
-        ->orderBy('name')
-        ->get()
-        ->sortByDesc(fn($office) => !empty($cityId) && $office->city_id === $cityId ? 1 : 0)
-        ->values();
+    $offices = $query->get();
 
     $this->formOffices = $offices
         ->map(function ($office) use ($cityId) {
@@ -2319,6 +2339,9 @@ $rebuildFormOffices = function (): void {
             return [
                 'value' => $office->id,
                 'label' => $office->name,
+                'code' => $office->external_code !== null && $office->external_code !== ''
+                    ? (string) $office->external_code
+                    : null,
                 'hint' => $hint !== '' ? $hint : null,
             ];
         })
@@ -2416,9 +2439,120 @@ $providerOfficeStates = function (string $providerId) {
     return $pointIds->merge($rateIds)->unique()->values();
 };
 
-// Fills formAvailableStates with the wilayas the selected carrier serves for
-// office delivery. Legacy/manual providers and home delivery keep the full list
-// (formAvailableStates stays empty → modals fall back to allStates).
+// ——— Home-delivery scope (mirrors the calculator priority: a state-level
+//      announced rate covers the whole wilaya, announced per-commune rates
+//      define the covered communes, then legacy rates, then flat/free) ———
+
+// States where the carrier offers a home-delivery price. null = unrestricted
+// (flat rate set, or no price data at all → free fallback keeps every wilaya).
+$providerHomeStates = function (string $providerId) {
+    $storeId = currentStoreId();
+
+    $stateIds = \App\Domains\Shipping\Models\DeliveryRate::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('is_active', true)
+        ->where(fn ($q) => $q->whereNotNull('home_cost')->orWhereNotNull('free_above'))
+        ->distinct()
+        ->pluck('state_id');
+
+    $cityStateIds = \App\Domains\Shipping\Models\DeliveryRateCity::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('is_active', true)
+        ->where(fn ($q) => $q->whereNotNull('home_cost')->orWhereNotNull('free_above'))
+        ->distinct()
+        ->pluck('state_id');
+
+    $legacyStateIds = \App\Domains\Shipping\Models\ShippingRate::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('is_active', true)
+        ->distinct()
+        ->pluck('state_id');
+
+    // A carrier pricing everything with a flat rate has no delivery-scope data.
+    $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
+        ->where('is_active', true)
+        ->find($providerId);
+
+    if ($provider && $provider->flat_rate !== null) {
+        return null;
+    }
+
+    $covered = $stateIds->merge($cityStateIds)->merge($legacyStateIds)->unique()->values();
+
+    return $covered->isEmpty() ? null : $covered;
+};
+
+// Communes of a wilaya where the carrier offers a home-delivery price, mirroring
+// the calculator priority. null = the whole wilaya is covered (state-level
+// announced/legacy rate, flat rate, or no price data → free fallback).
+$homeCoveredCityIds = function (string $providerId, string $stateId) {
+    $storeId = currentStoreId();
+
+    // 1. Announced state-level rate covers every commune of the wilaya.
+    $stateRate = \App\Domains\Shipping\Models\DeliveryRate::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $stateId)
+        ->where('is_active', true)
+        ->where(fn ($q) => $q->whereNotNull('home_cost')->orWhereNotNull('free_above'))
+        ->first();
+
+    if ($stateRate) {
+        return null;
+    }
+
+    // 2. Announced per-commune rates define the covered communes.
+    $cityIds = \App\Domains\Shipping\Models\DeliveryRateCity::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $stateId)
+        ->where('is_active', true)
+        ->where(fn ($q) => $q->whereNotNull('home_cost')->orWhereNotNull('free_above'))
+        ->distinct()
+        ->pluck('city_id');
+
+    if ($cityIds->isNotEmpty()) {
+        return $cityIds;
+    }
+
+    // 3. Legacy state-level rate covers every commune.
+    $legacyState = \App\Domains\Shipping\Models\ShippingRate::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $stateId)
+        ->whereNull('city_id')
+        ->where('is_active', true)
+        ->first();
+
+    if ($legacyState) {
+        return null;
+    }
+
+    // 4. Legacy per-commune rates define the covered communes.
+    $legacyCities = \App\Domains\Shipping\Models\ShippingRate::query()
+        ->where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $stateId)
+        ->whereNotNull('city_id')
+        ->where('is_active', true)
+        ->distinct()
+        ->pluck('city_id');
+
+    if ($legacyCities->isNotEmpty()) {
+        return $legacyCities;
+    }
+
+    // 5. Flat rate / free fallback → unrestricted.
+    return null;
+};
+
+// Fills formAvailableStates with the wilayas the selected carrier covers for the
+// current delivery type (office service area for stopdesk, home price coverage
+// for home). An empty list means the carrier is unrestricted → the modals fall
+// back to allStates.
 $loadFormScope = function (): void {
     $this->formAvailableStates = [];
     $this->formCoverageHint = '';
@@ -2426,7 +2560,7 @@ $loadFormScope = function (): void {
     $type = (string) ($this->form['delivery_type'] ?? 'home');
     $providerId = (string) ($this->form['shipping_provider_id'] ?? '');
 
-    if ($type !== 'stopdesk' || $providerId === '') {
+    if ($providerId === '') {
         return;
     }
 
@@ -2435,7 +2569,28 @@ $loadFormScope = function (): void {
         ->with('carrier')
         ->find($providerId);
 
-    if (! $provider?->carrier) {
+    if (! $provider) {
+        return;
+    }
+
+    if ($type === 'home') {
+        $stateIds = $this->providerHomeStates($providerId);
+
+        if ($stateIds === null) {
+            return;
+        }
+
+        $this->formAvailableStates = State::whereIn('id', $stateIds)
+            ->active()
+            ->orderedByCode()
+            ->get(['id', 'name', 'state_code'])
+            ->toArray();
+
+        return;
+    }
+
+    // Office delivery: only carrier-backed providers get a scoped wilaya list.
+    if (! $provider->carrier) {
         return;
     }
 
@@ -2453,19 +2608,15 @@ $loadFormScope = function (): void {
         ->toArray();
 };
 
-// Decision 1: a carrier switch (or a switch to office delivery) must not keep a
+// Decision 1: a carrier switch (or a change of delivery type) must not keep a
 // destination the new carrier does not cover — clear it AND surface a toast.
 $releaseStaleDestination = function (): void {
-    $type = (string) ($this->form['delivery_type'] ?? 'home');
-
-    if ($type !== 'stopdesk') {
-        return;
-    }
-
     $stateId = (string) ($this->form['state_id'] ?? '');
     $cleared = false;
 
-    // Wilaya no longer covered by the selected carrier's office service area.
+    // Wilaya no longer covered by the selected carrier (office service area or
+    // home price coverage). An empty formAvailableStates means the destination
+    // is unrestricted → nothing to release.
     if ($stateId !== '' && $this->formAvailableStates !== [] && ! collect($this->formAvailableStates)->contains(fn ($st) => (string) $st['id'] === $stateId)) {
         $this->form['state_id'] = '';
         $this->form['city_id'] = '';
@@ -2475,7 +2626,8 @@ $releaseStaleDestination = function (): void {
         $cleared = true;
     }
 
-    // Commune no longer covered by any office of the selected carrier in that wilaya.
+    // Commune no longer covered by any office (stopdesk) or home price (home)
+    // of the selected carrier in that wilaya.
     $cityId = (string) ($this->form['city_id'] ?? '');
     if (! $cleared && $cityId !== '' && ! collect($this->allCities)->contains(fn ($ct) => (string) $ct['id'] === $cityId)) {
         $this->form['city_id'] = '';
@@ -2499,37 +2651,33 @@ $applyProviderScope = function (?string $providerId = null, bool $preserveOffice
 
     $type = (string) ($this->form['delivery_type'] ?? 'home');
 
-    if ($type === 'stopdesk') {
-        $this->loadFormScope();
-        $this->loadCities((string) ($this->form['state_id'] ?? ''));
-        $this->releaseStaleDestination();
-    } else {
+    // Rescope wilayas + communes for the chosen carrier and release any
+    // destination it no longer covers (office points or home price coverage).
+    $this->loadFormScope();
+    $this->loadCities((string) ($this->form['state_id'] ?? ''));
+    $this->releaseStaleDestination();
+
+    if ($type !== 'stopdesk') {
         $this->form['stopdesk_point_id'] = '';
         $this->formOffices = [];
-        $this->loadFormScope();
     }
 
     $this->loadFormOffices($this->form['shipping_provider_id'], $preserveOffice);
 };
 
 // Delivery type switch: rebuild office options (which auto-selects the single
-// office of the chosen municipality on stopdesk) without requiring a provider change.
+// office of the chosen municipality on stopdesk) without requiring a provider
+// change. Home delivery rescopes wilayas + communes to the carrier price scope.
 $changeDeliveryType = function (string $type): void {
     $this->form['delivery_type'] = $type;
 
-    if ($type === 'stopdesk') {
-        // Full scope cascade when a carrier is already chosen so the office list
-        // is present and scoped the moment the stopdesk fields appear.
-        if (!empty($this->form['shipping_provider_id'])) {
-            $this->applyProviderScope(preserveOffice: true);
-        } else {
-            $this->loadFormScope();
-            $this->rebuildFormOffices();
-        }
+    if (!empty($this->form['shipping_provider_id'])) {
+        $this->applyProviderScope(preserveOffice: true);
     } else {
         $this->form['stopdesk_point_id'] = '';
         $this->formOffices = [];
         $this->loadFormScope();
+        $this->rebuildFormOffices();
     }
 };
 
@@ -2586,6 +2734,11 @@ $openDeliveryModal = function (string $orderId): void {
     $this->form['state_id'] = $order->state_id ?? '';
     $this->form['city_id'] = $order->city_id ?? '';
     $this->form['stopdesk_point_id'] = $order->stopdesk_point_id ?? '';
+
+    // Single-company stores: the sole carrier is always the effective one.
+    if (blank($this->form['shipping_provider_id'] ?? null)) {
+        $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
+    }
 
     // Carrier-scoped cascade: available wilayas/communes for the order's carrier,
     // releasing a destination the carrier no longer covers (with a toast).
@@ -3049,21 +3202,27 @@ $inlineStopdeskOptions = function (Order $order): array {
         });
     }
 
-    // Strict geo scoping: only points of the order's wilaya (and commune when set).
-    // Points without geo data are not offered for inline dispatch.
+    // Geo scoping: only points of the order's wilaya. When a commune is set, the
+    // commune's offices rank first, then the wilaya-wide offices (no commune) stay
+    // offered under every commune of the wilaya.
     if (! $order->state_id) {
         return [];
     }
     $query->where('state_id', $order->state_id);
     if ($order->city_id) {
-        $query->where('city_id', $order->city_id);
+        $query->where(fn($q) => $q->where('city_id', $order->city_id)->orWhereNull('city_id'));
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, name', [(int) $order->city_id]);
+    } else {
+        $query->orderBy('name');
     }
 
-    return $query->orderBy('name')
-        ->get()
+    return $query->get()
         ->map(fn($p) => [
             'value' => (string) $p->id,
             'label' => $p->name . ($p->city?->name ? " ({$p->city->name})" : ''),
+            'code' => $p->external_code !== null && $p->external_code !== ''
+                ? (string) $p->external_code
+                : null,
         ])
         ->all();
 };
@@ -3632,6 +3791,7 @@ $startMissingFieldEdit = function (string $orderId): void {
         'stopdesk_point' => 'startOrderStopdeskEdit',
         'delivery_address' => 'startOrderAddressEdit',
         'carrier' => 'startOrderProviderEdit',
+        'carrier_not_configured' => 'startOrderProviderEdit',
         default => null,
     };
 
@@ -3839,6 +3999,12 @@ $openEditModal = function (string $orderId): void {
             )
             ->toArray(),
     ];
+
+    // Single-company stores: the sole carrier is always the effective one.
+    if (blank($this->form['shipping_provider_id'] ?? null)) {
+        $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
+    }
+
     $this->formProductResults = [];
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
@@ -4228,7 +4394,7 @@ $submitEdit = function (): void {
                 <span
                     class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     <span class="font-semibold opacity-75">{{ __('merchant_panel.state') }}:</span>
-                    <span>{{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? $this->filters['wilaya'] }}</span>
+                    <span>{{ (collect($this->allStates)->firstWhere('id', $this->filters['wilaya']) ?? [])['state_code'] ?? '' }} {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? $this->filters['wilaya'] }}</span>
                     <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
@@ -4737,7 +4903,7 @@ $submitEdit = function (): void {
                                                             @foreach ($this->allStates as $st)
                                                                 <option value="{{ $st['id'] }}"
                                                                     @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
-                                                                    {{ $st['name'] }}
+                                                                    {{ $st['state_code'] ?? '' }} {{ $st['name'] }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
@@ -5897,7 +6063,10 @@ $submitEdit = function (): void {
                         @click="$wire.setFilter('wilaya', '{{ $st['id'] }}'); $wire.loadFilterCities('{{ $st['id'] }}')"
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : '' }}"
                         data-name="{{ $st['name'] }}">
-                        {{ $st['name'] }}
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="inline-flex items-center justify-center min-w-5 px-1 py-0.5 rounded bg-surface-tertiary text-text-muted text-[10px] font-semibold leading-none">{{ $st['state_code'] ?? '' }}</span>
+                            {{ $st['name'] }}
+                        </span>
                     </button>
                 @endforeach
             </div>

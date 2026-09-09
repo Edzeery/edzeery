@@ -139,4 +139,5 @@ return [
     'shipment_type_reset_for_carrier' => 'The selected shipment type is not supported by this carrier, so it was reset to delivery',
     'destination_reset_for_carrier' => 'The selected destination is not covered by this carrier, so it was cleared',
     'no_company_coverage' => 'No synced regions for this carrier yet — refresh offices to see them',
+    'no_home_coverage' => 'This company has no home-delivery price for this destination',
 ];

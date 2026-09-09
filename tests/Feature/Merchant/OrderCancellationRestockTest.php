@@ -77,6 +77,15 @@ function placeStopdeskOrder(Store $store, ProductVariant $variant, int $qty): Or
         'is_active' => true,
     ]);
 
+    $point = \App\Domains\Shipping\Models\StopdeskPoint::create([
+        'store_id' => $store->id,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'name' => 'RS Desk',
+        'address' => 'RS Road 1',
+        'is_active' => true,
+    ]);
+
     test()->artisan('view:clear');
     app(\App\Domains\Cart\Services\CartService::class)
         ->addItem($store->id, $variant->id, $qty);
@@ -87,6 +96,7 @@ function placeStopdeskOrder(Store $store, ProductVariant $variant, int $qty): Or
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
         ->set('delivery_type', 'stopdesk')
+        ->set('selectedStopdesk', (string) $point->id)
         ->set('payment_method', 'cod')
         ->call('submitOrder');
 

@@ -17,11 +17,27 @@
 
                     {{-- Delivery cascade — company → type → wilaya → city → office --}}
                     <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                    <x-edz.select wire:model="form.shipping_provider_id"
-                        wire:change="applyProviderScope($event.target.value)"
-                        :options="$this->allProviders" option-value="id" option-label="name"
-                        placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                        search :disabled="$loadingOffices" />
+                    @if (count($this->allProviders) > 1)
+                        <x-edz.select wire:model="form.shipping_provider_id"
+                            wire:change="applyProviderScope($event.target.value)"
+                            :options="$this->allProviders" option-value="id" option-label="name"
+                            placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
+                            search :disabled="$loadingOffices" class="edz-company-select" />
+                    @elseif (count($this->allProviders) === 1)
+                        @php $singleProvider = $this->allProviders[0]; @endphp
+                        <div data-edz-company-single
+                            class="edz-company-single flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-border bg-surface-secondary">
+                            <x-edz.icon name="truck" class="w-4 h-4 text-brand-600 shrink-0" />
+                            <span class="text-sm font-medium text-ink truncate">{{ $singleProvider['name'] }}</span>
+                            <span class="text-xs text-ink-muted shrink-0">{{ __('merchant_panel.default_provider') }}</span>
+                        </div>
+                    @else
+                        <x-edz.select wire:model="form.shipping_provider_id"
+                            wire:change="applyProviderScope($event.target.value)"
+                            :options="$this->allProviders" option-value="id" option-label="name"
+                            placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
+                            search :disabled="$loadingOffices" class="edz-company-select" />
+                    @endif
                     @error('form.shipping_provider_id')
                         <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                     @enderror
@@ -51,7 +67,7 @@
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                             <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                :options="$this->formAvailableStates !== [] ? $this->formAvailableStates : $this->allStates" option-value="id" option-label="name" placeholder="—"
+                                :options="$this->formAvailableStates !== [] ? $this->formAvailableStates : $this->allStates" option-value="id" option-label="name" option-code="state_code" placeholder="—"
                                 size="sm" search />
                             @if ($this->formCoverageHint)
                                 <p class="text-xs text-warning-500 mt-1">{{ __("order_flow.{$this->formCoverageHint}") }}</p>
@@ -78,7 +94,7 @@
                                 <label class="edz-label">{{ __('merchant_panel.office') }}</label>
                                 <x-edz.select wire:model="form.stopdesk_point_id"
                                     :options="$this->formOffices" option-value="value"
-                                    option-label="label" option-hint="hint"
+                                    option-label="label" option-hint="hint" option-code="code"
                                     placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
                                     search :disabled="$loadingOffices" />
                             </div>

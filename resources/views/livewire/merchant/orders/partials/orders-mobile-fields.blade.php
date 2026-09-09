@@ -114,7 +114,7 @@
     @if (in_array('stopdesk_point', $this->visibleColumns) && $showStopdeskHint)
         @if ($this->editingField === 'order.stopdesk_point' && $this->editingId === $orderId)
             <div class="edz-inline-edit__edit" wire:key="stopdesk-mobile-{{ $orderId }}">
-                <x-edz.select wire:model="editingValue" :options="$this->editStopdeskOptions" size="sm" search
+                <x-edz.select wire:model="editingValue" :options="$this->editStopdeskOptions" option-code="code" size="sm" search
                     placeholder="{{ __('merchant_panel.stop_desk_label') }}" />
                 <div class="edz-inline-edit__actions">
                     <button type="button" class="edz-inline-edit__save" wire:click="saveOrderStopdesk"

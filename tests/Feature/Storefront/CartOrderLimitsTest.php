@@ -295,7 +295,8 @@ test('stopdesk without a state shows visible guidance instead of failing silentl
         ->set('delivery_type', 'stopdesk')
         ->call('submitOrder');
 
-    $component->assertHasErrors(['state_id', 'city_id']);
+    // Stopdesk no longer requires a commune — only the wilaya is mandatory.
+    $component->assertHasErrors(['state_id']);
 
     // The guidance renders even though the desks list is empty.
     expect($component->html())->toContain(__('storefront.select_state_for_desks'));
@@ -357,7 +358,7 @@ test('stopdesk order with an active point succeeds and is linked', function () {
     expect($variant->fresh()->stock)->toBe(4);
 });
 
-test('desk choice is optional and the list is scoped to the commune with carrier labels', function () {
+test('desk choice is required and the list is scoped to the wilaya with carrier labels', function () {
     $country = Country::create(['name' => 'Communia', 'code' => 'CM', 'is_active' => true]);
     $state = State::create([
         'country_id' => $country->id,
@@ -400,7 +401,101 @@ test('desk choice is optional and the list is scoped to the commune with carrier
         'is_active' => true,
     ]);
 
-    // Same wilaya, different commune: must never be offered.
+    // Same wilaya, different commune: offered too (wilaya-wide picker).
+    $farDesk = \App\Domains\Shipping\Models\StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $otherCity->id,
+        'name' => 'Far Desk',
+        'address' => 'Far Road 9',
+        'is_active' => true,
+    ]);
+
+    colCheckout();
+
+    colCart($store)->addItem($store->id, $variant->id, 1);
+
+    $component = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('delivery_type', 'stopdesk')
+        ->set('state_id', (string) $state->id);
+
+    // The lazy dropdown no longer embeds the office list in the page; the
+    // carrier card still renders server-side.
+    $html = $component->html();
+    expect($html)->toContain('role="office-select"')
+        ->and($html)->toContain('data-lazy="1"')
+        ->and($html)->toContain('data-source="stopdeskSelectOptions"')
+        ->and($html)->toContain('Yalidine')
+        ->and($html)->not->toContain('Near Desk')
+        ->and($html)->not->toContain('Far Desk')
+        ->and($html)->not->toContain('role="city-select"');
+
+    // The on-open payload offers every office of the wilaya with the carrier.
+    $options = $component->instance()->stopdeskSelectOptions("s{$state->id}|p{$provider->id}");
+    expect($options)->toHaveCount(2)
+        ->and(array_column($options, 'value'))->toContain((string) $nearDesk->id, (string) $farDesk->id)
+        ->and(array_column($options, 'label'))->toContain('Near Desk', 'Far Desk');
+
+    // A stopdesk order without an office is now rejected (office is mandatory).
+    \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Desk Required Customer')
+        ->set('phone', '0555555555')
+        ->set('state_id', (string) $state->id)
+        ->set('delivery_type', 'stopdesk')
+        ->set('selectedStopdesk', '')
+        ->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertDispatched('edz-notice');
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('desk list offers every office of the wilaya, whatever its commune', function () {
+    $country = Country::create(['name' => 'Hubia', 'code' => 'HB', 'is_active' => true]);
+    $state = State::create([
+        'country_id' => $country->id,
+        'state_code' => 'HB-01',
+        'name' => 'Hub State',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    $city = City::create([
+        'state_id' => $state->id,
+        'name' => 'Hub Com',
+        'post_code' => '0000',
+        'is_active' => true,
+    ]);
+    $otherCity = City::create([
+        'state_id' => $state->id,
+        'name' => 'Hub Far',
+        'post_code' => '0001',
+        'is_active' => true,
+    ]);
+
+    $store = colStore();
+    $variant = colVariant($store, colProduct($store), 3);
+
+    $nearDesk = \App\Domains\Shipping\Models\StopdeskPoint::create([
+        'store_id' => $store->id,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'name' => 'Near Desk',
+        'address' => 'Near Road 1',
+        'is_active' => true,
+    ]);
+
+    // Same wilaya without a commune: offered under every commune of the wilaya.
+    $hubDesk = \App\Domains\Shipping\Models\StopdeskPoint::create([
+        'store_id' => $store->id,
+        'state_id' => $state->id,
+        'city_id' => null,
+        'name' => 'Wilaya Hub',
+        'address' => 'Hub Road 9',
+        'is_active' => true,
+    ]);
+
+    // Same wilaya, different commune: offered too.
     $farDesk = \App\Domains\Shipping\Models\StopdeskPoint::create([
         'store_id' => $store->id,
         'state_id' => $state->id,
@@ -416,37 +511,18 @@ test('desk choice is optional and the list is scoped to the commune with carrier
 
     $component = \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('delivery_type', 'stopdesk')
-        ->set('state_id', (string) $state->id)
-        ->set('city_id', (string) $city->id);
+        ->set('state_id', (string) $state->id);
 
+    // Like the carrier case, the office list is fetched lazily: the page only
+    // carries the wiring, the payload returns every office of the wilaya.
     $html = $component->html();
+    expect($html)->toContain('role="office-select"')
+        ->and($html)->toContain('data-lazy="1"')
+        ->and($html)->toContain('data-source="stopdeskSelectOptions"')
+        ->and($html)->not->toContain('Near Desk');
 
-    expect($html)->toContain((string) $nearDesk->id)
-        ->and($html)->toContain('Near Desk')
-        ->and($html)->toContain('Yalidine')
-        ->and($html)->not->toContain((string) $farDesk->id)
-        ->and($html)->not->toContain('Far Desk');
-
-    // Leaving the optional desk empty still completes a stopdesk order.
-    \Livewire\Volt\Volt::test('storefront.order-form')
-        ->set('name', 'Optional Desk Customer')
-        ->set('phone', '0555555555')
-        ->set('state_id', (string) $state->id)
-        ->set('city_id', (string) $city->id)
-        ->set('delivery_type', 'stopdesk')
-        ->set('selectedStopdesk', '')
-        ->set('payment_method', 'cod')
-        ->call('submitOrder')
-        ->assertHasNoErrors();
-
-    $order = Order::where('store_id', $store->id)->latest('id')->first();
-
-    expect($order?->delivery_type)->toBe('stopdesk')
-        ->and($order?->stopdesk_point_id)->toBeNull()
-        ->and($order?->shipping_provider_id)->toBeNull()
-        ->and($variant->fresh()->stock)->toBe(3);
-
-    // confirm → RESERVE
-    app(\App\Domains\Order\Services\OrderService::class)->confirm($order);
-    expect($variant->fresh()->stock)->toBe(2);
+    $options = $component->instance()->stopdeskSelectOptions("s{$state->id}|p");
+    expect($options)->toHaveCount(3)
+        ->and(array_column($options, 'value'))->toContain((string) $nearDesk->id, (string) $hubDesk->id, (string) $farDesk->id)
+        ->and(array_column($options, 'label'))->toContain('Near Desk', 'Wilaya Hub', 'Far Desk');
 });

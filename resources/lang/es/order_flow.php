@@ -133,4 +133,5 @@ return [
     'shipment_type_reset_for_carrier' => 'El tipo de envío seleccionado no es compatible con esta empresa, por lo que se restableció a entrega',
     'destination_reset_for_carrier' => 'El destino seleccionado no está cubierto por esta empresa, por lo que se eliminó',
     'no_company_coverage' => 'Aún no hay regiones sincronizadas para esta empresa — actualice las oficinas para verlas',
+    'no_home_coverage' => 'Esta empresa no tiene tarifa de entrega a domicilio para este destino',
 ];

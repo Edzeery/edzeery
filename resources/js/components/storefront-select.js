@@ -1,4 +1,4 @@
-export default function edzSelect(config) {
+export default function storefrontSelect(config) {
     return {
         open: false,
         highlighted: -1,
@@ -6,61 +6,51 @@ export default function edzSelect(config) {
         selected: null,
         _toggleBusy: false,
         _selectBusy: false,
+        loading: false,
+        lazy: config.lazy || false,
+        remoteSource: config.remoteSource || null,
+        remoteScope: config.remoteScope || null,
+        roundtrip: config.roundtrip || false,
+        _pendingAck: null,
+        _ackTimeout: null,
+        _remoteCache: new Map(),
+        _remoteReadyScope: null,
         openUpward: false,
         popupTop: 0,
         popupLeft: 0,
         popupWidth: 0,
         options: config.options || [],
-        backendOptions: [],
-        loading: false,
-        searchTimeout: null,
         searchable: config.searchable || false,
-        hasBackendSearch: config.hasBackendSearch || false,
-        searchMinChars: config.searchMinChars || 2,
-        wireMethodName: config.wireMethodName || null,
         modelName: config.modelName || null,
-        lazy: config.lazy || false,
-        roundtrip: config.roundtrip || false,
-        remoteSource: config.remoteSource || null,
-        remoteScope: config.remoteScope || null,
-        loadingLabel: config.loadingLabel || 'Loading...',
-        _pendingAck: null,
-        _ackTimeout: null,
-        _remoteCache: new Map(),
-        _remoteReadyScope: null,
-
-        get labelForType() {
-            // Backend live-search has its own apt wording; lazy fetches are a
-            // plain "loading" state.
-            return (this.lazy && this.remoteSource) ? this.loadingLabel : 'Searching...';
-        },
+        placeholderLabel: config.placeholderLabel || '',
+        _syncObserver: null,
 
         get allOptions() {
-            return [...this.options, ...this.backendOptions];
+            return this.options;
         },
 
         get filteredOptions() {
-            if (!this.searchable || this.query.trim() === '') return this.allOptions;
+            if (!this.searchable || this.query.trim() === '') return this.options;
             const q = this.query.toLowerCase();
-            return this.allOptions.filter(o =>
+            return this.options.filter(o =>
                 (o.code && o.code.toLowerCase().includes(q)) ||
-                o.label.toLowerCase().includes(q) ||
+                (o.label || '').toLowerCase().includes(q) ||
                 (o.hint && o.hint.toLowerCase().includes(q))
             );
         },
 
         get currentLabel() {
-            const opt = this.allOptions.find(o => o.value === this.selected);
+            const opt = this.options.find(o => o.value === this.selected);
             return opt ? opt.label : null;
         },
 
         get currentHint() {
-            const opt = this.allOptions.find(o => o.value === this.selected);
+            const opt = this.options.find(o => o.value === this.selected);
             return opt && opt.hint ? opt.hint : null;
         },
 
         get currentCode() {
-            const opt = this.allOptions.find(o => o.value === this.selected);
+            const opt = this.options.find(o => o.value === this.selected);
             return opt && opt.code ? opt.code : null;
         },
 
@@ -69,7 +59,7 @@ export default function edzSelect(config) {
             const isMobile = window.innerWidth < 640;
             if (isMobile) {
                 const w = Math.min(480, window.innerWidth - 16);
-                return `position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:${w}px;z-index:70;border-radius:var(--edz-radius-2xl) var(--edz-radius-2xl) 0 0;max-height:60vh;`;
+                return `position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:${w}px;z-index:70;max-height:60vh;border-radius:1rem 1rem 0 0;`;
             }
             const s = `position:fixed;z-index:70;width:${this.popupWidth}px;`;
             if (this.openUpward) {
@@ -88,8 +78,6 @@ export default function edzSelect(config) {
                     this.open = false;
                 }
             };
-            // Reposition the fixed panel while it stays open: the trigger may
-            // move when the modal body scrolls or the window resizes.
             this._repositionHandler = () => {
                 if (this.open && window.innerWidth >= 640) {
                     this.updatePosition();
@@ -101,12 +89,6 @@ export default function edzSelect(config) {
             this._syncFromServer();
         },
 
-        // Livewire v3 keeps the bound model path inside component.reactive, the
-        // JS mirror of the server state. Read it once at mount, then watch it:
-        // the mirror is mutated after every round-trip, so the trigger label and
-        // the selected check follow whatever the server persisted (numeric-safe
-        // via String()). This is the real v3 primitive — the old fake listener
-        // (livewire:updated) never fired because Livewire ships no such event.
         _bindServerValue() {
             if (!this.modelName || !this.$wire) return;
 
@@ -130,7 +112,7 @@ export default function edzSelect(config) {
             } catch (e) {}
         },
 
-        // Livewire applies the picked value to the bound property on the next
+        // Livewire will apply the picked value to the bound property on the next
         // round-trip; until then the trigger stays locked with a spinner so a
         // fast second tap cannot fire a second, racing request. Any server data
         // change on the model counts as the ack — re-picking the same option is
@@ -157,7 +139,10 @@ export default function edzSelect(config) {
         },
 
         _scope() {
-            return this.remoteScope || '';
+            if (this.remoteScope !== null && this.remoteScope !== undefined && this.remoteScope !== '') {
+                return this.remoteScope;
+            }
+            return '';
         },
 
         _onScopeChanged() {
@@ -183,6 +168,7 @@ export default function edzSelect(config) {
                 label: String(raw?.label ?? raw?.name ?? raw),
                 hint: raw?.hint ?? null,
                 code: raw?.code ?? null,
+                extra: Array.isArray(raw?.extra) ? raw.extra.map(String) : [],
             };
         },
 
@@ -230,12 +216,6 @@ export default function edzSelect(config) {
             }
         },
 
-        // Livewire morphs re-render this element in place: the option list
-        // (data-options) and the wire:model value (hidden input `value` attr)
-        // change on the DOM but Alpine state would otherwise stay stale, so the
-        // selected check, the trigger label and the re-built option list would
-        // never reflect the server. Resync from those attributes whenever they
-        // change instead of relying on a (not guaranteed) remount.
         _syncFromServer() {
             if (typeof window.MutationObserver === 'undefined') return;
 
@@ -247,7 +227,7 @@ export default function edzSelect(config) {
                 // authoritative and morphing the seed must not clobber it.
                 if (this.lazy && this._remoteReadyScope === this._scope()) return;
                 const raw = this.$el?.getAttribute('data-options');
-                if (!raw) return;
+                if (! raw) return;
                 try {
                     this.options = JSON.parse(raw);
                 } catch (e) {}
@@ -302,7 +282,7 @@ export default function edzSelect(config) {
 
         toggle() {
             if (this._toggleBusy) return;
-            if (this.$el.querySelector('.edz-select__trigger')?.disabled) return;
+            if (this.$el.querySelector('.sf-select__trigger')?.disabled) return;
             this._toggleBusy = true;
             setTimeout(() => { this._toggleBusy = false; }, 150);
 
@@ -316,7 +296,6 @@ export default function edzSelect(config) {
 
             this.open = true;
             this.query = '';
-            this.backendOptions = [];
             this.highlighted = this.allOptions.findIndex(o => o.value === this.selected);
             this.updatePosition();
             this.$nextTick(() => {
@@ -335,8 +314,7 @@ export default function edzSelect(config) {
             const trigger = this.$refs.trigger;
             if (!trigger) return;
             const rect = trigger.getBoundingClientRect();
-            const isMobile = window.innerWidth < 640;
-            if (isMobile) return;
+            if (window.innerWidth < 640) return;
 
             this.popupWidth = rect.width;
             this.popupLeft = rect.left;
@@ -380,40 +358,6 @@ export default function edzSelect(config) {
                     }
                 }
             });
-        },
-
-        onQueryChange() {
-            this.highlighted = this.filteredOptions.length > 0 ? 0 : -1;
-            if (!this.hasBackendSearch || !this.wireMethodName) return;
-
-            clearTimeout(this.searchTimeout);
-            const q = this.query.trim();
-            if (q.length < this.searchMinChars) {
-                this.backendOptions = [];
-                return;
-            }
-            const localResults = this.options.filter(o =>
-                o.label.toLowerCase().includes(q) ||
-                (o.hint && o.hint.toLowerCase().includes(q))
-            );
-            if (localResults.length > 0) {
-                this.backendOptions = [];
-                return;
-            }
-            this.loading = true;
-            this.searchTimeout = setTimeout(() => {
-                this.$wire.call(this.wireMethodName, q)
-                    .then(results => {
-                        this.backendOptions = (results || []).map(r => ({
-                            value: String(r.value ?? r.id ?? r),
-                            label: r.label ?? r.name ?? String(r),
-                            hint: r.hint ?? null,
-                        }));
-                        this.loading = false;
-                        this.highlighted = this.filteredOptions.length > 0 ? 0 : -1;
-                    })
-                    .catch(() => { this.loading = false; });
-            }, 300);
         },
 
         moveHighlight(delta) {

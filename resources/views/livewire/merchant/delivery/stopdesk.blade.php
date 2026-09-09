@@ -5,6 +5,7 @@ use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
+use Illuminate\Support\Facades\Log;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -12,19 +13,32 @@ use function Livewire\Volt\state;
 layout('components.layouts.store');
 
 state([
-    'stopdeskPoints' => [],
+    'providers' => [],
     'states' => [],
     'cities' => [],
+
+    // Sidebar selection
+    'selectedProviderId' => null,
+
+    // Offices grouped by state for the selected provider,
+    // keyed by state id or '__unassigned__' when a point has no wilaya yet.
+    'pointsByState' => [],
+    'stateRows' => [],
 
     // Carrier office sync
     'syncCandidates' => [],
     'selectedSyncProviderId' => '',
     'syncing' => false,
 
+    // State offices popup
+    'showOfficesPopup' => false,
+    'popupStateId' => null,
+    'popupStateName' => '',
+    'popupOffices' => [],
+
     // Stopdesk modal
     'showStopdeskModal' => false,
     'editingStopdeskId' => null,
-    'providers' => [],
     'stopdeskForm' => [
         'shipping_provider_id' => '',
         'state_id' => '',
@@ -40,24 +54,49 @@ mount(function (): void {
     abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value) ||
         canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
-    $this->states = State::orderBy('name')->get(['id', 'name'])->toArray();
+    $this->states = State::active()
+        ->orderedByCode()
+        ->get(['id', 'name', 'state_code'])
+        ->toArray();
+
     $this->loadData();
 });
+
+$providerHasIntegration = function (ShippingProvider $provider): bool {
+    $code = $provider->carrier?->code;
+
+    if (! $code) {
+        return false;
+    }
+
+    $adapterClass = config(
+        "delivery.carrier_integrations.{$code}",
+        config('delivery.carrier_integrations.*'),
+    );
+
+    return $adapterClass && class_exists($adapterClass);
+};
 
 $loadData = function (): void {
     $storeId = currentStoreId();
 
-    $this->providers = ShippingProvider::where('store_id', $storeId)
+    $this->providers = ShippingProvider::with('carrier')
+        ->where('store_id', $storeId)
+        ->withCount('stopdeskPoints')
         ->orderBy('name')
         ->get()
-        ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])
+        ->map(fn (ShippingProvider $p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'carrier' => $p->carrier?->name,
+            'is_integrated' => $this->providerHasIntegration($p),
+            'points_count' => $p->stopdesk_points_count,
+        ])
         ->all();
 
-    $this->syncCandidates = ShippingProvider::with('carrier')
-        ->where('store_id', $storeId)
-        ->get()
-        ->filter(fn ($p) => $p->carrier && config("delivery.carrier_integrations.{$p->carrier->code}", null))
-        ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])
+    $this->syncCandidates = collect($this->providers)
+        ->filter(fn ($p) => $p['is_integrated'])
+        ->map(fn ($p) => ['id' => $p['id'], 'name' => $p['name']])
         ->values()
         ->all();
 
@@ -65,20 +104,77 @@ $loadData = function (): void {
         $this->selectedSyncProviderId = '';
     }
 
-    $this->stopdeskPoints = StopdeskPoint::where('store_id', $storeId)
-        ->with('provider', 'state', 'city')
+    if ($this->selectedProviderId && ! collect($this->providers)->contains('id', $this->selectedProviderId)) {
+        $this->selectedProviderId = null;
+        $this->pointsByState = [];
+        $this->stateRows = [];
+    }
+
+    if ($this->selectedProviderId) {
+        $this->loadPoints($this->selectedProviderId);
+    }
+};
+
+$loadPoints = function (string $providerId): void {
+    $points = StopdeskPoint::where('store_id', currentStoreId())
+        ->where('shipping_provider_id', $providerId)
+        ->with('state', 'city')
         ->orderBy('name')
         ->get()
         ->map(fn (StopdeskPoint $point) => array_merge($point->toArray(), [
             'synced' => filled($point->external_code),
-        ]))
+        ]));
+
+    $this->pointsByState = $points
+        ->groupBy(fn ($point) => $point['state_id'] ? (string) $point['state_id'] : '__unassigned__')
+        ->map(fn ($group) => $group->values()->all())
         ->all();
+
+    $this->stateRows = collect($this->pointsByState)
+        ->map(function ($group, $stateKey) {
+            $group = collect($group);
+
+            return [
+                'key' => $stateKey,
+                'name' => $stateKey === '__unassigned__'
+                    ? __('merchant_panel.stopdesk_unassigned')
+                    : (collect($this->states)->firstWhere('id', $stateKey)['name'] ?? __('merchant_panel.stopdesk_unassigned')),
+                'code' => $stateKey === '__unassigned__'
+                    ? null
+                    : (collect($this->states)->firstWhere('id', $stateKey)['state_code'] ?? null),
+                'count' => $group->count(),
+                'synced_count' => $group->where('synced')->count(),
+            ];
+        })
+        ->values()
+        ->sortBy('name')
+        ->values()
+        ->all();
+};
+
+$selectProvider = function (string $providerId): void {
+    if (! collect($this->providers)->contains('id', $providerId)) {
+        return;
+    }
+
+    $this->selectedProviderId = $providerId;
+
+    if (collect($this->syncCandidates)->contains('id', $providerId)) {
+        $this->selectedSyncProviderId = $providerId;
+    }
+
+    $this->loadPoints($providerId);
 };
 
 $syncStopdesk = function (): void {
     abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+
     if (! $this->selectedSyncProviderId) {
-        return;
+        if ($this->selectedProviderId && collect($this->syncCandidates)->contains('id', $this->selectedProviderId)) {
+            $this->selectedSyncProviderId = (string) $this->selectedProviderId;
+        } else {
+            return;
+        }
     }
 
     $this->syncing = true;
@@ -87,7 +183,7 @@ $syncStopdesk = function (): void {
         $provider = ShippingProvider::with('carrier')->where('store_id', currentStoreId())
             ->findOrFail($this->selectedSyncProviderId);
 
-        if (! $provider->carrier || ! config("delivery.carrier_integrations.{$provider->carrier->code}", null)) {
+        if (! $provider->carrier || ! $this->providerHasIntegration($provider)) {
             $this->dispatch('swal', type: 'error', title: __('merchant_panel.sync_no_adapter'));
             return;
         }
@@ -102,7 +198,7 @@ $syncStopdesk = function (): void {
             $this->dispatch('swal', type: 'info', title: __('merchant_panel.stopdesk_sync_empty'));
         }
     } catch (\Throwable $e) {
-        \Illuminate\Support\Facades\Log::warning('stopdesk sync failed: ' . $e->getMessage());
+        Log::warning('stopdesk sync failed: ' . $e->getMessage());
         $this->dispatch('swal', type: 'error', title: __('merchant_panel.stopdesk_sync_error'));
     } finally {
         $this->syncing = false;
@@ -117,7 +213,37 @@ $watchState = function (string $stateId): void {
     $this->stopdeskForm['city_id'] = '';
 };
 
-$openStopdeskModal = function (?string $stopdeskId = null): void {
+$openOfficesPopup = function (string $stateKey): void {
+    if (! $this->selectedProviderId) {
+        return;
+    }
+
+    if ($stateKey === '__unassigned__') {
+        $this->popupStateName = __('merchant_panel.stopdesk_unassigned');
+    } else {
+        $state = State::find($stateKey);
+        if (! $state) {
+            return;
+        }
+        $this->popupStateName = $state->name;
+    }
+
+    $this->popupStateId = $stateKey;
+    $this->popupOffices = $this->pointsByState[$stateKey] ?? [];
+    $this->showOfficesPopup = true;
+};
+
+$closeOfficesPopup = function (): void {
+    $this->showOfficesPopup = false;
+    $this->popupStateId = null;
+    $this->popupStateName = '';
+    $this->popupOffices = [];
+};
+
+$openStopdeskModal = function (?string $stopdeskId = null, ?string $defaultStateId = null): void {
+    // The state-offices popup stays open: the office modal renders on top (it is
+    // included later in the DOM with the same z-index) so the user keeps their
+    // context and the popup list refreshes right after save/delete.
     if ($stopdeskId) {
         $point = StopdeskPoint::where('store_id', currentStoreId())->findOrFail($stopdeskId);
         $this->editingStopdeskId = $point->id;
@@ -136,16 +262,19 @@ $openStopdeskModal = function (?string $stopdeskId = null): void {
     } else {
         $this->editingStopdeskId = null;
         $this->stopdeskForm = [
-            'shipping_provider_id' => '',
-            'state_id' => '',
+            'shipping_provider_id' => $this->selectedProviderId ?? '',
+            'state_id' => $defaultStateId ?? '',
             'city_id' => '',
             'name' => '',
             'address' => '',
             'phone' => '',
             'is_active' => true,
         ];
-        $this->cities = [];
+        $this->cities = $defaultStateId
+            ? City::where('state_id', $defaultStateId)->orderBy('name')->get(['id', 'name'])->toArray()
+            : [];
     }
+
     $this->showStopdeskModal = true;
 };
 
@@ -179,13 +308,24 @@ $saveStopdesk = function (): void {
 
     $this->showStopdeskModal = false;
     $this->loadData();
+
+    if ($this->showOfficesPopup && $this->popupStateId) {
+        $this->popupOffices = $this->pointsByState[$this->popupStateId] ?? [];
+    }
+
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.stopdesk_saved'));
 };
 
 $deleteStopdesk = function (string $id): void {
     abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
     StopdeskPoint::where('store_id', currentStoreId())->findOrFail($id)->delete();
+
     $this->loadData();
+
+    if ($this->showOfficesPopup && $this->popupStateId) {
+        $this->popupOffices = $this->pointsByState[$this->popupStateId] ?? [];
+    }
+
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.stopdesk_deleted'));
 };
 ?>
@@ -195,126 +335,88 @@ $deleteStopdesk = function (string $id): void {
         description="{{ __('merchant_panel.tab_stopdesk_desc') }}">
     </x-edz.page-header>
 
-    <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-ink-muted">{{ __('merchant_panel.pickup_points_desc') }}</p>
-        @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
-            <button wire:click="openStopdeskModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                <x-edz.icon name="plus" class="w-4 h-4" />
-                {{ __('merchant_panel.new_stopdesk') }}
-            </button>
-        @endif
-    </div>
-
-    @if (! empty($syncCandidates))
-        <div class="edz-card edz-card--padded mb-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.stopdesk_sync_title') }}</p>
-                    <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.stopdesk_sync_desc') }}</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <select wire:model="selectedSyncProviderId"
-                        class="edz-input text-sm w-48 max-w-full">
-                        <option value="">{{ __('merchant_panel.stopdesk_sync_select') }}</option>
-                        @foreach ($syncCandidates as $candidate)
-                            <option value="{{ $candidate['id'] }}">{{ $candidate['name'] }}</option>
-                        @endforeach
-                    </select>
-                    <button type="button" wire:click="syncStopdesk"
-                        class="edz-btn edz-btn--primary edz-btn--sm"
-                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
-                        wire:target="syncStopdesk"
-                        @disabled(! $selectedSyncProviderId)>
-                        <x-edz.spinner wire:target="syncStopdesk" />
-                        <span wire:loading.remove wire:target="syncStopdesk">
-                            <x-edz.icon name="arrow-path" class="w-4 h-4" />
-                        </span>
-                        <span>{{ $syncing ? __('merchant_panel.syncing_rates') : __('merchant_panel.stopdesk_sync_button') }}</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    @if (!empty($stopdeskPoints))
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            @foreach ($stopdeskPoints as $point)
-                <div wire:key="stopdesk-{{ $point['id'] }}" class="edz-card edz-card--padded">
-                    <div class="flex items-start justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-11 h-11 rounded-xl bg-info-surface flex items-center justify-center">
-                                <x-edz.icon name="map-pin" class="w-5 h-5 text-info-500" />
-                            </div>
-                            <div>
-                                <p class="font-semibold text-ink">{{ $point['name'] }}</p>
-                                <p class="text-xs text-ink-muted">{{ $point['provider']['name'] ?? '—' }}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            @if ($point['synced'] ?? false)
-                                <span class="edz-badge edz-badge--info">
-                                    <x-edz.icon name="check-circle" class="w-3.5 h-3.5" />
-                                    {{ __('merchant_panel.stopdesk_synced') }}
-                                </span>
-                            @endif
-                            <span class="{{ $point['is_active'] ? 'edz-badge edz-badge--success' : 'edz-badge edz-badge--neutral' }}">
-                                {{ $point['is_active'] ? __('merchant_panel.stopdesk_active') : __('merchant_panel.stopdesk_inactive') }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1.5 text-sm text-ink-muted">
-                        @if ($point['state'] || $point['city'])
-                            <p class="flex items-center gap-1.5">
-                                <x-edz.icon name="map-pin" class="w-3.5 h-3.5" />
-                                {{ $point['state']['name'] ?? '' }}{{ $point['city'] ? ' — ' . $point['city']['name'] : '' }}
-                            </p>
-                        @endif
-                        @if ($point['address'])
-                            <p class="flex items-center gap-1.5">
-                                <x-edz.icon name="home" class="w-3.5 h-3.5" />
-                                {{ $point['address'] }}
-                            </p>
-                        @endif
-                        @if ($point['phone'])
-                            <p class="flex items-center gap-1.5" dir="ltr">
-                                <x-edz.icon name="phone" class="w-3.5 h-3.5" />
-                                <span class="text-start">{{ $point['phone'] }}</span>
-                            </p>
-                        @endif
-                    </div>
-
-                    @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
-                        <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-surface-border">
-                            <button type="button" aria-label="{{ __('merchant_panel.edit_stopdesk') }}"
-                                    wire:click="openStopdeskModal('{{ $point['id'] }}')"
-                                    class="edz-btn edz-btn--ghost edz-btn--sm">
-                                <x-edz.icon name="edit" class="w-4 h-4" />
-                            </button>
-                            <button type="button" aria-label="{{ __('merchant_panel.confirm_delete_stopdesk') }}"
-                                    class="edz-btn edz-btn--ghost edz-btn--sm text-danger-500"
-                                    x-data
-                                    x-on:click.prevent="(async () => { if (await EdzSwal.confirmDelete()) await $wire.deleteStopdesk('{{ $point['id'] }}') })()">
-                                <x-edz.icon name="trash" class="w-4 h-4" />
-                            </button>
-                        </div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
-    @else
+    @if (empty($providers))
         <div class="edz-card p-12 text-center">
             <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">
                 <x-edz.icon name="map-pin" class="w-8 h-8 text-ink-muted opacity-40" />
             </div>
-            <p class="text-ink-muted mb-4">{{ __('merchant_panel.no_stopdesk_yet') }}</p>
-            @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
-                <button wire:click="openStopdeskModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                    <x-edz.icon name="plus" class="w-4 h-4" />
-                    {{ __('merchant_panel.new_stopdesk') }}
-                </button>
-            @endif
+            <p class="text-ink-muted">{{ __('merchant_panel.no_providers_yet') }}</p>
         </div>
+    @else
+        <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5 items-start">
+
+            {{-- Companies side list --}}
+            @include('livewire.merchant.delivery.partials.stopdesk-provider-sidebar', [
+                'providers' => $providers,
+                'selectedProviderId' => $selectedProviderId,
+            ])
+
+            {{-- Main panel --}}
+            <section>
+                @if (! $selectedProviderId)
+                    <div class="edz-card p-12 text-center">
+                        <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">
+                            <x-edz.icon name="map-pin" class="w-8 h-8 text-ink-muted opacity-40" />
+                        </div>
+                        <p class="text-ink-muted">{{ __('merchant_panel.select_company_hint_offices') }}</p>
+                    </div>
+                @else
+                    @php $currentProvider = collect($providers)->firstWhere('id', $selectedProviderId); @endphp
+
+                    {{-- Company header: title + manual add + carrier sync --}}
+                    <div class="edz-card edz-card--padded mb-4">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div class="flex items-start gap-3">
+                                <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center shrink-0">
+                                    <x-edz.icon name="map-pin" class="w-5 h-5 text-brand-500" />
+                                </div>
+                                <div>
+                                    <h2 class="font-semibold text-ink">{{ $currentProvider['name'] ?? '' }}</h2>
+                                    <p class="text-sm text-ink-muted">{{ __('merchant_panel.stopdesk_provider_desc') }}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
+                                    <button wire:click="openStopdeskModal"
+                                        class="edz-btn edz-btn--primary edz-btn--sm">
+                                        <x-edz.icon name="plus" class="w-4 h-4" />
+                                        {{ __('merchant_panel.new_stopdesk') }}
+                                    </button>
+                                @endif
+                                @if (($currentProvider['is_integrated'] ?? false))
+                                    <button type="button" wire:click="syncStopdesk"
+                                        class="edz-btn edz-btn--ghost edz-btn--sm"
+                                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                                        wire:target="syncStopdesk">
+                                        <x-edz.spinner wire:target="syncStopdesk" />
+                                        <span wire:loading.remove wire:target="syncStopdesk">
+                                            <x-edz.icon name="arrow-path" class="w-4 h-4" />
+                                        </span>
+                                        <span>{{ $syncing ? __('merchant_panel.syncing_rates') : __('merchant_panel.stopdesk_sync_button') }}</span>
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Offices grid grouped by state --}}
+                    @include('livewire.merchant.delivery.partials.stopdesk-state-grid', [
+                        'stateRows' => $stateRows,
+                        'selectedProviderId' => $selectedProviderId,
+                    ])
+                @endif
+            </section>
+        </div>
+    @endif
+
+    {{-- ============ STATE OFFICES POPUP ============ --}}
+    @if ($showOfficesPopup)
+        @include('livewire.merchant.delivery.partials.stopdesk-offices-popup', [
+            'popupStateName' => $popupStateName,
+            'popupStateId' => $popupStateId,
+            'popupOffices' => $popupOffices,
+            'selectedProviderId' => $selectedProviderId,
+        ])
     @endif
 
     {{-- ============ STOPDESK MODAL ============ --}}
@@ -355,7 +457,8 @@ $deleteStopdesk = function (string $id): void {
                             <label class="edz-label">{{ __('merchant_panel.state') }} *</label>
                             <x-edz.select wire:model="stopdeskForm.state_id"
                                 wire:change="watchState($event.target.value)"
-                                :options="collect($states)->map(fn ($s) => ['value' => $s['id'], 'label' => $s['name']])->all()"
+                                :options="collect($states)->map(fn ($s) => ['value' => $s['id'], 'label' => $s['name'], 'code' => $s['state_code'] ?? null])->all()"
+                                option-code="code"
                                 placeholder="—" size="sm" search />
                             @error('stopdeskForm.state_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>

@@ -53,4 +53,15 @@ class State extends Model
     {
         return $query->where('is_cod_available', true);
     }
+
+    /**
+     * Order wilayas by their numeric code (01, 02, …, 58) instead of name, so
+     * every state picker in the project lists the wilayas in national order.
+     * state_code is a zero-padded char(2), so a plain column order == numeric
+     * order and stays portable (no MySQL/SQLite-specific ltrim/CAST tricks).
+     */
+    public function scopeOrderedByCode($query)
+    {
+        return $query->orderBy('state_code')->orderBy('name');
+    }
 }

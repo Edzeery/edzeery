@@ -953,10 +953,150 @@ git rm "it" "prepareBindings(\$bindings)"
 ### المدى الكلي
 | | الخط الأساس (قبل العنقود) | الآن | الدلتا |
 |---|---|---|---|
-| اختبارات | 479 | **497** | +12 (بنود أ–ز) |
-| تأكيدات | 1712 | **1770** | +58 |
+| اختبارات | 497 | **513** | +16 (بنود أ–ز) |
+| تأكيدات | 1770 | **1810** | +40 |
 | انحدار | 0 | **0** (جولة كاملة نظيفة) | — |
 
-> **ملاحظة تنفيذية:** فشل `OrderOfficeSelectionTest` العابر «rename Access is denied on storage/framework/views» هو قفل ويندوز معروف أثناء compile blade — يُعاد التشغيل فقط (اجتاز 18/19 + تِمّ في العزل 8/8). سبب فشل اختبار العزل في `SyncStopdeskOfficesJobTest` السابق: كان قد تُرك الاستجابة الوهمية في الملف بمدخل واحد فقط أثناء جلسة تصحيح — استُعيد المدخلان.
+> **ملاحظة تنفيذية:** فشل `OrderOfficeSelectionTest` العابر «rename Access is denied on storage/framework/views» هو قفل ويندوز معروف أثناء compile blade — يُعاد التشغيل فقط (اجتاز 18/19 + تِمّ في العزل 8/8). سبب فشل اختبار العزل في `SyncStopdeskOfficesJobTest` السابق: كان قد تُرك الاستجابة الوهمية في الملف بمدخل واحد فقط أثناء جلسة تصحيح — استُعيد المدخلان. وسبقًا كان `OrderInlineFieldEditTest` (513) «badge jumps to carrier editor لطلب confirmed بلا شركة» يفشل لأن مفتاح `carrier_not_configured` الجديد (أول أقفال الإرسال على مستوى المتجر) لم يكن معيّنًا في `startMissingFieldEdit` — أُضيف تعيينه إلى `startOrderProviderEdit` (لا فتح المودال) — ثم اجتاز السويت كاملة.
 >
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — مفتاح الشركة الشامل في صفحة الأسعار المعلنة (enabled/mixed/disabled)، شارة «لا أسعار بعد»، خيارات مكاتب الإرسال بلا نقاط خارج الولاية/البلدية، توست ملاحظة السعر عند إرسال طلبية بلا سعر معلن، وزر مزامنة نقاط الاستلام بعد حفظ شركة carrier.
+
+---
+
+## إعادة تصميم صفحة نقاط الاستلام `/merchant/delivery/stopdesk` (سبتمبر 2026) ✅
+
+**خطة وافق عليها المستخدم صراحةً («موافقة — ننفذ الخطة كاملة») — نُفّذت كاملة بأدلة قابلة للقياس.**
+
+### بنية جديدة (نمط `announced-rates.blade.php`)
+- شريط جانبي 260px للشركات + شبكة ولايات بعدد المكاتب (`grid lg:grid-cols-[260px_1fr]`)؛ على الجوال الشريط يتكدس فوق اللوحة مع تمرير أفقي.
+- `stopdesk.blade.php` أعيدت كتابته كملف تركيب رفيع (نفس اسم المكوّن `merchant.delivery.stopdesk`) يستدعي 3 partials:
+  - `partials/stopdesk-provider-sidebar.blade.php` (أزرار الشركات + carrier subtitle + شارة synced اختيارية + badge count).
+  - `partials/stopdesk-state-grid.blade.php` — صفوف ولايات (State/Offices/Actions)؛ تُعرض فقط الولايات التي لديها مكاتب.
+  - `partials/stopdesk-offices-popup.blade.php` — نافذة xl بقائمة مكاتب الولاية مع شارة «Syncdesk synced» لكل مكتب (عبر `external_code`) + تعديل/حذف + زر إضافة مسبق التعبئة.
+- **زر المزامنة:** داخل لوحة الشركة فقط إذا وُجد `config("delivery.carrier_integrations.{code}")` + `class_exists` (نمط `hasIntegrationAdapter` في `providers.blade.php`) — بلا عمود قدرة جديد. **زر «إضافة مكتب» اليدوي:** داخل لوحة الشركة المختارة فقط مع تعبئة `shipping_provider_id` مسبقًا.
+- **ولاية بلا مكاتب مُزامَنة لا تظهر في الشبكة** لشركة ذات تكامل API حتى تُزامن (قرار المستخدم أ) — المزامنة العامة في رأس لوحة الشركة.
+
+### تحسين مُكتشَف أثناء التنفيذ (ربط الولاية/البلدية تلقائيًا)
+- `StopdeskOfficeSync::sync($provider)` بلا فلتر ولاية كان يُبقي `state_id=null` لكل المكاتب → لا يمكن عرضها في شبكة الولايات.
+- `stateByDeskCode()` جديد: كود مكتب NOEST هو رقم الولاية (مثل '16' أو '34B') و`state_code` مخزن `char(2)` بصفر بادئ → مطابقة عبر `ltrim(state_code,'0') = (string)(int)$deskCode` ثم `resolveCityId(commune, officeState)` — فيُقسم عداد كل ولاية بعد مزامنة كاملة.
+- `DeliverySettingsTest` (14/14) يعتمد `openStopdeskModal`/`saveStopdesk`/`deleteStopdesk`/`assertSee(tab_stopdesk)` — المحفوظ بالكامل. `SyncNoestTrackingJob` يستخدم `resolve()` فقط (لا `sync()`) — غير متأثر.
+- توافق الاختبارات: أُبقي `syncCandidates`/`selectedSyncProviderId`/`syncStopdesk`/مفتاح `synced`؛ حُذف `stopdeskPoints` المسطّح لصالح `pointsByState` (groupBy `__unassigned__`) و`stateRows`؛ `openStopdeskModal(?string $stopdeskId = null, ?string $defaultStateId = null)` يغلق popup المكاتب عند فتح المودال (منع تكدس الطبقات).
+- Fixtures: `sdEnv()` لا تزرع الولايات (المكاتب المُزامَنة تذهب لـ`__unassigned__`)؛ `noestGeography()` تنشئ State16 بالكود '16'.
+- ترجمات ×4 (بعد `sync_no_adapter`): `no_providers_yet`/`select_company_hint_offices`/`stopdesk_provider_desc`/`stopdesk_offices`/`stopdesk_manage_offices`/`stopdesk_unassigned`/`stopdesk_no_offices`/`stopdesk_no_offices_desc`.
+
+### الأدلة
+- `tests/Feature/Merchant/StopdeskSyncUiTest.php` أُعيدت كتابته (4/4): sidebar يعدّد كل الشركات بينما sync يستهدف carrier-backed فقط؛ شارة synced داخل popup عبر `openOfficesPopup`؛ upsert بعد sync مع فحص `pointsByState.__unassigned__`؛ info بلا credentials.
+- `tests/Feature/Merchant/NoestIntegrationTest.php` + اختبار «full sync without a state filter assigns the wilaya and commune from the desk code» (state_id=state16 و city_id=city16 عبر الكود '16').
+- Lint نظيف: `StopdeskOfficeSync.php` + ملفات اللغة الأربعة + الاختبارات الثلاثة.
+
+### المدى الكلي
+| | الخط الأساس (قبل العنقود) | الآن | الدلتا |
+|---|---|---|---|
+| اختبارات | 513 | **517** | +4 (إعادة تصميم stopdesk) |
+| تأكيدات | 1810 | **1825** | +15 |
+| انحدار | 0 | **0** (جولة كاملة 517/517 نظيفة) | — |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — تكدس الشريط الجانبي فوق اللوحة، شبكة الولايات وعداداتها بعد مزامنة كاملة، نافذة مكاتب الولاية + المودال فوقها (قرار أ)، وزر المزامنة/الإضافة داخل لوحة الشركة فقط.
+
+---
+
+## إصلاحات حرجة `/delivery/stopdesk` (سبتمبر 2026) ✅
+
+**خطة وافق عليها المستخدم صراحةً («أوافق — نفذ الخطة» + 3 قرارات: مكاتب الولاية ضمن كل بلدية / إصلاح فقدان النافذة / providers بلا فرع) — نُفّذت P1→P2→P3 بأدلة قابلة للقياس.**
+
+### P1 — مكاتب الولاية ضمن كل بلدية (المرافئ الثلاثة + محرر inline)
+- **الشرط:** مكتب بلا بلدية (`city_id IS NULL`) ضمن ولاية المختارة يظل قابلاً للعرض تحت كل بلدية بالولاية، بعد أن كانت `city_id = X` الصارمة تُسقطه (سبب «يتعذر جلب مكاتب لكل بلدية»). مكتب بلدية أخرى من نفس الولاية يبقى مستبعدًا.
+- **المواضع:** `rebuildFormOffices` (orders/index) + `inlineStopdeskOptions` (محرر inline طلبية) + `storefront/order-form.blade.php`. الصيغة: `where(fn: city_id = X أو أو city_id IS NULL)` + `orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, name')` — مطابقة البلدية أولًا ثم مكاتب الولاية أبجديًا؛ بدون بلدية → `orderBy('name')` كسابق.
+- **اختبارات:** تحديث اختبارَي «الحصر الصارم بالبلدية» (مودال + inline) ليُدخلا المكتب الإقليمي ويُبقيا استبعاد بلدية أخرى؛ جديد ×2 — «المرتبة الافتراضية للبلدية قبل مكاتب الولاية» (نموذج الإنشاء) و«قائمة مكاتب الزائر تدمج بلدية + ولاية بلا عرض بلدية أخرى» (CartOrderLimitsTest).
+
+### P2 — لوحة stopdesk: تجميع البلدية + البقاء داخل النافذة ✅
+- **البقاء داخل النافذة:** `openStopdeskModal` لم يعد يغلق popup المكاتب (`stopdesk.blade.php`) — المودال يُعرض فوق النافذة (يشتركان في `--edz-z-modal` و`modal` مُسجَّل بعد popup في الـ DOM)؛ كتلة `saveStopdesk`/`deleteStopdesk` (التي كانت ميتة) أصبحت حية وتبقي المستخدم داخل قائمة الولاية بالقائمة المحدَّثة فورًا.
+- **تجميع البلدية:** نافذة مكاتب الولاية تُجمَّع الآن **بالبلدية** (اسم البلدية + عدّاد) مع مجموعة أخيرة «مكاتب الولاية» (بدون بلدية) بشارة `stopdesk_state_wide_hint` — يطابق «مكاتب لكل بلدية» على صفحة الإدارة.
+- **ترجمات ×4:** `stopdesk_state_wide` + `stopdesk_state_wide_hint`.
+- **أدلة:** StopdeskSyncUiTest +2 («التعديل من النافذة يبقيها مفتوحة ويحدّث قائمتها» + «النافذة تجمّع بالبلدية وتعرض مجموعة الولاية»).
+
+### P3 — providers: إخفاء «فرع شركة التوصيل» ✅
+- **شركة بفرع واحد** (ZR Express): `selectProviderPlatform` يختار الفرع الوحيد تلقائيًا ويعبِّئ الاسم والاعتمادات؛ قائمة «فرع شركة التوصيل» تُستبدل بحقل مقروء + تلميح `delivery_company_single_branch` (الفرع مُختار ضمنيًا).
+- **شركة بلا فروع**: بدل القائمة تلميح `delivery_company_no_branches` (دفاعي — لا شركة من هذا القبيل حاليًا في الفهرس).
+- **شركة بفروع متعددة** (Ecotrack ×3): تبقى قائمة الفروع كما هي دون أي اختيار تلقائي.
+- **المجموعة المستقلة `__standalone__`**: خيار «فرع شركة التوصيل» يُعاد تسميته «شركة التوصيل» (اختيار دفاعي — لا ناقل مستقل في الفهرس الحالي).
+- **ترجمات:** أُضيف `delivery_company_single_branch` + `delivery_company_no_branches` باللغات الأربع؛ وسُدّت الفجوة القائمة (كانت `delivery_company*`/`select_delivery_company*` معرَّفة بالعربية فقط، فكانت en/fr/es تعرض مفتاحًا خامًا — أُضيفت لكل الملفات).
+- **أدلة:** DeliverySettingsTest +2 (الفرع الوحيد يُختار تلقائيًا وتُخفى القائمة؛ الفروع المتعددة تُبقي القائمة بلا اختيار) + إعادة كتابة اختبار «two-level» على Ecotrack بعد تعطُّل مسار ZR التلقائي.
+
+### المدى الكلي الكامل (P1+P2+P3)
+| | الخط الأساس | الآن | الدلتا |
+|---|---|---|---|
+| اختبارات | 517 | **523** | +6 |
+| تأكيدات | 1825 | **1850** | +25 |
+- التفصيل: P1 (+2/+10 → 519/1835)؛ P2 (+2 — StopdeskSyncUiTest 4→6)؛ P3 (+2 — DeliverySettingsTest 14→16 + إعادة كتابة 1). التحقق من P2+P3: السويت **523 ناجح (1850 assertions)** — صفر انحدار؛ Pint PASS على DeliverySettingsTest؛ `php -l` سليم على كل نص تعدَّل؛ `view:cache`+`view:clear` سليمان.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — «مكاتب الولاية» تظهر تحت كل بلدية في نموذج الطلب والمتجر، وتلوين حقول المكاتب في المحرر السريع/inline بعد التوسعة.
+
+---
+
+## Phase 34 — نموذج طلب المتجر: سلسلة الشحن (الشركة → نوع التوصيل → الولاية → البلدية → المكتب) بمنسدلة بحثية (سبتمبر 2026) ✅
+
+**خطة وافق عليها المستخدم صراحةً قبل التنفيذ بقرارات مثبّتة بأسئلة (شركة مفقودة → تلميح بدل إعادة تحديد / منتدى المنزل = commue عبر `DeliveryRate` مع تراجع لقائمة الأسعار الشاملة / متجر بلا شركات → التسلسل الكامل بـ legacy / مكتب بلا سعر منشور → مجاني). العنوان: «desk — commune».**
+
+- **مكوّن تحديد جديد خاص بالمتجر** `resources/views/components/storefront/select.blade.php` + `resources/js/components/storefront-select.js` (مقاوَم خفيف مشترك مع قاعدة المتجر `store-primary` — **ليس** `x-edz.select` التجاري)، مسجّل في `resources/js/storefront.js` (حارس `window.Alpine` غيره `alpine:init`). يرفع قائمة الخيارات JSON ويبثّ اختياره عبر حقل مخفي `x-model` + أحداث `change`/`livewire-change` على الجذر.
+- **إعادة كتابة `resources/views/livewire/storefront/order-form.blade.php`** — منطق السلسلة كله (الشركة → نوع التوصيل → الولاية → البلدية → المكتب) يُبنى على الطيف المُلاحظ للمتجر الحالي مع **بدون استعلامات زائدة خلال mounting/render**:
+  - `mount()` يحدد الشركة تلقائيًا عند `availableProviders->count() === 1`; `updated(['city_id'])` يحدد المكتب الوحيد تلقائيًا (المصدر القاطع — أُزيل الطفرة في `@php`).
+  - `submitOrder` يتحقق من نطاق المكتب/الشركة (تأكيد **خادمي** يرفض مكتبًا خارج الشركة/الولاية/البلدية المختارة) + `Rule::exists` محصور بشركة الطلب، و`stopdesk` بدون مكتب → `edz-notice` + عودة مبكرة. سعر المكتب: `office_cost` عند توافره مع تراجع فوري المتجر، وإلا مجاني (قرار المستخدم).
+  - سطر ملخص الشحن يعرض **اسم الشركة** عند توافره (`provider_name`)؛ إصلاح `$providers->firstWhere(...)?->flat_rate` وحراسة `$variants` الفارغة.
+- **ترجمات ×4 (en/ar/fr/es) — 10 مفاتيح جديدة فقط:** `shipping_via`/`company`/`select_company`/`select_company_first`/`search_company`/`search`/`no_options_found`/`delivery_office`/`deliver_to_this_office`/`select_office_required` (مكانيّا البحث للولاية/البلدية/المكتب تستعمل `storefront.search` المشترك — لم تُضف `search_state/city/office`).
+- **اختبارات — `tests/Feature/Storefront/StorefrontOrderShippingCascadeTest.php` (8 ناجحة / 43 assertions):** متجر شركة واحدة يخفي البيكر وينشر الشركة على الطلب، المطابقة الوحيدة تختار المكتب تلقائيًا كبطاقة، اختيار الشركة يحدد نطاق ولايات المكتب، بلديات النطاق فقط تُعرض، stopdesk بلا سعر منشور مجاني، منزلي يفرض `home_cost` ويحفظ العنوان الخام، مكتب خارج الشركة المختارة يُرفض بلا طلب، ومتجر legacy بلا شركات يحافظ على السلسلة كاملة.
+- **تحديث اختبارين قائمين:** `CartOrderLimitsTest` → «desk choice is required and the list is scoped to the commune with carrier labels» (مكتب إلزامي `edz-notice` وبلا طلب)؛ `OrderCancellationRestockTest::placeStopdeskOrder()` ينشئ `StopdeskPoint` ويحدد `selectedStopdesk`.
+- **التحقق النهائي:** `php -l` + `php artisan view:cache` (سليمة) + `npm run build` (vite 7.3.0 — تحذيرات Sass فقط، لا أخطاء) + **الجولة الكاملة النظيفة: 536 ناجح (1899 assertions)** — قبلها 523/1850 (+8 اختبار / +25 تأكيد للسلسلة + توسعة) — **صفر انحدار**. ملاحظة manual: طفرة `updated` لا تظهر في `assertSet` بنسخة Livewire — الاختبارات تضبط `selectedStopdesk` صراحةً قبل `submitOrder` (التأكيدات على HTML تثبت أن البطاقة المختارة تُرسم فعليًا).
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 34 سلسلة شحن المتجر | ✅ | storefront/order-form.blade.php + components/storefront/select.blade.php (جديد) + resources/js/components/storefront-select.js + resources/js/storefront.js + storefront.php ×4 + StorefrontOrderShippingCascadeTest (جديد) + CartOrderLimitsTest + OrderCancellationRestockTest | 8 في StorefrontOrderShippingCascadeTest (43) + 536 ناجح (1899) |
+| **الإجمالي (جولة نظيفة)** | **536 ناجح (1899 assertions)** | | |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — المنسدلات البحثية للشركة/الولاية/البلدية/المكتب (خفيفة، بحدود `store-primary`، وموبايل ورقة سفلية)، التحديد التلقائي للمكتب الوحيد كبطاقة، سطر «عبر شركة» في ملخص الشحن، اختيار مكتب خارج الشركة يُرفض بتوست، وبيوت المتجر الحالي (`store.edzeery.test`/`store.noest.test`).
+
+---
+
+## Phase 34 — إصلاح ما بعد التحقق: عناوين القوائم «[object Object]» في صفحة checkout + ترميز مضاعف لـ data-options (سبتمبر 2026) ✅
+
+**أبلغ المستخدم أن فقرة الشركة والولايات في صفحة checkout تُرسم عناوينها «[object Object]». السبب الجذري (تحقيق معمق):**
+
+- **السبب (1) — الخاصية الجذرية:** `components/storefront/select.blade.php` كان يحسب الخيارات عبر `is_array($item)` فقط؛ لكن `order-form.blade.php` يمرر **مجموعات Eloquent** (`$providers`/`$states`/`$cities` = نماذج) مباشرة إلى `:options="$providers"` إلخ، فلم يطابقها الشرط وذهب كل نموذج للفرع الخاطئ: `label = النموذج كاملًا` → `x-text` يرسّم الكائن «[object Object]» (كانت الاختبارات السابقة تمر لأن `@js` يتضمن JSON النموذج فتظهر الأسماء خامًا في HTML رغم فساد العرض). **الإصلاح في المكوّن:** التطبيع عبر `is_array($item) || is_object($item)` + قراءة القيمة/العنوان/التلميح بـ`data_get` (يعمل على النماذج و stdClass والمصفوفات) مع تنصير قسري `(string)` وfallbacks آمنة (`$key`).
+- **السبب (2) — ترميز مضاعف لـ `data-options`:** كان السطر `data-options="{{ $optionsAttr }}"` حيث `$optionsAttr` مُرمَّز أصلًا بـ`htmlspecialchars(ENT_QUOTES)` — فكان `{{ }}` (الذي يطبّق `e()` مرة ثانية) يحوله `&quot;` → `&amp;quot;`، فكان `JSON.parse` لفشل قراءة سمة DOM (كانت تعتمد فعليًا على `@js` داخل `x-data` وحده). **الإصلاح:** `data-options="{!! $optionsAttr !!}"` (الترميز الآمن مرة واحدة فقط) فتقرأ `_syncFromServer` JSON صالحًا وتتزامن مع إعادة التوليد.
+- **اختبار الحاجز — `StorefrontOrderShippingCascadeTest` (+1/+5):** «carrier and wilaya option labels render as plain strings, never "[object Object]"» — يثبت أن الحمولة تحمل `&quot;label&quot;:&quot;…&quot;` للشركات والولايات (بعد إصلاح الترميز) ولا تحمل `&quot;label&quot;:{` ولا `[object Object]` (الاختبار فحص عبر `data-options` المرمَّزة لأن `@js` يهرب علامات الاقتباس بـ`\u0022` — جرّب أولًا الصيغتين ثم ثبت الصحيح).
+- **التحقق النهائي:** `view:clear`+`view:cache` سليمة + الجولة الكاملة النظيفة **537 ناجح (1904 assertions)** — قبلها 536/1899 (+1 اختبار +5 تأكيدات) — صفر انحدار.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 34 إصلاح عناوين القوائم | ✅ | resources/views/components/storefront/select.blade.php + tests/Feature/Storefront/StorefrontOrderShippingCascadeTest.php (+1) | 9 في StorefrontOrderShippingCascadeTest (48) + 537 ناجح (1904) |
+| **الإجمالي (جولة نظيفة)** | **537 ناجح (1904 assertions)** | | |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — بعد هذا الإصلاح تُعرض أسماء الشركات والولايات حاليًا في القوائم، ومكتب-checkout يُجرّب الآن على المتجر المباشر.
+
+---
+
+## Phase 35 — ترقيم الولايات عبر المشروع + مكاتب الاستلام بالمتجر تشمل الولاية كاملة (سبتمبر 2026) ✅
+
+**طلب المستخدم:** (أ) قوائم كل الولايات في المشروع تُعرض الرقم قبل الاسم كشارة («01 Adrar»)، قابلة للبحث بالرقم، ومرتبة برقم الولاية؛ (ب) في checkout المتجر تُعرض **كل مكاتب الولاية المختارة عبر كل البلديات** (لا تقتصر على البلدية)، وتُخفى بلدية الاستلام (الكود = البلدية تُشتق من المكتب)، وقائمة المكاتب تُظهر التفاصيل (الشارة + الاسم + البلدية + العنوان + الهاتف) ومرتبة بكود المكتب؛ (ج) جانب التاجر (المقرات inline/form) يعرض كود المكتب أيضًا. **القرارات:** كامل الخطة + إخفاء البلدية للاستلام + عرض المخزون المتوفر فقط (بدون تغيير schema). **سلوك التاجر بقي نطاقه بالبلدية كما هو** — تغيّر المتجر فقط.
+
+- **أ. ترقيم الولايات:** `app/Models/Locations/State.php` أُضيف `scopeOrderedByCode()` (ترتيب مباشر بـ `state_code` — `state_code` نص char(2) مبطن بالأصفار فالترتيب النصي = الرقمي، بلا أي دوال DB خاصة). المكوّنان `components/storefront/select.blade.php` + `components/edz/select.blade.php` اكتسبا props `option-code`/`option-extra` (شارات كود في المشغّل والخيار، سطور extra للتفاصيل) و JS `currentCode` + بحث يشمل الكود (`storefront-select.js`/`edz-select.js`). شارة موحّدة `.edz-code-badge` في `_badges.scss`. طبّق على: `storefront/order-form` (اسنام states الأربعة + `option-code="state_code"`)، `merchant/orders/index` (`allStates` + `formAvailableStates` بالأكواد، القوائم الأصلية فلاتر/محررinline والـ badge في عرض الفلتر)، `orders-table-cell` (محرر الولاية الأصلي)، `order-form-modal` + `delivery-edit-modal` (selects الولاية)، `teams/index` (`states` المحسوبة تتضمن `state_code` و `option-code`)، delivery `announced-rates`/`stopdesk` (شارة الرقم في جداول الأسعار وشبكة المكاتب + select الولاية).
+- **ب. إعادة تصميم مكتب الاستلام بالمتجر (`storefront/order-form.blade.php`):**
+  - `officesForSelection()` — أُسقطت بوابة `city_id` (كل مكاتب الولاية تُعرض) + ترتيب رقميّ بالكود الخارجي (فارغًا أخيرًا، مع مجموعات NOEST مثل 02A/02B متجاورة عبر `orderBy('external_code')`).
+  - `updated(['state_id'])` — يمسح المكتب فقط إن لم يكن مكتبًا لنفس الولاية، ويختار تلقائيًا المكتب الوحيد للولاية مع اشتقاق بلديتها. `updated(['selectedStopdesk'])` — يشتق `state_id`/`city_id` من المكتب نفسه.
+  - الواجهة: **بلدية الاستلام مخفية** للمتجر (`@if ($this->delivery_type === 'home')`)، بطاقة المكتب الوحيد تعرض شارة الكود، قائمة المكاتب تمر `option-code`/`option-extra` (address+phone)، رسالة «لا مكاتب» أصبحت `no_desks_in_state` (مفتاح en أُضيف، ar/fr/es موجودة).
+  - التحقق: `city_id` مطلوب فقط للتوصيل للمنزل؛ فحص نطاق المكتب أسقط شرط البلدية (المكتب نفسه هو المرجع) — يبقى شرط المتجر/الولاية/الشركة.
+- **ج. جانب التاجر:** `formOffices` + `inlineStopdeskOptions` يتضمنان `code` من `external_code`، و`option-code="code"` في قوائم المكتب (order-form-modal، delivery-edit-modal، orders-table-cell، orders-mobile-fields) — بقي النطاق البلدي للتاجر كما هو.
+- **اختبارات:** `StorefrontOrderShippingCascadeTest` — استُبدل «only offices inside the selected commune» بـ 3 اختبارات: «every office of the selected wilaya… ordered by desk code, with details» (تحقق 02A قبل 02B + address/phone + غياب `role="city-select"`)، «an office outside any chosen commune completes the stopdesk order with its own commune» (بدون بلدية إطلاقًا)، «wilaya options carry a numeric-code badge and order by wilaya number» (state_codes 01/02). `CartOrderLimitsTest` — «stopdesk without a state» يتحقق من خطأ الولاية فقط (لا بلدية)، وأُعيدت كتابة اختبارَي النطاق البلدي إلى نطاق الولاية الكامل.
+- **التحقق النهائي:** `view:clear`+`view:cache` + `npm run build` (vite 7.3.0، تحذيرات chunk سابقة فقط) + الجولة الكاملة النظيفة **539 ناجح (1918 assertions)** — قبلها 537/1904 (+2 اختبارات +14 تأكيد) — صفر انحدار.
+- **إصلاح أخطاء السجل (09-09):** ① `storage/logs/laravel.log` أبلغ 3 حوادث: مرّتان `SQLSTATE[42000] 1582 Incorrect parameter count in the call to native function 'ltrim'` — كان `ltrim(state_code, '0')` بوسمين غير صالح في MySQL (عندما كانت الروابط `CAST(ltrim(...))` في `scopeOrderedByCode` + ما يعادلها في `officesForSelection`)، + مرة `NOEST trackings/info HTTP 503 Upstream down` (انقطاع خارجي تُصرفه الجولة بصبر — اختبار الحقن المتعمد). ② **الجذر:** لُوّنت السويت على SQLite (يقبل `ltrim` بوسمين) بينما التطبيق الحي على MySQL — فاختفى العيب. ③ **الإصلاح بلا ترقيع:** الترتيب مباشرة بالعمود (`orderBy('state_code')` / `orderBy('external_code')`) لأن الأكواد char(2) مبطّنة بالأصفار فالترتيب النصي == الرقمي (يحافظ على 01..58 و مجموعات 02A/02B)، و`StopdeskOfficeSync::stateByDeskCode()` يطابق `state_code` بالحشو `str_pad(...,2,'0',STR_PAD_LEFT)` بدل `whereRaw` — كلها بلا دوال خاصة بالـ vendor. ④ **تحقّق على MySQL الحي مباشرة** (states → 01..08، desks → 10A/10B/11A/12A/12B/13A) + الجولة الكاملة 539/1918 نظيفة، ولا أخطاء جديدة في السجل.
+- **تحسين أداء قوائم الاختيار + السبينر + منع الضغط المتكرر (09-09):** ① **المشكلة:** كل render يعيد تضمين قائمة الخيارات الكاملة (`data-options`) في صفحة checkout (مكاتب كل الولاية + كل البلديات) فتتضخم الاستجابة وتُبطئ المورف، بلا مؤشر تحميل ولا مانع ضغط متكرر. ② **البنية العامة (تسري الكُلي على كل select):** المكوّنان `storefront/select` + `edz/select` اكتسبا props `lazy`/`source`/`scope` + كشف `$roundtrip` (آي `wire:model.live*`/`wire:change` أو lazy)، مع data-attrs. JS في `storefront-select.js` + `edz-select.js`: نمط `loading` (سبينر يبدّل الشيفرون + صف تحميل باللوحة)، **منع الفتح أثناء التحميل مع السماح بالإغلاق دائمًا** (toggle)، **بوابة round-trip** على الاختيار: `_waitServerAck` لقفل المشغّل حتى يعترف الخادم عبر `$wire.$watch` في `_bindServerValue.read` (سقف 6 ثوانٍ)، و`applyOptions` يتجاهل المورفات (seed) حين تكون القائمة البعيدة جاهزة للنطاق الحالي. ③ **التحميل الكسول كأفضل نهج:** في checkout فقط، قائمتا **البلديات** (city، `$citiesSelectOptions`) و**المكاتب** (office، `$stopdeskSelectOptions`) تصبحان `lazy source="..." :scope="..."` — لا تُضمّن في الصفحة إلا «seed» (الاختيار الحالي فقط)، وتُجلب عند أول فتح لكل scope (composite `s{state}|p{provider}` / `s{state}|dt{type}`) وتُخزّن في كاش أمامي (حد 12 scope، LRU). أفعال Volt جديدة: `$formatOfficeOptions`/`$citiesForSelection` (استُخرج من render بنفس المنطق بالضبط — stopdesk hasGlobalOffice/officeCityIds، home DeliveryRateCity+ShippingRate) + `$stopdeskSelectOptions`/`$citiesSelectOptions`. الولايات/الشركات بقيت مضمّنة (رخيصة). ④ **اختبارات:** استُبدل فحص HTML المضمّن بفحص حمولة الفعل عبر `$component->instance()->stopdeskSelectOptions("s..|p..")` (الترتيب 02A قبل 02B، التفاصيل، كل مكاتب الولاية مع/بدون شركة) + التأكد أن SSR يحمل `data-lazy="1"`/`data-source` بلا أسماء المكاتب. ⑤ **css:** `animate-spin` تولد تلقائيًا (Tailwind يمسح `resources/views/**/*.blade.php`) — وتحقّق من الحزم (`storefront-*.js`, `panel-*.js` يحملان `ensureRemoteOptions`). ⑥ **الجولة الكاملة بعد التغيير: 539 ناجح (1936 assertions — +18 تأكيدًا)**.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| 35 ترقيم الولايات عبر المشروع | ✅ | State.php (scope) + components/storefront/select + components/edz/select + edz-select.js + _badges.scss + storefront/order-form + merchant/orders/index + orders-table-cell + order-form-modal + delivery-edit-modal + teams/index + delivery/announced-rates + delivery/stopdesk + stopdesk-state-grid | — |
+| 35 مكاتب الولاية + اشتقاق البلدية (المتجر) | ✅ | storefront/order-form.blade.php + storefront.php (en: no_desks_in_state) | — |
+| 35 كود المكتب بالتاجر | ✅ | merchant/orders/index (formOffices + inlineStopdeskOptions) + قوائم المكتب ×4 | — |
+| اختبارات فرعية | ✅ | StorefrontOrderShippingCascadeTest (11/63) + CartOrderLimitsTest (12/66) | 11 + 12 اختبارًا (63+66) |
+| **الإجمالي (جولة نظيفة)** | **539 ناجح (1936 assertions)** | | |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — شارات أرقام الولايات في القوائم (search بالرقم + ترتيب)، إخفاء بلدية الاستلام واشتقاقها من المكتب، قائمة مكاتب بأسطر العنوان/الهاتف وشارة الكود، التحديد التلقائي لمكتب الولاية الوحيد، وأداء `updated(['selectedStopdesk'])` الحي على المتجر المباشر (`store.edzeery.test`/`store.noest.test`).

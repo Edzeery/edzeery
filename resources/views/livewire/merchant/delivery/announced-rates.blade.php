@@ -78,8 +78,8 @@ mount(function (): void {
         canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
     $this->states = State::active()
-        ->orderBy('sort_order')->orderBy('name')
-        ->get(['id', 'name'])
+        ->orderedByCode()
+        ->get(['id', 'name', 'state_code'])
         ->toArray();
 
     $this->loadData();
@@ -892,7 +892,12 @@ $closeListStatePopup = function (): void {
                                 <div wire:key="rate-row-{{ $selectedProviderId }}-{{ $state['id'] }}"
                                      class="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-surface-secondary/60 transition-colors {{ $hasRateRow && ! $cell['is_active'] ? 'opacity-70' : '' }}">
                                     <div class="col-span-12 sm:col-span-6 lg:col-span-4 flex items-center gap-2 min-w-0">
-                                        <span class="text-sm font-medium text-ink truncate">{{ $state['name'] }}</span>
+                                        <span class="text-sm font-medium text-ink truncate">
+                                            @if (!empty($state['state_code']))
+                                                <span class="edz-code-badge shrink-0">{{ $state['state_code'] }}</span>
+                                            @endif
+                                            {{ $state['name'] }}
+                                        </span>
                                         @if ($hasRateRow && ! $cell['is_active'])
                                             <span class="edz-badge edz-badge--warning shrink-0">{{ __('merchant_panel.list_inactive') }}</span>
                                         @endif
@@ -1085,7 +1090,12 @@ $closeListStatePopup = function (): void {
                                     <div wire:key="list-rate-row-{{ $selectedListId }}-{{ $state['id'] }}"
                                          class="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-surface-secondary/60 transition-colors">
                                         <div class="col-span-12 sm:col-span-6 lg:col-span-4 flex items-center gap-2 min-w-0">
-                                            <span class="text-sm font-medium text-ink truncate">{{ $state['name'] }}</span>
+                                            <span class="text-sm font-medium text-ink truncate">
+                                            @if (!empty($state['state_code']))
+                                                <span class="edz-code-badge shrink-0">{{ $state['state_code'] }}</span>
+                                            @endif
+                                            {{ $state['name'] }}
+                                        </span>
                                         </div>
 
                                         <div class="col-span-6 sm:col-span-3 lg:col-span-2">

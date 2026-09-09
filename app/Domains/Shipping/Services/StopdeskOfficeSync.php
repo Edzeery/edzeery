@@ -60,6 +60,12 @@ class StopdeskOfficeSync
                 continue;
             }
 
+            // When a full-carrier sync runs without a state filter we still know
+            // the wilaya: NOEST desk codes are the numeric wilaya code, and the
+            // DB stores it zero-padded (char(2)). Assigning the state here keeps
+            // every synced office reachable from the per-state management UI.
+            $officeState = $state ?? $this->stateByDeskCode($externalCode);
+
             $point = StopdeskPoint::query()
                 ->where('store_id', $provider->store_id)
                 ->where('shipping_provider_id', $provider->id)
@@ -76,11 +82,11 @@ class StopdeskOfficeSync
                 'is_active' => true,
             ];
 
-            if ($state) {
-                $attributes['state_id'] = $state->id;
+            if ($officeState) {
+                $attributes['state_id'] = $officeState->id;
             }
 
-            $cityId = $office['city'] ?? null ? $this->resolveCityId((string) $office['city'], $state) : null;
+            $cityId = $office['city'] ?? null ? $this->resolveCityId((string) $office['city'], $officeState) : null;
             if ($cityId) {
                 $attributes['city_id'] = $cityId;
             }
@@ -117,5 +123,24 @@ class StopdeskOfficeSync
                     ->orWhereRaw("LOWER(COALESCE(arabic_name, '')) = ?", [$needle]);
             })
             ->value('id');
+    }
+
+    /**
+     * Resolve the wilaya behind an office desk code (NOEST desk codes carry the
+     * numeric wilaya code, e.g. "16", "31", or "34B" — the letter is a second
+     * desk within the same wilaya). state_code is stored zero-padded char(2),
+     * so the numeric part of the desk code is padded back to match it directly.
+     */
+    private function stateByDeskCode(string $deskCode): ?State
+    {
+        $numeric = (int) $deskCode;
+
+        if ($numeric <= 0) {
+            return null;
+        }
+
+        return State::query()
+            ->where('state_code', str_pad((string) $numeric, 2, '0', STR_PAD_LEFT))
+            ->first();
     }
 }

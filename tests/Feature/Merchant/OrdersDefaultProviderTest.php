@@ -146,3 +146,25 @@ test('the confirmation drawer keeps the order existing carrier when set', functi
         ->call('openConfirmModal', $order->id)
         ->assertSet('confirmProviderId', $carrier->id);
 });
+
+test('a store with a single shipping company hides the selector and auto-selects the company', function () {
+    [$user, $store] = dpfUser();
+    $solo = dpfProvider($store, 'Solo Carrier');
+
+    dpfVolt([$user, $store])
+        ->call('openCreateModal')
+        ->assertSet('form.shipping_provider_id', $solo->id)
+        ->assertSeeHtml('data-edz-company-single')
+        ->assertDontSeeHtml('edz-company-select');
+});
+
+test('a store with a single shipping company keeps it when editing an order without a carrier', function () {
+    [$user, $store] = dpfUser();
+    $solo = dpfProvider($store, 'Solo Carrier');
+    $order = dpfOrder($store, '0550600003');
+
+    dpfVolt([$user, $store])
+        ->call('openEditModal', $order->id)
+        ->assertSet('form.shipping_provider_id', $solo->id)
+        ->assertSeeHtml('data-edz-company-single');
+});

@@ -44,6 +44,22 @@
   }
 }
 
+.edz-code-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--edz-color-border));
+  background: rgb(var(--edz-color-tertiary));
+  color: rgb(var(--edz-color-text-muted));
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 // --- Badge group (multiple badges in a row) ---
 .edz-badge-group {
   display: flex;

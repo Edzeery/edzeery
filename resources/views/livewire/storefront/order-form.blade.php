@@ -3,6 +3,10 @@
 use App\Domains\Cart\Services\CartService;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Plan\Services\FeatureUsageService;
+use App\Domains\Shipping\Models\DeliveryRate;
+use App\Domains\Shipping\Models\DeliveryRateCity;
+use App\Domains\Shipping\Models\ShippingProvider;
+use App\Domains\Shipping\Models\ShippingRate;
 use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\ShippingCostCalculator;
 use App\Models\Customer;
@@ -16,6 +20,7 @@ use App\Models\Status;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -35,17 +40,97 @@ state([
     'payment_method' => 'cod',
     'notes'        => '',
     'selectedStopdesk' => '',
+    'selectedProvider' => '',
 ]);
 
 mount(function (): void {
     $this->name = auth()->user()?->name ?? '';
     $this->phone = auth()->user()?->phone ?? '';
     $this->email = auth()->user()?->email ?? '';
+
+    // Single-carrier stores skip the company picker entirely.
+    if ($this->availableProviders->count() === 1) {
+        $this->selectedProvider = (string) $this->availableProviders->first()->id;
+    }
 });
 
 updated(['state_id'], function (): void {
     $this->city_id = '';
+
+    // A new wilaya invalidates a previously picked desk unless the desk belongs
+    // to that same wilaya (fires again when the office auto-fills the commune).
+    if ($this->selectedStopdesk) {
+        $officeState = StopdeskPoint::whereKey($this->selectedStopdesk)->value('state_id');
+        if ($officeState !== null && (string) $officeState !== (string) $this->state_id) {
+            $this->selectedStopdesk = '';
+        }
+        return;
+    }
+
+    if ($this->delivery_type !== 'stopdesk' || ! $this->state_id) {
+        return;
+    }
+
+    // A wilaya with a single office auto-picks itself.
+    $points = $this->officesForSelection();
+    if ($points->count() === 1) {
+        $first = $points->first();
+        $this->selectedStopdesk = (string) $first->id;
+        if ($first->city_id) {
+            $this->city_id = (string) $first->city_id;
+        }
+    }
+});
+
+updated(['selectedProvider'], function (): void {
+    $this->state_id = '';
+    $this->city_id = '';
     $this->selectedStopdesk = '';
+});
+
+updated(['delivery_type'], function (): void {
+    $this->state_id = '';
+    $this->city_id = '';
+    $this->selectedStopdesk = '';
+});
+
+updated(['city_id'], function (): void {
+    $this->selectedStopdesk = '';
+
+    if ($this->delivery_type !== 'stopdesk' || ! $this->state_id || ! $this->city_id) {
+        return;
+    }
+
+    $points = $this->officesForSelection();
+    if ($points->count() === 1) {
+        $this->selectedStopdesk = (string) $points->first()->id;
+    }
+});
+
+updated(['selectedStopdesk'], function (): void {
+    if ($this->delivery_type !== 'stopdesk' || ! $this->selectedStopdesk) {
+        return;
+    }
+
+    // Picking an office carries its own geo scope: the commune (and wilaya for
+    // wilaya-wide offices) are derived from the desk so the stored address and
+    // the validation scope stay truthful without an extra commune selection.
+    $office = StopdeskPoint::whereKey($this->selectedStopdesk)->first(['id', 'state_id', 'city_id']);
+    if (! $office) {
+        return;
+    }
+
+    if ($office->state_id !== null && (string) $office->state_id !== (string) $this->state_id) {
+        $this->state_id = (string) $office->state_id;
+    }
+    $this->city_id = $office->city_id !== null ? (string) $office->city_id : '';
+});
+
+$availableProviders = computed(function (): \Illuminate\Support\Collection {
+    return ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get(['id', 'name', 'flat_rate']);
 });
 
 $paymentMethods = computed(function (): array {
@@ -58,6 +143,132 @@ $paymentMethods = computed(function (): array {
     return $methods;
 });
 
+$officesForSelection = function (): \Illuminate\Support\Collection {
+    $providerId = $this->selectedProvider;
+    $query = StopdeskPoint::where('store_id', currentStoreId())
+        ->where('state_id', $this->state_id)
+        ->where('is_active', true);
+
+    if ($providerId) {
+        $query->where('shipping_provider_id', $providerId);
+    }
+
+// All offices of the chosen wilaya are offered, whatever their commune.
+    // Desks sort by their external code (empty codes last) so NOEST families
+    // like 02A / 02B stay grouped in order.
+    return $query
+        ->with('city')
+        ->orderByRaw("(external_code IS NULL OR external_code = '') ASC")
+        ->orderBy('external_code')
+        ->orderBy('name')
+        ->get();
+};
+
+// Shared shape for the office select payloads: the code chip, the desk name,
+// the commune as hint and the address + phone lines as extra details.
+$formatOfficeOptions = function (\Illuminate\Support\Collection $stopdesks): \Illuminate\Support\Collection {
+    return $stopdesks->map(function ($office) {
+        return [
+            'value' => (string) $office->id,
+            'label' => $office->name,
+            'hint'  => filled($office->city?->name) ? $office->city->name : null,
+            'code'  => filled($office->external_code) ? (string) $office->external_code : null,
+            'extra' => array_values(array_filter([
+                filled($office->address) ? $office->address : null,
+                filled($office->phone) ? $office->phone : null,
+            ], fn ($v) => $v !== null)),
+        ];
+    })->values();
+};
+
+// Stopdesk offices scoped to the current (wilaya + carrier): fetched lazily by
+// the select on first open per scope, then cached client-side.
+$stopdeskSelectOptions = function (string $scope = ''): array {
+    return $this->formatOfficeOptions($this->officesForSelection())->all();
+};
+
+// Communes of the chosen wilaya, scoped to the delivery type: the checkout
+// still sends intensity-reduced payloads even after the select moved to lazy
+// loading, so the city list lives behind the same on-open fetch as the desks.
+$citiesForSelection = function (): \Illuminate\Support\Collection {
+    $storeId = currentStoreId();
+    $providers = $this->availableProviders;
+    $hasProviders = $providers->isNotEmpty();
+    $providerId = $this->selectedProvider
+        ? (string) $this->selectedProvider
+        : ($providers->first()?->id ? (string) $providers->first()->id : null);
+
+    $cities = collect();
+    if (! $this->state_id) {
+        return $cities;
+    }
+
+    if (! $hasProviders || ! $providerId) {
+        return City::where('state_id', $this->state_id)->active()->orderBy('name')->get();
+    }
+
+    if ($this->delivery_type === 'stopdesk') {
+        $hasGlobalOffice = StopdeskPoint::where('store_id', $storeId)
+            ->where('shipping_provider_id', $providerId)
+            ->where('state_id', $this->state_id)
+            ->whereNull('city_id')
+            ->where('is_active', true)
+            ->exists();
+        if ($hasGlobalOffice) {
+            return City::where('state_id', $this->state_id)->active()->orderBy('name')->get();
+        }
+        $officeCityIds = StopdeskPoint::where('store_id', $storeId)
+            ->where('shipping_provider_id', $providerId)
+            ->where('state_id', $this->state_id)
+            ->whereNotNull('city_id')
+            ->where('is_active', true)
+            ->distinct()
+            ->pluck('city_id');
+        return City::whereIn('id', $officeCityIds)->active()->orderBy('name')->get();
+    }
+
+    $pricedCityIds = DeliveryRateCity::where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $this->state_id)
+        ->where('is_active', true)
+        ->distinct()
+        ->pluck('city_id');
+    $legacyCityIds = ShippingRate::where('store_id', $storeId)
+        ->where('shipping_provider_id', $providerId)
+        ->where('state_id', $this->state_id)
+        ->whereNotNull('city_id')
+        ->where('is_active', true)
+        ->distinct()
+        ->pluck('city_id');
+    $scopedCityIds = $pricedCityIds->merge($legacyCityIds)->unique()->values();
+
+    if ($scopedCityIds->isEmpty()) {
+        return City::where('state_id', $this->state_id)->active()->orderBy('name')->get();
+    }
+    return City::whereIn('id', $scopedCityIds)->active()->orderBy('name')->get();
+};
+
+$citiesSelectOptions = function (string $scope = ''): array {
+    return $this->citiesForSelection()->map(fn ($city) => [
+        'value' => (string) $city->id,
+        'label' => $city->name,
+        'hint'  => null,
+        'code'  => null,
+    ])->values()->all();
+};
+
+$quoteShipping = function (float $subtotal, array $shippingProductIds): array {
+    return app(ShippingCostCalculator::class)->calculate(
+        currentStore(),
+        $this->state_id ?: null,
+        $this->city_id ?: null,
+        $subtotal,
+        $shippingProductIds,
+        $this->selectedProvider ?: null,
+        $this->delivery_type,
+    );
+};
+
 $submitOrder = function () {
     // Rate limit: 10 orders per minute per store+IP
     $rateLimitKey = 'storefront-order:' . currentStoreId() . ':' . request()->ip();
@@ -69,23 +280,33 @@ $submitOrder = function () {
     RateLimiter::hit($rateLimitKey, 60);
 
     $methods = $this->paymentMethods;
+    $providers = $this->availableProviders;
+    $hasProviders = $providers->isNotEmpty();
 
-    $validated = Validator::make($this->only([
-        'name', 'phone', 'email', 'state_id', 'city_id',
-        'address', 'delivery_type', 'payment_method', 'notes', 'selectedStopdesk',
-    ]), [
+    $rules = [
         'name'          => 'required|string|max:255',
         'phone'         => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
         'email'         => 'nullable|email|max:255',
         'state_id'      => 'required|exists:states,id',
-        'city_id'       => 'required|exists:cities,id',
+        'city_id'       => $this->delivery_type === 'home' ? 'required|exists:cities,id' : 'nullable|exists:cities,id',
         'address'       => 'required_if:delivery_type,home|nullable|string|max:1000',
         'delivery_type' => 'required|in:home,stopdesk',
         'payment_method' => 'required|in:' . implode(',', $this->paymentMethods),
         'notes'         => 'nullable|string|max:500',
-        // Optional preference only: the confirming agent assigns the desk.
-        'selectedStopdesk' => 'nullable|string|exists:stopdesk_points,id',
-    ])->validate();
+        'selectedStopdesk' => ['nullable', 'string', 'exists:stopdesk_points,id'],
+    ];
+
+    if ($hasProviders) {
+        $rules['selectedProvider'] = [
+            'required',
+            Rule::exists('shipping_providers', 'id')->where('store_id', currentStoreId()),
+        ];
+    }
+
+    $validated = Validator::make($this->only([
+        'name', 'phone', 'email', 'state_id', 'city_id',
+        'address', 'delivery_type', 'payment_method', 'notes', 'selectedStopdesk', 'selectedProvider',
+    ]), $rules)->validate();
 
     $cartService = app(CartService::class);
     $storeId = currentStoreId();
@@ -99,26 +320,53 @@ $submitOrder = function () {
     $subtotal = $cartService->getSubtotal($storeId);
     $shippingCost = 0;
 
-    if ($this->delivery_type === 'home') {
-        $calculator = app(ShippingCostCalculator::class);
-        $variantIds = collect($items)->pluck('variant_id')->filter()->values()->all();
-        $shippingProductIds = ProductVariant::where('store_id', $storeId)
-            ->whereIn('id', $variantIds)
-            ->pluck('product_id')->filter()->unique()->values()->all();
-        $shipping = $calculator->calculate(
-            currentStore(),
-            $this->state_id,
-            $this->city_id,
-            $subtotal,
-            $shippingProductIds
-        );
+    $variantIds = collect($items)->pluck('variant_id')->filter()->values()->all();
+    $shippingProductIds = ProductVariant::where('store_id', $storeId)
+        ->whereIn('id', $variantIds)
+        ->pluck('product_id')->filter()->unique()->values()->all();
 
-        if (!($shipping['available'] ?? false)) {
+// Office pickup: the drawer must already belong to the selected scope
+        // (store, carrier, wilaya). The commune is derived from the desk itself
+        // and never re-checked — every office of the wilaya is offered.
+        if ($this->delivery_type === 'stopdesk') {
+            if (! filled($this->selectedStopdesk)) {
+                $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.select_office_required'));
+                return;
+            }
+
+            $office = StopdeskPoint::where('store_id', $storeId)
+                ->where('id', $this->selectedStopdesk)
+                ->first();
+
+            if (! $office
+                || (string) $office->state_id !== (string) $this->state_id
+                || ($this->selectedProvider && (string) $office->shipping_provider_id !== (string) $this->selectedProvider)) {
+                $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.select_office_required'));
+                return;
+            }
+        }
+
+    $shipping = $this->quoteShipping($subtotal, $shippingProductIds);
+
+    if (! ($shipping['available'] ?? false)) {
+        // Office pickup without a published courier price stays free.
+        if ($this->delivery_type === 'stopdesk') {
+            $shippingCost = 0;
+        } else {
             $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.shipping_not_available'));
             return;
         }
+    } else {
+        $shippingCost = (float) ($shipping['cost'] ?? 0);
+    }
 
-        $shippingCost = $shipping['cost'] ?? 0;
+    $deliveryAddress = $this->address;
+    if ($this->delivery_type === 'stopdesk') {
+        $office = StopdeskPoint::with('city')->find($this->selectedStopdesk);
+        $cityName = $office?->city?->name
+            ?? City::where('id', $this->city_id)->first()?->name
+            ?? '';
+        $deliveryAddress = trim(($office?->name ?? '') . ($cityName ? ' — ' . $cityName : ''));
     }
 
     DB::beginTransaction();
@@ -129,7 +377,7 @@ $submitOrder = function () {
             [
                 'name'      => $this->name,
                 'email'     => $this->email,
-                'address'   => $this->address,
+                'address'   => filled($deliveryAddress) ? $deliveryAddress : null,
                 // Stopdesk orders legitimately skip city/address: never send
                 // empty strings into foreign-key columns.
                 'state_id'  => filled($this->state_id) ? $this->state_id : null,
@@ -158,10 +406,11 @@ $submitOrder = function () {
             'total_amount' => $subtotal + $shippingCost,
             'state_id'     => filled($this->state_id) ? $this->state_id : null,
             'city_id'      => filled($this->city_id) ? $this->city_id : null,
-            'address'      => filled($this->address) ? $this->address : null,
+            'address'      => filled($deliveryAddress) ? $deliveryAddress : null,
             'delivery_type' => $this->delivery_type,
             'payment_method' => $this->payment_method,
             'shipping_cost' => $shippingCost,
+            'shipping_provider_id' => filled($this->selectedProvider) ? $this->selectedProvider : null,
             'notes'        => filled($this->notes) ? $this->notes : null,
             'stopdesk_point_id' => $this->delivery_type === 'stopdesk' && filled($this->selectedStopdesk) ? $this->selectedStopdesk : null,
         ]);
@@ -253,10 +502,11 @@ $submitOrder = function () {
     </div>
 
     @php
+        $storeId = currentStoreId();
         $cartService = app(CartService::class);
-        $cartItems = $cartService->getItems(currentStoreId())->toArray();
-        $cartCount = $cartService->getCount(currentStoreId());
-        $cartSubtotal = $cartService->getSubtotal(currentStoreId());
+        $cartItems = $cartService->getItems($storeId)->toArray();
+        $cartCount = $cartService->getCount($storeId);
+        $cartSubtotal = $cartService->getSubtotal($storeId);
 
         // Enrich cart items with images and slugs
         if (!empty($cartItems)) {
@@ -273,33 +523,96 @@ $submitOrder = function () {
             unset($ci);
         }
 
-        $states = State::active()->orderBy('name')->get();
-        $cities = $this->state_id ? City::where('state_id', $this->state_id)->active()->orderBy('name')->get() : collect();
+        $providers = $this->availableProviders;
+        $hasProviders = $providers->isNotEmpty();
+        $isSingleProvider = $providers->count() === 1;
 
-        // Desks are scoped to the customer's commune first; the confirming
-        // agent picks the exact desk later when the commune has none.
-        $stopdesks = collect();
-        if ($this->state_id && $this->city_id && $this->delivery_type === 'stopdesk') {
-            $stopdesks = StopdeskPoint::where('store_id', currentStoreId())
-                ->where('state_id', $this->state_id)
-                ->where('city_id', $this->city_id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
+        if ($isSingleProvider) {
+            $this->selectedProvider = (string) $providers->first()->id;
         }
-        $deskProviders = $stopdesks->isNotEmpty()
-            ? \App\Domains\Shipping\Models\ShippingProvider::whereIn('id', $stopdesks->pluck('shipping_provider_id')->filter())
-                ->where('is_active', true)
-                ->pluck('name', 'id')
-            : collect();
-        // Hide desks whose carrier was deactivated.
-        $stopdesks = $stopdesks->filter(
-            fn($p) => ! $p->shipping_provider_id || $deskProviders->has($p->shipping_provider_id)
-        );
+        $providerId = $this->selectedProvider
+            ? (string) $this->selectedProvider
+            : ($providers->first()?->id ? (string) $providers->first()->id : null);
 
-        $calculator = app(ShippingCostCalculator::class);
-        $shippingProductIds = $variants->pluck('product_id')->filter()->unique()->values()->all();
-        $shippingInfo = $calculator->calculate(currentStore(), $this->state_id ?: null, $this->city_id ?: null, $cartSubtotal, $shippingProductIds);
+        $providerFlat = $providers->firstWhere('id', $providerId)?->flat_rate ?? null;
+
+        // Wilayas scoped to (carrier + delivery type): office-bearing states for
+        // stopdesk, announced home coverage otherwise. A flat-rate carrier (or a
+        // legacy store without carriers) covers every wilaya.
+        $states = collect();
+        if (! $hasProviders || ! $providerId) {
+            $states = State::active()->orderedByCode()->get();
+        } elseif ($this->delivery_type === 'stopdesk') {
+            $officeStateIds = DeliveryRate::where('store_id', $storeId)
+                ->where('shipping_provider_id', $providerId)
+                ->where('is_active', true)
+                ->where(fn($q) => $q->whereNotNull('office_cost')->orWhereNotNull('free_above'))
+                ->distinct()
+                ->pluck('state_id');
+            $pointStateIds = StopdeskPoint::where('store_id', $storeId)
+                ->where('shipping_provider_id', $providerId)
+                ->where('is_active', true)
+                ->whereNotNull('state_id')
+                ->distinct()
+                ->pluck('state_id');
+            $stateIds = $officeStateIds->merge($pointStateIds)->unique()->values();
+            $states = State::whereIn('id', $stateIds)->active()->orderedByCode()->get();
+        } else {
+            $homeStateIds = DeliveryRate::where('store_id', $storeId)
+                ->where('shipping_provider_id', $providerId)
+                ->where('is_active', true)
+                ->where(fn($q) => $q->whereNotNull('home_cost')->orWhereNotNull('free_above'))
+                ->distinct()
+                ->pluck('state_id');
+            $legacyStateIds = ShippingRate::where('store_id', $storeId)
+                ->where('shipping_provider_id', $providerId)
+                ->where('is_active', true)
+                ->distinct()
+                ->pluck('state_id');
+            $stateIds = $homeStateIds->merge($legacyStateIds)->unique()->values();
+
+            if ($stateIds->isEmpty() || $providerFlat !== null) {
+                $states = State::active()->orderedByCode()->get();
+            } else {
+                $states = State::whereIn('id', $stateIds)->active()->orderedByCode()->get();
+            }
+        }
+
+        // Communes scoped to (carrier + wilaya + delivery type). Stopdesk lists
+        // only communes with an office; home falls back to every commune of the
+        // wilaya when no per-commune pricing narrows it down.
+        $cities = $this->citiesForSelection();
+
+        // Offices: a single one auto-picks itself (shown as a compact card),
+        // several become a picker, none keeps the explanatory note visible.
+        $stopdesks = collect();
+        if ($this->state_id && $this->delivery_type === 'stopdesk') {
+            $stopdesks = $this->officesForSelection();
+        }
+
+        $officeOptions = $this->formatOfficeOptions($stopdesks);
+
+        // Seeds for the lazily-fed lists: only the currently selected option so
+        // the initial HTML never carries the whole (wilaya-wide) option set.
+        $officeSeed = $this->selectedStopdesk
+            ? $officeOptions->filter(fn ($o) => (string) $o['value'] === (string) $this->selectedStopdesk)->values()
+            : collect();
+        $citySeed = $this->city_id
+            ? collect([[
+                'value' => (string) $this->city_id,
+                'label' => (string) ($cities->first(fn ($c) => (string) $c->id === (string) $this->city_id)?->name ?? ''),
+                'hint' => null,
+                'code' => null,
+            ]])
+            : collect();
+
+        $shippingProductIds = ! empty($variants)
+            ? $variants->pluck('product_id')->filter()->unique()->values()->all()
+            : [];
+        $shippingInfo = $this->quoteShipping($cartSubtotal, $shippingProductIds);
+        if ($this->delivery_type === 'stopdesk' && ! ($shippingInfo['available'] ?? false)) {
+            $shippingInfo = ['cost' => 0, 'is_free' => true, 'available' => true];
+        }
         $paymentMethods = $this->paymentMethods;
     @endphp
 
@@ -403,37 +716,33 @@ $submitOrder = function () {
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.state') }} *</label>
-                        <select wire:model.live="state_id"
-                            style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                                   bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                                   shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
-                                   transition-all duration-200">
-                            <option value="">{{ __('storefront.select_state') }}</option>
-                            @foreach($states as $state)
-                                <option value="{{ $state->id }}">{{ $state->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('state_id') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
-<select wire:model.live="city_id"
-                             style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
-                             class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                                    bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                                    shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
-                                    transition-all duration-200">
-                            <option value="">{{ __('storefront.select_city') }}</option>
-                            @foreach($cities as $city)
-                                <option value="{{ $city->id }}">{{ $city->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('city_id') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
-                    </div>
 
+                    {{-- 1. Shipping company offered by this store --}}
+                    @if ($hasProviders)
+                        @if ($isSingleProvider)
+                            <div class="sm:col-span-2 flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3">
+                                <x-edz.icon name="truck" class="text-xl store-text-primary w-5 h-5 shrink-0" />
+                                <div class="min-w-0">
+                                    <p class="text-xs text-gray-400 dark:text-gray-500">{{ __('storefront.shipping_via') }}</p>
+                                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{{ $providers->first()->name }}</p>
+                                </div>
+                            </div>
+                            <input type="hidden" wire:model.live="selectedProvider" value="{{ $providers->first()->id }}" />
+                        @else
+                            <div class="sm:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.company') }} *</label>
+                                <x-storefront.select :options="$providers" option-value="id" option-label="name"
+                                    wire:model.live="selectedProvider"
+                                    :search="true"
+                                    search-placeholder="{{ __('storefront.search_company') }}"
+                                    placeholder="{{ __('storefront.select_company') }}"
+                                    icon="business" role="company-select" />
+                                @error('selectedProvider') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
+                    @endif
+
+                    {{-- 2. Delivery type --}}
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ __('storefront.delivery_type') }}</label>
                         <div class="grid grid-cols-2 gap-3">
@@ -454,48 +763,105 @@ $submitOrder = function () {
                         </div>
                     </div>
 
+                    {{-- 3. Wilaya scoped to the carrier --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.state') }} *</label>
+                        <x-storefront.select :options="$states" option-value="id" option-label="name" option-code="state_code"
+                            wire:model.live="state_id"
+                            :search="true"
+                            search-placeholder="{{ __('storefront.search') }}"
+                            placeholder="{{ __('storefront.select_state') }}"
+                            :disabled="! $hasProviders || ! $providerId || $states->isEmpty()"
+                            icon="map" role="state-select" />
+                        @if ($hasProviders && ! $providerId)
+                            <p class="text-amber-600 dark:text-amber-400 text-xs mt-1.5">{{ __('storefront.select_company_first') }}</p>
+                        @endif
+                        @error('state_id') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- 4. Commune: priced communes for home only — stopdesk derives it from the desk --}}
+                    @if ($this->delivery_type === 'home')
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
+                            <x-storefront.select :options="$citySeed" option-value="value" option-label="label"
+                                wire:model.live="city_id"
+                                lazy source="citiesSelectOptions"
+                                :scope="'s' . ($this->state_id ?: '') . '|dt' . $this->delivery_type"
+                                :search="true"
+                                search-placeholder="{{ __('storefront.search') }}"
+                                placeholder="{{ __('storefront.select_city') }}"
+                                :disabled="! $this->state_id"
+                                icon="location" role="city-select" />
+                            @error('city_id') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
+                        </div>
+                    @endif
+
+                    {{-- 5. Office / Address --}}
                     @if($this->delivery_type === 'stopdesk')
                         <div class="sm:col-span-2">
-                            @if($stopdesks->count())
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    {{ __('storefront.select_stopdesk_point') }}
-                                    <span class="font-normal text-gray-400 text-xs">({{ __('storefront.desk_optional_hint') }})</span>
-                                </label>
-                                <select wire:model="selectedStopdesk"
-                                style="--tw-ring-color: color-mix(in srgb, var(--store-primary) 20%, transparent)"
-                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                                       bg-white dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                                       shadow-sm focus:outline-none focus:ring-2 focus:border-[var(--store-primary)]
-                                       transition-all duration-200">
-                                    <option value="">{{ __('storefront.no_desk_preference') }}</option>
-                                    @foreach($stopdesks->groupBy('shipping_provider_id') as $providerId => $points)
-                                        <optgroup label="{{ $deskProviders[$providerId] ?? __('storefront.stop_desk') }}">
-                                            @foreach($points as $point)
-                                                <option value="{{ $point->id }}">{{ $point->name }} - {{ $point->address }}</option>
-                                            @endforeach
-                                        </optgroup>
-                                    @endforeach
-                                </select>
+                            @if($stopdesks->count() === 1)
+                                @php $singleOffice = $stopdesks->first(); @endphp
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.delivery_office') }}</label>
+                                <div class="rounded-xl border border-[color-mix(in_srgb,var(--store-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--store-primary)_8%,transparent)] p-4" role="office-card">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center shrink-0">
+                                            <x-edz.icon name="business" class="text-xl store-text-primary w-5 h-5" />
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                            <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                                @if (filled($singleOffice->external_code))
+                                                    <span class="inline-flex items-center justify-center min-w-6 px-1.5 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[11px] font-semibold leading-none tabular-nums align-middle mr-1.5">{{ $singleOffice->external_code }}</span>
+                                                @endif
+                                                {{ $singleOffice->name }}
+                                            </p>
+                                            <span class="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                <x-edz.icon name="checkmark-circle" class="w-4 h-4 text-base" />
+                                                {{ __('storefront.deliver_to_this_office') }}
+                                            </span>
+                                        </div>
+                                            <div class="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+                                                @if($singleOffice->city?->name)
+                                                    <p class="flex items-center gap-1.5"><x-edz.icon name="location" class="text-sm w-3.5 h-3.5" /> {{ $singleOffice->city->name }}</p>
+                                                @endif
+                                                @if($singleOffice->address)
+                                                    <p class="flex items-center gap-1.5"><x-edz.icon name="map" class="text-sm w-3.5 h-3.5" /> {{ $singleOffice->address }}</p>
+                                                @endif
+                                                @if($singleOffice->phone)
+                                                    <p class="flex items-center gap-1.5" dir="ltr"><x-edz.icon name="call" class="text-sm w-3.5 h-3.5" /> {{ $singleOffice->phone }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" value="{{ $singleOffice->id }}" data-role="selected-office" />
+                            @elseif($stopdesks->count() > 1)
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }}</label>
+                                <x-storefront.select :options="$officeSeed" option-value="value" option-label="label"
+                                    option-code="code" option-extra="extra"
+                                    wire:model.live="selectedStopdesk"
+                                    lazy source="stopdeskSelectOptions"
+                                    :scope="'s' . ($this->state_id ?: '') . '|p' . $providerId"
+                                    :search="true"
+                                    search-placeholder="{{ __('storefront.search') }}"
+                                    placeholder="{{ __('storefront.select_stopdesk_point') }}"
+                                    icon="business" role="office-select" />
                                 @error('selectedStopdesk') <p class="text-red-500 dark:text-red-400 text-xs mt-1.5">{{ $message }}</p> @enderror
                             @else
-                                {{-- No desks to list: keep the failure reason visible
+                                {{-- No offices to list: keep the failure reason visible
                                      instead of a silent validation dead-end. --}}
                                 <div class="rounded-xl border px-4 py-3 text-sm
                                             bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700
                                             text-amber-700 dark:text-amber-400">
                                     @if(! $this->state_id)
                                         {{ __('storefront.select_state_for_desks') }}
-                                    @elseif(! $this->city_id)
-                                        {{ __('storefront.select_city_for_desks') }}
                                     @else
-                                        {{ __('storefront.no_desks_in_commune') }}
+                                        {{ __('storefront.no_desks_in_state') }}
                                     @endif
                                 </div>
                             @endif
                         </div>
-                    @endif
-
-                    @if($this->delivery_type === 'home')
+                    @else
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.address') }} *</label>
                             <textarea wire:model="address" rows="2"
@@ -510,6 +876,7 @@ $submitOrder = function () {
                         </div>
                     @endif
 
+                    {{-- 6. Order notes --}}
                     <div class="sm:col-span-2">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.notes') }}</label>
                             <textarea wire:model="notes" rows="2"
@@ -591,7 +958,11 @@ $submitOrder = function () {
                         <span class="font-medium text-gray-900 dark:text-white">{{ currency($cartSubtotal) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.shipping') }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.shipping') }}
+                            @if($shippingInfo['provider_name'] ?? null)
+                                <span class="text-gray-400 dark:text-gray-500">· {{ $shippingInfo['provider_name'] }}</span>
+                            @endif
+                        </span>
                         <span class="font-medium text-gray-900 dark:text-white">
                             @if($shippingInfo['is_free'] ?? false)
                                 <span class="text-emerald-600 dark:text-emerald-400">{{ __('storefront.free') }}</span>

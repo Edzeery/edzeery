@@ -223,7 +223,7 @@
                         @foreach ($this->allStates as $st)
                             <option value="{{ $st['id'] }}"
                                 @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
-                                {{ $st['name'] }}
+                                {{ $st['state_code'] ?? '' }} {{ $st['name'] }}
                             </option>
                         @endforeach
                     </select>
@@ -652,7 +652,7 @@
         <td class="px-4 py-3 text-xs text-ink-muted">
             @if ($this->editingField === 'order.stopdesk_point' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="stopdesk-inline-{{ $orderId }}">
-                    <x-edz.select wire:model="editingValue" :options="$this->editStopdeskOptions" size="sm" search
+                    <x-edz.select wire:model="editingValue" :options="$this->editStopdeskOptions" option-code="code" size="sm" search
                         placeholder="{{ __('merchant_panel.stop_desk_label') }}" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderStopdesk"

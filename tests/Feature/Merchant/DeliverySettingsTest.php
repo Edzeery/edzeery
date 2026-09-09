@@ -94,41 +94,77 @@ test('owner connects a carrier through the two-level platform/carrier select', f
     [$user, $store] = createDeliveryStore('owner');
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
-    $platform = CarrierPlatform::where('slug', 'zr-express')->first();
-    $carrier = Carrier::where('code', 'zrexpress_v2')->first();
+    $platform = CarrierPlatform::where('slug', 'ecotrack')->first();
+    $carrier = Carrier::where('code', 'ecotrack')->first();
 
     expect($carrier->credential_fields)->toBeArray()
-        ->and(array_column($carrier->credential_fields, 'key'))->toContain('secret_key', 'tenant_id');
+        ->and(array_column($carrier->credential_fields, 'key'))->toContain('api_token');
 
+    // Ecotrack has three branches, so the branch picker stays: the merchant
+    // picks an explicit branch after selecting the company.
     Volt::test('merchant.delivery.providers')
         ->call('openProviderModal')
         ->call('selectProviderPlatform', $platform->id)
         ->assertSet('providerForm.platform_id', $platform->id)
         ->assertSet('providerForm.carrier_id', '')
         ->call('selectProviderCarrier', $carrier->id)
-        ->assertSet('providerForm.name', 'ZR Express v2')
-        ->assertSet('providerForm.credential_values.secret_key', '')
-        ->assertSet('providerForm.credential_values.tenant_id', '');
+        ->assertSet('providerForm.name', 'Ecotrack')
+        ->assertSet('providerForm.credential_values.api_token', '');
 
     $component = Volt::test('merchant.delivery.providers');
     $component
         ->call('openProviderModal')
         ->call('selectProviderPlatform', $platform->id)
         ->call('selectProviderCarrier', $carrier->id)
-        ->set('providerForm.name', 'ZR Express v2')
-        ->set('providerForm.credential_values.secret_key', 'sk_test_123')
-        ->set('providerForm.credential_values.tenant_id', 'tenant-1')
+        ->set('providerForm.name', 'Ecotrack')
+        ->set('providerForm.credential_values.api_token', 'tok_123')
         ->call('saveProvider')
         ->assertDispatched('swal', type: 'success');
 
     $provider = ShippingProvider::where('store_id', $store->id)->first();
 
     expect($provider)->not->toBeNull()
-        ->and($provider->name)->toBe('ZR Express v2')
+        ->and($provider->name)->toBe('Ecotrack')
         ->and($provider->carrier_id)->toBe($carrier->id)
         ->and($provider->carrier_platform_id)->toBe($platform->id)
-        ->and($provider->credentials['secret_key'])->toBe('sk_test_123')
-        ->and($provider->credentials['tenant_id'])->toBe('tenant-1');
+        ->and($provider->credentials['api_token'])->toBe('tok_123');
+});
+
+test('a company with a single branch auto-selects it and hides the branch picker', function () {
+    [$user, $store] = createDeliveryStore('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $platform = CarrierPlatform::where('slug', 'zr-express')->first();
+    $carrier = Carrier::where('code', 'zrexpress_v2')->first();
+
+    $component = Volt::test('merchant.delivery.providers')
+        ->call('openProviderModal')
+        ->call('selectProviderPlatform', $platform->id);
+
+    $component
+        ->assertSet('providerForm.carrier_id', (string) $carrier->id)
+        ->assertSet('providerForm.name', 'ZR Express v2')
+        ->assertSee(__('merchant_panel.delivery_company_single_branch'));
+
+    expect($component->html())->not->toContain('carrier-options-');
+});
+
+test('a company with multiple branches keeps the branch picker without auto-selecting', function () {
+    [$user, $store] = createDeliveryStore('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $platform = CarrierPlatform::where('slug', 'ecotrack')->first();
+
+    $component = Volt::test('merchant.delivery.providers')
+        ->call('openProviderModal')
+        ->call('selectProviderPlatform', $platform->id);
+
+    $component
+        ->assertSet('providerForm.carrier_id', '')
+        ->assertSet('providerForm.name', '');
+
+    expect($component->html())->toContain('carrier-options-')
+        ->and($component->html())->not->toContain('delivery_company_single_branch');
 });
 
 test('carrier credentials marked required block saving when missing', function () {

@@ -206,7 +206,7 @@ $updatedStateId = function (?string $value): void {
 };
 
 $states = computed(fn () => $this->country_id
-    ? State::where('country_id', $this->country_id)->pluck('name', 'id')
+    ? State::where('country_id', $this->country_id)->orderedByCode()->get(['id', 'name', 'state_code'])->toArray()
     : []);
 
 $cities = computed(fn () => $this->state_id
@@ -318,6 +318,9 @@ $roleTemplatePermissions = computed(function (): array {
                         <x-edz.select
                             wire:model.live="state_id"
                             :options="$this->states"
+                            option-value="id"
+                            option-label="name"
+                            option-code="state_code"
                             placeholder="{{ __('teams.select_state') }}"
                             :disabled="empty($this->country_id)"
                             :error="$errors->first('state_id')"

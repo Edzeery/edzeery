@@ -388,3 +388,27 @@ test('commune-field match keeps primary priority over the name fallback', functi
         ->and($offices[0]['external_code'])->toBe('02B') // commune "Tenes" matches (primary signal)
         ->and($offices[1]['external_code'])->toBe('02A'); // only the name fallback matched
 });
+
+test('full sync without a state filter assigns the wilaya and commune from the desk code', function () {
+    $store = noestStore();
+    $provider = noestProvider($store);
+    [$state16, $city16] = noestGeography();
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            ['code' => '16', 'name' => 'Alger Desk 1', 'commune' => 'Bab Ezzouar', 'address' => 'Rue 1'],
+        ]),
+    ]);
+
+    $result = app(StopdeskOfficeSync::class)->sync($provider);
+
+    expect($result['synced'])->toBeTrue()
+        ->and($result['created'])->toBe(1);
+
+    $point = StopdeskPoint::where('shipping_provider_id', $provider->id)->first();
+
+    expect($point)->not->toBeNull()
+        ->and($point->external_code)->toBe('16')
+        ->and($point->state_id)->toBe($state16->id)
+        ->and($point->city_id)->toBe($city16->id);
+});

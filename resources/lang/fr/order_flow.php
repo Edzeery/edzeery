@@ -133,4 +133,5 @@ return [
     'shipment_type_reset_for_carrier' => "Le type d'expédition sélectionné n'est pas pris en charge par ce transporteur, il a donc été réinitialisé à livraison",
     'destination_reset_for_carrier' => "La destination sélectionnée n'est pas couverte par ce transporteur, elle a donc été effacée",
     'no_company_coverage' => 'Aucune région synchronisée pour ce transporteur pour le moment — actualisez les bureaux pour les voir',
+    'no_home_coverage' => "Cette entreprise n'a pas de tarif de livraison à domicile pour cette destination",
 ];

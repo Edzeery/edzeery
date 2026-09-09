@@ -155,6 +155,14 @@ $selectProviderPlatform = function (string $platformId): void {
     $this->providerForm['name'] = '';
     $this->providerForm['credential_values'] = [];
     $this->connectionTestResult = null;
+
+    // A company whose catalogue has a single branch needs no branch picker:
+    // the only branch is picked implicitly. The standalone group keeps its
+    // picker because every independent carrier is a distinct company choice.
+    $carriers = $this->providerCarrierOptions();
+    if ($platformId !== '__standalone__' && count($carriers) === 1) {
+        $this->selectProviderCarrier((string) $carriers[0]['id']);
+    }
 };
 
 $selectProviderCarrier = function (string $carrierId): void {
@@ -457,18 +465,52 @@ $deleteProvider = function (string $id): void {
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
                         </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.delivery_company_branch') }}</label>
-                            <x-edz.select wire:key="carrier-options-{{ $providerForm['platform_id'] ?: 'none' }}"
-                                wire:model="providerForm.carrier_id"
-                                wire:change="selectProviderCarrier($event.target.value)"
-                                :options="$this->providerCarrierOptions()" option-value="id" option-label="name"
-                                placeholder="{{ $providerForm['platform_id'] ? __('merchant_panel.select_delivery_company_branch') : __('merchant_panel.select_delivery_company_first') }}"
-                                size="sm" search />
-                            @error('providerForm.carrier_id')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
+                        @php
+                            $branchCarriers = $this->providerCarrierOptions();
+                            $branchCarrierCount = count($branchCarriers);
+                            $isStandaloneChoice = ($providerForm['platform_id'] ?? '') === '__standalone__';
+                            $hasPlatformChoice = filled($providerForm['platform_id'] ?? '');
+                            $isBranchedCompany = $hasPlatformChoice && ! $isStandaloneChoice;
+                        @endphp
+                        @if ($isStandaloneChoice)
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.delivery_company') }}</label>
+                                <x-edz.select wire:key="carrier-options-{{ $providerForm['platform_id'] ?: 'none' }}"
+                                    wire:model="providerForm.carrier_id"
+                                    wire:change="selectProviderCarrier($event.target.value)"
+                                    :options="$branchCarriers" option-value="id" option-label="name"
+                                    placeholder="{{ __('merchant_panel.select_delivery_company') }}" size="sm" search />
+                                @error('providerForm.carrier_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        @elseif ($isBranchedCompany && $branchCarrierCount === 1)
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.delivery_company_branch') }}</label>
+                                <input type="text" value="{{ $branchCarriers[0]['name'] }}"
+                                    class="edz-input text-sm bg-surface-secondary opacity-70" disabled>
+                                <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.delivery_company_single_branch') }}</p>
+                                <input type="hidden" wire:model="providerForm.carrier_id" />
+                            </div>
+                        @elseif ($isBranchedCompany && $branchCarrierCount === 0)
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.delivery_company_branch') }}</label>
+                                <div class="edz-input text-sm text-ink-muted bg-surface-secondary opacity-70">{{ __('merchant_panel.delivery_company_no_branches') }}</div>
+                            </div>
+                        @else
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.delivery_company_branch') }}</label>
+                                <x-edz.select wire:key="carrier-options-{{ $providerForm['platform_id'] ?: 'none' }}"
+                                    wire:model="providerForm.carrier_id"
+                                    wire:change="selectProviderCarrier($event.target.value)"
+                                    :options="$branchCarriers" option-value="id" option-label="name"
+                                    placeholder="{{ $isBranchedCompany ? __('merchant_panel.select_delivery_company_branch') : __('merchant_panel.select_delivery_company_first') }}"
+                                    size="sm" search />
+                                @error('providerForm.carrier_id')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        @endif
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.provider_name') }} *</label>
                             <input type="text" wire:model="providerForm.name" class="edz-input text-sm" required>
