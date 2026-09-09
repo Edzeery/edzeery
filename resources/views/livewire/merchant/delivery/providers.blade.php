@@ -279,17 +279,26 @@ $saveProvider = function (): void {
 
     $storeId = currentStoreId();
 
-    DB::transaction(function () use ($storeId, $data) {
+    $provider = null;
+
+    DB::transaction(function () use ($storeId, $data, &$provider) {
         if ($data['is_default']) {
             ShippingProvider::where('store_id', $storeId)->update(['is_default' => false]);
         }
 
         if ($this->editingProviderId) {
-            ShippingProvider::where('store_id', $storeId)->findOrFail($this->editingProviderId)->update($data);
+            $provider = ShippingProvider::where('store_id', $storeId)->findOrFail($this->editingProviderId);
+            $provider->update($data);
         } else {
-            ShippingProvider::create(array_merge($data, ['store_id' => $storeId]));
+            $provider = ShippingProvider::create(array_merge($data, ['store_id' => $storeId]));
         }
     });
+
+    // Carrier-backed, active providers refresh their (cached) office list right
+    // after save so newly supplied credentials take effect immediately.
+    if ($provider && $provider->carrier_id && $data['is_active']) {
+        \App\Domains\Shipping\Jobs\SyncStopdeskOfficesJob::dispatch($storeId, $provider->id);
+    }
 
     $this->showProviderModal = false;
     $this->loadData();

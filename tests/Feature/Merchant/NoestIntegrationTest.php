@@ -302,3 +302,89 @@ test('posting to a carrier without credentials throws a RuntimeException', funct
     expect(fn () => app(CarrierOrderPostService::class)->postToCarrier($order))
         ->toThrow(RuntimeException::class);
 });
+
+test('communeScore ranks by exact commune match with no punctuation involved', function () {
+    noestGeography();
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $country = Country::where('code', 'DZ')->first();
+    $state = State::create([
+        'country_id' => $country->id,
+        'state_code' => '02',
+        'name' => 'Chlef',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    $city = City::firstOrCreate(['state_id' => $state->id, 'name' => 'Chlef'], ['post_code' => '02000', 'is_active' => true]);
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            '02C' => ['code' => '02C', 'name' => 'Chlef Center', 'commune' => 'Chlef', 'address' => 'Rue 1'],
+            '02D' => ['code' => '02D', 'name' => 'Tenes', 'commune' => 'Tenes', 'address' => 'Rue 2'],
+        ]),
+    ]);
+
+    $offices = app(NoestIntegrationAdapter::class)->offices($provider, $state, $city);
+
+    expect($offices)->toHaveCount(2)
+        ->and($offices[0]['external_code'])->toBe('02C');
+});
+
+test('city "Ras El Oued" ranks desk 34B above 34A despite its polluted commune field', function () {
+    noestGeography();
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $country = Country::where('code', 'DZ')->first();
+    $state = State::create([
+        'country_id' => $country->id,
+        'state_code' => '34',
+        'name' => 'Bordj Bou Arreridj',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    $city = City::firstOrCreate(['state_id' => $state->id, 'name' => 'Ras El Oued'], ['post_code' => '34000', 'is_active' => true]);
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            '34A' => ['code' => '34A', 'commune' => 'Bordj Bou Arreridj', 'name' => 'Bordj Bou Arreridj'],
+            '34B' => ['code' => '34B', 'commune' => 'Bordj Bou Arreridj «Ras El Oued» ', 'name' => 'Ras El Oued'],
+        ]),
+    ]);
+
+    $offices = app(NoestIntegrationAdapter::class)->offices($provider, $state, $city);
+
+    expect($offices)->toHaveCount(2)
+        ->and($offices[0]['external_code'])->toBe('34B')
+        ->and($offices[1]['external_code'])->toBe('34A');
+});
+
+test('commune-field match keeps primary priority over the name fallback', function () {
+    noestGeography();
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $country = Country::where('code', 'DZ')->first();
+    $state = State::create([
+        'country_id' => $country->id,
+        'state_code' => '02',
+        'name' => 'Chlef',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    $city = City::firstOrCreate(['state_id' => $state->id, 'name' => 'Tenes'], ['post_code' => '02200', 'is_active' => true]);
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            '02A' => ['code' => '02A', 'commune' => 'Chlef', 'name' => 'Tenes'],
+            '02B' => ['code' => '02B', 'commune' => 'Tenes', 'name' => 'Chlef «Tenes»'],
+        ]),
+    ]);
+
+    $offices = app(NoestIntegrationAdapter::class)->offices($provider, $state, $city);
+
+    expect($offices)->toHaveCount(2)
+        ->and($offices[0]['external_code'])->toBe('02B') // commune "Tenes" matches (primary signal)
+        ->and($offices[1]['external_code'])->toBe('02A'); // only the name fallback matched
+});

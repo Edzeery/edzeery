@@ -38,6 +38,10 @@ return [
     'confirm_only' => 'Confirmar solo',
     'confirm_and_send' => 'Confirmar y entregar al transportista',
     'send_to_carrier' => 'Entregar al transportista',
+    'carrier_not_configured' => 'No se puede enviar — activa al menos un transportista o añade un repartidor.',
+    'rate_note_unpriced' => 'Nota: no existe tarifa anunciada para esta empresa en esta wilaya/comuna.',
+    'rate_note_zero_cost' => 'Nota: la tarifa anunciada de esta empresa para este destino es cero.',
+    'bulk_send_rate_note' => 'Alerta de tarifas: :count pedidos sin tarifa o con tarifa cero',
     'confirm_requires_partner' => 'Elige un transportista o repartidor antes de enviar.',
     'confirmed_and_sent' => 'Pedido confirmado y entregado al transportista ✈',
     'confirmed_only' => 'Pedido confirmado',
@@ -127,4 +131,6 @@ return [
 
     'office_reset_for_destination' => 'La oficina seleccionada anteriormente no está disponible para el nuevo destino, por lo que la selección se eliminó',
     'shipment_type_reset_for_carrier' => 'El tipo de envío seleccionado no es compatible con esta empresa, por lo que se restableció a entrega',
+    'destination_reset_for_carrier' => 'El destino seleccionado no está cubierto por esta empresa, por lo que se eliminó',
+    'no_company_coverage' => 'Aún no hay regiones sincronizadas para esta empresa — actualice las oficinas para verlas',
 ];

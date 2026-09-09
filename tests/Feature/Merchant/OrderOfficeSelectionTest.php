@@ -521,7 +521,7 @@ test('the delivery quick-edit modal is blocked for shipped orders', function () 
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 });
 
-test('office options are scoped to the chosen commune in the delivery quick-edit modal', function () {
+test('office options are strictly scoped to the chosen commune in the delivery quick-edit modal', function () {
     [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = officeGeography();
 
@@ -564,8 +564,8 @@ test('office options are scoped to the chosen commune in the delivery quick-edit
     $offerOfficeIds = collect(data_get($volt->get('formOffices'), '*.value'));
 
     expect($offerOfficeIds)->toContain($pointCityB->id)
-        ->and($offerOfficeIds)->toContain($pointRegional->id)
-        ->and($offerOfficeIds)->not->toContain($pointCityA->id);
+        ->and($offerOfficeIds)->not->toContain($pointCityA->id)
+        ->and($offerOfficeIds)->not->toContain($pointRegional->id);
 });
 
 // ——— 30.2: never revert a previously valid office silently ———
@@ -682,4 +682,143 @@ test('a still-valid office is kept and no reset toast is emitted', function () {
         ->and($volt->get('formOffices'))->not->toBe([]);
 
     $volt->assertNotDispatched('swal:toast');
+});
+
+// ——— Strict geo scoping of pick-up points (B) ———
+
+test('the inline stopdesk editor only offers offices of the order state and commune', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+
+    $cityB = City::create([
+        'state_id' => $state->id,
+        'name' => 'Cheraga',
+        'post_code' => '16027',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+    $pointOtherCity = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $cityB->id,
+        'name' => 'Point Cheraga',
+        'address' => '',
+        'is_active' => true,
+    ]);
+    $pointRegional = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => null,
+        'name' => 'Regional Hub',
+        'address' => '',
+        'is_active' => true,
+    ]);
+
+    $order = officeStopdeskOrder($store, $provider, $point, $state, $city);
+
+    $volt = officeVolt([$user, $store])->call('startOrderStopdeskEdit', $order->id);
+
+    $optionIds = collect(data_get($volt->get('editStopdeskOptions'), '*.value'));
+
+    expect($optionIds)->toContain((string) $point->id)
+        ->and($optionIds)->not->toContain((string) $pointOtherCity->id)
+        ->and($optionIds)->not->toContain((string) $pointRegional->id);
+});
+
+test('the inline stopdesk editor hides offices of a different state', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+
+    $country = \App\Models\Locations\Country::firstOrNew(['code' => 'DZ'], ['name' => 'Algeria', 'is_active' => true, 'is_cod_available' => true]);
+    $country->save();
+
+    $stateB = State::create([
+        'country_id' => $country->id,
+        'state_code' => '31',
+        'name' => 'Oran',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $cityB = City::create([
+        'state_id' => $stateB->id,
+        'name' => 'Oran City',
+        'post_code' => '31000',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+    $pointOtherState = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $stateB->id,
+        'city_id' => $cityB->id,
+        'name' => 'Point Oran',
+        'address' => '',
+        'is_active' => true,
+    ]);
+
+    $order = officeStopdeskOrder($store, $provider, $point, $state, $city);
+
+    $volt = officeVolt([$user, $store])->call('startOrderStopdeskEdit', $order->id);
+
+    $optionIds = collect(data_get($volt->get('editStopdeskOptions'), '*.value'));
+
+    expect($optionIds)->toContain((string) $point->id)
+        ->and($optionIds)->not->toContain((string) $pointOtherState->id);
+});
+
+test('the create form offers no offices until a wilaya is chosen', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+
+    $volt = officeVolt([$user, $store])->call('loadFormOffices', $provider->id);
+
+    expect($volt->get('formOffices'))->toBe([])
+        ->and($volt->get('form.stopdesk_point_id'))->toBe('');
+});
+
+test('the create form scopes offices to the chosen wilaya when no commune is set', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+
+    $cityB = City::create([
+        'state_id' => $state->id,
+        'name' => 'Cheraga',
+        'post_code' => '16027',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $provider = officeProvider($store);
+    $pointA = officePoint($store, $provider, $state, $city);
+    $pointB = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $cityB->id,
+        'name' => 'Point Cheraga',
+        'address' => '',
+        'is_active' => true,
+    ]);
+
+    $volt = officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.state_id', $state->id)
+        ->call('loadFormOffices', $provider->id);
+
+    $optionIds = collect(data_get($volt->get('formOffices'), '*.value'));
+
+    expect($optionIds)->toContain($pointA->id)
+        ->and($optionIds)->toContain($pointB->id)
+        ->and($volt->get('form.shipping_provider_id'))->toBe($provider->id);
 });

@@ -201,7 +201,8 @@ class OrderService
 
             // Shipping cost is always sourced from published/configured rates
             // via the calculator; orders.shipping_cost mirrors the single truth.
-            if ($order->delivery_type === Order::DELIVERY_HOME && $order->state_id) {
+            // Stopdesk orders resolve office pricing too (office_unavailable → 0).
+            if ($order->state_id) {
                 $items = collect($order->items);
                 $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)
                     ->calculate(
@@ -210,6 +211,8 @@ class OrderService
                         $order->city_id,
                         (float) $items->sum('subtotal'),
                         $items->pluck('product_id')->filter()->values()->toArray(),
+                        $order->shipping_provider_id ?: null,
+                        $order->delivery_type ?: Order::DELIVERY_HOME,
                     );
 
                 $order->update(['shipping_cost' => (float) ($result['cost'] ?? 0)]);

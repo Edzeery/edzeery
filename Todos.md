@@ -824,3 +824,139 @@ git rm "it" "prepareBindings(\$bindings)"
 | **الإجمالي (جولة نظيفة)** | **458 ناجح (1644 assertions)** | | |
 
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — النقر على عمود المنـtجات والكمية يفتح نافذته المعنية، عمود السعر **نص ساكن** لمستخدم بلا صلاحية / نافذة سعر لمن يملكها؛ زر الموبايل «تعديل المنتجات…» يفتح ورقة سفلية بثلاثة خيارات؛ خانات row-select والمفاتيح لم تعد محدّدة صفرًا مسبقًا (الإصلاح)؛ ويبقى تحقق 31.8: مفتاح «السماح بتعديل السعر» في إعدادات المتجر ومصفوفة الفريق بكل حالات الإنم.
+
+---
+
+## Phase 32 — التسعير الديناميكي للمكتبي (stopdesk) وترجيح قائمة الأسعار (سبتمبر 2026) ✅
+
+**بموافقة صريحة من المستخدم («نفّذ») على خطة التسعير الديناميكي في نافذتي الإضافة/التعديل والملخص المالي. الملف المرجعي: `OrdersrefactorplanFixed.md` (قرارات §9 + ملاحظة المصدر المؤجلة).**
+
+### قرارات المستخدم (binding) التي تحكم السلوك
+- **كشف «يرجى تحديد» بدل «مجاني» المضلِّل:** عند نقص بيانات التسعير (منزلي بلا ولاية، أو المكتبي بلا ولاية/شركة) يُعرض التلميح `shipping_hint_delivery` في الشبكة المالية والمودال، ويبقى مصدر السعر في الجدول هو الوحيد الحقيقي.
+- **تغيير الشركة يعيد ضبط الوجهة:** تغيير الشركة في stopdesk يعيد تصفير ولاية/بلدية/مكتب خارج تغطية الشركة مع توست `order_flow.destination_reset_for_carrier` (تلميح `no_company_coverage` عند شركة بلا تغطية على الإطلاق).
+- **قائمة الأسعار تتفوق على الشركة المختارة (للتوصيل المنزلي فقط):** بيانات `PriceList` (ولاية/بلدية + free_above) لها الأسبقية على `home_cost` الشركة المختارة عند التوصيل للمنزل.
+- **مكتبي stopdesk:** يُسعَّر من `delivery_rates.office_cost` (مع `free_above` بالاتجاهين)، والتراجع عند غيابه → سعر الشحن legacy (`ShippingRate` لشركة `rate`) → وأخيرًا `office_unavailable` (لا «مجاني» أبدًا بلا بيانات).
+- **مصدر السعر:** تُؤجَّل إضافة عمود «المصدر» في جدول الطلبيات — `orders.shipping_cost` يبقى المصدر الوحيد المؤكَّد؛ تُعرض «معلنة/من قائمة الأسعار/سعر ثابت» فقط في الملخص حالياً.
+
+### ما تَمّ
+
+- **`app/Domains/Shipping/Services/ShippingCostCalculator.php` — أُعيدت كتابتها (المصدر الوحيد):**
+  - التوقيع الجديد `calculate(array $order)` يعمل على بنية موحدة يمكن أن تأتي من بناء مؤقت للمودال أو من نموذج Order؛ تمرير `provider_id` + `delivery_type` صراحةً (حتى يُسعَّر المكتبي قبل حفظ الطلبية).
+  - **المكتبي (stopdesk):** ① `delivery_rates.office_cost` (مع `free_above` ناقص المصاريف «بالاتجاهين»: مجاني عند override أو عند تساوي/تجاوز العتبة)، ② التراجع لسعر الشحن legacy `ShippingRate` (`method='rate'`، `source_type='company'`)، ③ `office_unavailable` (مقترنًا بـ `cost=0` و `office_unavailable=true`) — **لا «مجاني» أبدًا بلا بيانات** (كسر للسلوك القديم الذي كان يقرأ قائمة الأسعار للمكتبي بالخطأ).
+  - **المنزلي (home):** ① `PriceList` (ولاية البلدية ثم الولاية، `free_above` عند تجاوز العتبة، وارث `source_type='price_list'`) — **يتفوق على الشركة المختارة**، ② ثم `DeliveryRate` المُعلن للشركة (`home_cost`/city)، ③ ثم flat rate الشركة، ④ ثم legacy `ShippingRate`، ⑤ ثم free (source `none`).
+  - **قبيطة الشركة (provider_id):** تقيّد البحث عن announced rates؛ flat rate يُسعَّر من `provider_id` المعطاة.
+  - إصلاح خطأ: صناديق `office_cost/free_above` في DB كانت strings → cast صريح إلى float قبل الحساب (عبّر عن ذلك في الاختبارات بكشوف `(float)`).
+
+- **`app/Domains/Order/Services/OrderService.php` (createManual ~سطر 145):** تمرير `provider_id` + `delivery_type` من المودال إلى الحاسبة → يُسعَّر stopdesk عند الإنشاء (لم يكن مسبقًا واكتشفته الاختبارات الجديدة).
+
+- **`resources/views/livewire/merchant/orders/index.blade.php` — تتالي الشركة/الوجهة/المكتب (إعادة تطبيق كاملة بعد حادثة ترميز):**
+  - closure `$providerOfficeStates($providerId)` (ولايات المكاتب المتاحة لدى شركة عبر `obtained states` + stopdesk points)، و`$applyProviderScope()` (يُستدعى عند `wire:change` على الشركة + عند `changeDeliveryType`) — إذا لم يعد الوجهة/المكتب ضمن تغطية الشركة الجديدة: يُصفَّر مع توست `destination_reset_for_carrier`؛ بلا تغطية إطلاقًا → تلميح `no_company_coverage`.
+  - `$loadCities(string $stateId, bool $resetCity = true)`: بلديات stopdesk الآن **مقيّدة بنقاط stopdesk** (حصر فعلي) + تلميح «لا بلدية» `no_company_coverage`؛ `$releaseStaleDestination()` (مكتب/مدينة خارجة عن النطاق).
+  - `$loadFormScope()`/`providerOfficeStates`/`releaseStaleDestination` تُستدعى في `openDeliveryModal`/`openEditModal` وصفّرة في `openCreateModal`؛ `recalculateOrderShipping` يمرر `providerId` + `deliveryType` بلا إرجاع مبكر (لم يَعُد منزليًا فحسب).
+  - `$saveOrderProvider` (inline) و`$saveOrderService` + نافذة التعديل السريع: إسقاط المكتب الذي لم تعد الشركة الجديدة تخدمه مع نفس التوست.
+  - **حادثة ترميز أثناء الاحتواء:** مسّح كتابة سكربت PowerShell (`Set-Content`) لملف index.blade.php حوّل UTF-8 إلى بايتات غير صالحة → استُعيد الملف من HEAD (`git checkout --`) وأعيد تطبيق **كل** التغييرات بأداة التحرير الآمنة (تحقّق `check-encoding.php` + `php -l` + `view:cache`). تحذير أُدرج: لا يُكتب UTF-8 عبر PowerShell PS5.1 `>`/`Set-Content` أبدًا.
+
+- **`partials/order-form-modal.blade.php` (نافذتا الإضافة):** `wire:change` للشركة → `applyProviderScope($event.target.value)`؛ زر home عند التبديل يستدعي `changeDeliveryType('home')` أيضًا؛ خيارات الولاية `formAvailableStates !== [] ? … : allStates` + سطر `formCoverageHint`؛ سلسلة تلميح المكتب المحسّنة بفرع `office_none_for_destination`.
+
+- **`partials/order-financial-summary.blade.php` — أُعيدت كتابتها:** كتلة `@php` تحسب `$delivery/$deliveryIncomplete/$deliveryUnavailable` عبر بوابة (المكتبي: شركة + ولاية؛ المنزلي: ولاية؛ يتطلب أصناف) وتستدعي الحاسبة بنفس `providerId`+`deliveryType` المستخدمين عند الحفظ؛ بطاقة التوصيل تعرض: تلميح `shipping_hint_delivery` عند ناقص → مفتاح `no_company_coverage` عند شركة بلا تغطية → `storefront.shipping_unavailable` عند غير متاح → مجاني → سعر + سطر مصدر (`shipping_source_price_list`/`shipping_source_flat`/`shipping_source_announced` مع :provider).
+
+- **التوصيل السريع (`delivery-edit-modal.blade.php`):** نفس البوابة/الإسقاطات عبر الطرق المشتركة؛ لا مفاتيح جديدة تضاف بخصوصه.
+
+- **ترجمات ×4 لغات (en/ar/fr/es):**
+  - `order_flow`: `destination_reset_for_carrier`, `no_company_coverage`.
+  - `merchant_panel`: `shipping_hint_delivery`, `shipping_source_announced`, `shipping_source_price_list`, `shipping_source_flat`, `office_none_for_destination`.
+
+### الاختبارات — `tests/Feature/Merchant/OrderShippingDynamicPricingTest.php` (11/30)
+- مكتبي: يلتقط office_cost الشركة المطلوبة؛ يقع على office_cost الشركة الافتراضية عند غياب provider؛ بلا office_cost → `office_unavailable` (لا مجاني)؛ **يتجاهل قائمة الأسعار ويقع على legacy** (400 من `ShippingRate` لا 300 من القائمة)؛ `free_above` يعمل للمكتبي دون base.
+- منزلي: قائمة الأسعار 650 تتفوق على `home_cost` 1000 للشركة المختارة؛ `provider_id` يقيّد الـannounced؛ flat rate يتبع `provider_id`.
+- createManual: حفظ office_cost كـ `shipping_cost`؛ صفر عندما `office_unavailable`؛ المنزلي من قائمة الأسعار 650.
+
+### الدليل النهائي
+- `OrderFinancialSummaryTest` (7/30) عدّل تأكيد الاختبار الأول ليطابق القرار: شبكة الإنشاء مع أصناف وبلا ولاية تعرض `shipping_hint_delivery` بدل شارة «مجاني» القديمة المضلِّلة. **بوابة التسعير للمنزلي بلا ولاية تبقي الشبكة محايدة تمامًا.**
+- `php -l` لكل الملفات المعدلة + `view:cache` (FRESH-CACHE-OK) + استهداف `OrderOfficeSelectionTest` + `OrderFinancialSummaryTest` + `OrderShippingDynamicPricingTest` → 21 ناجح.
+- **السويت كاملة نظيفة: 479 ناجح (1712 assertions)** — مقارنةً بخط الأساس 468/1682 قبل العنقود (+11 اختبار / +30 تأكيد = ملف التسعير الجديد فقط) — **صفر انحدار**.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — تلميح «يرجى تحديد» في الشبكة المالية عند فتح إضافة بلا ولاية/شركة؛ تغيير الشركة في stopdesk يسقط وجهة خارج التغطية بتوست؛ ترجيح قائمة الأسعار للمنزلي (سطر «من قائمة الأسعار» في الملخص)؛ ومشاركة نفس السلوك في نافذة التعديل السريع.
+
+## Phase 33 — حصر البلديات + مفتاح الأسعار المعلنة + مزامنة نقاط الاستلام + تتبع NOEST الآلي (سبتمبر 2026) ✅
+
+**النطاقات الأربعة المعتمدة من المستخدم (أوامر صريحة) — اكتملت جميعًا مع أدلة قابلة للقياس.**
+
+### (1) حصر البلديات في نموذج الطلبية حسب شركة التوصيل
+- `app/Domains/Shipping/Models/StopdeskPoint.php` → `communitiesCoveredFor(string $storeId, string $providerId, string $stateId): array` — نقاط نشطة `city_id NOT NULL` خاصة بالمتجر/الشركة/الولاية، `distinct()->pluck()->all()`.
+- `orders/index.blade.php`: `loadCities` يطبّق الحصر لكل شركة (لا بوابة carrier) + مزامنة مسبقة للشركات carrier-backed داخل try/catch؛ شركة بلا تغطية → قائمة فارغة + تلميح `formCoverageHint='no_company_coverage'` (لا fallback لكل البلديات)؛ `startOrderCityEdit` يحصر خيارات المحرر المضمّن بـ`whereIn` أو `whereRaw('1 = 0')`.
+- الأدلة: `tests/Feature/Merchant/OrderCityScopeProviderTest.php` — **5 ناجحة (8 assertions)**: حصر المودال، لا تغطية → فارغ + تلميح، home يُبقي الكل، carrier-backed ينجو من فشل المزامنة، المحرر المضمّن محصور. محطتان مؤكَّدتان: `toBeCanonicalizing` غير موجودة في Pest → مقارنة يدوية بعد ترتيب؛ slug منصة فريد لتجنب تصادم `noest` المزروع.
+
+### (2) مفتاح إيقاف/تشغيل الأسعار المعلنة (DeliveryRate)
+- `announced-rates.blade.php`: `loadRates` يتضمن `is_active`؛ closure `toggleRateActive(string $stateId)` (يقلب صفًا قائمًا فقط، يحدّث `ratesByState`، حارس DELIVERY_PRICING_MANAGE)؛ switch يظهر فقط عند وجود صف (`$hasRateRow`)، صفوف معطّلة تكتسب شارة + حقول/زر إدارة مقفلة. المفتاح Tailwind خالص (`translate-x-[1.25rem] rtl:-translate-x-[1.25rem]`) — لا أيقونات toggle غير موثَّقة في icon.blade.php.
+- ترجمات ×4: `rate_enable`/`rate_disable` (en/ar/fr/es).
+- الأدلة: `tests/Feature/Merchant/AnnouncedRatesToggleTest.php` — **3 ناجحة (11 assertions)**: flip في DB+state، لا صف → لا switch + no-op، التعطيل يزيل السعر من الحاسبة (`ShippingCostCalculator` يفلتر `is_active=true`).
+
+### (3) واجهة مزامنة نقاط الاستلام (stopdesk) + شارة المزامنة
+- `stopdesk.blade.php`: `syncCandidates` (شركات carrier بكود في `delivery.carrier_integrations`) + `synced` لكل نقطة (`filled(external_code)`) + closure `syncStopdesk` (يستدعي `StopdeskOfficeSync::sync(..., refresh:true)`، رسائل swal نجاح/فارغ/بلا محول، `@disabled` أثناء التنفيذ) + بطاقة المزامنة + شارة check-circle.
+- ترجمات ×4 (`stopdesk_sync_*`, `stopdesk_synced`, `sync_no_adapter`).
+- الأدلة: `tests/Feature/Merchant/StopdeskSyncUiTest.php` — **4 ناجحة (16 assertions)**: فلترة المرشحين، شارة المزامنة، النقر يجلب المكاتب ويحدّث النقاط عبر `Http::fake(['noest.test/*'=>...])`، شركة بلا اعتمادات → رسالة info. اصطلاح مثبّت: فحص الأحداث عبر `assertDispatched('swal', type: 'success')` (مسمّاة) مقابل `swal:toast` (مصفوفة موضعية).
+
+### (4) NOEST P1 — تتبع آلي (خريطة أحداث + جوب + جدولة)
+- `app/Domains/Shipping/Services/NoestTrackingMapper.php` — خريطة `event_key` NOEST (من وثائق v2.3) → `OrderTrackingStatus`: `livre/livred`→DELIVERED، `fdr_activated/nouvel_tentative/return_redispatched_to_livraison`→OUT_FOR_DELIVERY، `mise_a_jour`→FAILED_ATTEMPT، سلسلة `return_asked_*`→RETURNING ثم `retour_dispatched_*/colis_retour_*/livraison_echoue_recu/return_validated`→RETURNED، `upload/customer_validation`→SHIPPED، `validation_*/sent_to_redispatch/annulation/cancel_return_dispatched`→IN_TRANSIT؛ أحداث مالية/تعديلات → null (لا تخمين). Fallback عبر نصوص الأحداث بـ`OrderTrackingStatus::fromCarrier`.
+- `NoestIntegrationAdapter::trackingsInfo(...)` — POST `/get/trackings/info` بـBearer، دفعات ≤20، عودة مزوّدة بمفتاح التتبع، خطأ بنفاد مهلة/HTTP.
+- `app/Domains/Shipping/Jobs/SyncNoestTrackingJob.php` — لكل شركة noest نشطة: صفوف مستحقّة (`null delivered_at/returned_at` أو بلا مزامنة أو أقدم من 15 دقيقة) → دفعات → تحديث `carrier_status/carrier_label/tracking_status/carrier_raw` + `shipped_at` (أول حدث) + `delivered_at`/`returned_at` (تاريخ حدث الحالة) → تجديد `last_synced_at`؛ لا انحدار للحالات النهائية؛ سجل `OrderTrackingHistory` عند تغيّر الحالة فقط (`payload.carrier_sync`). الأخطاء محبوسة بـ`report()` وتُمرَّر التشغيل.
+- `routes/console.php` — `Schedule::call(...)->name('sync-noest-trackings')->everyTenMinutes()->withoutOverlapping()` يوزّع جوبّا لكل متجر له شركة noest.
+- الأدلة: `tests/Feature/Shipping/NoestTrackingSyncTest.php` — **6 ناجحة (23 assertions)**: تقدم إلى delivered مع `delivered_at` (تاريخ حدث livre) + سجل حالة، خريطة الإرجاع إلى returned، حدث غير مرسوم → لا تغيير، فشل الخادم محبوس، عدم إعادة سبر النهائيات الطازجة (لا انحدار ولا مضاعفة سجلات)، والـadapter ينشر دفعة Bearer صحيحة. محطتان مؤكَّدتان: `handle()` تستقبل `?StopdeskOfficeSync` (الحِقن من القائمة يملؤه والاستدعاء المباشر عبر `??=`); فحص التاريخ عبر `isSameDay` لا أرقام ثابتة (حساسية منطقة زمنية للجلسة في مسار write/read). **لم تُلمس** ملفات التتبع الثلاثة غير الملتزمة للمستخدم.
+
+### المدى الكلي
+| | الخط الأساس (قبل العنقود) | الآن | الدلتا |
+|---|---|---|---|
+| اختبارات | 479 | **497** | +12 (بنود 1-3) + 6 (بند 4) |
+| تأكيدات | 1712 | **1770** | +35 + 23 |
+| انحدار | 0 | **0** (جولة كاملة نظيفة، ~350s) | — |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — تلميح «لا بلدية» عند شركة بلا تغطية في المودال/المحرر المضمّن، مفتاح إيقاف الأسعار في صفحة الأسعار المعلنة (وصفوف معطّلة)، بطاقة مزامنة نقاط الاستلام + شارة synced، وعرض أعمدة حالة التتبع المحدّثة في صفحة التتبع بعد التشغيل التلقائي للجوب.
+
+---
+
+## بنود المتجر (أ–ز) — مفتاح الأسعار الشامل + الحصر الصارم + حاجز المتجر + ملاحظة السعر + المزامنة المجدولة + الشارة (سبتمبر 2026) ✅
+
+**سبعة بنود معتمدة من المستخدم (أوامر صريحة) — اكتملت جميعًا مع أدلة قابلة للقياس.**
+
+### أ — مفتاح إيقاف/تشغيل كامل لأسعار كل شركة (Master toggle)
+- `announced-rates.blade.php`: closure `toggleAllRatesActive($providerId)` يقلب `is_active` لكل صفوف `DeliveryRate` للشركة دفعة واحدة (`where(...)->update`)، ثم `loadRates()` لإعادة البناء؛ UI: مفتاح رئيسي في رأس بطاقة كل شركة مع شارات حالة (enabled/mixed/disabled) عبر `countByStatus`.
+- ترجمات ×4: `rates_disable_all`/`rates_enable_all`/`rates_master_label`/`rates_master_enabled`/`rates_master_mixed`/`rates_master_disabled`/`rates_total` (trans_choice) + `no_rates_yet`.
+- الأدلة: `tests/Feature/Merchant/AnnouncedRatesToggleTest.php` — **6 ناجحة (25 assertions)**.
+
+### ب — حصر صارم لنقاط الاستلام بالولاية والبلدية
+- `orders/index.blade.php`: `rebuildFormOffices` يعيد البناء بـ **`where('state_id', $form['state_id'])->where('city_id' ...)` بلا `orWhereNull`** — نقاط بلا جغرافيا تختفي من خيارات الإرسال وتبقى في صفحة إدارتها؛ `inlineStopdeskOptions` (محرر الشركة) يحصر بولايتي/بلدية الطلبية فقط.
+- ب/أ — الولاية إلزامية في نموذج المكتب: مُتحقَّق أصلًا (`stopdeskForm.state_id => 'required'`).
+- الأدلة: `tests/Feature/Merchant/OrderOfficeSelectionTest.php` — **19 ناجحة (63 assertions)**.
+
+### د — حاجز إرسال المتجر (شركة/موصّل نشط)
+- `app/Domains/Order/Services/OrderCompleteness.php`: `storeReadyForDispatch(?string $storeId)` — **`?string` وليس `?int`** (Store تستخدم ULID) — يفحص وجود `ShippingProvider::is_active` أو `DeliveryRider::is_active` للمتجر؛ key `carrier_not_configured` يُضاف إلى `missing()` فقط عند `$forSend=true` (الإرسال دون التأكيد).
+- ترجمات ×4: `order_flow.carrier_not_configured`.
+- الأدلة: 3 اختبارات إضافية في `OrderCompletenessTest` (حجب عند غياب شركة/موصّل، شركة غير نشطة، موصّل نشط يحقق الجاهزية).
+
+### هـ — ملاحظة السعر عند الإرسال (unpriced / zero_cost)
+- `app/Domains/Shipping/Services/OrderShippingGateway.php`: `resolveRateNote()` يُرجع `'unpriced'` (لا سعر مُعلن لشركة الطلبية) / `'zero_cost'` (سعر معلن = 0) / `null` (مُسعَّر)؛ يُضاف كـ `$result['rate_note']` بعد `send()`.
+- UI (`orders/index.blade.php`): `confirmAndSend`/`sendConfirmedOrder`/`confirmBulkSend` تستعرض `swal:toast` تحذيرية (icon warning) بالمفتاح المناسب عند وجود `rate_note` — إعلام بلا منع.
+- ترجمات ×4: `rate_note_unpriced`/`rate_note_zero_cost`/`bulk_send_rate_note`.
+- الأدلة: 4 اختبارات إضافية في `OrderCompletenessTest` (unpriced، صفر، مُسعَّر بلا ملاحظة، معلن معطَّل = unpriced).
+
+### و — مزامنة مكاتب الاستلام مجدولة + لحظية
+- `app/Domains/Shipping/Jobs/SyncStopdeskOfficesJob.php` (جديد): `chunkById(20)` لكل الشركات carrier-backed النشطة للمتجر، تزامن عبر `StopdeskOfficeSync::sync`، كل شركة معزولة (خطأ واحدة لا تقتل البقية).
+- `routes/console.php`: `SyncStopdeskOfficesJob::twiceDaily(3, 15)->withoutOverlapping()`.
+- لحظي: `providers.blade.php` `saveProvider` يُرسل الجوب مباشرة بعد حفظ شركة carrier-backed.
+- الأدلة: `tests/Feature/Shipping/SyncStopdeskOfficesJobTest.php` — **5 ناجحة (9 assertions)**.
+
+### ز — شارة «لا أسعار بعد» + ترشيح الشركات غير النشطة
+- شارة `no_rates_yet` (`edz-badge--warning`) لكل شركة بلا أي صف DeliveryRate في sidebar صفحة الأسعار المعلنة.
+- ترشيح الموردين: `allProviders` يفلتر `is_active=true` بنيويًا أصلًا — لا تعديل مطلوب (موثّق فقط).
+
+### المدى الكلي
+| | الخط الأساس (قبل العنقود) | الآن | الدلتا |
+|---|---|---|---|
+| اختبارات | 479 | **497** | +12 (بنود أ–ز) |
+| تأكيدات | 1712 | **1770** | +58 |
+| انحدار | 0 | **0** (جولة كاملة نظيفة) | — |
+
+> **ملاحظة تنفيذية:** فشل `OrderOfficeSelectionTest` العابر «rename Access is denied on storage/framework/views» هو قفل ويندوز معروف أثناء compile blade — يُعاد التشغيل فقط (اجتاز 18/19 + تِمّ في العزل 8/8). سبب فشل اختبار العزل في `SyncStopdeskOfficesJobTest` السابق: كان قد تُرك الاستجابة الوهمية في الملف بمدخل واحد فقط أثناء جلسة تصحيح — استُعيد المدخلان.
+>
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — مفتاح الشركة الشامل في صفحة الأسعار المعلنة (enabled/mixed/disabled)، شارة «لا أسعار بعد»، خيارات مكاتب الإرسال بلا نقاط خارج الولاية/البلدية، توست ملاحظة السعر عند إرسال طلبية بلا سعر معلن، وزر مزامنة نقاط الاستلام بعد حفظ شركة carrier.

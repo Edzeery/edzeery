@@ -2,6 +2,9 @@
 
 use App\Domains\Order\Jobs\DispatchPendingAssignmentsJob;
 use App\Domains\Order\Jobs\ShiftHandoverJob;
+use App\Domains\Shipping\Jobs\SyncNoestTrackingJob;
+use App\Domains\Shipping\Jobs\SyncStopdeskOfficesJob;
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Models\Stores\Store;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -26,3 +29,20 @@ Schedule::command('subscriptions:check-expired')->daily();
 
 // Release stock locked by orders left pending >48h (common in COD markets).
 Schedule::command('orders:auto-cancel-pending --hours=48')->dailyAt('03:00');
+
+// Poll NOEST tracking activity for every carrier-backed provider.
+Schedule::call(function () {
+    $storeIds = ShippingProvider::query()
+        ->where('is_active', true)
+        ->whereHas('carrier', fn ($query) => $query->where('code', 'noest'))
+        ->select('store_id')
+        ->distinct()
+        ->pluck('store_id');
+
+    foreach ($storeIds as $storeId) {
+        SyncNoestTrackingJob::dispatch($storeId);
+    }
+})->name('sync-noest-trackings')->everyTenMinutes()->withoutOverlapping();
+
+// Refresh stopdesk offices for every carrier-backed provider (twice daily).
+Schedule::job(new SyncStopdeskOfficesJob)->twiceDaily(3, 15)->withoutOverlapping();

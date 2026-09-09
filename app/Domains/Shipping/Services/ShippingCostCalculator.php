@@ -12,21 +12,39 @@ use App\Models\Stores\Store;
 
 class ShippingCostCalculator
 {
+    public const DELIVERY_HOME = 'home';
+
+    public const DELIVERY_STOPDESK = 'stopdesk';
+
     /**
      * Calculate shipping cost for a given store, state, and optional city.
      *
-     * Resolution order (storefront home delivery):
-     *   1. Store-wide price list, when the whole cart is covered by a single
-     *      active list (list state rate, per-municipality override).
-     *   2. Announced company rates (delivery_rates + delivery_rate_cities)
-     *      for the effective provider (default first), city-rate override.
-     *   3. Legacy shipping_rates, then the default provider flat rate, then free.
+     * Resolution order:
+     *   1. Store-wide price list (home deliveries only), when the whole cart is
+     *      covered by a single active list (list state rate, per-municipality
+     *      home-cost override). Office (stopdesk) deliveries never use the list.
+     *   2. Announced company rates (delivery_rates + delivery_rate_cities) for
+     *      the requested provider (or the effective default-first provider when
+     *      none is given). Home uses home_cost (+ city override), stopdesk uses
+     *      office_cost. free_above applies to both.
+     *   3. Legacy shipping_rates (scoped to the requested provider when given).
+     *   4. The requested provider flat rate, else the default provider flat rate.
+     *   5. Stopdesk with no resolvable office price → 'office_unavailable'
+     *      (available=false); home/storefront fallback → free.
      *
-     * Returns an array with: cost, is_free, provider_name, label, method.
-     * method = 'rate' | 'flat' | 'provider_flat' | 'free'
+     * Returns an array with: cost, is_free, provider_name, label, method,
+     * available, source, source_type.
+     * method = 'rate' | 'flat' | 'provider_flat' | 'free' | 'unavailable' | 'office_unavailable'
      */
-    public function calculate(Store $store, ?string $stateId = null, ?string $cityId = null, float $cartTotal = 0, array $productIds = []): array
-    {
+    public function calculate(
+        Store $store,
+        ?string $stateId = null,
+        ?string $cityId = null,
+        float $cartTotal = 0,
+        array $productIds = [],
+        ?string $providerId = null,
+        string $deliveryType = self::DELIVERY_HOME,
+    ): array {
         $state = $stateId ? State::find($stateId) : null;
 
         if ($state && ! $state->is_cod_available) {
@@ -40,9 +58,9 @@ class ShippingCostCalculator
             ];
         }
 
-        // 1. Price list rate — applies only when the whole cart belongs to a
-        // single active list that has a rate for the requested state.
-        if ($productIds !== []) {
+        // 1. Price list rate — home only, applies only when the whole cart
+        // belongs to a single active list that has a rate for the requested state.
+        if ($deliveryType === self::DELIVERY_HOME && $productIds !== []) {
             $list = $this->coveringPriceList($store, $state, $productIds);
 
             if ($list) {
@@ -51,19 +69,24 @@ class ShippingCostCalculator
         }
 
         // 2. Announced company rates (delivery_rates / delivery_rate_cities)
-        $rate = $this->resolveDeliveryRate($store, $state, $cityId);
+        $rate = $this->resolveDeliveryRate($store, $state, $cityId, $providerId, $cartTotal, $deliveryType);
 
         if ($rate) {
-            return $this->resolveDeliveryRatePrice($rate, $cartTotal);
+            return $this->resolveDeliveryRatePrice($rate, $cartTotal, $deliveryType);
         }
 
         // 3. Legacy exact city rate
         if ($cityId) {
-            $rate = ShippingRate::where('store_id', $store->id)
+            $query = ShippingRate::where('store_id', $store->id)
                 ->where('city_id', $cityId)
                 ->where('is_active', true)
-                ->with('provider')
-                ->first();
+                ->with('provider');
+
+            if ($providerId) {
+                $query->where('shipping_provider_id', $providerId);
+            }
+
+            $rate = $query->first();
 
             if ($rate) {
                 return $this->resolveRate($rate, $cartTotal);
@@ -72,38 +95,59 @@ class ShippingCostCalculator
 
         // 4. Legacy state-level rate
         if ($stateId) {
-            $rate = ShippingRate::where('store_id', $store->id)
+            $query = ShippingRate::where('store_id', $store->id)
                 ->where('state_id', $stateId)
                 ->whereNull('city_id')
                 ->where('is_active', true)
-                ->with('provider')
-                ->first();
+                ->with('provider');
+
+            if ($providerId) {
+                $query->where('shipping_provider_id', $providerId);
+            }
+
+            $rate = $query->first();
 
             if ($rate) {
                 return $this->resolveRate($rate, $cartTotal);
             }
         }
 
-        // 5. Default provider flat rate
-        $defaultProvider = ShippingProvider::where('store_id', $store->id)
-            ->where('is_default', true)
-            ->where('is_active', true)
-            ->first();
+        // 5. Provider flat rate (the requested one when given, else store default)
+        $provider = $providerId
+            ? ShippingProvider::where('store_id', $store->id)->where('is_active', true)->find($providerId)
+            : ShippingProvider::where('store_id', $store->id)
+                ->where('is_default', true)
+                ->where('is_active', true)
+                ->first();
 
-        if ($defaultProvider && $defaultProvider->flat_rate !== null) {
-            $cost = (float) $defaultProvider->flat_rate;
+        if ($provider && $provider->flat_rate !== null) {
+            $cost = (float) $provider->flat_rate;
 
             return [
                 'cost' => $cost,
                 'is_free' => false,
-                'provider_name' => $defaultProvider->name,
+                'provider_name' => $provider->name,
                 'label' => __('storefront.fixed_shipping_fee'),
                 'method' => 'provider_flat',
                 'available' => true,
+                'source_type' => 'company_flat',
             ];
         }
 
-        // 6. No rate found — default free
+        // 6. Stopdesk with no resolvable office price — explicit unresolved state.
+        if ($deliveryType === self::DELIVERY_STOPDESK) {
+            return [
+                'cost' => 0,
+                'is_free' => false,
+                'provider_name' => null,
+                'label' => __('storefront.shipping_unavailable'),
+                'method' => 'office_unavailable',
+                'available' => false,
+                'source_type' => null,
+            ];
+        }
+
+        // 7. No rate found — default free
         return [
             'cost' => 0,
             'is_free' => true,
@@ -127,6 +171,7 @@ class ShippingCostCalculator
                 'method' => 'free',
                 'available' => true,
                 'source' => $source,
+                'source_type' => 'company',
             ];
         }
 
@@ -138,6 +183,7 @@ class ShippingCostCalculator
             'method' => 'rate',
             'available' => true,
             'source' => $source,
+            'source_type' => 'company',
         ];
     }
 
@@ -210,34 +256,64 @@ class ShippingCostCalculator
             'method' => 'rate',
             'available' => true,
             'source' => $source,
+            'source_type' => 'price_list',
         ];
     }
 
     /**
-     * The effective delivery rate for the store's default (or first active)
-     * carrier that has prices for the requested state; the city-level home
-     * cost overrides the state-level home cost when set.
+     * The requested carrier's rate for the given state (default-first when no
+     * provider is given). Home consumes home_cost with the per-commune override
+     * from delivery_rate_cities; stopdesk consumes office_cost (state level).
+     * A rate whose relevant column is null is only resolvable through free_above.
      */
-    private function resolveDeliveryRate(Store $store, ?State $state, ?string $cityId): ?DeliveryRate
-    {
+    private function resolveDeliveryRate(
+        Store $store,
+        ?State $state,
+        ?string $cityId,
+        ?string $providerId,
+        float $cartTotal,
+        string $deliveryType,
+    ): ?DeliveryRate {
         if (! $state) {
             return null;
         }
 
-        $rate = DeliveryRate::query()
+        $query = DeliveryRate::query()
             ->where('store_id', $store->id)
             ->where('state_id', $state->id)
             ->where('is_active', true)
             ->whereHas('provider', fn ($query) => $query->where('is_active', true))
-            ->with('provider')
-            ->get()
-            ->sortByDesc(fn (DeliveryRate $rate) => (int) $rate->provider?->is_default)
-            ->first();
+            ->with('provider');
+
+        $rate = $providerId
+            ? $query->where('shipping_provider_id', $providerId)->first()
+            : $query->get()
+                ->sortByDesc(fn (DeliveryRate $rate) => (int) $rate->provider?->is_default)
+                ->first();
 
         if (! $rate) {
             return null;
         }
 
+        $hasCost = $rate->home_cost !== null;
+        $freeAbove = $rate->free_above !== null;
+
+        if ($deliveryType === self::DELIVERY_STOPDESK) {
+            $hasCost = $rate->office_cost !== null;
+
+            // Below a free-shipping threshold with no base office price → unresolved.
+            if (! $hasCost && (! $freeAbove || $cartTotal < $rate->free_above)) {
+                return null;
+            }
+
+            return $rate;
+        }
+
+        if (! $hasCost && (! $freeAbove || $cartTotal < $rate->free_above)) {
+            return null;
+        }
+
+        // Home city-level override (delivery_rate_cities carry home costs only).
         if ($cityId) {
             $cityRate = DeliveryRateCity::query()
                 ->where('store_id', $store->id)
@@ -249,7 +325,11 @@ class ShippingCostCalculator
 
             if ($cityRate) {
                 $rate->cityRate = $cityRate;
-                $rate->home_cost = $cityRate->home_cost;
+
+                if ($cityRate->home_cost !== null) {
+                    $rate->home_cost = $cityRate->home_cost;
+                }
+
                 $rate->free_above = $cityRate->free_above ?? $rate->free_above;
             }
         }
@@ -257,9 +337,9 @@ class ShippingCostCalculator
         return $rate;
     }
 
-    private function resolveDeliveryRatePrice(DeliveryRate $rate, float $cartTotal): array
+    private function resolveDeliveryRatePrice(DeliveryRate $rate, float $cartTotal, string $deliveryType): array
     {
-        $source = isset($rate->cityRate) && $rate->cityRate
+        $source = $rate->cityRate && $deliveryType === self::DELIVERY_HOME
             ? ['rate_type' => DeliveryRateCity::class, 'rate_id' => $rate->cityRate->id]
             : ['rate_type' => DeliveryRate::class, 'rate_id' => $rate->id];
 
@@ -272,17 +352,23 @@ class ShippingCostCalculator
                 'method' => 'free',
                 'available' => true,
                 'source' => $source,
+                'source_type' => 'company',
             ];
         }
 
+        $cost = $deliveryType === self::DELIVERY_STOPDESK
+            ? (float) $rate->office_cost
+            : (float) $rate->home_cost;
+
         return [
-            'cost' => (float) $rate->home_cost,
+            'cost' => $cost,
             'is_free' => false,
             'provider_name' => $rate->provider?->name,
             'label' => __('storefront.shipping_fee'),
             'method' => 'rate',
             'available' => true,
             'source' => $source,
+            'source_type' => 'company',
         ];
     }
 }

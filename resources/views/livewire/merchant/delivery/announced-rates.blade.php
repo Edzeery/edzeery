@@ -121,6 +121,7 @@ $loadRates = function (string $providerId): void {
                 'home_cost' => $r->home_cost !== null ? (string) $r->home_cost : '',
                 'office_cost' => $r->office_cost !== null ? (string) $r->office_cost : '',
                 'source' => $r->source ?? 'manual',
+                'is_active' => $r->is_active,
             ],
         ])
         ->all();
@@ -151,9 +152,60 @@ $updateStateCost = function (string $stateId, string $field, ?string $value): vo
     $rate->save();
 
     $this->ratesByState[$stateId] = array_merge(
-        $this->ratesByState[$stateId] ?? ['home_cost' => '', 'office_cost' => '', 'source' => 'manual'],
+        $this->ratesByState[$stateId] ?? ['home_cost' => '', 'office_cost' => '', 'source' => 'manual', 'is_active' => true],
         [$field => $value]
     );
+};
+
+$toggleRateActive = function (string $stateId): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+    if (! $this->selectedProviderId) {
+        return;
+    }
+
+    $rate = DeliveryRate::where('store_id', currentStoreId())
+        ->where('shipping_provider_id', $this->selectedProviderId)
+        ->where('state_id', $stateId)
+        ->first();
+
+    if (! $rate) {
+        return;
+    }
+
+    $rate->is_active = ! $rate->is_active;
+    $rate->save();
+
+    $this->ratesByState[$stateId]['is_active'] = $rate->is_active;
+};
+
+$toggleAllRatesActive = function (): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+    if (! $this->selectedProviderId) {
+        return;
+    }
+
+    $rates = DeliveryRate::where('store_id', currentStoreId())
+        ->where('shipping_provider_id', $this->selectedProviderId)
+        ->get(['id', 'state_id', 'is_active']);
+
+    if ($rates->isEmpty()) {
+        return;
+    }
+
+    $allActive = $rates->every(fn (DeliveryRate $rate) => $rate->is_active);
+
+    $rates->each(function (DeliveryRate $rate) use ($allActive): void {
+        $rate->is_active = ! $allActive;
+        $rate->save();
+    });
+
+    foreach ($this->ratesByState as $stateId => $rate) {
+        if (array_key_exists('is_active', $rate)) {
+            $this->ratesByState[$stateId]['is_active'] = ! $allActive;
+        }
+    }
+
+    $this->loadData();
 };
 
 $syncProvider = function (DeliveryRatesManager $manager): void {
@@ -734,6 +786,8 @@ $closeListStatePopup = function (): void {
                             </span>
                             @if ($provider['rates_count'] > 0 && $selectedProviderId === $provider['id'])
                                 <span class="edz-badge edz-badge--neutral shrink-0">{{ $provider['rates_count'] }}</span>
+                            @elseif ($provider['rates_count'] === 0)
+                                <span class="edz-badge edz-badge--warning shrink-0">{{ __('merchant_panel.no_rates_yet') }}</span>
                             @endif
                         </button>
                     @endforeach
@@ -779,6 +833,37 @@ $closeListStatePopup = function (): void {
                                 <span class="text-xs text-ink-muted">{{ __('merchant_panel.price_sync_not_supported') }}</span>
                             @endif
                         </div>
+
+                        {{-- Master rate switch: enables/disables every announced rate of this company at once --}}
+                        @php
+                            $rateRows = array_values(array_filter(
+                                $ratesByState,
+                                fn ($row) => array_key_exists('is_active', $row)
+                            ));
+                            $allRatesActive = $rateRows !== [] && collect($rateRows)->every(fn ($row) => $row['is_active']);
+                            $anyRatesInactive = collect($rateRows)->contains(fn ($row) => ! $row['is_active']);
+                        @endphp
+                        @if ($rateRows !== [])
+                            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-surface-border pt-4">
+                                <div class="flex items-center gap-3">
+                                    <button type="button" role="switch"
+                                        aria-checked="{{ $allRatesActive ? 'true' : 'false' }}"
+                                        wire:click="toggleAllRatesActive"
+                                        aria-label="{{ $allRatesActive ? __('merchant_panel.rates_disable_all') : __('merchant_panel.rates_enable_all') }}"
+                                        title="{{ $allRatesActive ? __('merchant_panel.rates_disable_all') : __('merchant_panel.rates_enable_all') }}"
+                                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {{ $allRatesActive ? 'bg-brand-500' : 'bg-surface-border' }}">
+                                        <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 {{ $allRatesActive ? 'translate-x-[1.25rem] rtl:-translate-x-[1.25rem]' : 'translate-x-0 rtl:translate-x-0' }}"></span>
+                                    </button>
+                                    <div class="text-sm">
+                                        <span class="font-medium text-ink">{{ __('merchant_panel.rates_master_label') }}</span>
+                                        <span class="block text-xs text-ink-muted">
+                                            {{ $allRatesActive ? __('merchant_panel.rates_master_enabled') : ($anyRatesInactive ? __('merchant_panel.rates_master_mixed') : __('merchant_panel.rates_master_disabled')) }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-ink-muted">{{ trans_choice('merchant_panel.rates_total', count($rateRows), ['count' => count($rateRows)]) }}</span>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- Rates grid (designed as a table, no <table> element) --}}
@@ -799,14 +884,18 @@ $closeListStatePopup = function (): void {
                             @foreach ($states as $state)
                                 @php
                                     $cell = array_merge(
-                                        ['home_cost' => '', 'office_cost' => '', 'source' => 'manual'],
+                                        ['home_cost' => '', 'office_cost' => '', 'source' => 'manual', 'is_active' => true],
                                         $ratesByState[$state['id']] ?? []
                                     );
+                                    $hasRateRow = array_key_exists($state['id'], $ratesByState);
                                 @endphp
                                 <div wire:key="rate-row-{{ $selectedProviderId }}-{{ $state['id'] }}"
-                                     class="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-surface-secondary/60 transition-colors">
+                                     class="grid grid-cols-12 gap-3 px-5 py-3.5 items-center hover:bg-surface-secondary/60 transition-colors {{ $hasRateRow && ! $cell['is_active'] ? 'opacity-70' : '' }}">
                                     <div class="col-span-12 sm:col-span-6 lg:col-span-4 flex items-center gap-2 min-w-0">
                                         <span class="text-sm font-medium text-ink truncate">{{ $state['name'] }}</span>
+                                        @if ($hasRateRow && ! $cell['is_active'])
+                                            <span class="edz-badge edz-badge--warning shrink-0">{{ __('merchant_panel.list_inactive') }}</span>
+                                        @endif
                                     </div>
 
                                     {{-- Home (base) cost --}}
@@ -815,7 +904,9 @@ $closeListStatePopup = function (): void {
                                             <input type="number" step="0.01" min="0"
                                                 value="{{ $cell['home_cost'] }}"
                                                 wire:change="updateStateCost('{{ $state['id'] }}', 'home_cost', $event.target.value)"
-                                                class="edz-input text-sm pr-8" placeholder="—">
+                                                class="edz-input text-sm pr-8"
+                                                placeholder="—"
+                                                @if (! $cell['is_active']) disabled @endif>
                                             <span class="absolute inset-y-0 end-2 flex items-center text-xs text-ink-muted">DA</span>
                                         </div>
                                     </div>
@@ -826,7 +917,9 @@ $closeListStatePopup = function (): void {
                                             <input type="number" step="0.01" min="0"
                                                 value="{{ $cell['office_cost'] }}"
                                                 wire:change="updateStateCost('{{ $state['id'] }}', 'office_cost', $event.target.value)"
-                                                class="edz-input text-sm pr-8" placeholder="—">
+                                                class="edz-input text-sm pr-8"
+                                                placeholder="—"
+                                                @if (! $cell['is_active']) disabled @endif>
                                             <span class="absolute inset-y-0 end-2 flex items-center text-xs text-ink-muted">DA</span>
                                         </div>
                                     </div>
@@ -839,12 +932,24 @@ $closeListStatePopup = function (): void {
 
                                     {{-- Actions --}}
                                     <div class="col-span-12 sm:col-span-12 lg:col-span-2 lg:justify-self-end">
-                                        <button type="button"
-                                            wire:click="openStatePopup('{{ $state['id'] }}')"
-                                            class="edz-btn edz-btn--ghost edz-btn--sm">
-                                            <x-edz.icon name="pencil" class="w-4 h-4" />
-                                            {{ __('merchant_panel.manage_municipalities') }}
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-3 justify-between sm:justify-start lg:justify-end">
+                                            @if ($hasRateRow)
+                                                <button type="button" role="switch" aria-checked="{{ $cell['is_active'] ? 'true' : 'false' }}"
+                                                    wire:click="toggleRateActive('{{ $state['id'] }}')"
+                                                    aria-label="{{ $cell['is_active'] ? __('merchant_panel.rate_disable') : __('merchant_panel.rate_enable') }}"
+                                                    title="{{ $cell['is_active'] ? __('merchant_panel.rate_disable') : __('merchant_panel.rate_enable') }}"
+                                                    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {{ $cell['is_active'] ? 'bg-brand-500' : 'bg-surface-border' }}">
+                                                    <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 {{ $cell['is_active'] ? 'translate-x-[1.25rem] rtl:-translate-x-[1.25rem]' : 'translate-x-0 rtl:translate-x-0' }}"></span>
+                                                </button>
+                                            @endif
+                                            <button type="button"
+                                                wire:click="openStatePopup('{{ $state['id'] }}')"
+                                                class="edz-btn edz-btn--ghost edz-btn--sm"
+                                                @if (! $cell['is_active']) disabled @endif>
+                                                <x-edz.icon name="pencil" class="w-4 h-4" />
+                                                {{ __('merchant_panel.manage_municipalities') }}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach

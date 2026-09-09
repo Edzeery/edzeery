@@ -64,6 +64,8 @@ state([
     'allMembers' => [],
     'allStates' => [],
     'allCities' => [],
+    'formAvailableStates' => [],
+    'formCoverageHint' => '',
     'allStopdeskPoints' => [],
     'allProviders' => [],
 
@@ -1221,6 +1223,7 @@ $confirmBulkSend = function (): void {
     $perCarrier = [];
     $sent = 0;
     $skipped = [];
+    $rateNotes = 0;
 
     foreach ($orders as $order) {
         $state = $this->resolveBulkOrderState($order);
@@ -1231,11 +1234,15 @@ $confirmBulkSend = function (): void {
         }
 
         try {
-            $gateway->send(
+            $result = $gateway->send(
                 order: $order,
                 providerId: $order->shipping_provider_id ?: null,
                 changedBy: $membership,
             );
+
+            if (! empty($result['rate_note'])) {
+                $rateNotes++;
+            }
 
             if (! isset($perCarrier[$state['carrierKey']])) {
                 $perCarrier[$state['carrierKey']] = ['name' => $state['carrierName'], 'count' => 0];
@@ -1254,6 +1261,10 @@ $confirmBulkSend = function (): void {
     $summaryLines = [];
     foreach ($perCarrier as $carrier) {
         $summaryLines[] = __('order_flow.bulk_send_summary_line', ['carrier' => $carrier['name'], 'count' => $carrier['count']]);
+    }
+
+    if ($rateNotes > 0) {
+        $summaryLines[] = __('order_flow.bulk_send_rate_note', ['count' => $rateNotes]);
     }
 
     if (! empty($skipped)) {
@@ -1807,6 +1818,15 @@ $submitConfirmAndSend = function (): void {
         'icon' => 'success',
         'title' => __('order_flow.confirmed_and_sent'),
     ]);
+
+    if (! empty($result['rate_note'])) {
+        $this->dispatch('swal:toast', [
+            'icon' => 'warning',
+            'title' => $result['rate_note'] === 'unpriced'
+                ? __('order_flow.rate_note_unpriced')
+                : __('order_flow.rate_note_zero_cost'),
+        ]);
+    }
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("confirm+send failed for order [{$order->number}]: " . $e->getMessage());
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.send_failed')]);
@@ -1854,7 +1874,7 @@ $sendConfirmedOrder = function (string $orderId): void {
     }
 
     try {
-        app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->send(
+        $result = app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->send(
             order: $order,
             providerId: $order->shipping_provider_id ?: null,
             changedBy: $membership,
@@ -1862,6 +1882,15 @@ $sendConfirmedOrder = function (string $orderId): void {
 
         $this->loadOrders();
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_sent')]);
+
+        if (! empty($result['rate_note'])) {
+            $this->dispatch('swal:toast', [
+                'icon' => 'warning',
+                'title' => $result['rate_note'] === 'unpriced'
+                    ? __('order_flow.rate_note_unpriced')
+                    : __('order_flow.rate_note_zero_cost'),
+            ]);
+        }
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::warning("sendConfirmedOrder failed for order [{$order->number}]: " . $e->getMessage());
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.send_failed')]);
@@ -2183,15 +2212,69 @@ $formShipmentTypeOptions = function (): array {
     return $options;
 };
 
-$loadCities = function (string $stateId): void {
+$loadCities = function (string $stateId, bool $resetCity = true): void {
     if (empty($stateId)) {
         $this->allCities = [];
-        $this->form['city_id'] = '';
+        if ($resetCity) {
+            $this->form['city_id'] = '';
+        }
         $this->rebuildFormOffices();
         return;
     }
+
+    // Office (stopdesk) deliveries scope the communes to those served by the
+    // selected carrier in that wilaya (synced points + regional points with
+    // null city). Home deliveries and carriers without offices keep all cities.
+    $type = (string) ($this->form['delivery_type'] ?? 'home');
+    $providerId = (string) ($this->form['shipping_provider_id'] ?? '');
+
     $this->allCities = City::where('state_id', $stateId)->orderBy('name')->get()->toArray();
-    $this->form['city_id'] = '';
+
+    if ($type === 'stopdesk' && $providerId !== '') {
+        $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+            ->where('is_active', true)
+            ->with('carrier')
+            ->find($providerId);
+
+        if ($provider) {
+            // Carrier-backed providers refresh the (cached) office list for the
+            // chosen wilaya first so the commune list reflects live points.
+            if ($provider->carrier) {
+                try {
+                    $state = \App\Models\Locations\State::find($stateId);
+                    app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, null);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("office sync failed for provider [{$providerId}] while loading communes: " . $e->getMessage());
+                }
+            }
+
+            // Commune list = communes where the carrier actually has active
+            // points in this wilaya (synced + manual). Never fall back to the
+            // full list for office delivery: a commune without a point is not
+            // deliverable through that company.
+            $coveredCityIds = \App\Domains\Shipping\Models\StopdeskPoint::communitiesCoveredFor(
+                currentStoreId(),
+                $providerId,
+                $stateId
+            );
+
+            if ($coveredCityIds !== []) {
+                $this->allCities = collect($this->allCities)
+                    ->filter(fn ($city) => in_array($city['id'], $coveredCityIds, true))
+                    ->values()
+                    ->toArray();
+                $this->formCoverageHint = '';
+            } else {
+                $this->allCities = [];
+                $this->formCoverageHint = 'no_company_coverage';
+            }
+        }
+    }
+
+    if ($resetCity) {
+        $this->form['city_id'] = '';
+    }
+
     $this->rebuildFormOffices();
 };
 
@@ -2207,19 +2290,20 @@ $rebuildFormOffices = function (): void {
     $query = \App\Domains\Shipping\Models\StopdeskPoint::query()->where('store_id', currentStoreId())->where('shipping_provider_id', $this->form['shipping_provider_id'])->where('is_active', true)->with('city:id,name');
 
     $stateId = $this->form['state_id'] ?? null;
-    if (!empty($stateId)) {
-        $query->where(function ($q) use ($stateId) {
-            $q->where('state_id', $stateId)->orWhereNull('state_id');
-        });
+    if (empty($stateId)) {
+        $this->formOffices = [];
+        $this->form['stopdesk_point_id'] = '';
+        return;
     }
 
+    // Strict chain: company → type → wilaya → city → office. The office list is
+    // restricted to the chosen wilaya/commune only; offices without geo data are no
+    // longer offered for dispatch (they stay manageable on the stopdesk page).
+    $query->where('state_id', $stateId);
+
     $cityId = $this->form['city_id'] ?? null;
-    // Chain: company â†’ type â†’ wilaya â†’ city â†’ office. When a commune is chosen
-    // the office list is scoped to it (regional null-city offices still show).
     if (!empty($cityId)) {
-        $query->where(function ($q) use ($cityId) {
-            $q->where('city_id', $cityId)->orWhereNull('city_id');
-        });
+        $query->where('city_id', $cityId);
     }
 
     $offices = $query
@@ -2309,22 +2393,143 @@ $loadFormOffices = function (?string $providerId = null, bool $preserveOffice = 
     }
 };
 
+// ——— Carrier-scoped office cascade (available wilayas / communes per carrier) ———
+
+// Wilayas where the carrier has synced offices or an office price table.
+$providerOfficeStates = function (string $providerId) {
+    $pointIds = \App\Domains\Shipping\Models\StopdeskPoint::query()
+        ->where('store_id', currentStoreId())
+        ->where('shipping_provider_id', $providerId)
+        ->where('is_active', true)
+        ->whereNotNull('state_id')
+        ->distinct()
+        ->pluck('state_id');
+
+    $rateIds = \App\Domains\Shipping\Models\DeliveryRate::query()
+        ->where('store_id', currentStoreId())
+        ->where('shipping_provider_id', $providerId)
+        ->where('is_active', true)
+        ->where(fn ($q) => $q->whereNotNull('office_cost')->orWhereNotNull('free_above'))
+        ->distinct()
+        ->pluck('state_id');
+
+    return $pointIds->merge($rateIds)->unique()->values();
+};
+
+// Fills formAvailableStates with the wilayas the selected carrier serves for
+// office delivery. Legacy/manual providers and home delivery keep the full list
+// (formAvailableStates stays empty → modals fall back to allStates).
+$loadFormScope = function (): void {
+    $this->formAvailableStates = [];
+    $this->formCoverageHint = '';
+
+    $type = (string) ($this->form['delivery_type'] ?? 'home');
+    $providerId = (string) ($this->form['shipping_provider_id'] ?? '');
+
+    if ($type !== 'stopdesk' || $providerId === '') {
+        return;
+    }
+
+    $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->with('carrier')
+        ->find($providerId);
+
+    if (! $provider?->carrier) {
+        return;
+    }
+
+    $stateIds = $this->providerOfficeStates($providerId);
+
+    if ($stateIds->isEmpty()) {
+        $this->formCoverageHint = 'no_company_coverage';
+        return;
+    }
+
+    $this->formAvailableStates = State::whereIn('id', $stateIds)
+        ->active()
+        ->orderBy('name')
+        ->get(['id', 'name'])
+        ->toArray();
+};
+
+// Decision 1: a carrier switch (or a switch to office delivery) must not keep a
+// destination the new carrier does not cover — clear it AND surface a toast.
+$releaseStaleDestination = function (): void {
+    $type = (string) ($this->form['delivery_type'] ?? 'home');
+
+    if ($type !== 'stopdesk') {
+        return;
+    }
+
+    $stateId = (string) ($this->form['state_id'] ?? '');
+    $cleared = false;
+
+    // Wilaya no longer covered by the selected carrier's office service area.
+    if ($stateId !== '' && $this->formAvailableStates !== [] && ! collect($this->formAvailableStates)->contains(fn ($st) => (string) $st['id'] === $stateId)) {
+        $this->form['state_id'] = '';
+        $this->form['city_id'] = '';
+        $this->form['stopdesk_point_id'] = '';
+        $this->allCities = [];
+        $this->formOffices = [];
+        $cleared = true;
+    }
+
+    // Commune no longer covered by any office of the selected carrier in that wilaya.
+    $cityId = (string) ($this->form['city_id'] ?? '');
+    if (! $cleared && $cityId !== '' && ! collect($this->allCities)->contains(fn ($ct) => (string) $ct['id'] === $cityId)) {
+        $this->form['city_id'] = '';
+        $this->form['stopdesk_point_id'] = '';
+        $this->formOffices = [];
+        $cleared = true;
+    }
+
+    if ($cleared) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.destination_reset_for_carrier')]);
+    }
+};
+
+// Carrier change entry point used by the modals: rescopes the wilaya/commune
+// lists for the newly chosen provider, releases any now-uncovered destination,
+// then re-syncs/rebuilds the office picker.
+$applyProviderScope = function (?string $providerId = null, bool $preserveOffice = false): void {
+    if ($providerId !== null) {
+        $this->form['shipping_provider_id'] = $providerId;
+    }
+
+    $type = (string) ($this->form['delivery_type'] ?? 'home');
+
+    if ($type === 'stopdesk') {
+        $this->loadFormScope();
+        $this->loadCities((string) ($this->form['state_id'] ?? ''));
+        $this->releaseStaleDestination();
+    } else {
+        $this->form['stopdesk_point_id'] = '';
+        $this->formOffices = [];
+        $this->loadFormScope();
+    }
+
+    $this->loadFormOffices($this->form['shipping_provider_id'], $preserveOffice);
+};
+
 // Delivery type switch: rebuild office options (which auto-selects the single
 // office of the chosen municipality on stopdesk) without requiring a provider change.
 $changeDeliveryType = function (string $type): void {
     $this->form['delivery_type'] = $type;
 
     if ($type === 'stopdesk') {
-        // Full sync path when a carrier is already chosen so the office list is
-        // present and scoped the moment the stopdesk fields appear.
+        // Full scope cascade when a carrier is already chosen so the office list
+        // is present and scoped the moment the stopdesk fields appear.
         if (!empty($this->form['shipping_provider_id'])) {
-            $this->loadFormOffices(preserveOffice: true);
+            $this->applyProviderScope(preserveOffice: true);
         } else {
+            $this->loadFormScope();
             $this->rebuildFormOffices();
         }
     } else {
         $this->form['stopdesk_point_id'] = '';
         $this->formOffices = [];
+        $this->loadFormScope();
     }
 };
 
@@ -2381,9 +2586,12 @@ $openDeliveryModal = function (string $orderId): void {
     $this->form['state_id'] = $order->state_id ?? '';
     $this->form['city_id'] = $order->city_id ?? '';
     $this->form['stopdesk_point_id'] = $order->stopdesk_point_id ?? '';
-    $this->allCities = !empty($this->form['state_id'])
-        ? City::where('state_id', $this->form['state_id'])->orderBy('name')->get()->toArray()
-        : [];
+
+    // Carrier-scoped cascade: available wilayas/communes for the order's carrier,
+    // releasing a destination the carrier no longer covers (with a toast).
+    $this->loadFormScope();
+    $this->loadCities((string) ($this->form['state_id'] ?? ''), resetCity: false);
+    $this->releaseStaleDestination();
 
     $this->formOffices = [];
     $this->loadFormOffices($this->form['shipping_provider_id'], preserveOffice: true);
@@ -2656,7 +2864,7 @@ $saveOrderName = function (): void {
 // ——— Inline edits (wilaya / commune / shipping cost override) ———
 
 $recalculateOrderShipping = function (Order $order): void {
-    if (!$order->store || $order->delivery_type !== 'home') {
+    if (!$order->store) {
         return;
     }
 
@@ -2664,9 +2872,18 @@ $recalculateOrderShipping = function (Order $order): void {
     $productIds = $items->pluck('product_id')->filter()->values()->toArray();
     $subtotal = (float) $items->sum('subtotal');
 
-    $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)->calculate($order->store, $order->state_id, $order->city_id, $subtotal, $productIds);
+    $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)->calculate(
+        $order->store,
+        $order->state_id,
+        $order->city_id,
+        $subtotal,
+        $productIds,
+        $order->shipping_provider_id ?: null,
+        $order->delivery_type ?: Order::DELIVERY_HOME,
+    );
 
-    // shipping_cost is always sourced from published/configured rates only.
+    // shipping_cost is always sourced from published/configured rates only. A
+    // stopdesk delivery without a resolvable office price resolves to 0 here.
     $order->update(['shipping_cost' => (float) ($result['cost'] ?? 0)]);
 };
 
@@ -2709,7 +2926,23 @@ $startOrderCityEdit = function (string $orderId): void {
         return;
     }
 
-    $this->editCityOptions = City::where('state_id', $order->state_id)->orderBy('name')->get()->toArray();
+    $query = \App\Models\Locations\City::where('state_id', $order->state_id);
+
+    // Mirror the create/edit cascade: office delivery scopes the commune list
+    // to the communes served by the order's shipping company in that wilaya.
+    if ($order->delivery_type === \App\Models\Orders\Order::DELIVERY_STOPDESK && ! empty($order->shipping_provider_id)) {
+        $coveredCityIds = \App\Domains\Shipping\Models\StopdeskPoint::communitiesCoveredFor(
+            (string) currentStoreId(),
+            (string) $order->shipping_provider_id,
+            (string) $order->state_id
+        );
+
+        $query = $coveredCityIds !== []
+            ? $query->whereIn('id', $coveredCityIds)
+            : $query->whereRaw('1 = 0');
+    }
+
+    $this->editCityOptions = $query->orderBy('name')->get()->toArray();
     $this->startEdit('order.city', $orderId, $order->city_id);
 };
 
@@ -2816,6 +3049,16 @@ $inlineStopdeskOptions = function (Order $order): array {
         });
     }
 
+    // Strict geo scoping: only points of the order's wilaya (and commune when set).
+    // Points without geo data are not offered for inline dispatch.
+    if (! $order->state_id) {
+        return [];
+    }
+    $query->where('state_id', $order->state_id);
+    if ($order->city_id) {
+        $query->where('city_id', $order->city_id);
+    }
+
     return $query->orderBy('name')
         ->get()
         ->map(fn($p) => [
@@ -2882,15 +3125,26 @@ $saveOrderProvider = function (?string $providerId = null): void {
             $providerId = blank($value) ? null : $value;
             $data = ['shipping_provider_id' => $providerId];
 
-            // Switching carrier: drop an office no longer served by the new carrier.
-            if ($providerId && $order->delivery_type === Order::DELIVERY_STOPDESK && $order->stopdesk_point_id) {
-                $stillValid = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
-                    ->whereKey($order->stopdesk_point_id)
-                    ->where(fn($q) => $q->where('shipping_provider_id', $providerId)->orWhereNull('shipping_provider_id'))
-                    ->exists();
+            // Switching carrier for an office order: a destination the new
+            // carrier does not cover is cleared (with a toast), otherwise only
+            // an office no longer served by that carrier is dropped.
+            if ($providerId && $order->delivery_type === Order::DELIVERY_STOPDESK) {
+                $coveredStateIds = $this->providerOfficeStates($providerId);
 
-                if (!$stillValid) {
+                if ($coveredStateIds->isNotEmpty() && $order->state_id && !$coveredStateIds->contains($order->state_id)) {
+                    $data['state_id'] = null;
+                    $data['city_id'] = null;
                     $data['stopdesk_point_id'] = null;
+                    $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.destination_reset_for_carrier')]);
+                } elseif ($order->stopdesk_point_id) {
+                    $stillValid = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
+                        ->whereKey($order->stopdesk_point_id)
+                        ->where(fn($q) => $q->where('shipping_provider_id', $providerId)->orWhereNull('shipping_provider_id'))
+                        ->exists();
+
+                    if (!$stillValid) {
+                        $data['stopdesk_point_id'] = null;
+                    }
                 }
             }
 
@@ -3418,7 +3672,10 @@ $openCreateModal = function (): void {
     // Auto-select the store's default shipping company (is_default) when set.
     $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
 
+    $this->allCities = [];
     $this->formOffices = [];
+    $this->formAvailableStates = [];
+    $this->formCoverageHint = '';
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
     $this->formDuplicateWarnings = [];
@@ -3590,9 +3847,11 @@ $openEditModal = function (string $orderId): void {
     $this->refreshFormDuplicateWarnings();
     $this->showEditModal = true;
 
-    if ($order->state_id) {
-        $this->allCities = City::where('state_id', $order->state_id)->orderBy('name')->get()->toArray();
-    }
+    // Carrier-scoped cascade: available wilayas/communes for the order's carrier,
+    // releasing a destination the carrier no longer covers (with a toast).
+    $this->loadFormScope();
+    $this->loadCities((string) ($this->form['state_id'] ?? ''), resetCity: false);
+    $this->releaseStaleDestination();
 
     // Carrier-first office options for the edit modal (no network round-trip:
     // offices are already persisted in stopdesk_points).

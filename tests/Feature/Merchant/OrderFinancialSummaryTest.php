@@ -127,10 +127,11 @@ test('the create modal renders the shared financial grid with subtotal, weight, 
         ->and($html)->toContain('data-financial-discount')
         ->and($html)->toContain('data-financial-total');
 
-    // Subtotal = 2 × 500, free delivery, no discount, total = subtotal.
+    // Subtotal = 2 × 500, delivery price shows the "please select" hint while
+    // no carrier/destination is set (never a misleading free), no discount.
     expect($html)->toContain(currency(1000))
         ->and($html)->toContain('0.00 kg')
-        ->and($html)->toContain(__('merchant_panel.free'))
+        ->and($html)->toContain(__('merchant_panel.shipping_hint_delivery'))
         ->and($html)->toContain('—');
 });
 

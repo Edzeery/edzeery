@@ -31,6 +31,7 @@ class OrderShippingGateway
      *     error: ?string,
      *     tracking_number: ?string,
      *     provider: ?ShippingProvider,
+     *     rate_note: ?string,
      * }
      */
     public function send(
@@ -115,10 +116,55 @@ class OrderShippingGateway
                 'error' => $error,
                 'tracking_number' => $trackingNumber,
                 'provider' => $provider ?? $order->shippingProvider,
+                'rate_note' => $this->resolveRateNote($order),
             ];
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Announces a warning for carrier-sent orders whose announced rate for the
+     * order's state/commune is missing ('unpriced') or explicitly zero/empty
+     * ('zero_cost'). Rider-sent and non-geo orders return null.
+     */
+    protected function resolveRateNote(Order $order): ?string
+    {
+        $providerId = $order->shipping_provider_id;
+        if (! $providerId || ! $order->state_id) {
+            return null;
+        }
+
+        $rate = \App\Domains\Shipping\Models\DeliveryRate::query()
+            ->where('store_id', $order->store_id)
+            ->where('shipping_provider_id', $providerId)
+            ->where('state_id', $order->state_id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $rate) {
+            return 'unpriced';
+        }
+
+        $cost = $order->delivery_type === Order::DELIVERY_STOPDESK
+            ? $rate->office_cost
+            : $rate->home_cost;
+
+        if ($cost === null && $order->city_id) {
+            $override = \App\Domains\Shipping\Models\DeliveryRateCity::query()
+                ->where('store_id', $order->store_id)
+                ->where('shipping_provider_id', $providerId)
+                ->where('state_id', $order->state_id)
+                ->where('city_id', $order->city_id)
+                ->first();
+            $cost = $override?->home_cost;
+        }
+
+        if ($cost === null || $cost === '') {
+            return 'unpriced';
+        }
+
+        return (float) $cost <= 0 ? 'zero_cost' : null;
     }
 }

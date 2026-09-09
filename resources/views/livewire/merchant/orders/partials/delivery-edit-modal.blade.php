@@ -18,7 +18,7 @@
                     {{-- Delivery cascade — company → type → wilaya → city → office --}}
                     <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
                     <x-edz.select wire:model="form.shipping_provider_id"
-                        wire:change="loadFormOffices($event.target.value)"
+                        wire:change="applyProviderScope($event.target.value)"
                         :options="$this->allProviders" option-value="id" option-label="name"
                         placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
                         search :disabled="$loadingOffices" />
@@ -46,13 +46,16 @@
                         </div>
                     </div>
 
-                    {{-- Wilaya → city --}}
+                    {{-- Wilaya → city (wilayas scoped to the carrier for office deliveries) --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                             <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                :options="$this->allStates" option-value="id" option-label="name" placeholder="—"
+                                :options="$this->formAvailableStates !== [] ? $this->formAvailableStates : $this->allStates" option-value="id" option-label="name" placeholder="—"
                                 size="sm" search />
+                            @if ($this->formCoverageHint)
+                                <p class="text-xs text-warning-500 mt-1">{{ __("order_flow.{$this->formCoverageHint}") }}</p>
+                            @endif
                             @error('form.state_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
@@ -90,6 +93,8 @@
                             <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.select_company_first') }}</p>
                         @elseif (empty($this->form['city_id']))
                             <p class="text-xs text-ink-muted mt-1">{{ __('storefront.select_city_for_desks') }}</p>
+                        @elseif (empty($this->formOffices))
+                            <p class="text-xs text-warning-500 mt-1">{{ __('merchant_panel.office_none_for_destination') }}</p>
                         @else
                             <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.office_hint') }}</p>
                         @endif

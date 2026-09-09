@@ -52,4 +52,27 @@ class StopdeskPoint extends Model
     {
         return $this->belongsTo(City::class);
     }
+
+    /* =========================
+     | Coverage helpers
+     ========================= */
+
+    /**
+     * Communes (city_ids) actually served by the carrier's active points in a
+     * given wilaya. Single shared source for the order form cascade and the
+     * inline city editor, so both always scope the selectable communes to the
+     * chosen shipping company.
+     */
+    public static function communitiesCoveredFor(string $storeId, string $providerId, string $stateId): array
+    {
+        return static::query()
+            ->where('store_id', $storeId)
+            ->where('shipping_provider_id', $providerId)
+            ->where('state_id', $stateId)
+            ->where('is_active', true)
+            ->whereNotNull('city_id')
+            ->distinct()
+            ->pluck('city_id')
+            ->all();
+    }
 }

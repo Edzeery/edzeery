@@ -61,12 +61,12 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
 
         // Prefer offices matching the selected commune when possible.
         if ($city && $offices !== []) {
-            $needle = mb_strtolower(trim($city->name));
-            $arabicNeedle = $city->arabic_name ? mb_strtolower(trim($city->arabic_name)) : null;
+            $needle = static::normalizeCommuneText($city->name);
+            $arabicNeedle = $city->arabic_name ? static::normalizeCommuneText($city->arabic_name) : null;
 
             usort($offices, function (array $a, array $b) use ($needle, $arabicNeedle): int {
-                return (int) $this->communeScore($b['city'], $needle, $arabicNeedle)
-                    <=> (int) $this->communeScore($a['city'], $needle, $arabicNeedle);
+                return static::officeMatchScore($b, $needle, $arabicNeedle)
+                    <=> static::officeMatchScore($a, $needle, $arabicNeedle);
             });
         }
 
@@ -131,6 +131,44 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             'label_url' => $this->labelUrl($provider, (string) $data['tracking']),
             'raw' => $data,
         ];
+    }
+
+    /**
+     * Fetch live tracking activity for a batch of tracking numbers.
+     *
+     * NOEST responds with a map keyed by the tracking number itself, each value
+     * shaped like {OrderInfo, recipientName, activity[], deliveryAttempts[]}.
+     * Posting a tracking number the carrier does not know is simply absent from
+     * the map (a "Trackings not found" body is only returned when ALL fail).
+     */
+    public function trackingsInfo(ShippingProvider $provider, array $trackings): array
+    {
+        $trackings = array_values(array_filter($trackings, static fn ($value) => is_string($value) && trim($value) !== ''));
+
+        if ($trackings === []) {
+            return [];
+        }
+
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+
+        if ($token === '') {
+            throw new \RuntimeException('NOEST API credentials are missing (api_token).');
+        }
+
+        $response = Http::timeout(30)
+            ->withHeaders(['Authorization' => "Bearer {$token}"])
+            ->post(rtrim($this->baseUrl($provider), '/').'/get/trackings/info', [
+                'trackings' => array_slice($trackings, 0, 20),
+            ]);
+
+        $data = $response->json();
+
+        if ($response->failed()) {
+            $message = (string) (is_array($data) ? ($data['message'] ?? $data['error'] ?? '') : '');
+            throw new \RuntimeException("NOEST trackings/info request failed (HTTP {$response->status()})".($message !== '' ? ": {$message}" : ''));
+        }
+
+        return is_array($data) ? $data : [];
     }
 
     public function forgetCache(ShippingProvider $provider): void
@@ -321,13 +359,48 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         return mb_substr($summary, 0, 120) ?: '—';
     }
 
+    protected static function normalizeCommuneText(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+
+        // Strip French guillemets and their contents-adjacent punctuation, which
+        // NOEST occasionally uses to embed "Wilaya «Commune»" inside a single
+        // field instead of keeping commune-only text (confirmed live in wilaya 34 / desk 34B).
+        $value = str_replace(['«', '»'], '', $value);
+
+        // Collapse repeated/trailing whitespace left after stripping punctuation.
+        $value = preg_replace('/\s+/u', ' ', $value);
+
+        return trim($value);
+    }
+
+    /**
+     * Rank an office for the current city needle. `commune`-field matching is the
+     * primary signal; the `name` field is only a fallback when the commune match
+     * fully fails (NOEST occasionally polls the commune field with the wilaya name,
+     * e.g. "Bordj Bou Arreridj «Ras El Oued» ", keeping the clean name only in `name`).
+     * This only affects ordering of the already-returned offices — never filtering.
+     */
+    protected static function officeMatchScore(array $office, string $needle, ?string $arabicNeedle): int
+    {
+        if (static::communeScore($office['city'], $needle, $arabicNeedle)) {
+            return 2;
+        }
+
+        if (static::communeScore($office['name'], $needle, $arabicNeedle)) {
+            return 1;
+        }
+
+        return 0;
+    }
+
     protected static function communeScore(?string $commune, string $needle, ?string $arabicNeedle): bool
     {
         if ($commune === null || $commune === '') {
             return false;
         }
 
-        $commune = mb_strtolower(trim($commune));
+        $commune = static::normalizeCommuneText($commune);
 
         return $commune === $needle
             || ($arabicNeedle !== null && $commune === $arabicNeedle)

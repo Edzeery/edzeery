@@ -3,6 +3,8 @@
 use App\Domains\Order\Exceptions\OrderIncompleteException;
 use App\Domains\Order\Services\OrderCompleteness;
 use App\Domains\Order\Services\OrderService;
+use App\Domains\Shipping\Models\DeliveryRate;
+use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\OrderShippingGateway;
@@ -180,6 +182,7 @@ test('the completeness service lists every missing field for an incomplete order
     $keys = array_column($service->missing($order, true), 'key');
 
     expect($keys)->toBe([
+        'carrier_not_configured',
         'customer_name',
         'customer_phone',
         'state',
@@ -303,4 +306,127 @@ test('confirm-and-send refuses an incomplete order without any transition', func
         });
 
     expect($order->fresh()->status?->key)->toBe('pending');
+});
+
+// ——— Dispatch readiness: the STORE must have an active company or rider ———
+
+test('sending is blocked when the store has no active company and no rider', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed');
+
+    ShippingProvider::where('store_id', $store->id)->update(['is_active' => false]);
+
+    try {
+        app(OrderShippingGateway::class)->send($order, $order->shipping_provider_id, null, $membership);
+        test()->fail('Expected OrderIncompleteException was not thrown.');
+    } catch (OrderIncompleteException $e) {
+        expect($e->labels())->toContain(__('order_flow.carrier_not_configured'));
+    }
+
+    expect($order->fresh()->status?->key)->toBe('confirmed');
+});
+
+test('an inactive provider does not satisfy dispatch readiness', function () {
+    [$user, $store] = ocoUser(StoreRoleEnum::OWNER->value);
+    $service = app(OrderCompleteness::class);
+
+    $provider = ocoProvider($store);
+    $provider->update(['is_active' => false]);
+
+    $probe = new Order(['store_id' => $store->id]);
+
+    expect($service->missing($probe, true))->toContain(['key' => 'carrier_not_configured', 'label' => __('order_flow.carrier_not_configured')]);
+});
+
+test('an active rider satisfies store readiness', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
+
+    DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider A',
+        'phone' => '0550111222',
+        'is_active' => true,
+    ]);
+    $order->update(['delivery_rider_id' => DeliveryRider::where('store_id', $store->id)->value('id')]);
+
+    $result = app(OrderShippingGateway::class)->send($order, null, null, $membership);
+
+    expect($result['order']->fresh()->status?->key)->toBe('shipped')
+        ->and($result['rate_note'])->toBeNull();
+});
+
+// ——— Rate note: unpriced / zero-cost announced prices are flagged at send ———
+
+test('the gateway flags a carrier send with no announced price as unpriced', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed');
+
+    $result = app(OrderShippingGateway::class)->send($order, $order->shipping_provider_id, null, $membership);
+
+    expect($result['order']->fresh()->status?->key)->toBe('shipped')
+        ->and($result['rate_note'])->toBe('unpriced');
+});
+
+test('the gateway flags a carrier send whose announced price is zero', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = ocoGeography();
+
+    $order = ocoOrder($store, 'confirmed');
+
+    DeliveryRate::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $order->shipping_provider_id,
+        'state_id' => $state->id,
+        'home_cost' => 0,
+        'office_cost' => 0,
+        'source' => 'manual',
+        'is_active' => true,
+    ]);
+
+    $result = app(OrderShippingGateway::class)->send($order, $order->shipping_provider_id, null, $membership);
+
+    expect($result['rate_note'])->toBe('zero_cost');
+});
+
+test('the gateway resolves a priced announced rate without a warning', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = ocoGeography();
+
+    $order = ocoOrder($store, 'confirmed');
+
+    DeliveryRate::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $order->shipping_provider_id,
+        'state_id' => $state->id,
+        'home_cost' => 900,
+        'office_cost' => 350,
+        'source' => 'manual',
+        'is_active' => true,
+    ]);
+
+    $result = app(OrderShippingGateway::class)->send($order, $order->shipping_provider_id, null, $membership);
+
+    expect($result['rate_note'])->toBeNull();
+});
+
+test('a disabled announced rate is treated as unpriced at send', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = ocoGeography();
+
+    $order = ocoOrder($store, 'confirmed');
+
+    DeliveryRate::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $order->shipping_provider_id,
+        'state_id' => $state->id,
+        'home_cost' => 900,
+        'office_cost' => 350,
+        'source' => 'manual',
+        'is_active' => false,
+    ]);
+
+    $result = app(OrderShippingGateway::class)->send($order, $order->shipping_provider_id, null, $membership);
+
+    expect($result['rate_note'])->toBe('unpriced');
 });

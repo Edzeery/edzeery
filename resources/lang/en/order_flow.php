@@ -40,6 +40,10 @@ return [
     'confirm_only' => 'Confirm only',
     'confirm_and_send' => 'Confirm & hand to carrier',
     'send_to_carrier' => 'Hand to carrier',
+    'carrier_not_configured' => 'Cannot send — enable at least one delivery company or add a rider first.',
+    'rate_note_unpriced' => 'Note: no announced rate exists for this company on this state/commune.',
+    'rate_note_zero_cost' => 'Note: the announced rate for this company on this destination is zero.',
+    'bulk_send_rate_note' => 'Rate warning: :count orders had no or zero announced price',
     'confirm_requires_partner' => 'Choose a delivery company or rider before sending.',
     'confirmed_and_sent' => 'Order confirmed and handed to carrier ✈',
     'confirmed_only' => 'Order confirmed',
@@ -133,4 +137,6 @@ return [
 
     'office_reset_for_destination' => 'The previously selected office is not available for the new destination, so the choice was cleared',
     'shipment_type_reset_for_carrier' => 'The selected shipment type is not supported by this carrier, so it was reset to delivery',
+    'destination_reset_for_carrier' => 'The selected destination is not covered by this carrier, so it was cleared',
+    'no_company_coverage' => 'No synced regions for this carrier yet — refresh offices to see them',
 ];

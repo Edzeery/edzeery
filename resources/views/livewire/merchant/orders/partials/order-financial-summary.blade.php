@@ -16,25 +16,57 @@
     }
     $grandTotal = max(0, $subtotal - $discount);
 
-    // Read-only delivery cost — mirrors the ShippingCostCalculator used at persist time.
-    // Only resolvable for home deliveries with a state selected; otherwise free (0).
-    $deliveryCost = 0.0;
-    $deliveryIsFree = true;
-    if (($form['delivery_type'] ?? 'home') === 'home' && !empty($form['state_id']) && !empty($form['items'])) {
-        try {
-            $store = \App\Models\Stores\Store::find(currentStoreId());
-            if ($store) {
-                $productIds = collect($form['items'])->pluck('product_id')->filter()->values()->all();
-                $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)
-                    ->calculate($store, $form['state_id'], $form['city_id'] ?? null, $subtotal, $productIds);
-                $deliveryCost = (float) ($result['cost'] ?? 0);
-                $deliveryIsFree = $deliveryCost <= 0 || (bool) ($result['is_free'] ?? false);
+    // Read-only delivery cost — mirrors the ShippingCostCalculator used at persist
+    // time. Dynamic: reacts to carrier / delivery type / wilaya / commune / items.
+    // True free (free_above or no rate for home) shows the free badge; a delivery
+    // whose required fields are incomplete shows a "please select" hint instead
+    // of a misleading 0.
+    $delivery = null;
+    $deliveryIncomplete = false;
+    $deliveryUnavailable = false;
+
+    $type = (string) ($form['delivery_type'] ?? 'home');
+    if (! empty($form['items'])) {
+        $canResolve = $type === 'stopdesk'
+            ? filled($form['shipping_provider_id'] ?? null) && filled($form['state_id'] ?? null)
+            : filled($form['state_id'] ?? null);
+
+        if (! $canResolve) {
+            $deliveryIncomplete = true;
+        } else {
+            try {
+                $store = \App\Models\Stores\Store::find(currentStoreId());
+                if ($store) {
+                    $productIds = collect($form['items'])->pluck('product_id')->filter()->values()->all();
+                    $result = app(\App\Domains\Shipping\Services\ShippingCostCalculator::class)
+                        ->calculate(
+                            $store,
+                            $form['state_id'],
+                            $form['city_id'] ?? null,
+                            $subtotal,
+                            $productIds,
+                            filled($form['shipping_provider_id'] ?? null) ? $form['shipping_provider_id'] : null,
+                            $type,
+                        );
+
+                    if (($result['method'] ?? null) === 'office_unavailable') {
+                        $deliveryIncomplete = true;
+                    } elseif (($result['method'] ?? null) === 'unavailable') {
+                        $deliveryUnavailable = true;
+                    } else {
+                        $delivery = $result;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $deliveryIncomplete = true;
             }
-        } catch (\Throwable $e) {
-            $deliveryCost = 0.0;
-            $deliveryIsFree = true;
         }
     }
+
+    $deliveryCost = (float) ($delivery['cost'] ?? 0);
+    $deliveryIsFree = (bool) ($delivery['is_free'] ?? false);
+    $deliveryProvider = $delivery['provider_name'] ?? null;
+    $deliverySourceType = $delivery['source_type'] ?? null;
 @endphp
 
 <div data-financial-grid class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-5 gap-3">
@@ -56,13 +88,33 @@
         <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
     </div>
 
-    {{-- Delivery cost (read-only) --}}
+    {{-- Delivery cost (read-only, dynamic) --}}
     <div data-financial-delivery class="bg-surface rounded-lg p-3 min-w-0">
         <span class="block text-xs text-ink-muted">{{ __('merchant_panel.delivery_cost') }}</span>
-        <span class="block text-base font-semibold tabular-nums mt-1 {{ $deliveryIsFree ? 'text-success-500' : 'text-ink' }}">
-            {{ $deliveryIsFree ? __('merchant_panel.free') : currency($deliveryCost) }}
-        </span>
-        <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        @if ($deliveryIncomplete)
+            <span class="block text-sm font-semibold text-warning-500 mt-1">{{ __('merchant_panel.shipping_hint_delivery') }}</span>
+            <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        @elseif ($deliveryUnavailable)
+            <span class="block text-sm font-semibold text-warning-500 mt-1">{{ __('storefront.shipping_unavailable') }}</span>
+            <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        @else
+            <span class="block text-base font-semibold tabular-nums mt-1 {{ $deliveryIsFree ? 'text-success-500' : 'text-ink' }}">
+                {{ $deliveryIsFree ? __('merchant_panel.free') : currency($deliveryCost) }}
+            </span>
+            @if (! $deliveryIsFree && $deliveryProvider)
+                <span class="block text-xs {{ $deliverySourceType === 'price_list' ? 'text-brand-600' : 'text-ink-muted' }} mt-1">
+                    @if ($deliverySourceType === 'price_list')
+                        {{ __('merchant_panel.shipping_source_price_list', ['provider' => $deliveryProvider]) }}
+                    @elseif ($deliverySourceType === 'company_flat')
+                        {{ __('merchant_panel.shipping_source_flat', ['provider' => $deliveryProvider]) }}
+                    @else
+                        {{ __('merchant_panel.shipping_source_announced', ['provider' => $deliveryProvider]) }}
+                    @endif
+                </span>
+            @else
+                <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+            @endif
+        @endif
     </div>
 
     {{-- Discount (read) --}}

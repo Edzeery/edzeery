@@ -36,6 +36,9 @@ class OrderTracking extends Model
         'processed_by_membership_id',
         'requeued_at',
         'requeued_by_membership_id',
+        'carrier_validated_at',
+        'carrier_validated_by_membership_id',
+        'carrier_validation_error',
         'notes',
     ];
 
@@ -48,6 +51,7 @@ class OrderTracking extends Model
         'verified_at'     => 'datetime',
         'processed_at'    => 'datetime',
         'requeued_at'     => 'datetime',
+        'carrier_validated_at' => 'datetime',
     ];
 
     public function order(): BelongsTo
@@ -85,6 +89,11 @@ class OrderTracking extends Model
         return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'requeued_by_membership_id');
     }
 
+    public function validatedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'carrier_validated_by_membership_id');
+    }
+
     public function isDelivered(): bool
     {
         return $this->delivered_at !== null;
@@ -108,6 +117,11 @@ class OrderTracking extends Model
     public function isRequeued(): bool
     {
         return $this->requeued_at !== null;
+    }
+
+    public function isCarrierValidated(): bool
+    {
+        return $this->carrier_validated_at !== null;
     }
 
     /** حالة التتبع الطبيعية (إن وُجدت). */

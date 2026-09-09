@@ -16,6 +16,11 @@ state([
     'states' => [],
     'cities' => [],
 
+    // Carrier office sync
+    'syncCandidates' => [],
+    'selectedSyncProviderId' => '',
+    'syncing' => false,
+
     // Stopdesk modal
     'showStopdeskModal' => false,
     'editingStopdeskId' => null,
@@ -48,11 +53,60 @@ $loadData = function (): void {
         ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])
         ->all();
 
+    $this->syncCandidates = ShippingProvider::with('carrier')
+        ->where('store_id', $storeId)
+        ->get()
+        ->filter(fn ($p) => $p->carrier && config("delivery.carrier_integrations.{$p->carrier->code}", null))
+        ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])
+        ->values()
+        ->all();
+
+    if ($this->selectedSyncProviderId && ! collect($this->syncCandidates)->contains('id', $this->selectedSyncProviderId)) {
+        $this->selectedSyncProviderId = '';
+    }
+
     $this->stopdeskPoints = StopdeskPoint::where('store_id', $storeId)
         ->with('provider', 'state', 'city')
         ->orderBy('name')
         ->get()
-        ->toArray();
+        ->map(fn (StopdeskPoint $point) => array_merge($point->toArray(), [
+            'synced' => filled($point->external_code),
+        ]))
+        ->all();
+};
+
+$syncStopdesk = function (): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+    if (! $this->selectedSyncProviderId) {
+        return;
+    }
+
+    $this->syncing = true;
+
+    try {
+        $provider = ShippingProvider::with('carrier')->where('store_id', currentStoreId())
+            ->findOrFail($this->selectedSyncProviderId);
+
+        if (! $provider->carrier || ! config("delivery.carrier_integrations.{$provider->carrier->code}", null)) {
+            $this->dispatch('swal', type: 'error', title: __('merchant_panel.sync_no_adapter'));
+            return;
+        }
+
+        $result = app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, null, null, true);
+
+        $this->loadData();
+
+        if ($result['synced'] && $result['total'] > 0) {
+            $this->dispatch('swal', type: 'success', title: __('merchant_panel.stopdesk_sync_done', ['total' => $result['total']]));
+        } else {
+            $this->dispatch('swal', type: 'info', title: __('merchant_panel.stopdesk_sync_empty'));
+        }
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::warning('stopdesk sync failed: ' . $e->getMessage());
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.stopdesk_sync_error'));
+    } finally {
+        $this->syncing = false;
+    }
 };
 
 $watchState = function (string $stateId): void {
@@ -151,6 +205,37 @@ $deleteStopdesk = function (string $id): void {
         @endif
     </div>
 
+    @if (! empty($syncCandidates))
+        <div class="edz-card edz-card--padded mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.stopdesk_sync_title') }}</p>
+                    <p class="text-xs text-ink-muted mt-0.5">{{ __('merchant_panel.stopdesk_sync_desc') }}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select wire:model="selectedSyncProviderId"
+                        class="edz-input text-sm w-48 max-w-full">
+                        <option value="">{{ __('merchant_panel.stopdesk_sync_select') }}</option>
+                        @foreach ($syncCandidates as $candidate)
+                            <option value="{{ $candidate['id'] }}">{{ $candidate['name'] }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" wire:click="syncStopdesk"
+                        class="edz-btn edz-btn--primary edz-btn--sm"
+                        wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
+                        wire:target="syncStopdesk"
+                        @disabled(! $selectedSyncProviderId)>
+                        <x-edz.spinner wire:target="syncStopdesk" />
+                        <span wire:loading.remove wire:target="syncStopdesk">
+                            <x-edz.icon name="arrow-path" class="w-4 h-4" />
+                        </span>
+                        <span>{{ $syncing ? __('merchant_panel.syncing_rates') : __('merchant_panel.stopdesk_sync_button') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if (!empty($stopdeskPoints))
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             @foreach ($stopdeskPoints as $point)
@@ -165,9 +250,17 @@ $deleteStopdesk = function (string $id): void {
                                 <p class="text-xs text-ink-muted">{{ $point['provider']['name'] ?? '—' }}</p>
                             </div>
                         </div>
-                        <span class="{{ $point['is_active'] ? 'edz-badge edz-badge--success' : 'edz-badge edz-badge--neutral' }}">
-                            {{ $point['is_active'] ? __('merchant_panel.stopdesk_active') : __('merchant_panel.stopdesk_inactive') }}
-                        </span>
+                        <div class="flex items-center gap-1.5">
+                            @if ($point['synced'] ?? false)
+                                <span class="edz-badge edz-badge--info">
+                                    <x-edz.icon name="check-circle" class="w-3.5 h-3.5" />
+                                    {{ __('merchant_panel.stopdesk_synced') }}
+                                </span>
+                            @endif
+                            <span class="{{ $point['is_active'] ? 'edz-badge edz-badge--success' : 'edz-badge edz-badge--neutral' }}">
+                                {{ $point['is_active'] ? __('merchant_panel.stopdesk_active') : __('merchant_panel.stopdesk_inactive') }}
+                            </span>
+                        </div>
                     </div>
 
                     <div class="space-y-1.5 text-sm text-ink-muted">
