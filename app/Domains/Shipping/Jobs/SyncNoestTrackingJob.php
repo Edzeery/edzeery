@@ -3,11 +3,9 @@
 namespace App\Domains\Shipping\Jobs;
 
 use App\Domains\Shipping\Models\ShippingProvider;
-use App\Domains\Shipping\Services\NoestTrackingMapper;
+use App\Domains\Shipping\Services\NoestTrackingSyncService;
 use App\Domains\Shipping\Services\StopdeskOfficeSync;
-use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\OrderTracking;
-use App\Models\Orders\OrderTrackingHistory;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,6 +34,7 @@ class SyncNoestTrackingJob implements ShouldQueue
     public function handle(?StopdeskOfficeSync $resolver = null): void
     {
         $resolver ??= app(StopdeskOfficeSync::class);
+        $sync = app(NoestTrackingSyncService::class);
 
         $providers = ShippingProvider::query()
             ->with('carrier')
@@ -45,11 +44,11 @@ class SyncNoestTrackingJob implements ShouldQueue
             ->get();
 
         foreach ($providers as $provider) {
-            $this->syncProvider($resolver, $provider);
+            $this->syncProvider($resolver, $sync, $provider);
         }
     }
 
-    private function syncProvider(StopdeskOfficeSync $resolver, ShippingProvider $provider): void
+    private function syncProvider(StopdeskOfficeSync $resolver, NoestTrackingSyncService $sync, ShippingProvider $provider): void
     {
         $adapter = $resolver->resolve($provider);
 
@@ -87,7 +86,7 @@ class SyncNoestTrackingJob implements ShouldQueue
                     continue;
                 }
 
-                $this->apply($tracking, $entry);
+                $sync->apply($tracking, $entry);
             }
 
             $this->touchSyncedAt($byNumber);
@@ -111,129 +110,6 @@ class SyncNoestTrackingJob implements ShouldQueue
                     ->orWhere('last_synced_at', '<', now()->subMinutes(15));
             })
             ->get();
-    }
-
-    private function apply(OrderTracking $tracking, array $entry): void
-    {
-        $orderInfo = $entry['OrderInfo'] ?? [];
-        $activity = $entry['activity'] ?? [];
-
-        if (! is_array($orderInfo) || ! is_array($activity) || $activity === []) {
-            return;
-        }
-
-        $events = $this->orderedEvents($activity);
-        $latest = end($events);
-
-        if ($latest === false) {
-            return;
-        }
-
-        $eventKey = is_string($latest['event_key'] ?? null) && $latest['event_key'] !== ''
-            ? $latest['event_key']
-            : null;
-        $eventText = is_string($latest['event'] ?? null) ? $latest['event'] : null;
-
-        $status = $eventKey !== null
-            ? NoestTrackingMapper::toStatus($eventKey)
-            : NoestTrackingMapper::eventTextToStatus($eventText);
-
-        if ($status === null && $eventText !== null) {
-            $status = NoestTrackingMapper::eventTextToStatus($eventText);
-        }
-
-        if ($status === null) {
-            return;
-        }
-
-        $deliveredAt = $status === OrderTrackingStatus::DELIVERED
-            ? $this->eventDate($events, [OrderTrackingStatus::DELIVERED->value, 'livre', 'livred'])
-            : null;
-        $returnedAt = $status === OrderTrackingStatus::RETURNED
-            ? $this->eventDate($events, NoestTrackingMapper::terminalKeys(OrderTrackingStatus::RETURNED))
-            : null;
-
-        $previous = OrderTrackingStatus::tryFrom((string) $tracking->tracking_status);
-
-        $updates = [
-            'carrier_status' => $eventKey ?? (mb_substr((string) $eventText, 0, 100) ?: null),
-            'carrier_label' => $eventText,
-            'tracking_status' => $status->value,
-            'carrier_raw' => $entry,
-            'last_synced_at' => now(),
-        ];
-
-        if (! $tracking->shipped_at && $events !== []) {
-            $updates['shipped_at'] = $events[0]['date'] ?? now();
-        }
-
-        if ($deliveredAt) {
-            $updates['delivered_at'] = $deliveredAt;
-        }
-
-        if ($returnedAt) {
-            $updates['returned_at'] = $returnedAt;
-        }
-
-        $tracking->update($updates);
-
-        if ($previous === null || $previous->value !== $status->value) {
-            OrderTrackingHistory::create([
-                'store_id' => $tracking->store_id,
-                'order_id' => $tracking->order_id,
-                'order_tracking_id' => $tracking->id,
-                'status' => $status->value,
-                'payload' => [
-                    'carrier_sync' => true,
-                    'event' => $eventText,
-                    'event_key' => $eventKey,
-                    'previous_status' => $previous?->value,
-                ],
-            ]);
-        }
-    }
-
-    /**
-     * Chronologically ascending activity rows, ignoring entries we cannot read.
-     */
-    private function orderedEvents(array $activity): array
-    {
-        $events = [];
-
-        foreach ($activity as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-
-            $date = isset($row['date']) ? \Illuminate\Support\Carbon::parse((string) $row['date']) : null;
-
-            if (! $date) {
-                continue;
-            }
-
-            $events[] = [
-                'event' => isset($row['event']) ? (string) $row['event'] : null,
-                'event_key' => isset($row['event_key']) ? (string) $row['event_key'] : null,
-                'date' => $date,
-            ];
-        }
-
-        usort($events, fn ($a, $b) => $a['date']->timestamp <=> $b['date']->timestamp);
-
-        return $events;
-    }
-
-    private function eventDate(array $events, array $keys): ?\Illuminate\Support\Carbon
-    {
-        foreach ($events as $event) {
-            if ($event['event_key'] !== null && in_array($event['event_key'], $keys, true)) {
-                return $event['date'];
-            }
-        }
-
-        $latest = end($events);
-
-        return $latest === false ? null : $latest['date'];
     }
 
     private function touchSyncedAt($trackings): void

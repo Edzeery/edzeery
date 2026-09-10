@@ -1128,3 +1128,95 @@ git rm "it" "prepareBindings(\$bindings)"
 - `php -l` على كل نص تعدَّل + `php artisan view:cache` (success) + الجولة الكاملة `tests\Feature\Order tests\Feature\Merchant` = **345 ناجح (1322 assertions) — صفر انحدار**.
 
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — اختيار منتج/متغير من الـ picker ثم إغلاقه يبقي نافذة تعديل العناصر مفتوحة؛ إضافة منتج ثم فتح طلبية أخرى/إنشاء لا يُظهر بقايا «محدد» (بلا تحديث للصفحة)؛ شارة «أُضيفت كل المتغيرات» في بوب اب المنتجات عند اكتمال متغيرات منتج (مع شارة الجزيء «x/y بالسلة»)، وإبقاء فتح قائمة المتغيرات ممكنًا.
+
+---
+
+## إعادة تصميم صفحة التتبع — المرحلة A: بنية الصفحة (تبويبان + جزءات) (سبتمبر 2026) 🔄
+
+**طلب المستخدم:** صفحة تتبع احترافية متجاوبة (375/768/1440) بلا حشر في `index`، بحث/فلترة كنمط صفحة الطلبيات، تحديث حالة تلقائي (لا يدوي)، تبويب «رجل التوصيل» + بوابة دخول ولوحة خاصة به، ومراجعة صلاحيات. **القرارات المعتمدة (بعد 4 أسئلة):** التنفيذ بالترتيب A→B→C→D→E→F→G؛ التبويبان في نفس الصفحة؛ تسجيل دخول الرجل بكلمة مرور فوق `delivery_riders` (guard منفصل)؛ تأجيل Phase 32 (32.2→32.8) بعد G.
+
+- **A — البنية والتبويبان:** `index.blade.php` صار منظمًا — state جديد `trackingTab` ('carrier'|'rider') + تضمين جزئيات؛ استُخرجت كتل الإحصائيات/شريط الأدوات/القائمة (جدول الديسكتوب + بطاقات الموبايل + load-more) نهائيًا من الصفحة، مع «@if carrier → إحصائيات+أدوات+قائمة» / «@else → placeholder الرجل» (حتى المرحلة D).
+- **جزئيات جديدة:** `partials/tracking-tabs.blade.php` (سطر تبويبين بنمط returns `edz-btn--primary/ghost` عبر `wire:click="$set('trackingTab', …)"`)، `tracking-stats`، `tracking-toolbar`، `tracking-list`، `tracking-rider-placeholder`.
+- **الترجمة:** مفاتيح ×4 لكل لغة (ar/en/fr/es): `tracking_tab_carrier` + `tracking_tab_rider` + `rider_tab_empty_title` + `rider_tab_empty_hint`.
+- **إصلاح عيب سابق كسر الفرنسية كليًا:** `resources/lang/fr/order_flow.php:30` — `'Veuillez choisir l'agence stopdesk'` (اقتباس مستقيم) → `l’agence` (باقتباس مطبعي كما هو متبع في الملف). `php -l` سليم الآن لكل الملفات الأربعة.
+- **التحقق:** `view:cache` success + الجولة المرجعية للتتبع **30 ناجح (123 تأكيد)** — منها تحميل `merchant.tracking.index` عبر Volt في `OrderEventLogVisibilityTest` (درجان يصلان/لا يصلان للحدث حسب الدور) + `OrderTrackingCarrierValidationTest` (32.1) — صفر انحدار.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| A بنية الصفحة (تبويبان + جزءات) | ✅ | merchant/tracking/index.blade.php (state + includes) + جزئيات ×5 + order_flow.php ×4 (7 مفاتيح) + إصلاح fr:30 | الجولة المرجعية 30 ناجح (123 تأكيد) |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — سطر التبويبين أعلى الصفحة، تبديل المحتوى بين التبويبين، وبقاء التبويب الأول بنفس السلوك الوظيفي السابق تمامًا.
+
+---
+
+## إعادة تصميم صفحة التتبع — المرحلة B: بحث حر + فلاتر احترافية (سبتمبر 2026) ✅
+
+**النطاق:** بحث حر debounce 600ms + popover فلاتر (شركة/حالة متعددة/تاريخ) + شريط فلاتر نشطة + عدّادها + total المصفّى — بنمط `merchant/orders/index` حرفيًا.
+
+- **اكتشاف عيب قائم:** الفلاتر السابقة كانت `wire:model.live` بلا أي `updated` hook ولا استدعاء `loadShipments` — أي **تغيير فلتر لا يعيد جلب القائمة** (تُحدَّث فقط عند refresh يدوي). المرحلة B أصلحت هذا بتفعيل الـ reload الحي.
+- **`tracking/index.blade.php`:** state جديد `search` + `filteredTotal`؛ `filters.tracking_status` (مفرد) → `tracking_statuses` (مصفوفة متعددة)؛ `loadShipments` يحوّل البحث إلى where-group (number/customer name/phone/phone_secondary/tracking_number/provider name) + `whereIn` للحالات + يسجّل `filteredTotal = total()`؛ استُبدل `resetFilters` بـ `clearFilters` + `setFilter` + `toggleTrackingStatus` + hook `updated` (استورد `Livewire\Volt\updated`).
+- **`partials/tracking-toolbar.blade.php`** أُعيد كتابته بالكامل: بحث موحّد (أيقونة + × + سهم)، popover `x-edz.dropdown` بثلاثة أقسام (شركة radio، حالة toggle-check، تاريخ flatpickr)، عدّاد فلاتر نشطة، وشريط فلاتر نشطة (chips بعلامة × لكل فلتر) + زر `clearFilters` — كلها بنمط orders (`.edz-dropdown__item`، `.edz-dropdown__section`، chips `bg-accent-surface`).
+- **الترجمة:** `search_tracking_placeholder` + `tracking_count` ×4 لغات.
+- **إصلاح جزئي:** `merchant/tracking/index.blade.php` استورد `use function Livewire\Volt\updated;` (نسيته أول مرة — `Call to undefined function updated()` ظهر في الاختبارات فأُصلح فورًا).
+- **التحقق:** `view:cache` success + اختبار جديد `tests/Feature/Merchant/TrackingSearchFilterTest` (6 اختبارات/24 تأكيد): تبويباهما، placeholder الرجل، بحث بالرقم التتبع مع استرجاع، فلتر الحالات المتعددة (toggle/دمج)، فلتر الشركة مع filteredTotal، clearFilters — plus الجولة المرجعية 25 ناجح (86 تأكيد) بلا انحدار.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| B بحث + فلاتر احترافية | ✅ | tracking/index.blade.php (search/filteredTotal/setFilter/toggle/updated) + partials/tracking-toolbar.blade.php + استيراد updated + order_flow.php ×4 (+2 مفاتيح) + TrackingSearchFilterTest (جديد) | 6 (24) جديد + الجولة 25 (86) نظيفة |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — البحث بالرقم/الاسم/رقم التتبع أثناء الكتابة، popover الفلاتر (شركة/حالات متعددة/تاريخ) على الموبايل كـ bottom-sheet، شريط الفلاتر النشطة وزر المسح، وعدّاد `filteredTotal`.
+
+---
+
+## إعادة تصميم صفحة التتبع — المرحلة C: تحديث الحالة تلقائيًا فقط (لا إجراءات يدوية) (سبتمبر 2026) ✅
+
+**النطاق:** حذف «الإجراءات السريعة» اليدوية (in_transit/out_for_delivery/failed_attempt/returning/delivered/returned/lost/damaged) من درج الشحنة وكل سطلها (closures)، وإحلالها بمزامنة تلقائية من شركة الشحن مع زر «تحديث الآن» لكل شحنة يمر عبر نفس مؤثر الكتابة الوحيد الذي يستخدمه الجدولة.
+
+- **`app/Domains/Shipping/Services/NoestTrackingSyncService.php` (جديد):** مصدر حقيقة واحد — `apply(OrderTracking, entry)` (منقول حرفيًا من `SyncNoestTrackingJob` مع إبقائه idempotent: تاريخ يُسجَّل فقط عند تغيّر الحالة، ولا تراجع عن حالة نهائية) + `syncOne(OrderTracking)` لعملية تحديث شحنة مفردة عبر `StopdeskOfficeSync::resolve` ثم `trackingsInfo([رقم واحد])`، مع أخطاء مقننة (`no_provider/no_number/unsupported_carrier/request_failed/no_data`). `status===null` (أحداث غير مُعيّنة) الآن يختم `last_synced_at` — بما يوازي `touchSyncedAt` في المسار الدفعي.
+- **`SyncNoestTrackingJob`:** أُعيدت هيكلته ليستخدم `NoestTrackingSyncService::apply` (حُذفت `apply/orderedEvents/eventDate` الخاصة) — أي أن الجدولة وزر المتجر يكتبان بالضبط نفس القاعدة.
+- **`tracking/index.blade.php`:** حُذفت `trackingAction` + `trackingTransition` + closure `$membership` (كلها أصبحت ميتة)؛ أُضيف `$syncTracking(trackingId)` محروس ORDER_VIEW: يستدعي `syncOne`، toast نجاح/تحذير (رسالة عامة مع `Log::warning` للتفاصيل)، ثم `loadShipments()` وإعادة `openDrawer` لتحديث درج الشحنة فورًا.
+- **`partials/order-drawer.blade.php`:** حُذف قسم «Quick actions» بالكامل؛ أُضيف قسم «تحديث الحالة تلقائيًا» (يظهر فقط عند وجود رقم تتبع): «آخر تزامن» (`last_synced_at` بتاريخه أو «لم تتم المزامنة بعد») + زر `syncTracking` مع spinner/loading، وسطر توضيح أن الحالة تُحدَّث تلقائيًا من الشركة.
+- **الترجمة:** 8 مفاتيح ×4 لغات (`tracking_sync_section/now/last_synced/never_synced/synced/hint/failed/no_number`).
+- **التحقق:** `php -l` نظيف ×4 + `view:cache` success + **39 ناجح (146 تأكيد)** — منها `NoestTrackingSyncServiceTest` (جديد، 6) وأضيف اختباران لصفحة التتبع (زر التحديث يجلب الحالة ويحدّث الدرج؛ وعدم ظهور القسم بلا رقم تتبع) وبقي `NoestTrackingSyncTest` (6) صالحًا بلا تغيير.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| C تحديث تلقائي (لا يدوي) | ✅ | NoestTrackingSyncService (جديد) + SyncNoestTrackingJob (يعيد توجيه apply) + tracking/index (syncTracking/حذف الإجراءات) + order-drawer (قسم المزامنة) + order_flow.php ×4 (+8 مفاتيح) + NoestTrackingSyncServiceTest (جديد) | 6 جديد بالخدمة + 2 على الصفحة + الجولة المرجعية 39 (146) نظيفة |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — قسم «تحديث الحالة تلقائيًا» داخل درج الشحنة (زر + «آخر تزامن»)، غياب أي أزرار حالة يدوية، وتحدّث الدرج فورًا دون إغلاق.
+
+---
+
+## إعادة تصميم صفحة التتبع — المرحلة D: تبويب «رجل التوصيل» (جانب المتجر) (سبتمبر 2026) ✅
+
+**النطاق:** استبدال placeholder المرحلة A بقائمة حقيقية لرجال التوصيل مع عدّادات شحنات كل رجل + توسعة لعرض شحنات الرجل + تعيين/إلغاء تعيين الرجل من درج الشحنة (مع كتلة تعارض مع الشحن عبر شركة).
+
+- **`tracking/index.blade.php`:** state جديد (`allRiders`, `riderRiders`, `selectedRiderId`, `riderShipments`, `riderShipmentTotal`)؛ `mount` يستدعي `loadRiderOverview()` (أيضًا يملأ `allRiders` لقائمة التعيين في الدرج)؛ `updated.trackingTab` يحمّل العرض عند دخول تبويب الرجل؛ `loadRiderOverview()` — نافذة عبر `OrderWorkflow::carrier()` + `whereNotNull('delivery_rider_id')` + `latestTracking` لعدّادتَي `total/active` لكل رجل في استعلامين فقط (لا N+1)؛ `toggleRider()` / `loadRiderShipments()` — شحنات رجل واحد مع حمل مسبق (`customer/status/latestTracking/deliveryRider/city/state`) بنفس شكل صفوف قائمة الشحنات؛ `assignRider(orderId, riderId|null)` محروس `ORDER_ASSIGN` — يرفض التعيين إذا كانت الطلبية أُرسلت عبر شركة (`shipping_provider_id`) وإلا يحدّث `delivery_rider_id` (يُسجَّل تلقائيًا في audit عبر `OrderObserver`) ثم يعيد التحميل.
+- **`partials/tracking-rider-tab.blade.php` (جديد):** حالة فارغة (عنوان + تلميح + زر «إدارة أسماء رجال التوصيل» بشرط `DELIVERY_RIDERS_VIEW`) أو بطاقات رجال (أفاتار بحرف، الاسم، المركبة/الهاتف، حالة غير نشط، عدّادتا active/total، شريط تقدم، سهم يدور عند التوسيع).
+- **`partials/tracking-rider-shipments.blade.php` (جديد):** جدول/صفوف شحنات الرجل الموسّع (رقم، badge الحالة، زبون/هاتف/مدينة/رقم تتبع، الإجمالي، زر عرض الدرج) + حالة فارغة.
+- **`partials/order-drawer.blade.php`:** قسم «رجل التوصيل» — قراءة الاسم الحالي + قائمة `x-edz.dropdown` (إلغاء التعيين / كل الرجال) تظهر فقط بشرط `ORDER_ASSIGN` وعدم وجود شركة شحن.
+- **`tracking-rider-placeholder.blade.php`:** حُذف (حُلّت الحالة الفارغة داخل التبويب الجديد).
+- **الترجمة:** 11 مفتاحًا ×4 لغات (`rider_manage_link/shipments_count/active/assign_section/assign/change/unassign/saved/has_provider/no_shipments`).
+- **التحقق:** `php -l` ×4 نظيف + `view:cache` success + **54 ناجحًا (210 تأكيدًا)** بلا انحدار، منها **5 اختبارات جديدة** لصفحة التتبع (قائمة الرجال بعدّاداتها، توسعة رجل تعرض شحناته فقط، تعيين رجل مع تحديث العرض، رفض التعيين عند وجود شركة شحن، ومنع `assignRider` بدون صلاحية `order.assign` لـ STAFF → 403).
+- **اكتشاف/إصلاح أثناء العمل:** `with('latestTracking:id,order_id,delivered_at,returned_at')` مع `latestOfMany` ينتج `ambiguous column name: order_id` في SQLite → إلغاء تقييد الأعمدة واستخدام `with('latestTracking')` كاملًا (مسار الشحنات يستخدم نفس الأسلوب غير المقيد).
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| D تبويب رجل التوصيل + تعيين | ✅ | tracking/index (riderRiders/toggleRider/loadRiderShipments/assignRider) + partials/tracking-rider-tab + tracking-rider-shipments (جديدان) + order-drawer (قسم الرجل) + حذف placeholder + order_flow.php ×4 (+11 مفتاحًا) + TrackingSearchFilterTest (+5) | +5 على الصفحة + الجولة 54 (210) نظيفة |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — سرد رجال التوصيل وعدّاداته، توسيع رجل لعرض شحناته، تعيين/إلغاء تعيين الرجل من درج الشحنة (واختفاء القائمة عند اختيار شركة شحن)، وشريط تقدم الحالة المتجاوب.
+
+---
+
+## المرحلة E — بوابة رجل التوصيل: قرارات المستخدم المعتمدة (سبتمبر 2026) 📋
+
+**طلب المستخدم (نصي، بتاريخ اليوم):** لوحة رجل توصيل احترافية تنافسية بسوق جزائري:
+1. **إحصاءات متقدمة ومتطورة** في لوحة الرجل (بطاقات، تقدم يومي، COD، جغرافيا).
+2. **تحكم تفصيلي في حالات التوصيل مع ملاحظات** — لكن **لا حذف ولا تعديل** لأي حالة/ملاحظة (append-only).
+3. **العضو المالك لصلاحية التتبع** يرى التتبع في نفس الصفحة الحالية وتبويبات الشركات كما هي الآن.
+4. الرجل يرى **طلبياته المكلف بها فقط** (لا يرى متغيرات المتجر).
+5. المطلوب: تقديم **خطة/اقتراحات احترافية متقدمة منافسة** موجهة للسوق الجزائري قبل التنفيذ.
+
+**إضافة لدقة الصلاحيات:** عضو الفريق ذو الاطلاع المقيّد (staff/manager) يرى في تبويب الرجل شحنات **المسندة إليه فقط** (`assigned_to_membership_id`) — نفس قاعدة سجل أحداث الطلبية الحالية. (سيُراعى في F/G.)
+
+**المطلوب الآن:** عرض خطة مراجعة للموافقة قبل كتابة الكود (انظر الرسالة التالية في الدردشة).
