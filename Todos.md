@@ -1100,3 +1100,31 @@ git rm "it" "prepareBindings(\$bindings)"
 | **الإجمالي (جولة نظيفة)** | **539 ناجح (1936 assertions)** | | |
 
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — شارات أرقام الولايات في القوائم (search بالرقم + ترتيب)، إخفاء بلدية الاستلام واشتقاقها من المكتب، قائمة مكاتب بأسطر العنوان/الهاتف وشارة الكود، التحديد التلقائي لمكتب الولاية الوحيد، وأداء `updated(['selectedStopdesk'])` الحي على المتجر المباشر (`store.edzeery.test`/`store.noest.test`).
+
+---
+
+## إصلاح بوب اب اختيار المنتج/المتغيرات + مزامنة التحديد + شارة «كل المتغيرات» + أداء المحرر (سبتمبر 2026) ✅
+
+**بموافقة المستخدم الصريحة («نفّذ الخطة كاملة») بعد فحص شامل للكود الحي. النطاق: تغيير/إضافة منتج، كمية، سعر من الجدول مباشرة.**
+
+### التشخيص المعتمد بالأدلة (الجذور)
+- **Bug1 — إغلاق بوب اب العناصر عند إغلاق بوب اب المنتج/المتغير:** حاوية نوافذ العناصر (`partials/orders-items-edit-modals.blade.php:16,86,141`) كانت تستمع على مستوى window عبر `@edz-modal-closed.window="$wire.closeItemsModal()"`؛ وأي `x-edz.modal` عند انقلاب `open` يطلق `edz-modal-closed` (`components/edz/modal.blade.php:16-23`). الـ picker الشقيق (`orders-product-picker.blade.php`، يُضمّن في `index.blade.php:6145`) عند اختيار/إغلاق أي متغير → حدث يتفقّع للـ window → يقفل نافذة العناصر. (ذات العلة تجعل أي مودال آخر يُغلق أثناء الجلسة يقفلها كذلك — تسريب نطاق.)
+- **Bug2 — المنتج يبقى «محددًا» حتى تحديث الصفحة:** `formSelectedItems` خريطة `variant_id => qty` تُبنى فقط عبر `syncFormSelectedItems()` (HasOrderProductPicker:314)؛ لكن دورة الحياة غير متناظرة: `closeItemsModal` يصفّر `form['items']` دون المزامنة، و`openCreateModal`/`openEditModal` يعيدان بناء الـ draft دون مزامنة → تنتقل الخريطة العالقة عبر الطلبيات/النوافذ وتصدّر check/تعطيلًا في الـ picker (orders-product-picker.blade.php:~99/229) حتى يصفّرها `mount` فقط (index.blade.php:143).
+
+### ما تَمّ
+- **أ (Bug1):** الحاويات الثلاث صارت `@edz-modal-closed="$wire.closeItemsModal()"` (بدون `.window`) — الحدث من نافذة العناصر نفسها يتفقّع إليها، ولا تمر أحداث الـ picker الشقيق عبرها؛ بقي إغلاق X/الخلفية/Escape مشتركًا بنفس المسار.
+- **ب (Bug2):** توحيد دورة حياة الخريطة — `closeItemsModal`/`openCreateModal`/`openEditModal` (index.blade.php) تستدعي `syncFormSelectedItems()` بعد بناء/تصفير الـ draft (كان `openItemsModal` يستدعيها أصلًا).
+- **ج (الميزة):** `pickerProductResults` حمّلت `variant_ids` (مصفوفة ULIDs من علاقة محمّلة أصلًا — بلا استعلام إضافي)؛ صف المنتج متعدد المتغيرات يعرض: شارة check «أُضيفت كل المتغيرات» عند اكتمال كل متغيراته، عدّاد «x/y بالسلة» عند الجزئي، والشيفرون كسابق؛ يظل السطر قابلاً للفتح. مفتاح ترجمة جديد `merchant_panel.all_variants_added` ×4 لغات (en/ar/fr/es).
+- **د (الأداء):** `updateFormItemQty` لم تعد تنفذ `ProductVariant::find` لكل نقرة +/− — preorder يُشتق من `stock` المخزّن في سطر الـ draft (`allowBackorder(currentStore())`)؛ و`updated('form.items'|'form.customer_phone')` صارت محصورة بسياق الإنشاء/التعديل (`showCreateModal || showEditModal`) — محرر العناصر لا يعرض تحذيرات استعباد أصلًا.
+
+### الاختبارات — `OrderInlineItemsEditTest` (14→18 / 89 تأكيدًا)
+- ① نوافذ العناصر تستمع لـ close الخاصّ بها فقط (`assertDontSeeHtml('edz-modal-closed.window')` + `assertSeeHtml('edz-modal-closed="…")`).
+- ② خريطة التحديد تتصفّر مع إغلاق العناصر وتُبنى من طلبية كل edit/إنشاء (جولة A→create→B بلا بقايا).
+- ③ شارة «كل المتغيرات» تظهر فقط بعد إضافة كل المتغيرات (متغير واحد → لا تظهر).
+- ④ المحرر يشتق preorder من الـ draft بلا استعلام `product_variants` (حصيلة `DB::listen` خلال open+stepper صفر استعلامات على `product_variants`).
+- دالة `itemsOrder` المساعدة قبِلت معامل `$phone` اختياريًا لتجنب تضارب unique للزبون (بلا أثر على بقية الاستدعاءات).
+
+### الدليل النهائي
+- `php -l` على كل نص تعدَّل + `php artisan view:cache` (success) + الجولة الكاملة `tests\Feature\Order tests\Feature\Merchant` = **345 ناجح (1322 assertions) — صفر انحدار**.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px / 768px / 1440px — اختيار منتج/متغير من الـ picker ثم إغلاقه يبقي نافذة تعديل العناصر مفتوحة؛ إضافة منتج ثم فتح طلبية أخرى/إنشاء لا يُظهر بقايا «محدد» (بلا تحديث للصفحة)؛ شارة «أُضيفت كل المتغيرات» في بوب اب المنتجات عند اكتمال متغيرات منتج (مع شارة الجزيء «x/y بالسلة»)، وإبقاء فتح قائمة المتغيرات ممكنًا.

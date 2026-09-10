@@ -58,7 +58,7 @@
         </div>
     @else
         {{-- Display mode --}}
-        <button type="button" class="edz-inline-edit__display"
+        <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
             @if ($startMethod) wire:click="{{ $startMethod }}" @endif>
             @if ($icon)
                 <x-edz.icon :name="$icon" class="edz-inline-edit__icon w-4 h-4" />

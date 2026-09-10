@@ -425,6 +425,7 @@ return [
     'out_of_stock' => 'Sin stock',
     'left' => 'restante',
     'in_cart' => 'en carrito',
+    'all_variants_added' => 'Todas las variantes añadidas',
     'please_select_product' => 'Selecciona un producto',
     'please_select_quantity' => 'Especifica la cantidad',
     'load_more' => 'Cargar más',

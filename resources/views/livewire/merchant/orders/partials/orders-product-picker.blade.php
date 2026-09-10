@@ -66,6 +66,13 @@
                                 $searchText = mb_strtolower(
                                     $pv['product_name'] . ' ' . ($pv['first_variant']['sku'] ?? ''),
                                 );
+                                $pvVariantIds = $pv['variant_ids'] ?? [];
+                                $selectedVariantCount = count(
+                                    array_intersect($pvVariantIds, array_keys($formSelectedItems ?? [])),
+                                );
+                                $allVariantsSelected =
+                                    count($pvVariantIds) > 0 &&
+                                    $selectedVariantCount === count($pvVariantIds);
                             @endphp
                             <div data-search="{{ $searchText }}"
                                 x-show="!searchTerm || searchTerm.length < 2 || $el.dataset.search.includes(searchTerm.toLowerCase())"
@@ -82,15 +89,37 @@
                                         <div class="flex-1 min-w-0">
                                             <div class="font-medium text-ink truncate">{{ $pv['product_name'] }}
                                             </div>
-                                            <div class="text-xs text-ink-muted mt-0.5">
-                                                {{ $pv['variant_count'] }} {{ __('merchant_panel.variants') }}
+                                            <div class="text-xs mt-0.5 flex items-center gap-1.5">
+                                                @if ($allVariantsSelected)
+                                                    <span class="text-success-fg font-medium flex items-center gap-1">
+                                                        <x-edz.icon name="check" class="w-3.5 h-3.5" />
+                                                        {{ __('merchant_panel.all_variants_added') }}
+                                                    </span>
+                                                @elseif ($selectedVariantCount > 0)
+                                                    <span class="text-ink-muted">
+                                                        {{ $selectedVariantCount }}/{{ $pv['variant_count'] }}
+                                                        {{ __('merchant_panel.in_cart') }}
+                                                    </span>
+                                                @else
+                                                    <span class="text-ink-muted">
+                                                        {{ $pv['variant_count'] }}
+                                                        {{ __('merchant_panel.variants') }}
+                                                    </span>
+                                                @endif
                                             </div>
                                         </div>
                                         <span
                                             class="text-xs text-ink-muted shrink-0 tabular-nums">{{ $pv['price_range'] }}</span>
                                         <x-edz.spinner :show="'isLoadingVariants'" class="w-4 h-4 text-ink-muted shrink-0" />
-                                        <x-edz.icon name="chevron-left" x-show="!isLoadingVariants"
-                                            class="w-4 h-4 text-ink-muted shrink-0 rtl:rotate-180" />
+                                        @if ($allVariantsSelected)
+                                            <span
+                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-success-surface text-success-fg shrink-0">
+                                                <x-edz.icon name="check" class="w-4 h-4" />
+                                            </span>
+                                        @else
+                                            <x-edz.icon name="chevron-left" x-show="!isLoadingVariants"
+                                                class="w-4 h-4 text-ink-muted shrink-0 rtl:rotate-180" />
+                                        @endif
                                     </button>
 
                                     {{-- Single variant product --}}

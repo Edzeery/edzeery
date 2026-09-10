@@ -103,12 +103,12 @@ function itemsVariant(Store $store, string $label, float $price = 500, int $stoc
     return [$product, $variant];
 }
 
-function itemsOrder(Store $store, State $state, City $city, array $items, string $statusKey = 'pending'): Order
+function itemsOrder(Store $store, State $state, City $city, array $items, string $statusKey = 'pending', string $phone = '0550000000'): Order
 {
     $customer = Customer::create([
         'store_id' => $store->id,
         'name' => 'Items Customer',
-        'phone' => '0550000000',
+        'phone' => $phone,
         'status' => true,
     ]);
 
@@ -468,4 +468,125 @@ test('the products, quantity and price cells show selection hints for an order w
         ->assertSee(__('merchant_panel.please_select_quantity'), false);
 
     expect($order->refresh()->items()->count())->toBe(0);
+});
+
+test('the items edit modals listen to their own close event only, never a global window one', function () {
+    [$user, $store] = itemsUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = itemsGeography();
+    [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
+    $order = itemsOrder($store, $state, $city, [
+        ['variant' => $variantA, 'product' => $productA, 'quantity' => 1, 'price' => 450],
+    ]);
+
+    itemsVolt([$user, $store])
+        ->call('openItemsModal', 'products', $order->id)
+        ->assertSet('itemsModal.kind', 'products')
+        ->assertSeeHtml('edz-modal-closed="$wire.closeItemsModal()"')
+        ->assertDontSeeHtml('edz-modal-closed.window');
+});
+
+test('closing the items modal or opening create/edit keeps the picker map in sync with the draft', function () {
+    [$user, $store] = itemsUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = itemsGeography();
+    [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
+    [$productB, $variantB] = itemsVariant($store, 'Beta', 300);
+    $orderA = itemsOrder($store, $state, $city, [
+        ['variant' => $variantA, 'product' => $productA, 'quantity' => 1, 'price' => 450],
+    ]);
+    $orderB = itemsOrder($store, $state, $city, [
+        ['variant' => $variantB, 'product' => $productB, 'quantity' => 2, 'price' => 300],
+    ], 'pending', '0550000001');
+
+    itemsVolt([$user, $store])
+        // Items-edit session for A, then close: the map must clear with the draft.
+        ->call('openItemsModal', 'products', $orderA->id)
+        ->assertSet('formSelectedItems.' . $variantA->id, 1)
+        ->call('closeItemsModal')
+        ->assertSet('itemsModal', null)
+        ->assertSet('formSelectedItems', [])
+        // Create modal starts fresh: nothing may look pre-selected.
+        ->call('openCreateModal')
+        ->assertSet('formSelectedItems', [])
+        // Edit modal rebuilds from THAT order's items only.
+        ->call('openEditModal', $orderB->id)
+        ->assertSet('formSelectedItems', [$variantB->id => 2]);
+});
+
+test('the product picker shows an all-variants-added badge only once every variant is in the draft', function () {
+    [$user, $store] = itemsUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = itemsGeography();
+
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => 'Multi Product',
+        'slug' => 'multi-pr-' . uniqid(),
+        'sku' => 'multi-sku-' . uniqid(),
+        'type' => 'variable',
+        'price' => 700,
+        'is_active' => true,
+    ]);
+
+    $variantS = ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'Size S',
+        'sku' => 'multi-v-s-' . uniqid(),
+        'price' => 700,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+
+    $variantL = ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'Size L',
+        'sku' => 'multi-v-l-' . uniqid(),
+        'price' => 800,
+        'stock' => 10,
+        'is_active' => true,
+    ]);
+
+    $volt = itemsVolt([$user, $store])
+        ->call('openCreateModal')
+        ->set('showProductPickerModal', true)
+        ->assertDontSee(__('merchant_panel.all_variants_added'), false);
+
+    $volt->call('addFormItem', $variantS->id)
+        ->assertDontSee(__('merchant_panel.all_variants_added'), false);
+
+    $volt->call('addFormItem', $variantL->id)
+        ->assertSee(__('merchant_panel.all_variants_added'), false);
+});
+
+test('quantity steppers derive preorder from the draft row without a variant database lookup', function () {
+    [$user, $store] = itemsUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = itemsGeography();
+    [$productA, $variantA] = itemsVariant($store, 'Alpha', 450, 5);
+    $order = itemsOrder($store, $state, $city, [
+        ['variant' => $variantA, 'product' => $productA, 'quantity' => 1, 'price' => 450],
+    ]);
+
+    $store->settings()->updateOrCreate([], [
+        'inventory_tracking' => true,
+        'allow_backorder' => true,
+    ]);
+
+    $volt = itemsVolt([$user, $store]);
+
+    $queries = [];
+    \Illuminate\Support\Facades\DB::listen(function ($q) use (&$queries): void {
+        $queries[] = $q->sql;
+    });
+
+    $volt->call('openItemsModal', 'quantity', $order->id)
+        ->call('updateFormItemQty', 0, 4)
+        ->assertSet('form.items.0.quantity', 4)
+        ->assertSet('form.items.0.preorder', true);
+
+    $variantQueries = array_values(array_filter(
+        $queries,
+        fn ($sql) => str_contains($sql, 'product_variants')
+    ));
+
+    expect($variantQueries)->toBeEmpty();
 });

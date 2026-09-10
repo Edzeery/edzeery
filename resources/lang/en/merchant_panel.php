@@ -430,6 +430,7 @@ return [
     'out_of_stock' => 'Out of stock',
     'left' => 'left',
     'in_cart' => 'in cart',
+    'all_variants_added' => 'All variants added',
     'please_select_product' => 'Please select a product',
     'please_select_quantity' => 'Please specify the quantity',
     'load_more' => 'Load more',

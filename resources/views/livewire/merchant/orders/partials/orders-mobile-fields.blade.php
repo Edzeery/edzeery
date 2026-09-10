@@ -53,7 +53,7 @@
     @if (in_array('shipping_provider', $this->visibleColumns))
         @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
             <div class="edz-inline-edit__edit" wire:key="provider-mobile-{{ $orderId }}">
-                <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" size="sm" search
+                <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" option-hint="hint" size="sm" search
                     placeholder="{{ __('merchant_panel.shipping_provider') }}" />
                 <div class="edz-inline-edit__actions">
                     <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
@@ -68,6 +68,11 @@
                 <x-edz.icon name="truck" class="w-3 h-3 shrink-0 text-ink-muted" />
                 @if (!empty($order['shipping_provider']['name']))
                     <span class="edz-inline-edit__value">{{ $order['shipping_provider']['name'] }}</span>
+                @elseif (!empty($order['deliveryRider']['name']))
+                    <x-edz.badge tone="accent" sm>
+                        <x-edz.icon name="user" class="w-3 h-3" />
+                        {{ $order['deliveryRider']['name'] }}
+                    </x-edz.badge>
                 @else
                     <span class="text-warning font-medium">{{ $spHint }}</span>
                 @endif
@@ -76,6 +81,11 @@
             <span class="inline-flex items-center gap-1">
                 <x-edz.icon name="truck" class="w-3 h-3 shrink-0 text-ink-muted" />
                 @if (!empty($order['shipping_provider']['name'])) {{ $order['shipping_provider']['name'] }}
+                @elseif (!empty($order['deliveryRider']['name']))
+                    <x-edz.badge tone="accent" sm>
+                        <x-edz.icon name="user" class="w-3 h-3" />
+                        {{ $order['deliveryRider']['name'] }}
+                    </x-edz.badge>
                 @else <span class="text-warning font-medium">{{ $spHint }}</span> @endif
             </span>
         @endif
@@ -85,15 +95,21 @@
     @if (in_array('city', $this->visibleColumns))
         @if ($this->editingField === 'order.city' && $this->editingId === $orderId)
             <div class="edz-inline-edit__edit" wire:key="city-mobile-{{ $orderId }}">
-                <select wire:change="saveOrderCity($event.target.value)"
-                    class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                    @foreach ($this->editCityOptions as $ct)
-                        <option value="{{ $ct['id'] }}"
-                            @if ((string) $this->editingValue === (string) $ct['id']) selected @endif>
-                            {{ $ct['name'] }}
-                        </option>
-                    @endforeach
-                </select>
+                <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
+                    title="{{ __('order_flow.order_original_city') }}">
+                    {{ __('order_flow.order_original_city') }}: {{ $order['city']['name'] ?? '—' }}
+                </p>
+                <x-edz.select wire:model="editingValue"
+                    :options="$this->editCityOptions" option-value="id"
+                    option-label="name"
+                    size="sm" search />
+                <div class="edz-inline-edit__actions">
+                    <button type="button" class="edz-inline-edit__save" wire:click="saveOrderCity"
+                        wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
+                        <span>{{ __('buttons.save') }}</span></button>
+                    <button type="button" class="edz-inline-edit__cancel"
+                        @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
+                </div>
             </div>
         @elseif ($canManage && !empty($order['state_id']))
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"

@@ -430,6 +430,7 @@ return [
     'out_of_stock' => 'نفدت',
     'left' => 'متبقي',
     'in_cart' => 'بالسلة',
+    'all_variants_added' => 'أُضيفت كل المتغيرات',
     'please_select_product' => 'يرجى تحديد منتج',
     'please_select_quantity' => 'يرجى تحديد الكمية',
     'load_more' => 'تحميل المزيد',

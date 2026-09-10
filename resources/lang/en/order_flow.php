@@ -30,6 +30,8 @@ return [
     'please_select_state' => 'Please select wilaya',
     'please_select_city' => 'Please select commune',
     'please_select_stopdesk' => 'Please select stopdesk office',
+    'order_original_wilaya' => 'Customer ordered to wilaya',
+    'order_original_city' => 'Customer ordered to commune',
     'confirm_with_rider' => 'Personal rider',
     'confirm_contacted' => 'Customer contacted on this attempt',
     'confirm_attempts' => 'Contact attempts',

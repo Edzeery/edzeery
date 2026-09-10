@@ -561,7 +561,8 @@ test('the delivery quick-edit modal merges the commune offices with the wilaya-w
         ->set('form.city_id', $cityB->id)
         ->call('rebuildFormOffices');
 
-    $offerOfficeIds = collect(data_get($volt->get('formOffices'), '*.value'));
+    $offerOfficeIds = StopdeskPoint::scopedOfficeOptions($store->id, $provider->id, $state->id, $cityB->id)
+        ->pluck('value');
 
     expect($offerOfficeIds)->toContain($pointCityB->id)
         ->and($offerOfficeIds)->toContain($pointRegional->id)
@@ -816,7 +817,8 @@ test('the create form scopes offices to the chosen wilaya when no commune is set
         ->set('form.state_id', $state->id)
         ->call('loadFormOffices', $provider->id);
 
-    $optionIds = collect(data_get($volt->get('formOffices'), '*.value'));
+    $optionIds = StopdeskPoint::scopedOfficeOptions($store->id, $provider->id, $state->id, null)
+        ->pluck('value');
 
     expect($optionIds)->toContain($pointA->id)
         ->and($optionIds)->toContain($pointB->id)
@@ -862,7 +864,8 @@ test('the create-form office list ranks the commune offices before the wilaya-wi
         ->set('form.city_id', $city->id)
         ->call('loadFormOffices', $provider->id);
 
-    $optionIds = collect(data_get($volt->get('formOffices'), '*.value'));
+    $optionIds = StopdeskPoint::scopedOfficeOptions($store->id, $provider->id, $state->id, $city->id)
+        ->pluck('value');
 
     expect($optionIds)->toContain((string) $pointCommune->id)
         ->and($optionIds)->toContain((string) $pointHub->id)

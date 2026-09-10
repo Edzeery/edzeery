@@ -63,7 +63,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[110px]"
                     wire:click="startOrderNameEdit('{{ $orderId }}')"
                     title="{{ $order['customer']['name'] ?? '-' }}">
                     <span
@@ -137,7 +137,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display min-w-[115px]"
                     wire:click="startOrderPhoneEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value"
                         dir="ltr">{{ $order['customer']['phone'] ?? '—' }}
@@ -209,7 +209,7 @@
                 ->map(fn($v, $k) => "{$k}: {$v}")
                 ->implode(', ');
         @endphp
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate" title="{{ $metaEntries }}">
+        <td class="px-4 py-3 text-xs text-ink-muted min-w-[110px] truncate" title="{{ $metaEntries }}">
             {{ $metaEntries ?: '-' }}
         </td>
         @break
@@ -218,28 +218,36 @@
         <td class="px-4 py-3 text-ink-muted text-xs">
             @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="wilaya-inline-{{ $orderId }}">
-                    <select wire:change="saveOrderWilaya($event.target.value)"
-                        class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                        @foreach ($this->allStates as $st)
-                            <option value="{{ $st['id'] }}"
-                                @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
-                                {{ $st['state_code'] ?? '' }} {{ $st['name'] }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
+                        title="{{ __('order_flow.order_original_wilaya') }}">
+                        {{ __('order_flow.order_original_wilaya') }}: {{ $order['state']['name'] ?? '—' }}
+                    </p>
+                    <x-edz.select wire:model="editingValue"
+                        :options="$this->allStates" option-value="id"
+                        option-label="name" option-code="state_code"
+                        size="sm" search />
                     <div class="edz-inline-edit__actions">
+                        <button type="button" class="edz-inline-edit__save"
+                            wire:click="saveOrderWilaya"
+                            wire:loading.attr="disabled"
+                            wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
+                        </button>
                         <button type="button" class="edz-inline-edit__cancel"
-                            @click="$wire.cancelOrderEdit()">Cancel</button>
+                            @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                     </div>
                     @if ($this->editingError)
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display min-w-[115px] "
                     @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['state']['name']))
+                            @if (!empty($order['state']['state_code']))
+                                <span class="edz-code-badge">{{ $order['state']['state_code'] }}</span>
+                            @endif
                             {{ $order['state']['name'] }}
                         @elseif ($requiredHint)
                             <span class="text-warning font-medium">{{ $requiredHint }}</span>
@@ -250,6 +258,9 @@
                 </button>
             @else
                 @if (!empty($order['state']['name']))
+                    @if (!empty($order['state']['state_code']))
+                        <span class="edz-code-badge">{{ $order['state']['state_code'] }}</span>
+                    @endif
                     {{ $order['state']['name'] }}
                 @elseif ($requiredHint)
                     <span class="text-warning font-medium">{{ $requiredHint }}</span>
@@ -294,7 +305,7 @@
         @break
 
     @case('quantity')
-        <td class="px-4 py-3 text-xs text-ink-muted tabular-nums text-center">
+        <td class="px-4 py-3 text-xs text-ink-muted tabular-nums text-center max-w-[150px]">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display w-full text-center"
                     wire:click="openItemsModal('quantity', '{{ $orderId }}')"
@@ -318,7 +329,7 @@
         @break
 
     @case('price')
-        <td class="px-4 py-3 text-xs text-ink-muted tabular-nums">
+        <td class="px-4 py-3 text-xs text-ink-muted tabular-nums max-w-[200px]">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->itemsPriceEditable())
                 <button type="button" class="edz-inline-edit__display w-full text-start"
                     wire:click="openItemsModal('price', '{{ $orderId }}')"
@@ -356,7 +367,7 @@
         @break
 
     @case('discount')
-        <td class="px-4 py-3 text-ink-muted text-xs tabular-nums">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px] tabular-nums">
             @if ($this->editingField === 'order.discount' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit edz-inline-edit__edit--wide" wire:key="discount-inline-{{ $orderId }}">
                     <div class="flex flex-col gap-1.5">
@@ -387,7 +398,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderDiscountEdit('{{ $orderId }}')"
                     title="@if (($order['discount_type'] ?? '') === 'percent'){{ $order['discount_value'] ?? '' }}%@elseif (($order['discount_type'] ?? '') === 'amount'){{ currency($order['discount_value'] ?? 0) }}@endif">
                     <span class="edz-inline-edit__value">
@@ -409,7 +420,7 @@
         @break
 
     @case('shipping_cost')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px] ">
             @if ((float) ($order['shipping_cost'] ?? 0) <= 0)
                 <x-edz.badge tone="neutral" sm>
                     <x-edz.icon name="truck" class="w-3 h-3" />
@@ -421,7 +432,7 @@
         @break
 
     @case('weight')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.weight' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="weight-inline-{{ $orderId }}">
                     <input type="number" step="0.01" min="0" wire:model="editingValue" wire:keydown.enter="saveOrderWeight"
@@ -440,7 +451,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     wire:click="startOrderWeightEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">{{ $order['weight_kg'] ? $order['weight_kg'] . ' kg' : '—' }}</span>
                 </button>
@@ -455,7 +466,7 @@
             $shipmentLabel = collect($this->editShipmentTypeOptions ?? [])
                 ->firstWhere('value', $order['shipment_type'] ?? null);
         @endphp
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.shipment_type' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="shipment-type-inline-{{ $orderId }}">
                     <x-edz.select wire:model="editingValue" :options="$this->editShipmentTypeOptions" size="sm" />
@@ -472,7 +483,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderShipmentTypeEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">{{ $shipmentLabel['label'] ?? ($order['shipment_type'] ?? '—') }}</span>
                 </button>
@@ -483,28 +494,33 @@
         @break
 
     @case('city')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.city' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="city-inline-{{ $orderId }}">
-                    <select wire:change="saveOrderCity($event.target.value)"
-                        class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                        @foreach ($this->editCityOptions as $ct)
-                            <option value="{{ $ct['id'] }}"
-                                @if ((string) $this->editingValue === (string) $ct['id']) selected @endif>
-                                {{ $ct['name'] }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
+                        title="{{ __('order_flow.order_original_city') }}">
+                        {{ __('order_flow.order_original_city') }}: {{ $order['city']['name'] ?? '—' }}
+                    </p>
+                    <x-edz.select wire:model="editingValue"
+                        :options="$this->editCityOptions" option-value="id"
+                        option-label="name"
+                        size="sm" search />
                     <div class="edz-inline-edit__actions">
+                        <button type="button" class="edz-inline-edit__save"
+                            wire:click="saveOrderCity"
+                            wire:loading.attr="disabled"
+                            wire:loading.class="edz-inline-edit__save--loading">
+                            <span>{{ __('buttons.save') }}</span>
+                        </button>
                         <button type="button" class="edz-inline-edit__cancel"
-                            @click="$wire.cancelOrderEdit()">Cancel</button>
+                            @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                     </div>
                     @if ($this->editingError)
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !empty($order['state_id']))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderCityEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['city']['name']))
@@ -551,7 +567,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     wire:click="startOrderAddressEdit('{{ $orderId }}')"
                     title="{{ $order['address'] ?? '' }}">
                     <span
@@ -564,7 +580,7 @@
         @break
 
     @case('delivery_type')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.delivery_type' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="delivery-type-inline-{{ $orderId }}">
                     <x-edz.select wire:model="editingValue" :options="$this->editDeliveryTypeOptions" size="sm" />
@@ -581,7 +597,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderDeliveryTypeEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if ($deliveryTypeLabel)
@@ -606,10 +622,10 @@
         @break
 
     @case('shipping_provider')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="provider-inline-{{ $orderId }}">
-                    <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" size="sm" search
+                    <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" option-hint="hint" size="sm" search
                         placeholder="{{ __('merchant_panel.shipping_provider') }}" />
                     <div class="edz-inline-edit__actions">
                         <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
@@ -624,11 +640,16 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (! empty($order['shipping_provider']['name']))
                             {{ $order['shipping_provider']['name'] }}
+                        @elseif (! empty($order['deliveryRider']['name']))
+                            <x-edz.badge tone="accent" sm>
+                                <x-edz.icon name="user" class="w-3 h-3" />
+                                {{ $order['deliveryRider']['name'] }}
+                            </x-edz.badge>
                         @elseif ($requiredHint)
                             <span class="text-warning font-medium">{{ $requiredHint }}</span>
                         @else
@@ -639,6 +660,11 @@
             @else
                 @if (! empty($order['shipping_provider']['name']))
                     {{ $order['shipping_provider']['name'] }}
+                @elseif (! empty($order['deliveryRider']['name']))
+                    <x-edz.badge tone="accent" sm>
+                        <x-edz.icon name="user" class="w-3 h-3" />
+                        {{ $order['deliveryRider']['name'] }}
+                    </x-edz.badge>
                 @elseif ($requiredHint)
                     <span class="text-warning font-medium">{{ $requiredHint }}</span>
                 @else
@@ -667,7 +693,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderStopdeskEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['stopdesk_point']['name']))
@@ -727,7 +753,7 @@
         @break
 
     @case('status')
-        <td class="px-4 py-3">
+        <td class="px-4 py-3 min-w-[145px] ">
             <div class="relative" @click.away="open = false">
                 <button @click="openStatusMenu()" x-ref="trigger"
                     class="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer hover:opacity-80 {{ \Edzeery\MyStatusKit\Facades\Status::for('general', $order['status']['color'] ?? 'gray')->color() }}">
@@ -805,7 +831,7 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display"
+                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderAgentEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">{{ $order['assigned_membership']['user']['name'] ?? __('merchant_panel.unassigned') }}</span>
                 </button>
@@ -816,23 +842,23 @@
         @break
 
     @case('created_at')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             {{ \Carbon\Carbon::parse($order['created_at'])->format('M d, Y') }}
         </td>
         @break
 
     @case('confirmation_attempts')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             {{ $order['confirmation_attempts'] ?? 0 }}
         </td>
         @break
 
     @case('last_contact')
-        <td class="px-4 py-3 text-ink-muted text-xs">
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             {{ $order['last_contact_at'] ? \Carbon\Carbon::parse($order['last_contact_at'])->diffForHumans() : '—' }}
         </td>
         @break
 
     @default
-        <td class="px-4 py-3 text-ink-muted text-xs">—</td>
+        <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">—</td>
 @endswitch

@@ -51,6 +51,7 @@ trait HasOrderProductPicker
                     'product_name' => $product->name,
                     'image_url' => $imageUrl,
                     'variant_count' => $variants->count(),
+                    'variant_ids' => $variants->pluck('id')->map(fn ($id) => (string) $id)->all(),
                     'min_price' => $minPrice,
                     'max_price' => $maxPrice,
                     'price_range' => $minPrice != $maxPrice ? currency($minPrice).' — '.currency($maxPrice) : currency($minPrice),
@@ -295,11 +296,10 @@ trait HasOrderProductPicker
         $cap = $this->form['items'][$index]['cap'] ?? null;
         $this->form['items'][$index]['quantity'] = min(max(1, $qty), $cap ?? PHP_INT_MAX);
 
-        $variant = ProductVariant::find($this->form['items'][$index]['product_variant_id']);
-        if ($variant) {
-            $available = (int) $variant->stock;
-            $this->form['items'][$index]['preorder'] = OrderRules::allowsBackorder($variant->product?->store) && $available < $this->form['items'][$index]['quantity'];
-        }
+        // preorder is derived from the draft row (stock is captured at add /
+        // open time) so the +/− stepper never runs a ProductVariant lookup.
+        $available = (int) ($this->form['items'][$index]['stock'] ?? 0);
+        $this->form['items'][$index]['preorder'] = OrderRules::allowsBackorder(currentStore()) && $available < $this->form['items'][$index]['quantity'];
 
         $this->recalcFormWeight();
     }

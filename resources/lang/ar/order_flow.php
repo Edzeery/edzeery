@@ -28,6 +28,8 @@ return [
     'please_select_state' => 'يرجى اختيار الولاية',
     'please_select_city' => 'يرجى اختيار البلدية',
     'please_select_stopdesk' => 'يرجى اختيار مكتب التوصيل',
+    'order_original_wilaya' => 'طلب الزبون ولاية',
+    'order_original_city' => 'طلب الزبون بلدية',
     'confirm_with_rider' => 'موصّل خاص',
     'confirm_contacted' => 'تم التواصل مع العميل في هذه المحاولة',
     'confirm_attempts' => 'محاولات الاتصال',

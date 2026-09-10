@@ -13,7 +13,7 @@
 @endphp
 
 @if ($itemsModalKind === 'products')
-    <div @edz-modal-closed.window="$wire.closeItemsModal()">
+    <div @edz-modal-closed="$wire.closeItemsModal()">
         <x-edz.modal :is-open="true" size="md" wire:key="items-products-modal-{{ $itemsModalOrderId }}">
             <div class="p-6 space-y-4">
                 <div class="flex items-center gap-2">
@@ -83,7 +83,7 @@
 @endif
 
 @if ($itemsModalKind === 'quantity')
-    <div @edz-modal-closed.window="$wire.closeItemsModal()">
+    <div @edz-modal-closed="$wire.closeItemsModal()">
         <x-edz.modal :is-open="true" size="md" wire:key="items-quantity-modal-{{ $itemsModalOrderId }}">
             <div class="p-6 space-y-4">
                 <div class="flex items-center gap-2">
@@ -138,7 +138,7 @@
 @endif
 
 @if ($itemsModalKind === 'price')
-    <div @edz-modal-closed.window="$wire.closeItemsModal()">
+    <div @edz-modal-closed="$wire.closeItemsModal()">
         <x-edz.modal :is-open="true" size="md" wire:key="items-price-modal-{{ $itemsModalOrderId }}">
             <div class="p-6 space-y-4">
                 <div class="flex items-center gap-2">

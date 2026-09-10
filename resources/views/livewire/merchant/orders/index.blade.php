@@ -64,6 +64,7 @@ state([
     'allMembers' => [],
     'allStates' => [],
     'allCities' => [],
+    'formCities' => [],
     'formAvailableStates' => [],
     'formCoverageHint' => '',
     'allStopdeskPoints' => [],
@@ -144,6 +145,8 @@ state([
     // Carrier-first office picker options (create + edit) for x-edz.select
     'formOffices' => [],
     'loadingOffices' => false,
+    'formOfficesVersion' => 0,
+    'formHasOffices' => false,
 
     // Row delivery quick-edit modal (30.2): full cascade reuses $this->form
     // delivery fields + allStates/allCities/formOffices + the cascade methods.
@@ -209,12 +212,18 @@ updated([
 
 // Refresh duplicate warnings inside the create/edit form when the customer
 // phone or the picked items change (P28 extended — debounced on discrete actions).
+// Gated to the create/edit modals: the items-edit modal edits the same draft
+// but never surfaces these warnings, so its steppers/adjusts skip the scan.
 updated([
     'form.customer_phone' => function (): void {
-        $this->refreshFormDuplicateWarnings();
+        if ($this->showCreateModal || $this->showEditModal) {
+            $this->refreshFormDuplicateWarnings();
+        }
     },
     'form.items' => function (): void {
-        $this->refreshFormDuplicateWarnings();
+        if ($this->showCreateModal || $this->showEditModal) {
+            $this->refreshFormDuplicateWarnings();
+        }
     },
 ]);
 
@@ -323,6 +332,7 @@ $closeItemsModal = function (): void {
     $this->itemsModal = null;
     $this->cancelEdit();
     $this->form['items'] = [];
+    $this->syncFormSelectedItems();
 };
 
 $removeInlineItem = function (int $index): void {
@@ -473,7 +483,7 @@ mount(function (): void {
 
     $this->allMembers = StoreMembership::where('store_id', $storeId)->where('is_active', true)->with('user')->get()->toArray();
 
-    $this->allStates = State::active()->orderedByCode()->get()->toArray();
+    $this->allStates = State::active()->orderedByCode()->get(['id','state_code','name'])->toArray();
 
     // Shipping providers for filter dropdown.
     $this->allProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
@@ -484,7 +494,7 @@ mount(function (): void {
 
     // 31.3 — static option sets shared by the inline searchable selects.
     $this->editProviderOptions = collect($this->allProviders)
-        ->map(fn($p) => ['value' => (string) $p['id'], 'label' => $p['name']])
+        ->map(fn($p) => ['value' => (string) $p['id'], 'label' => $p['name'], 'hint' => null])
         ->values()
         ->all();
     $this->editDeliveryTypeOptions = [
@@ -2212,23 +2222,13 @@ $formShipmentTypeOptions = function (): array {
     return $options;
 };
 
-$loadCities = function (string $stateId, bool $resetCity = true): void {
-    if (empty($stateId)) {
-        $this->allCities = [];
-        if ($resetCity) {
-            $this->form['city_id'] = '';
-        }
-        $this->rebuildFormOffices();
-        return;
-    }
+// ——— City cascade ———
 
-    // Office (stopdesk) deliveries scope the communes to those served by the
-    // selected carrier in that wilaya (synced points + regional points with
-    // null city). Home deliveries scope to the carrier home price coverage.
-    $type = (string) ($this->form['delivery_type'] ?? 'home');
-    $providerId = (string) ($this->form['shipping_provider_id'] ?? '');
-
-    $this->allCities = City::where('state_id', $stateId)->orderBy('name')->get()->toArray();
+// Full, scoped commune list for a state under the current delivery type +
+// carrier. Shared by the cascade seed and the lazy modal fetch so both always
+// agree on coverage. Sets $this->formCoverageHint to reflect the result.
+$cityOptionsFor = function (string $stateId, string $type, string $providerId): array {
+    $cities = City::where('state_id', $stateId)->orderBy('name')->get()->toArray();
 
     // Home delivery mirrors the announced-price priority: a state-level rate
     // covers the whole wilaya; per-commune rates restrict the list to the priced
@@ -2239,12 +2239,12 @@ $loadCities = function (string $stateId, bool $resetCity = true): void {
         if ($covered !== null) {
             $coveredIds = $covered->map(fn ($cid) => (string) $cid)->all();
 
-            $this->allCities = collect($this->allCities)
+            $cities = collect($cities)
                 ->filter(fn ($city) => in_array((string) $city['id'], $coveredIds, true))
                 ->values()
                 ->toArray();
 
-            if ($this->allCities === []) {
+            if ($cities === []) {
                 $this->formCoverageHint = 'no_home_coverage';
             }
         }
@@ -2279,23 +2279,128 @@ $loadCities = function (string $stateId, bool $resetCity = true): void {
             );
 
             if ($coveredCityIds !== []) {
-                $this->allCities = collect($this->allCities)
+                $cities = collect($cities)
                     ->filter(fn ($city) => in_array($city['id'], $coveredCityIds, true))
                     ->values()
                     ->toArray();
                 $this->formCoverageHint = '';
             } else {
-                $this->allCities = [];
+                $cities = [];
                 $this->formCoverageHint = 'no_company_coverage';
             }
         }
     }
 
+    return $cities;
+};
+
+// Full commune options for the lazily-loaded modal select. Scope carries the
+// delivery type + carrier + state so the client cache keys on the real scope.
+$loadFormCitiesLazy = function (string $scope): array {
+    [$type, $providerId, $stateId] = array_pad(explode('|', $scope, 3), 3, '');
+
+    if ($stateId === '') {
+        return [];
+    }
+
+    $type = $type !== '' ? $type : (string) ($this->form['delivery_type'] ?? 'home');
+    $providerId = $providerId !== '' ? $providerId : (string) ($this->form['shipping_provider_id'] ?? '');
+
+    $cities = $this->cityOptionsFor($stateId, $type, $providerId);
+
+    // Mirror the fetched list into the picker seed (bounded by wilaya size) so
+    // the server state matches what the dropdown just displayed.
+    $this->formCities = $cities;
+
+    return $cities;
+};
+
+$loadCities = function (string $stateId, bool $resetCity = true): void {
+    if (empty($stateId)) {
+        $this->formCities = [];
+        if ($resetCity) {
+            $this->form['city_id'] = '';
+        }
+        $this->rebuildFormOffices();
+        return;
+    }
+
+    // Office (stopdesk) deliveries scope the communes to those served by the
+    // selected carrier in that wilaya (synced points + regional points with
+    // null city). Home deliveries scope to the carrier home price coverage.
+    // The modal select holds a tiny seed (the selected commune); the full
+    // scoped list is fetched lazily on dropdown open via loadFormCitiesLazy.
+    $cities = $this->cityOptionsFor(
+        $stateId,
+        (string) ($this->form['delivery_type'] ?? 'home'),
+        (string) ($this->form['shipping_provider_id'] ?? ''),
+    );
+
+    $previousCity = (string) ($this->form['city_id'] ?? '');
+
     if ($resetCity) {
         $this->form['city_id'] = '';
+        $previousCity = '';
+    }
+
+    // Seed the modal select with the currently selected commune. When an order
+    // being edited keeps a commune the current carrier scope no longer covers,
+    // still render its name so the picker shows a stable label (releaseStale
+    // Destination handles clearing it after an actual carrier change).
+    $this->formCities = $previousCity !== ''
+        ? collect($cities)
+            ->filter(fn ($ct) => (string) $ct['id'] === $previousCity)
+            ->values()
+            ->all()
+        : [];
+
+    if ($previousCity !== '' && $this->formCities === []) {
+        $kept = \App\Models\Locations\City::find($previousCity);
+        if ($kept) {
+            $this->formCities = [['id' => $kept->id, 'name' => $kept->name]];
+        }
     }
 
     $this->rebuildFormOffices();
+};
+
+// Full, scoped office option list for provider + state + city (office
+// deliveries). Delegates to the shared model query so the lazily fetched list,
+// the cascade auto-select/reset logic and the inline editor all agree.
+$officeOptionsFor = function (string $providerId, string $stateId, ?string $cityId): array {
+    return \App\Domains\Shipping\Models\StopdeskPoint::scopedOfficeOptions(
+        currentStoreId(),
+        $providerId,
+        $stateId,
+        $cityId !== '' ? $cityId : null,
+    )->all();
+};
+
+// Full office options for the lazily-loaded modal select. Scope carries the
+// provider + state + city (+ refresh version) so the client cache keys on all
+// of them and a forced refresh invalidates the previous payload.
+$loadFormOfficesLazy = function (string $scope): array {
+    [$providerId, $stateId, $cityId] = array_pad(explode('|', $scope, 4), 4, '');
+
+    if ($providerId === '' || $stateId === '') {
+        return [];
+    }
+
+    $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->find($providerId);
+
+    if ($provider) {
+        try {
+            $state = \App\Models\Locations\State::find($stateId);
+            $city = $cityId !== '' ? \App\Models\Locations\City::find($cityId) : null;
+            app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, $city);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("office sync failed for provider [{$providerId}] while loading offices lazily: " . $e->getMessage());
+        }
+    }
+
+    return $this->officeOptionsFor($providerId, $stateId, $cityId !== '' ? $cityId : null);
 };
 
 $rebuildFormOffices = function (): void {
@@ -2303,6 +2408,7 @@ $rebuildFormOffices = function (): void {
 
     if (empty($this->form['shipping_provider_id'])) {
         $this->formOffices = [];
+        $this->formHasOffices = false;
         $this->form['stopdesk_point_id'] = '';
         return;
     }
@@ -2312,6 +2418,7 @@ $rebuildFormOffices = function (): void {
     $stateId = $this->form['state_id'] ?? null;
     if (empty($stateId)) {
         $this->formOffices = [];
+        $this->formHasOffices = false;
         $this->form['stopdesk_point_id'] = '';
         return;
     }
@@ -2325,19 +2432,19 @@ $rebuildFormOffices = function (): void {
     $cityId = $this->form['city_id'] ?? null;
     if (!empty($cityId)) {
         $query->where(fn($q) => $q->where('city_id', $cityId)->orWhereNull('city_id'));
-        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, name', [(int) $cityId]);
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [(int) $cityId]);
     } else {
-        $query->orderBy('name');
+        $query->orderByRaw('(external_code = \'\') ASC, external_code, name');
     }
 
     $offices = $query->get();
 
-    $this->formOffices = $offices
+    $officeOptions = $offices
         ->map(function ($office) use ($cityId) {
             $hint = trim(($office->city?->name ?? '') . ($office->address ? ' — ' . $office->address : ''), ' —');
 
             return [
-                'value' => $office->id,
+                'value' => (string) $office->id,
                 'label' => $office->name,
                 'code' => $office->external_code !== null && $office->external_code !== ''
                     ? (string) $office->external_code
@@ -2349,11 +2456,11 @@ $rebuildFormOffices = function (): void {
 
     $cityOffices = empty($cityId) ? collect() : $offices->filter(fn($office) => $office->city_id === $cityId);
 
-    // Chain: company â†’ type â†’ wilaya â†’ city â†’ office. When the chosen
+    // Chain: company -> type -> wilaya -> city -> office. When the chosen
     // municipality has a single office, auto-select it.
     if (($this->form['delivery_type'] ?? null) === 'stopdesk' && $cityOffices->count() === 1) {
         $this->form['stopdesk_point_id'] = (string) $cityOffices->first()->id;
-    } elseif (!collect($this->formOffices)->contains(fn($o) => $o['value'] === ($this->form['stopdesk_point_id'] ?? null))) {
+    } elseif (!collect($officeOptions)->contains(fn($o) => $o['value'] === (string) ($this->form['stopdesk_point_id'] ?? ''))) {
         // 30.2: never revert a previously valid office silently. When the
         // selected destination (wilaya/commune) no longer offers the chosen
         // office, clear it AND surface a visible note so the user knows why.
@@ -2362,6 +2469,15 @@ $rebuildFormOffices = function (): void {
         }
         $this->form['stopdesk_point_id'] = '';
     }
+
+    // Seed only the currently selected office into the picker; the full list is
+    // fetched lazily on dropdown open (loadFormOfficesLazy) so the snapshot
+    // payload stays tiny even for wilayas with many offices.
+    $this->formHasOffices = $officeOptions !== [];
+    $this->formOffices = collect($officeOptions)
+        ->filter(fn($o) => $o['value'] === (string) ($this->form['stopdesk_point_id'] ?? ''))
+        ->values()
+        ->all();
 };
 
 // Carrier-first: fetch + reconcile offices for the chosen provider, then
@@ -2378,6 +2494,7 @@ $loadFormOffices = function (?string $providerId = null, bool $preserveOffice = 
     if (($this->form['delivery_type'] ?? null) !== 'stopdesk') {
         $this->form['stopdesk_point_id'] = '';
         $this->formOffices = [];
+        $this->formHasOffices = false;
 
         return;
     }
@@ -2603,8 +2720,8 @@ $loadFormScope = function (): void {
 
     $this->formAvailableStates = State::whereIn('id', $stateIds)
         ->active()
-        ->orderBy('name')
-        ->get(['id', 'name'])
+        ->orderedByCode()
+        ->get(['id', 'state_code', 'name'])
         ->toArray();
 };
 
@@ -2621,19 +2738,30 @@ $releaseStaleDestination = function (): void {
         $this->form['state_id'] = '';
         $this->form['city_id'] = '';
         $this->form['stopdesk_point_id'] = '';
-        $this->allCities = [];
+        $this->formCities = [];
         $this->formOffices = [];
         $cleared = true;
     }
 
     // Commune no longer covered by any office (stopdesk) or home price (home)
-    // of the selected carrier in that wilaya.
+    // of the selected carrier in that wilaya. The scoped city list is computed
+    // on demand (shared with the lazy modal payload) rather than read from the
+    // filter-owned allCities collection.
     $cityId = (string) ($this->form['city_id'] ?? '');
-    if (! $cleared && $cityId !== '' && ! collect($this->allCities)->contains(fn ($ct) => (string) $ct['id'] === $cityId)) {
-        $this->form['city_id'] = '';
-        $this->form['stopdesk_point_id'] = '';
-        $this->formOffices = [];
-        $cleared = true;
+    if (! $cleared && $cityId !== '' && (string) ($this->form['state_id'] ?? '') !== '') {
+        $scopedCities = $this->cityOptionsFor(
+            (string) $this->form['state_id'],
+            (string) ($this->form['delivery_type'] ?? 'home'),
+            (string) ($this->form['shipping_provider_id'] ?? ''),
+        );
+
+        if (! collect($scopedCities)->contains(fn ($ct) => (string) $ct['id'] === $cityId)) {
+            $this->form['city_id'] = '';
+            $this->form['stopdesk_point_id'] = '';
+            $this->formCities = [];
+            $this->formOffices = [];
+            $cleared = true;
+        }
     }
 
     if ($cleared) {
@@ -2700,6 +2828,9 @@ $refreshFormOffices = function (): void {
         $city = !empty($this->form['city_id']) ? \App\Models\Locations\City::find($this->form['city_id']) : null;
 
         app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, $city, refresh: true);
+
+        // Invalidate any cached lazy office payload keyed on the old version.
+        $this->formOfficesVersion++;
 
         $this->rebuildFormOffices();
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant_panel.offices_updated')]);
@@ -3211,9 +3342,9 @@ $inlineStopdeskOptions = function (Order $order): array {
     $query->where('state_id', $order->state_id);
     if ($order->city_id) {
         $query->where(fn($q) => $q->where('city_id', $order->city_id)->orWhereNull('city_id'));
-        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, name', [(int) $order->city_id]);
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [(int) $order->city_id]);
     } else {
-        $query->orderBy('name');
+        $query->orderByRaw('(external_code = \'\') ASC, external_code, name');
     }
 
     return $query->get()
@@ -3832,13 +3963,14 @@ $openCreateModal = function (): void {
     // Auto-select the store's default shipping company (is_default) when set.
     $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
 
-    $this->allCities = [];
+    $this->formCities = [];
     $this->formOffices = [];
     $this->formAvailableStates = [];
     $this->formCoverageHint = '';
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
     $this->formDuplicateWarnings = [];
+    $this->syncFormSelectedItems();
     $this->loadProducts();
     $this->showCreateModal = true;
 };
@@ -4009,6 +4141,7 @@ $openEditModal = function (string $orderId): void {
     $this->formProductView = 'list';
     $this->formSelectedProduct = null;
     $this->formDuplicateWarnings = [];
+    $this->syncFormSelectedItems();
     $this->loadProducts();
     $this->refreshFormDuplicateWarnings();
     $this->showEditModal = true;
@@ -4391,10 +4524,14 @@ $submitEdit = function (): void {
                 @endforeach
             @endif
             @if (!empty($this->filters['wilaya']))
+                @php $_stateFilter = collect($this->allStates)->firstWhere('id', $this->filters['wilaya']) ?? []; @endphp
                 <span
                     class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     <span class="font-semibold opacity-75">{{ __('merchant_panel.state') }}:</span>
-                    <span>{{ (collect($this->allStates)->firstWhere('id', $this->filters['wilaya']) ?? [])['state_code'] ?? '' }} {{ collect($this->allStates)->firstWhere('id', $this->filters['wilaya'])['name'] ?? $this->filters['wilaya'] }}</span>
+                    @if (!empty($_stateFilter['state_code']))
+                        <span class="edz-code-badge">{{ $_stateFilter['state_code'] }}</span>
+                    @endif
+                    <span>{{ $_stateFilter['name'] ?? $this->filters['wilaya'] }}</span>
                     <button wire:click="setFilter('wilaya', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
@@ -4898,18 +5035,23 @@ $submitEdit = function (): void {
                                                 @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
                                                     <div class="edz-inline-edit__edit w-full min-w-[180px]"
                                                         wire:key="wilaya-inline-card-{{ $orderId }}">
-                                                        <select wire:change="saveOrderWilaya($event.target.value)"
-                                                            class="edz-inline-edit__input @if ($this->editingError) edz-inline-edit__input--error @endif">
-                                                            @foreach ($this->allStates as $st)
-                                                                <option value="{{ $st['id'] }}"
-                                                                    @if ((string) $this->editingValue === (string) $st['id']) selected @endif>
-                                                                    {{ $st['state_code'] ?? '' }} {{ $st['name'] }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
+                                                        <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
+                                                            title="{{ __('order_flow.order_original_wilaya') }}">
+                                                            {{ __('order_flow.order_original_wilaya') }}: {{ $order['state']['name'] ?? '—' }}
+                                                        </p>
+                                                        <x-edz.select wire:model="editingValue"
+                                                            :options="$this->allStates" option-value="id"
+                                                            option-label="name" option-code="state_code"
+                                                            size="sm" search />
                                                         <div class="edz-inline-edit__actions">
+                                                            <button type="button" class="edz-inline-edit__save"
+                                                                wire:click="saveOrderWilaya"
+                                                                wire:loading.attr="disabled"
+                                                                wire:loading.class="edz-inline-edit__save--loading">
+                                                                <span>{{ __('buttons.save') }}</span>
+                                                            </button>
                                                             <button type="button" class="edz-inline-edit__cancel"
-                                                                @click="$wire.cancelOrderEdit()">Cancel</button>
+                                                                @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                                                         </div>
                                                         @if ($this->editingError)
                                                             <p class="edz-inline-edit__error">
@@ -4921,6 +5063,9 @@ $submitEdit = function (): void {
                                                         @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
                                                         <span class="edz-inline-edit__value">
                                                             @if (!empty($order['state']['name']))
+                                                                @if (!empty($order['state']['state_code']))
+                                                                    <span class="edz-code-badge">{{ $order['state']['state_code'] }}</span>
+                                                                @endif
                                                                 {{ $order['state']['name'] }}
                                                             @else
                                                                 <span
@@ -6064,7 +6209,7 @@ $submitEdit = function (): void {
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : '' }}"
                         data-name="{{ $st['name'] }}">
                         <span class="inline-flex items-center gap-1.5">
-                            <span class="inline-flex items-center justify-center min-w-5 px-1 py-0.5 rounded bg-surface-tertiary text-text-muted text-[10px] font-semibold leading-none">{{ $st['state_code'] ?? '' }}</span>
+                            <span class="edz-code-badge">{{ $st['state_code'] ?? '' }}</span>
                             {{ $st['name'] }}
                         </span>
                     </button>

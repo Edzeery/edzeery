@@ -428,6 +428,7 @@ return [
     'out_of_stock' => 'Rupture de stock',
     'left' => 'restant',
     'in_cart' => 'dans le panier',
+    'all_variants_added' => 'Toutes les variantes ajoutées',
     'please_select_product' => 'Veuillez sélectionner un produit',
     'please_select_quantity' => 'Veuillez préciser la quantité',
     'load_more' => 'Charger plus',

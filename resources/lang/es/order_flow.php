@@ -28,6 +28,8 @@ return [
     'please_select_state' => 'Selecciona la wilaya',
     'please_select_city' => 'Selecciona la comuna',
     'please_select_stopdesk' => 'Selecciona la oficina de stopdesk',
+    'order_original_wilaya' => 'Cliente pidió a la wilaya',
+    'order_original_city' => 'Cliente pidió a la comuna',
     'confirm_with_rider' => 'Repartidor personal',
     'confirm_contacted' => 'Cliente contactado en este intento',
     'confirm_attempts' => 'Intentos de contacto',

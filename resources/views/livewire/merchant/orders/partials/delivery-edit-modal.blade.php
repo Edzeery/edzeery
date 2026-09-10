@@ -79,8 +79,10 @@
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.city') }}</label>
                             <x-edz.select wire:model="form.city_id" wire:change="rebuildFormOffices()"
-                                :options="$this->allCities" option-value="id"
-                                option-label="name" placeholder="—" size="sm" search />
+                                :options="$this->formCities" option-value="id"
+                                option-label="name" placeholder="—" size="sm" search
+                                lazy source="loadFormCitiesLazy"
+                                :scope="($this->form['delivery_type'] ?? 'home') . '|' . ($this->form['shipping_provider_id'] ?? '') . '|' . ($this->form['state_id'] ?? '')" />
                             @error('form.city_id')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
@@ -96,7 +98,9 @@
                                     :options="$this->formOffices" option-value="value"
                                     option-label="label" option-hint="hint" option-code="code"
                                     placeholder="{{ __('merchant_panel.select_office') }}" size="sm"
-                                    search :disabled="$loadingOffices" />
+                                    search :disabled="$loadingOffices"
+                                    lazy source="loadFormOfficesLazy"
+                                    :scope="($this->form['shipping_provider_id'] ?? '') . '|' . ($this->form['state_id'] ?? '') . '|' . ($this->form['city_id'] ?? '') . '|' . $this->formOfficesVersion" />
                             </div>
                             <button type="button" wire:click="refreshFormOffices"
                                 wire:loading.attr="disabled"
@@ -109,7 +113,7 @@
                             <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.select_company_first') }}</p>
                         @elseif (empty($this->form['city_id']))
                             <p class="text-xs text-ink-muted mt-1">{{ __('storefront.select_city_for_desks') }}</p>
-                        @elseif (empty($this->formOffices))
+                        @elseif (! $this->formHasOffices)
                             <p class="text-xs text-warning-500 mt-1">{{ __('merchant_panel.office_none_for_destination') }}</p>
                         @else
                             <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.office_hint') }}</p>

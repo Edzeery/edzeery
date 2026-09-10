@@ -147,9 +147,10 @@ test('office delivery scopes the commune list to the selected carrier points in 
     $volt = cityScopeVolt([$user, $store])
         ->set('form.delivery_type', 'stopdesk')
         ->set('form.shipping_provider_id', $provider->id)
-        ->call('loadCities', (string) $state->id);
+        ->call('loadCities', (string) $state->id)
+        ->call('loadFormCitiesLazy', 'stopdesk|' . $provider->id . '|' . $state->id);
 
-    $coveredIds = cityScopeSortedIds($volt->get('allCities'));
+    $coveredIds = cityScopeSortedIds($volt->get('formCities'));
 
     $expected = array_map(strval(...), [$cityCoveredA->id, $cityCoveredB->id]);
     sort($expected);
@@ -191,12 +192,13 @@ test('home delivery keeps all communes of the wilaya regardless of the carrier',
     $volt = cityScopeVolt([$user, $store])
         ->set('form.delivery_type', 'home')
         ->set('form.shipping_provider_id', $provider->id)
-        ->call('loadCities', (string) $state->id);
+        ->call('loadCities', (string) $state->id)
+        ->call('loadFormCitiesLazy', 'home|' . $provider->id . '|' . $state->id);
 
     $expected = array_map(strval(...), [$cityA->id, $cityB->id, $cityC->id]);
     sort($expected);
 
-    expect(cityScopeSortedIds($volt->get('allCities')))->toBe($expected);
+    expect(cityScopeSortedIds($volt->get('formCities')))->toBe($expected);
 });
 
 test('a carrier-backed provider still scopes communes and survives a failed office sync', function () {
@@ -223,12 +225,13 @@ test('a carrier-backed provider still scopes communes and survives a failed offi
     $volt = cityScopeVolt([$user, $store])
         ->set('form.delivery_type', 'stopdesk')
         ->set('form.shipping_provider_id', $provider->id)
-        ->call('loadCities', (string) $state->id);
+        ->call('loadCities', (string) $state->id)
+        ->call('loadFormCitiesLazy', 'stopdesk|' . $provider->id . '|' . $state->id);
 
     $expected = array_map(strval(...), [$cityCovered->id]);
     sort($expected);
 
-    expect(cityScopeSortedIds($volt->get('allCities')))->toBe($expected)
+    expect(cityScopeSortedIds($volt->get('formCities')))->toBe($expected)
         ->and($volt->get('formCoverageHint'))->toBe('');
 });
 
@@ -296,9 +299,10 @@ test('home delivery scopes communes to announced per-commune rates when no state
     $volt = cityScopeVolt([$user, $store])
         ->set('form.delivery_type', 'home')
         ->set('form.shipping_provider_id', $provider->id)
-        ->call('loadCities', (string) $state->id);
+        ->call('loadCities', (string) $state->id)
+        ->call('loadFormCitiesLazy', 'home|' . $provider->id . '|' . $state->id);
 
-    expect(cityScopeSortedIds($volt->get('allCities')))->toBe([(string) $cityPriced->id])
+    expect(cityScopeSortedIds($volt->get('formCities')))->toBe([(string) $cityPriced->id])
         ->and($volt->get('formCoverageHint'))->toBe('');
 });
 
@@ -323,12 +327,13 @@ test('home delivery with a state-level announced rate keeps all communes', funct
     $volt = cityScopeVolt([$user, $store])
         ->set('form.delivery_type', 'home')
         ->set('form.shipping_provider_id', $provider->id)
-        ->call('loadCities', (string) $state->id);
+        ->call('loadCities', (string) $state->id)
+        ->call('loadFormCitiesLazy', 'home|' . $provider->id . '|' . $state->id);
 
     $expected = array_map(strval(...), [$cityA->id, $cityB->id, $cityC->id]);
     sort($expected);
 
-    expect(cityScopeSortedIds($volt->get('allCities')))->toBe($expected)
+    expect(cityScopeSortedIds($volt->get('formCities')))->toBe($expected)
         ->and($volt->get('formCoverageHint'))->toBe('');
 });
 
