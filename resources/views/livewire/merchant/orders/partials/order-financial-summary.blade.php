@@ -26,10 +26,16 @@
     $deliveryUnavailable = false;
 
     $type = (string) ($form['delivery_type'] ?? 'home');
+    // A rider leg is never "incomplete": the rider IS the charge for the requested
+    // delivery, so show the computed value (0 for a stopdesk lane) instead of the
+    // "please select" hint that normally guards the carrier-pricing flow.
+    $isRiderLeg = filled($form['delivery_rider_id'] ?? null);
     if (! empty($form['items'])) {
-        $canResolve = $type === 'stopdesk'
-            ? filled($form['shipping_provider_id'] ?? null) && filled($form['state_id'] ?? null)
-            : filled($form['state_id'] ?? null);
+        $canResolve = $isRiderLeg
+            ? true
+            : ($type === 'stopdesk'
+                ? filled($form['shipping_provider_id'] ?? null) && filled($form['state_id'] ?? null)
+                : filled($form['state_id'] ?? null));
 
         if (! $canResolve) {
             $deliveryIncomplete = true;
@@ -50,9 +56,17 @@
                         );
 
                     if (($result['method'] ?? null) === 'office_unavailable') {
-                        $deliveryIncomplete = true;
+                        if ($isRiderLeg) {
+                            $delivery = $result;
+                        } else {
+                            $deliveryIncomplete = true;
+                        }
                     } elseif (($result['method'] ?? null) === 'unavailable') {
-                        $deliveryUnavailable = true;
+                        if ($isRiderLeg) {
+                            $delivery = $result;
+                        } else {
+                            $deliveryUnavailable = true;
+                        }
                     } else {
                         $delivery = $result;
                     }
@@ -67,6 +81,13 @@
     $deliveryIsFree = (bool) ($delivery['is_free'] ?? false);
     $deliveryProvider = $delivery['provider_name'] ?? null;
     $deliverySourceType = $delivery['source_type'] ?? null;
+
+    // The total card shows the collectible (goods + delivery − discount) whenever
+    // delivery is resolvable; while the carrier-pricing gate is incomplete the
+    // total stays goods − discount (no unknown delivery added in).
+    if (! $deliveryIncomplete && ! $deliveryUnavailable) {
+        $grandTotal = max(0, $subtotal + $deliveryCost - $discount);
+    }
 @endphp
 
 <div data-financial-grid class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-5 gap-3">

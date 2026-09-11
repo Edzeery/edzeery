@@ -184,6 +184,7 @@ public function availableTransitions(Order $order): array
                 'state_id' => $data['state_id'] ?? null,
                 'city_id' => $data['city_id'] ?? null,
                 'shipping_provider_id' => $data['shipping_provider_id'] ?? null,
+                'delivery_rider_id' => $data['delivery_rider_id'] ?? null,
                 'stopdesk_point_id' => $data['stopdesk_point_id'] ?? null,
                 'address' => $data['address'] ?? null,
                 'delivery_type' => $data['delivery_type'] ?? 'home',
@@ -239,6 +240,17 @@ public function availableTransitions(Order $order): array
 
                 $order->update(['shipping_cost' => (float) ($result['cost'] ?? 0)]);
             }
+
+            // Standardize the stored total: goods subtotal + shipping cost, always
+            // pre-discount. The discount lives separately (discount_type/value/
+            // reason) and is applied by the grand_total accessor and the grid's
+            // display_total — never baked into total_amount.
+            $order->update([
+                'total_amount' => round(
+                    (float) $order->items->sum(fn ($i) => (float) $i->subtotal) + (float) $order->shipping_cost,
+                    2,
+                ),
+            ]);
 
             return $order;
         });

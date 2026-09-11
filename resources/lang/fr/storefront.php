@@ -75,6 +75,8 @@ return [
     'newest' => 'Plus récent',
     'notes' => 'Notes',
     'not_available' => 'Non disponible',
+    'delivery_unavailable_title' => 'La livraison est temporairement indisponible',
+    'delivery_unavailable_body' => 'Aucun transporteur n\'est actuellement configuré pour livrer dans votre zone. Veuillez réessayer plus tard ou contacter directement le magasin.',
     'no_products_found' => 'Aucun produit trouvé',
     'no_results_found' => 'Aucun résultat ne correspond à votre recherche',
     'clear_filters' => 'Effacer les filtres',

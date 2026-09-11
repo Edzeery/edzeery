@@ -41,8 +41,9 @@ interface CarrierIntegrationContract
     /**
      * Push an order to the carrier.
      *
-     * @throws \RuntimeException When the carrier rejects the order.
      * @return array{tracking: string, label_url: string|null, raw: array}
+     *
+     * @throws \RuntimeException When the carrier rejects the order.
      */
     public function createOrder(ShippingProvider $provider, Order $order): array;
 
@@ -65,6 +66,29 @@ interface CarrierIntegrationContract
      * @return array{ok: bool, message: string}
      */
     public function deleteOrder(ShippingProvider $provider, string $trackingNumber): array;
+
+    /**
+     * Validate a shipped order at the carrier (dispatch handover). Once validated
+     * the shipment becomes visible to the carrier's logistics and can no longer
+     * be modified/deleted remotely — the gateway persists the outcome on
+     * order_trackings.carrier_validated_at / carrier_validation_error.
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function validateOrder(ShippingProvider $provider, string $trackingNumber): array;
+
+    /**
+     * Validate several shipped orders in one batch.
+     *
+     * @param  list<string>  $trackingNumbers
+     * @return array{
+     *     ok: bool,
+     *     validated: list<string>,
+     *     failed: array<string, string>,
+     *     message?: string,
+     * }
+     */
+    public function validateOrders(ShippingProvider $provider, array $trackingNumbers): array;
 
     /**
      * Resolve a label for an existing shipment.

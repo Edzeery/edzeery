@@ -167,6 +167,28 @@ return [
     'no_carrier_notes' => 'Aún no hay notas',
     'carrier_notes_unsupported' => 'Esta empresa no admite el archivo de notas vía API',
 
+    // ----- Validación de despacho (Fase 36) -----
+    'shipment_validated' => 'Envío validado por el transportista',
+    'shipment_validation_failed' => 'No se pudo validar el envío en el transportista',
+    'validation_tracking_required' => 'Se requiere un número de seguimiento del transportista para validar el envío',
+    'validation_carrier_required' => 'Solo los pedidos enviados por una empresa pueden validarse aquí (una etapa de repartidor no tiene transportista)',
+    'carrier_validation_not_supported' => 'Esta empresa no admite validar envíos mediante la API',
+    'validate_shipment_title' => 'Validar en el transportista',
+    'validate_shipment_btn' => 'Validar envío',
+    'validate_scan_label' => 'Escanear código de barras',
+    'validate_scan_placeholder' => 'Pegue o escanee el número de seguimiento',
+    'validate_shipment_hint' => 'Entrega el envío a la logística del transportista. Tras validar, el pedido ya no puede modificarse ni eliminarse en el transportista.',
+    'validate_barcode_mismatch' => 'El seguimiento escaneado no coincide con este envío',
+    'shipment_validated_badge' => 'Validado en el transportista (entrega)',
+    'bulk_validate_btn' => 'Validar en el transportista',
+    'bulk_validate_ready_title' => 'Listos para validar',
+    'bulk_validate_skipped_title' => 'Omitidos (:count)',
+    'bulk_validate_confirm' => 'Validar',
+    'bulk_validate_confirm_some' => 'Validar :count',
+    'bulk_validate_confirm_none' => 'Nada que validar',
+    'bulk_validate_done' => ':done envío(s) validado(s) en el transportista',
+    'bulk_validate_failed' => ':done validados — :failed no pudieron validarse',
+
     // ----- Sincronización masiva -----
     'sync_all_statuses' => 'Sincronizar estados',
     'tracking_sync_none' => 'No hay envíos para sincronizar con una empresa de mensajería',

@@ -76,6 +76,8 @@ return [
     'newest' => 'Newest',
     'notes' => 'Notes',
     'not_available' => 'Not available',
+    'delivery_unavailable_title' => 'Delivery is temporarily unavailable',
+    'delivery_unavailable_body' => 'No shipping company is currently set to deliver in your area. Please try again later or contact the store directly.',
     'no_products_found' => 'No products found',
     'no_results_found' => 'No results match your search',
     'clear_filters' => 'Clear filters',

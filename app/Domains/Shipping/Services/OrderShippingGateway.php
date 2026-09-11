@@ -6,8 +6,8 @@ use App\Domains\Order\Services\OrderAuditService;
 use App\Domains\Order\Services\OrderService;
 use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\ShippingProvider;
-use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\Order;
+use App\Models\Orders\OrderTrackingHistory;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,8 +23,7 @@ class OrderShippingGateway
         protected OrderService $orders,
         protected CarrierOrderPostService $poster,
         protected OrderAuditService $audit,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -98,7 +97,7 @@ class OrderShippingGateway
                     $trackingNumber = $tracking?->tracking_number;
                     $posted = true;
                 } catch (\Exception $e) {
-                    Log::warning("carrier post failed for order [{$order->number}]: " . $e->getMessage());
+                    Log::warning("carrier post failed for order [{$order->number}]: ".$e->getMessage());
                     $error = $e->getMessage();
                 }
             }
@@ -209,19 +208,19 @@ class OrderShippingGateway
                 ]);
 
                 \App\Models\Orders\OrderTrackingHistory::create([
-                    'store_id'                 => $tracking->store_id,
-                    'order_id'                 => $tracking->order_id,
-                    'order_tracking_id'        => $tracking->id,
-                    'status'                   => 'cancelled',
+                    'store_id' => $tracking->store_id,
+                    'order_id' => $tracking->order_id,
+                    'order_tracking_id' => $tracking->id,
+                    'status' => 'cancelled',
                     'changed_by_membership_id' => $changedBy?->id,
-                    'notes'                    => $reason,
-                    'payload'                  => [
+                    'notes' => $reason,
+                    'payload' => [
                         'shipment_cancelled' => true,
                         'tracking_number' => $sentTrackingNumber,
                         'previous_tracking_status' => $previousStatus,
                         'previous_order_status' => $statusKey,
                     ],
-                    'created_at'               => now(),
+                    'created_at' => now(),
                 ]);
 
                 $this->audit->tracking(
@@ -250,7 +249,7 @@ class OrderShippingGateway
             return ['ok' => false, 'error' => $e->getMessage()];
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::warning("shipment cancel failed for order [{$order->number}]: " . $e->getMessage());
+            Log::warning("shipment cancel failed for order [{$order->number}]: ".$e->getMessage());
 
             return ['ok' => false, 'error' => $e->getMessage()];
         }
@@ -320,6 +319,92 @@ class OrderShippingGateway
             Log::warning(
                 "carrier delete threw for order [{$order->number}] (tracking {$tracking->tracking_number}): {$e->getMessage()}"
             );
+
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Validate a shipped order at the carrier (dispatch handover, Phase 36).
+     * Sets order_trackings.carrier_validated_at (+ by) on success, or
+     * carrier_validation_error on failure. Idempotent: already-validated
+     * short-circuits immediately.
+     */
+    public function validate(Order $order, ?StoreMembership $changedBy = null): array
+    {
+        DB::beginTransaction();
+
+        try {
+            $order->refresh();
+
+            if (! $order->shipping_provider_id || ! $order->shippingProvider) {
+                throw new \DomainException(__('order_flow.validation_carrier_required'));
+            }
+
+            $tracking = app(OrderTrackingService::class)->currentTracking($order);
+
+            if (! $tracking?->tracking_number) {
+                throw new \DomainException(__('order_flow.validation_tracking_required'));
+            }
+
+            if ($tracking->isCarrierValidated()) {
+                throw new \DomainException(__('order_flow.shipment_already_validated'));
+            }
+
+            $carrier = $order->shippingProvider->carrier;
+
+            $adapterClass = $carrier
+                ? config(
+                    "delivery.carrier_integrations.{$carrier->code}",
+                    config('delivery.carrier_integrations.*'),
+                )
+                : null;
+
+            if (! $adapterClass || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrder')) {
+                throw new \DomainException(__('order_flow.carrier_validation_not_supported'));
+            }
+
+            $result = app($adapterClass)->validateOrder($order->shippingProvider, (string) $tracking->tracking_number);
+
+            $ok = (bool) ($result['ok'] ?? false);
+            $message = (string) ($result['message'] ?? '');
+
+            if ($ok) {
+                $tracking->update([
+                    'carrier_validated_at' => now(),
+                    'carrier_validated_by_membership_id' => $changedBy?->id,
+                    'carrier_validation_error' => null,
+                ]);
+
+                OrderTrackingHistory::create([
+                    'store_id' => $order->store_id,
+                    'order_id' => $order->id,
+                    'order_tracking_id' => $tracking->id,
+                    'status' => 'carrier_validated',
+                    'changed_by_membership_id' => $changedBy?->id,
+                    'payload' => ['carrier_validate' => true],
+                ]);
+
+                Log::info("carrier validate ok for order [{$order->number}] (tracking {$tracking->tracking_number})");
+            } else {
+                $tracking->update(['carrier_validation_error' => $message]);
+
+                Log::warning(
+                    "carrier validate failed for order [{$order->number}] (tracking {$tracking->tracking_number}): {$message}"
+                );
+            }
+
+            DB::commit();
+
+            return ['ok' => $ok, 'tracking' => $tracking->fresh(), 'message' => $message];
+        } catch (\DomainException $e) {
+            DB::rollBack();
+
+            return ['ok' => false, 'error' => $e->getMessage()];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::warning("carrier validate threw for order [{$order->number}]: {$e->getMessage()}");
 
             return ['ok' => false, 'error' => $e->getMessage()];
         }

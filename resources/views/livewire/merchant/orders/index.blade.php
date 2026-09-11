@@ -203,6 +203,13 @@ state([
     'bulkSendReadyCount' => 0,
     'bulkSendSkipCount' => 0,
 
+    // Bulk validate-at-carrier modal (Phase 36): per-order eligibility gated by
+    // carrier support + not-yet-validated. Mirrors bulkSend, one row per order.
+    'showBulkValidateModal' => false,
+    'bulkValidateAnalysis' => [],
+    'bulkValidateReadyCount' => 0,
+    'bulkValidateSkipCount' => 0,
+
     // Inline phone edit (customer phone + order secondary stacked in one cell)
     'phoneEditPhone' => '',
     'phoneEditSecondary' => '',
@@ -468,11 +475,12 @@ $saveOrderItems = function (): void {
     $order->refresh();
     $this->recalculateOrderShipping($order);
 
-    // Keep the stored total consistent with the new items + shipping − discount.
+    // Keep the stored total consistent with the new items + shipping (pre-discount);
+    // the discount is applied by grand_total/display_total, never baked in here.
     $order->refresh();
     $itemsSubtotal = (float) $order->items->sum(fn ($i) => (float) $i->subtotal);
     $order->update([
-        'total_amount' => round($itemsSubtotal + (float) $order->shipping_cost - (float) $order->discount_amount, 2),
+        'total_amount' => round($itemsSubtotal + (float) $order->shipping_cost, 2),
     ]);
 
     $this->closeItemsModal();
@@ -1319,6 +1327,131 @@ $confirmBulkSend = function (): void {
     }
 };
 
+// Phase 36 — bulk validate-at-carrier (dispatch handover). Gated by
+// order.dispatch_validate; only carrier-sent, not-yet-validated shipments with
+// a supporting adapter are offered.
+$openBulkValidateModal = function (): void {
+    if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    if (empty($this->selectedOrders)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
+        return;
+    }
+
+    $orders = Order::with(['shippingProvider.carrier'])
+        ->where('store_id', currentStoreId())
+        ->whereIn('id', $this->selectedOrders)
+        ->get();
+
+    $analysis = [];
+
+    $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
+
+    foreach ($orders as $order) {
+        $reasons = [];
+
+        if (! $order->shipping_provider_id || ! $order->shippingProvider?->carrier) {
+            $reasons[] = __('order_flow.validation_carrier_required');
+        } else {
+            $adapterClass = config(
+                "delivery.carrier_integrations.{$order->shippingProvider->carrier->code}",
+                config('delivery.carrier_integrations.*'),
+            );
+
+            if (! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrder')) {
+                $reasons[] = __('order_flow.carrier_validation_not_supported');
+            }
+        }
+
+        $tracking = $trackingService->currentTracking($order);
+
+        if (! $tracking?->tracking_number) {
+            $reasons[] = __('order_flow.validation_tracking_required');
+        } elseif ($tracking->isCarrierValidated()) {
+            $reasons[] = __('order_flow.shipment_already_validated');
+        }
+
+        $analysis[] = [
+            'number' => $order->number,
+            'ready' => $reasons === [],
+            'reasons' => $reasons,
+        ];
+    }
+
+    $this->bulkValidateAnalysis = $analysis;
+    $this->bulkValidateReadyCount = collect($analysis)->where('ready', true)->count();
+    $this->bulkValidateSkipCount = count($analysis) - $this->bulkValidateReadyCount;
+
+    $this->showBulkValidateModal = true;
+};
+
+$closeBulkValidateModal = function (): void {
+    $this->showBulkValidateModal = false;
+    $this->bulkValidateAnalysis = [];
+    $this->bulkValidateReadyCount = 0;
+    $this->bulkValidateSkipCount = 0;
+};
+
+$confirmBulkValidate = function (): void {
+    if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $this->closeBulkValidateModal();
+
+    if (empty($this->selectedOrders)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
+        return;
+    }
+
+    $orders = Order::with(['shippingProvider.carrier'])
+        ->where('store_id', currentStoreId())
+        ->whereIn('id', $this->selectedOrders)
+        ->get();
+
+    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
+    $membership = $this->getCurrentMembership();
+    $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
+
+    $done = 0;
+    $failed = 0;
+
+    foreach ($orders as $order) {
+        $tracking = $trackingService->currentTracking($order);
+
+        if (! $order->shipping_provider_id || ! $tracking?->tracking_number || $tracking->isCarrierValidated()) {
+            continue;
+        }
+
+        $result = $gateway->validate($order, $membership);
+
+        if (($result['ok'] ?? false)) {
+            $done++;
+        } else {
+            \Illuminate\Support\Facades\Log::warning(
+                "bulk validate failed for order [{$order->number}]: " . ($result['error'] ?? $result['message'] ?? 'unknown error')
+            );
+            $failed++;
+        }
+    }
+
+    $this->clearSelection();
+    $this->loadOrders();
+
+    if ($done > 0 || $failed > 0) {
+        $this->dispatch('swal:toast', [
+            'icon' => $failed === 0 ? 'success' : 'warning',
+            'title' => $failed === 0
+                ? __('order_flow.bulk_validate_done', ['done' => $done])
+                : __('order_flow.bulk_validate_failed', ['done' => $done, 'failed' => $failed]),
+        ]);
+    }
+};
+
 $bulkDelete = function (): void {
     if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
@@ -1702,7 +1835,7 @@ $openConfirmModal = function (string $orderId): void {
     $this->confirmNote = $order->meta['confirm_note'] ?? '';
     $this->confirmSummary = [
         'number' => $order->number,
-        'total' => currency($order->total_amount),
+        'total' => currency(round(max(0, (float) $order->total_amount - (float) $order->discount_amount), 2)),
         'customer' => $order->customer?->name ?? $order->phone ?? '—',
         'status' => $order->status?->key ? status_label('order', $order->status?->key) : '—',
         'partner' => $order->shippingProvider?->name ?? ($order->deliveryRider?->name ?? '—'),
@@ -4517,6 +4650,13 @@ $submitEdit = function (): void {
     $order->refresh();
     $this->recalculateOrderShipping($order);
 
+    // Standardize total_amount = goods subtotal + shipping (pre-discount), matching
+    // the create path, so every write path stores the same money semantics.
+    $order->refresh();
+    $order->update([
+        'total_amount' => round((float) $order->items->sum(fn ($i) => (float) $i->subtotal) + (float) $order->shipping_cost, 2),
+    ]);
+
     $this->showEditModal = false;
     $this->editingOrderId = null;
     $this->page = 1;
@@ -5426,570 +5566,12 @@ $submitEdit = function (): void {
 
     {{-- Create / Edit Modal + Product/Variant Picker Modals --}}
     <div x-data="orderProductPicker()">
-        {{-- Reassign Modal --}}
-        @if ($showReassignModal)
-            <x-edz.modal :isOpen="true" :showCloseButton="false" wire:key="order-reassign-modal">
-                <div class="p-6 space-y-4">
-                    <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.reassign_order') }}</h3>
-                    <div>
-                        <label class="edz-label">{{ __('merchant_panel.assign_to') }} *</label>
-                        <x-edz.select wire:model="reassignMembershipId" :options="$allMembers" option-value="id"
-                            option-label="user.name" placeholder="{{ __('merchant_panel.select_agent') }}"
-                            size="sm" />
-                    </div>
-                    <div class="flex justify-end gap-2">
-                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
-                            wire:click="set('showReassignModal', false)">{{ __('merchant_panel.cancel') }}</button>
-                        <button wire:click="submitReassign" class="edz-btn edz-btn--primary edz-btn--sm"
-                            wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
-                            <span>{{ __('merchant_panel.reassign') }}</span>
-                        </button>
-                    </div>
-                </div>
-            </x-edz.modal>
-        @endif
+        @include('livewire.merchant.orders.partials.reassign-modal')
     </div>
 
-    {{-- Table Settings Modal --}}
-    @if ($showTableSettings)
-        <div @edz-modal-closed.window="$wire.discardTableSettings()">
-            <x-edz.modal :isOpen="true" size="lg" wire:key="order-table-settings">
-                <div x-data="{ tab: 'columns' }" class="p-6">
-                    {{-- Header --}}
-                    <div class="mb-5">
-                        <h3 class="text-lg font-bold text-ink">{{ __('merchant_panel.table_settings') }}</h3>
-                    </div>
+    @include('livewire.merchant.orders.partials.table-settings-modal')
 
-                    {{-- Tabs --}}
-                    <div
-                        class="inline-flex w-full sm:w-auto items-center gap-1 p-1 bg-surface-secondary rounded-xl mb-5">
-                        <button @click="tab = 'columns'" type="button"
-                            class="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg transition"
-                            :class="tab === 'columns' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'">
-                            <span class="inline-flex items-center gap-1.5">
-                                <x-edz.icon name="view-columns" class="w-4 h-4" />
-                                {{ __('merchant_panel.tab_columns') }}
-                            </span>
-                        </button>
-                        <button @click="tab = 'style'" type="button"
-                            class="flex-1 sm:flex-none px-4 py-2 text-sm font-semibold rounded-lg transition"
-                            :class="tab === 'style' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'">
-                            <span class="inline-flex items-center gap-1.5">
-                                <x-edz.icon name="color-palette" class="w-4 h-4" />
-                                {{ __('merchant_panel.tab_style') }}
-                            </span>
-                        </button>
-                    </div>
-
-                    {{-- Tab: Columns --}}
-                    <div x-show="tab === 'columns'" x-cloak class="space-y-5">
-                        @php
-                            $settingsColumns = collect($this->orderColumns())
-                                ->filter(fn($col) => $this->columnAllowedForUser($col))
-                                ->values()
-                                ->all();
-                            $settingsAllKeys = collect($settingsColumns)->pluck('key')->all();
-                            $settingsRequiredKeys = collect($settingsColumns)->where('required', true)->pluck('key')->all();
-                            $settingsVisibleDraft = array_values(array_intersect($this->draftColumns, $settingsAllKeys));
-                            $settingsSortedAll = array_merge(
-                                $settingsVisibleDraft,
-                                collect($settingsColumns)->pluck('key')->reject(fn($k) => in_array($k, $settingsVisibleDraft, true))->values()->all(),
-                            );
-                        @endphp
-
-                        <div>
-                            <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                                {{ __('merchant_panel.columns') }}</p>
-                            <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.primary_columns_hint') }}</p>
-                            <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.column_order_hint') }}</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5"
-                                x-data="orderColumnReorderDraft()"
-                                @dragstart="onDragStart($event)"
-                                @dragover="onDragOver($event)"
-                                @drop="onDrop($event)"
-                                @dragleave="onDragLeave($event)"
-                                @dragend="onDragEnd()">
-                                @foreach ($settingsSortedAll as $settingsKey)
-                                    @php
-                                        $settingsCol = collect($settingsColumns)->firstWhere('key', $settingsKey);
-                                        $settingsIsChecked = in_array($settingsKey, $settingsVisibleDraft, true);
-                                        $settingsIndex = array_search($settingsKey, $settingsVisibleDraft, true);
-                                        $settingsPos = $settingsIndex !== false ? $settingsIndex + 1 : null;
-                                        $settingsCanUp = $settingsIndex !== false && $settingsIndex > 0;
-                                        $settingsCanDown = $settingsIndex !== false && $settingsIndex < count($settingsVisibleDraft) - 1;
-                                        $settingsIsRequired = in_array($settingsKey, $settingsRequiredKeys, true);
-                                    @endphp
-                                    <label
-                                        class="flex items-center gap-2 px-2.5 py-2 rounded-lg border border-surface-border hover:bg-surface-secondary cursor-pointer text-sm {{ $settingsIsRequired ? 'bg-surface-secondary/60' : '' }}"
-                                        data-col-key="{{ $settingsKey }}"
-                                        data-col-row="true">
-                                        <span class="cursor-grab text-ink-muted hover:text-ink shrink-0 opacity-70"
-                                            draggable="true"
-                                            title="{{ __('merchant_panel.drag_to_reorder') }}">
-                                            <x-edz.icon name="bars-2" class="w-4 h-4" />
-                                        </span>
-                                        <x-edz.checkbox size="sm" wire:click="toggleDraftColumn('{{ $settingsKey }}')"
-                                            :checked="$settingsIsChecked" :disabled="$settingsIsRequired"
-                                            :class="$settingsIsRequired ? 'opacity-70' : ''" />
-                                        @if ($settingsIsRequired)
-                                            <x-edz.icon name="lock-closed" class="w-3.5 h-3.5 shrink-0 text-ink-muted"
-                                                title="{{ __('merchant_panel.primary_columns') }}" />
-                                        @endif
-                                        <span class="flex-1 min-w-0 truncate">
-                                            {{ __("merchant_panel.{$settingsCol['label_key']}") }}
-                                            @if ($settingsIsRequired)
-                                                <span class="text-[10px] text-ink-muted font-normal">
-                                                    ({{ __('merchant_panel.always_visible') }})</span>
-                                            @endif
-                                        </span>
-                                        @if ($settingsIsChecked)
-                                            <span class="text-[10px] text-ink-muted tabular-nums shrink-0" wire:key="col-order-{{ $settingsKey }}">
-                                                {{ $settingsPos }}
-                                            </span>
-                                            <span class="flex items-center gap-0.5 shrink-0">
-                                                <button type="button" title="Up"
-                                                    wire:click="moveDraftColumn('{{ $settingsKey }}', 'up')"
-                                                    @disabled(!$settingsCanUp)
-                                                    class="p-1 rounded text-ink-muted hover:text-ink hover:bg-surface-tertiary disabled:opacity-30 disabled:cursor-not-allowed">
-                                                    <x-edz.icon name="arrow-up" class="w-3.5 h-3.5" />
-                                                </button>
-                                                <button type="button" title="Down"
-                                                    wire:click="moveDraftColumn('{{ $settingsKey }}', 'down')"
-                                                    @disabled(!$settingsCanDown)
-                                                    class="p-1 rounded text-ink-muted hover:text-ink hover:bg-surface-tertiary disabled:opacity-30 disabled:cursor-not-allowed">
-                                                    <x-edz.icon name="arrow-down" class="w-3.5 h-3.5" />
-                                                </button>
-                                            </span>
-                                        @endif
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Tab: Style --}}
-                    <div x-show="tab === 'style'" x-cloak>
-                        <p class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                            {{ __('merchant_panel.tab_style') }}</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <button type="button" wire:click="$set('draftStyle', 'default')"
-                                class="flex items-start gap-3 text-start p-4 rounded-xl border transition {{ $this->draftStyle === 'default' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50/40' : 'border-surface-border hover:bg-surface-secondary' }}">
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-ink">
-                                        {{ __('merchant_panel.style_default') }}</p>
-                                    <div class="mt-2 flex items-center gap-1.5 text-[10px]">
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1001</span>
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1002</span>
-                                        <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-surface-secondary text-ink-muted">#1003</span>
-                                    </div>
-                                </div>
-                                <x-edz.icon name="check"
-                                    class="w-4 h-4 mt-0.5 shrink-0 {{ $this->draftStyle === 'default' ? 'text-accent-600' : 'text-surface-border' }}" />
-                            </button>
-
-                            <button type="button" wire:click="$set('draftStyle', 'status')"
-                                class="flex items-start gap-3 text-start p-4 rounded-xl border transition {{ $this->draftStyle === 'status' ? 'border-accent-500 ring-1 ring-accent-500 bg-accent-50/40' : 'border-surface-border hover:bg-surface-secondary' }}">
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-ink">{{ __('merchant_panel.style_status') }}
-                                    </p>
-                                    <p class="mt-0.5 text-xs text-ink-muted">
-                                        {{ __('merchant_panel.style_status_hint') }}</p>
-                                    <div
-                                        class="mt-2 rounded-lg overflow-hidden border border-surface-border text-[10px]">
-                                        <table class="w-full">
-                                            <tbody>
-                                                <tr class="edz-table-row--success">
-                                                    <td class="px-2.5 py-1.5 font-semibold">#1001</td>
-                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}
-                                                    </td>
-                                                </tr>
-                                                <tr class="edz-table-row--warning">
-                                                    <td class="px-2.5 py-1.5 font-semibold">#1002</td>
-                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}
-                                                    </td>
-                                                </tr>
-                                                <tr class="edz-table-row--danger">
-                                                    <td class="px-2.5 py-1.5 font-semibold">#1003</td>
-                                                    <td class="px-2.5 py-1.5">{{ __('merchant_panel.style_status') }}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <x-edz.icon name="check"
-                                    class="w-4 h-4 mt-0.5 shrink-0 {{ $this->draftStyle === 'status' ? 'text-accent-600' : 'text-surface-border' }}" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Footer --}}
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3 pt-5 mt-6 border-t border-surface-border">
-                        <button type="button" wire:click="resetColumns"
-                            class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant_panel.reset_columns') }}</button>
-                        <div class="flex items-center gap-2">
-                            <button type="button" wire:click="discardTableSettings"
-                                class="edz-btn edz-btn--ghost edz-btn--sm">{{ __('merchant_panel.cancel') }}</button>
-                            <button wire:click="saveTableSettings" class="edz-btn edz-btn--primary edz-btn--sm"
-                                wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none">
-                                <span>{{ __('merchant_panel.save_settings') }}</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </x-edz.modal>
-        </div>
-    @endif
-
-    {{-- Order Details Modal (Phase 23): responsive popup with de-duplicated fields --}}
-    @if ($this->detailsOrderId)
-        @php
-            $detailsOrder = collect($this->orders['data'] ?? [])->firstWhere('id', $this->detailsOrderId);
-        @endphp
-        @if ($detailsOrder)
-            @php
-                $detailsStatus = \Edzeery\MyStatusKit\Facades\Status::for(
-                    'order',
-                    $detailsOrder['status']['key'] ?? 'default',
-                );
-                $detailsTracking = $detailsOrder['tracking'] ?? null;
-            @endphp
-            <div @edz-modal-closed.window="$wire.closeOrderDetails()">
-                <x-edz.modal  :isOpen="true" size="md" wire:key="order-details-modal">
-                    <div class="p-6">
-                        {{-- Header --}}
-                        <div class="flex items-start gap-3">
-                            <div
-                                class="flex items-center justify-center w-10 h-10 rounded-full bg-accent-surface text-accent-fg-strong shrink-0">
-                                <x-edz.icon name="info-circle" class="w-5 h-5" />
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <h3 class="text-base sm:text-lg font-bold text-ink">
-                                        {{ $detailsOrder['number'] ? '#' . $detailsOrder['number'] : __('merchant_panel.order_details') }}
-                                    </h3>
-                                    <span
-                                        class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $detailsStatus->color() }}">
-                                        {!! $detailsStatus->icon(null, 'w-3.5 h-3.5 shrink-0') !!}
-                                        <span>{{ $detailsStatus->label() }}</span>
-                                    </span>
-                                </div>
-                                <p class="mt-0.5 text-sm font-medium text-ink truncate">
-                                    {{ $detailsOrder['customer']['name'] ?? '—' }}</p>
-                                <p class="text-xs text-ink-muted truncate" dir="ltr">
-                                    {{ $detailsOrder['customer']['phone'] ?? '—' }}</p>
-                            </div>
-                        </div>
-                        <div
-                            class="mt-3 pt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-surface-border text-xs text-ink-muted">
-                            <span>{{ \Carbon\Carbon::parse($detailsOrder['created_at'])->format('M d, Y') }}</span>
-                            @if (!empty($detailsOrder['state']['name']))
-                                <span class="inline-flex items-center gap-1">
-                                    <x-edz.icon name="map-pin" class="w-3.5 h-3.5" />
-                                    {{ $detailsOrder['state']['name'] }}
-                                </span>
-                            @endif
-                        </div>
-
-                        @php
-                            $showItems =
-                                !in_array('products', $this->visibleColumns) ||
-                                !in_array('total', $this->visibleColumns);
-                            $showShipping =
-                                !in_array('delivery_type', $this->visibleColumns) ||
-                                !in_array('shipment_type', $this->visibleColumns) ||
-                                !in_array('weight', $this->visibleColumns) ||
-                                !in_array('stopdesk_point', $this->visibleColumns) ||
-                                !in_array('send_from_carrier_warehouse', $this->visibleColumns);
-                            $showContact =
-                                !in_array('address', $this->visibleColumns) ||
-                                !in_array('city', $this->visibleColumns) ||
-                                !in_array('meta', $this->visibleColumns);
-                            $showAssignment =
-                                !in_array('assigned_agent', $this->visibleColumns) ||
-                                !in_array('confirmation_attempts', $this->visibleColumns) ||
-                                !in_array('last_contact', $this->visibleColumns) ||
-                                !in_array('notes', $this->visibleColumns) ||
-                                !in_array('confirmed_by', $this->visibleColumns);
-                        @endphp
-
-                        {{-- Items --}}
-                        @if ($showItems)
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="bag" class="w-4 h-4" />
-                                    {{ __('merchant_panel.products') }}
-                                </h4>
-                                <div
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                                    @if (!in_array('products', $this->visibleColumns))
-                                        @forelse ($detailsOrder['items_summary'] ?? [] as $item)
-                                            <div class="flex items-center justify-between gap-3 px-3 py-2">
-                                                <span class="min-w-0 flex-1 truncate text-ink">{{ $item['name'] }}
-                                                    <span class="text-ink-muted">×{{ $item['qty'] }}</span></span>
-                                                <span
-                                                    class="font-medium text-ink shrink-0">{{ currency($item['price'] * $item['qty']) }}</span>
-                                            </div>
-                                        @empty
-                                            <div class="px-3 py-2 text-ink-muted text-xs">
-                                                {{ __('merchant_panel.no_orders_found') }}</div>
-                                        @endforelse
-                                    @endif
-                                    @if (!in_array('total', $this->visibleColumns))
-                                        <div
-                                            class="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface font-bold text-ink">
-                                            <span>{{ __('merchant_panel.total') }}</span>
-                                            <span class="tabular-nums">{{ currency($detailsOrder['display_total'] ?? $detailsOrder['total_amount'] ?? 0) }}</span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </section>
-                        @endif
-
-                        {{-- Shipping & Payment --}}
-                        @if ($showShipping)
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="credit-card" class="w-4 h-4" />
-                                    {{ __('merchant_panel.details_shipping') }}
-                                </h4>
-                                <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                                    @if (!in_array('delivery_type', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.delivery') }}
-                                            </dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['delivery_type'] === 'stopdesk' ? __('merchant_panel.stop_desk_label') : ($detailsOrder['delivery_type'] === 'home' ? __('merchant_panel.home_delivery_label') : $detailsOrder['delivery_type'] ?? '—') }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('shipment_type', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.shipment') }}
-                                            </dt>
-                                            <dd class="text-ink text-end capitalize">
-                                                {{ $detailsOrder['shipment_type'] ?? '—' }}</dd>
-                                        </div>
-                                    @endif
-                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.payment_method') }}
-                                        </dt>
-                                        <dd class="text-ink text-end uppercase">
-                                            {{ $detailsOrder['payment_method'] ?? '—' }}</dd>
-                                    </div>
-                                    @if (!in_array('weight', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.weight') }}
-                                            </dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['weight_kg'] ? $detailsOrder['weight_kg'] . ' kg' : '—' }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('stopdesk_point', $this->visibleColumns) && !empty($detailsOrder['stopdesk_point']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.stopdesk_point') }}</dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['stopdesk_point']['name'] ?? '—' }}@if (!empty($detailsOrder['stopdesk_point']['city']['name']))
-                                                    ({{ $detailsOrder['stopdesk_point']['city']['name'] }})
-                                                @endif
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('send_from_carrier_warehouse', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.send_from_carrier_warehouse') }}</dt>
-                                            <dd class="text-ink text-end">
-                                                @if ($detailsOrder['send_from_carrier_warehouse'] ?? false)
-                                                    <x-edz.badge tone="success" sm>
-                                                        <x-edz.icon name="check" class="w-3 h-3" />
-                                                    </x-edz.badge>
-                                                @else
-                                                    <x-edz.badge tone="neutral" sm>
-                                                        <x-edz.icon name="x-mark" class="w-3 h-3" />
-                                                    </x-edz.badge>
-                                                @endif
-                                            </dd>
-                                        </div>
-                                    @endif
-                                </dl>
-                            </section>
-                        @endif
-
-                        {{-- Contact & Location --}}
-                        @if ($showContact)
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="map-pin" class="w-4 h-4" />
-                                    {{ __('merchant_panel.details_contact') }}
-                                </h4>
-                                <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                                    @if (!in_array('phone_secondary', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.phone_secondary') }}</dt>
-                                            <dd class="text-ink text-end" dir="ltr">
-                                                {{ $detailsOrder['phone_secondary'] ?? '—' }}</dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('city', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.city') }}</dt>
-                                            <dd class="text-ink text-end">{{ $detailsOrder['city']['name'] ?? '—' }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('address', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.address') }}
-                                            </dt>
-                                            <dd class="text-ink text-end min-w-0">
-                                                {{ $detailsOrder['address'] ? \Illuminate\Support\Str::limit($detailsOrder['address'], 60) : '—' }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('meta', $this->visibleColumns) && !empty($detailsOrder['meta']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.meta') }}</dt>
-                                            <dd class="text-ink text-end min-w-0">
-                                                {{ collect($detailsOrder['meta'])->map(fn($v, $k) => "{$k}: {$v}")->implode(', ') }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                </dl>
-                            </section>
-                        @endif
-
-                        {{-- Assignment --}}
-                        @if ($showAssignment)
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="users" class="w-4 h-4" />
-                                    {{ __('merchant_panel.assignment') }}
-                                </h4>
-                                <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                                    @if (!in_array('assigned_agent', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.agent') }}</dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['assigned_membership']['user']['name'] ?? '—' }}</dd>
-                                        </div>
-                                    @endif
-                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.method') }}</dt>
-                                        <dd class="text-ink text-end">
-                                            {{ $detailsOrder['assignment_method'] ? ucfirst($detailsOrder['assignment_method']) : '—' }}
-                                        </dd>
-                                    </div>
-                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                        <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.created_by') }}
-                                        </dt>
-                                        <dd class="text-ink text-end">
-                                            {{ $detailsOrder['created_by_membership_id'] ? $detailsOrder['created_by_membership']['user']['name'] ?? '—' : '—' }}
-                                        </dd>
-                                    </div>
-                                    @if (!in_array('confirmed_by', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.confirmed_by') }}</dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['confirmed_by_history']['changed_by']['user']['name'] ?? '—' }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('confirmation_attempts', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.attempts') }}
-                                            </dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['confirmation_attempts'] ?? 0 }}</dd>
-                                        </div>
-                                    @endif
-                                    @if (!in_array('last_contact', $this->visibleColumns))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.last_contact') }}</dt>
-                                            <dd class="text-ink text-end">
-                                                {{ $detailsOrder['last_contact_at'] ? \Carbon\Carbon::parse($detailsOrder['last_contact_at'])->diffForHumans() : '—' }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                </dl>
-                                @if (!in_array('notes', $this->visibleColumns) && !empty($detailsOrder['notes']))
-                                    <div
-                                        class="mt-2 p-2.5 rounded-lg bg-surface-tertiary text-sm text-ink-muted italic">
-                                        "{{ $detailsOrder['notes'] }}"
-                                    </div>
-                                @endif
-                            </section>
-                        @endif
-
-                        {{-- Tracking --}}
-                        @if (
-                            $detailsTracking &&
-                                (!in_array('shipping_provider', $this->visibleColumns) ||
-                                    !empty($detailsTracking['tracking_number']) ||
-                                    !empty($detailsTracking['shipped_at']) ||
-                                    !empty($detailsTracking['delivered_at'])))
-                            <section class="mt-5">
-                                <h4
-                                    class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
-                                    <x-edz.icon name="truck" class="w-4 h-4" />
-                                    {{ __('merchant_panel.tracking') }}
-                                </h4>
-                                <dl
-                                    class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                                    @if (!in_array('shipping_provider', $this->visibleColumns) && !empty($detailsTracking['shipping_provider']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.carrier') }}
-                                            </dt>
-                                            <dd class="text-ink text-end">{{ $detailsTracking['shipping_provider'] }}
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    @if (!empty($detailsTracking['tracking_number']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.tracking_number') }}</dt>
-                                            <dd class="text-ink text-end font-mono">
-                                                {{ $detailsTracking['tracking_number'] }}</dd>
-                                        </div>
-                                    @endif
-                                    @if (!empty($detailsTracking['shipped_at']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.shipped_at') }}
-                                            </dt>
-                                            <dd class="text-ink text-end">{{ $detailsTracking['shipped_at'] }}</dd>
-                                        </div>
-                                    @endif
-                                    @if (!empty($detailsTracking['delivered_at']))
-                                        <div class="flex items-start justify-between gap-3 px-3 py-2">
-                                            <dt class="text-ink-muted shrink-0">
-                                                {{ __('merchant_panel.delivered_at') }}</dt>
-                                            <dd class="text-ink text-end">{{ $detailsTracking['delivered_at'] }}</dd>
-                                        </div>
-                                    @endif
-                                </dl>
-                            </section>
-                        @endif
-                    </div>
-                </x-edz.modal>
-            </div>
-        @endif
-    @endif
+    @include('livewire.merchant.orders.partials.order-details-modal')
 
     @include('livewire.merchant.orders.partials.order-form-modal')
 
@@ -5997,225 +5579,13 @@ $submitEdit = function (): void {
 
     @include('livewire.merchant.orders.partials.confirm-drawer')
 
-    {{-- Bulk Status Change (P29) --}}
-    @if ($showBulkStatusModal)
-        <div @edz-modal-closed.window="$wire.closeBulkStatusModal()">
-        <x-edz.modal :is-open="true" size="md" show-close-button wire:key="bulk-status-modal">
-            <div class="p-5">
-                <h3 class="text-lg font-semibold text-ink mb-4">{{ __('order_flow.bulk_status_title') }}</h3>
+    @include('livewire.merchant.orders.partials.bulk-status-modal')
 
-                <label class="block text-xs font-semibold text-ink-muted uppercase tracking-wide mb-1.5">
-                    {{ __('order_flow.bulk_status_target') }}
-                </label>
-                <select wire:model="bulkStatusTarget"
-                    class="edz-input w-full">
-                    <option value="">—</option>
-                    @foreach ($this->allStatuses as $s)
-                        @if (!in_array($s['key'] ?? '', ['cancelled', 'canceled', 'confirmed'], true))
-                            <option value="{{ $s['key'] }}">
-                                {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
-                            </option>
-                        @endif
-                    @endforeach
-                </select>
+    @include('livewire.merchant.orders.partials.bulk-send-modal')
 
-                <label class="block text-xs font-semibold text-ink-muted uppercase tracking-wide mt-4 mb-1.5">
-                    {{ __('order_flow.bulk_status_reason') }}
-                </label>
-                <textarea wire:model="bulkStatusReason" rows="2"
-                    class="edz-input w-full"
-                    placeholder="{{ __('order_flow.bulk_status_reason_placeholder') }}"></textarea>
+    @include('livewire.merchant.orders.partials.bulk-validate-modal')
 
-                <div class="mt-6 flex justify-end gap-2">
-                    <button wire:click="closeBulkStatusModal" type="button"
-                        class="edz-btn edz-btn--ghost">
-                        {{ __('buttons.cancel') }}
-                    </button>
-                    <button wire:click="submitBulkStatus" type="button"
-                        class="edz-btn edz-btn--primary"
-                        wire:loading.attr="disabled">
-                        <span>{{ __('buttons.save') }}</span>
-                    </button>
-                </div>
-            </div>
-        </x-edz.modal>
-        </div>
-    @endif
-
-    {{-- Bulk Send to Carrier (P29.3) --}}
-    @if ($showBulkSendModal)
-        <div @edz-modal-closed.window="$wire.closeBulkSendModal()">
-        <x-edz.modal :is-open="true" size="md" show-close-button wire:key="bulk-send-modal">
-            <div class="p-5">
-                <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.bulk_send_summary_title') }}</h3>
-                <p class="text-xs text-ink-muted mb-4">{{ __('order_flow.bulk_send_summary_subtitle') }}</p>
-
-                @if (empty($this->bulkSendSummary) && $this->bulkSendSkipCount === 0)
-                    <p class="text-sm text-ink-muted">{{ __('order_flow.bulk_send_no_groups') }}</p>
-                @else
-                    @if (! empty($this->bulkSendSummary))
-                        <h4 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
-                            {{ __('order_flow.bulk_send_ready_title') }}
-                        </h4>
-                        <ul class="space-y-2 mb-4">
-                            @foreach ($this->bulkSendSummary as $g)
-                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-secondary px-3 py-2">
-                                    <span class="text-sm font-medium text-ink">{{ $g['name'] }}</span>
-                                    <span class="text-xs font-semibold text-ink-muted">{{ __('order_flow.bulk_send_group_count', ['count' => $g['count']]) }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-
-                    @if ($this->bulkSendSkipCount > 0)
-                        <x-edz.alert type="warning">
-                            <p class="font-semibold mb-1">{{ __('order_flow.bulk_send_skipped_title', ['count' => $this->bulkSendSkipCount]) }}</p>
-                            <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
-                                @foreach (collect($this->bulkSendAnalysis)->where('ready', false) as $entry)
-                                    <li class="leading-relaxed break-words">
-                                        #{{ $entry['number'] }} — {{ implode('، ', $entry['reasons']) }}
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </x-edz.alert>
-                    @endif
-                @endif
-
-                <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
-                    <button wire:click="closeBulkSendModal" type="button"
-                        class="edz-btn edz-btn--ghost">
-                        {{ __('buttons.cancel') }}
-                    </button>
-                    @if ($this->bulkSendSkipCount === 0)
-                        <button wire:click="confirmBulkSend" type="button"
-                            class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled">
-                            <span>{{ __('order_flow.bulk_send_confirm') }}</span>
-                        </button>
-                    @elseif ($this->bulkSendReadyCount > 0)
-                        <button wire:click="confirmBulkSend" type="button"
-                            class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled">
-                            <span>{{ __('order_flow.bulk_send_confirm_some', ['count' => $this->bulkSendReadyCount]) }}</span>
-                        </button>
-                    @else
-                        <button type="button" disabled
-                            class="edz-btn edz-btn--primary opacity-50 cursor-not-allowed">
-                            {{ __('order_flow.bulk_send_confirm_none') }}
-                        </button>
-                    @endif
-                </div>
-            </div>
-        </x-edz.modal>
-        </div>
-    @endif
-
-    {{-- Duplicate scan popup (P29.6): lazy — computed on click via openDuplicateScan() --}}
-    @if ($this->showDuplicateScanModal)
-        <div @edz-modal-closed.window="$wire.closeDuplicateScanModal()">
-            <x-edz.modal :isOpen="true" size="md" wire:key="duplicate-scan-modal">
-                <div class="p-6">
-                    @php
-                        $scanTone = match ($this->duplicateScanLevel) {
-                            'duplicate' => 'danger',
-                            'probable' => 'warning',
-                            'repeat' => 'neutral',
-                            default => null,
-                        };
-                        $scanLabel = match ($this->duplicateScanLevel) {
-                            'duplicate' => __('order_flow.dup_badge_duplicate'),
-                            'probable' => __('order_flow.dup_badge_probable'),
-                            'repeat' => __('order_flow.dup_badge_repeat'),
-                            default => null,
-                        };
-                    @endphp
-                    <div class="flex items-start gap-3">
-                        <div
-                            class="flex items-center justify-center w-10 h-10 rounded-full bg-warning/10 text-warning shrink-0">
-                            <x-edz.icon name="copy" class="w-5 h-5" />
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <h3 class="text-base sm:text-lg font-bold text-ink">
-                                {{ __('order_flow.duplicate_warnings_title') }}
-                            </h3>
-                            @if ($this->duplicateScanNumber)
-                                <p class="mt-0.5 text-xs text-ink-muted" dir="ltr">
-                                    #{{ $this->duplicateScanNumber }}</p>
-                            @endif
-                            @if ($scanTone)
-                                <span
-                                    class="mt-2 inline-flex items-center gap-1 edz-badge edz-badge--{{ $scanTone }} edz-badge--sm">
-                                    <x-edz.icon name="copy" class="w-3 h-3" />
-                                    {{ $scanLabel }}
-                                </span>
-                            @endif
-                        </div>
-                    </div>
-
-                    @if (!empty($this->duplicateScanResults))
-                        <p class="mt-4 text-sm text-ink">
-                            {{ __('order_flow.duplicate_detected', ['count' => count($this->duplicateScanResults)]) }}
-                        </p>
-                        <ul class="mt-2 space-y-1.5 text-sm">
-                            @foreach ($this->duplicateScanResults as $dup)
-                                <li class="flex items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface-tertiary/40 px-3 py-2">
-                                    <button type="button"
-                                        wire:click="openOrderDetails('{{ $dup['order_id'] }}')"
-                                        class="flex items-center gap-2 text-ink hover:text-brand-600 truncate text-start">
-                                        <span class="truncate">
-                                            #{{ $dup['number'] }}
-                                            <span class="text-ink-muted">• {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}</span>
-                                        </span>
-                                    </button>
-                                    <span class="shrink-0 text-xs text-ink-muted">
-                                        ×{{ $dup['total_overlap_qty'] }}
-                                    </span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @elseif (($this->duplicateScanPhoneCount ?? 0) > 0)
-                        <div
-                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
-                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
-                            <span>
-                                {{ __('order_flow.duplicate_phone_only_orders', ['count' => $this->duplicateScanPhoneCount]) }}
-                            </span>
-                        </div>
-                    @elseif (($this->duplicateScanRepeatCount ?? 0) > 0)
-                        <div
-                            class="mt-4 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
-                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
-                            <span>
-                                {{ __('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount]) }}
-                            </span>
-                        </div>
-                    @else
-                        <div class="mt-4 flex items-center gap-2 text-xs text-ink-muted">
-                            <x-edz.icon name="check-circle" class="w-4 h-4 text-success" />
-                            {{ __('order_flow.no_duplicates') }}
-                        </div>
-                    @endif
-
-                    @if (($this->duplicateScanRepeatCount ?? 0) > 0 && $this->duplicateScanLevel !== 'repeat')
-                        <div
-                            class="mt-3 flex items-start gap-2 rounded-xl border border-surface-border bg-surface-tertiary/40 p-3 text-xs text-ink-muted">
-                            <x-edz.icon name="info-circle" class="w-4 h-4 shrink-0 text-brand" />
-                            <span>
-                                {{ __('order_flow.dup_repeat_carrier_sent', ['count' => $this->duplicateScanRepeatCount]) }}
-                            </span>
-                        </div>
-                    @endif
-
-                    <div class="mt-5 flex justify-end">
-                        <button type="button" wire:click="closeDuplicateScanModal()"
-                            class="edz-btn edz-btn--ghost edz-btn--sm">
-                            {{ __('general.close') }}
-                        </button>
-                    </div>
-                </div>
-            </x-edz.modal>
-        </div>
-    @endif
+    @include('livewire.merchant.orders.partials.duplicate-scan-popup')
 
 {{-- 31.9 — Items edit modals (products / quantity / price), one per column --}}
     @include('livewire.merchant.orders.partials.orders-items-edit-modals')
@@ -6226,375 +5596,5 @@ $submitEdit = function (): void {
     {{-- Order event-log popup (P29.4) — extracted partial --}}
     @include('livewire.merchant.orders.partials.order-events-modal')
 
-    {{-- Filter Portal — single container, fixed-positioned --}}
-    <div x-data="dropdownPosition()" x-show="open" @click.away="close()"
-        @edz-filter-open.window="$event.detail && toggle($event, $event.detail)">
-        <div x-show="open" x-cloak
-            class="fixed inset-0 z-[205] bg-black/40 backdrop-blur-sm sm:hidden" @click="close()"></div>
-        <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
-            x-transition:enter-start="opacity-0 translate-y-3"
-            x-transition:enter-end="opacity-100 translate-y-0"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-start="opacity-100 translate-y-0"
-            x-transition:leave-end="opacity-0 translate-y-3"
-            :style="menuStyle"
-            class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
-                   p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)]
-                   max-h-[75vh] overflow-y-auto edz-scroll
-                   sm:inset-x-auto sm:bottom-auto sm:z-50 sm:w-auto sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg"
-            :class="{
-                'sm:max-h-64': open === 'wilaya' || open === 'status' ||
-                    open === 'assigned_to' || open === 'city' || open === 'delivery_type' ||
-                    open === 'shipping_provider' || open === 'stopdesk_point' ||
-                    open === 'shipment_type' || open === 'confirmed_by',
-                'sm:w-48': open === 'product' || open === 'amount' || open === 'address' ||
-                    open === 'notes' || open === 'weight' ||
-                    open === 'send_from_carrier_warehouse',
-                'sm:w-52': open === 'wilaya' || open === 'status' || open === 'assigned_to' ||
-                    open === 'date'
-            }">
-            <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
-            <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
-                <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
-                    <x-edz.icon name="filter" class="w-3.5 h-3.5 text-ink-muted" />
-                    <span>{{ __('buttons.filter') }}</span>
-                </p>
-                <button @click="close()" type="button"
-                    class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                    title="{{ __('general.close') }}">
-                    <x-edz.icon name="x-mark" class="w-4 h-4" />
-                </button>
-            </div>
-
-        {{-- Wilaya --}}
-        @if (in_array('wilaya', $this->visibleColumns))
-            <div x-show="open === 'wilaya'" x-cloak>
-                <button @click="$wire.setFilter('wilaya', null); $wire.setFilter('city', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['wilaya'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                @foreach ($this->allStates as $st)
-                    <button
-                        @click="$wire.setFilter('wilaya', '{{ $st['id'] }}'); $wire.loadFilterCities('{{ $st['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $st['name'] }}">
-                        <span class="inline-flex items-center gap-1.5">
-                            <span class="edz-code-badge">{{ $st['state_code'] ?? '' }}</span>
-                            {{ $st['name'] }}
-                        </span>
-                    </button>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- Product --}}
-        @if (in_array('products', $this->visibleColumns))
-            <div x-show="open === 'product'" x-cloak>
-                <x-edz.product-select :options="$filterProducts" wire:model="filters.product_id"
-                    wire:fullmodel="filters.product" size="sm"
-                    placeholder="{{ __('merchant_panel.filter_by_product') }}" />
-            </div>
-        @endif
-
-        {{-- Amount --}}
-        @if (in_array('total', $this->visibleColumns))
-            <div x-show="open === 'amount'" x-cloak>
-                <div class="flex items-center gap-1">
-                    <div class="relative flex-1">
-                        <input type="number" wire:model.live.debounce.600ms="filters.amount_min" placeholder="Min"
-                            class="edz-input text-xs w-full pe-6">
-                        @if ($this->filters['amount_min'] !== null && $this->filters['amount_min'] !== '')
-                            <button wire:click="$set('filters.amount_min', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear min amount">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                    <div class="relative flex-1">
-                        <input type="number" wire:model.live.debounce.600ms="filters.amount_max" placeholder="Max"
-                            class="edz-input text-xs w-full pe-6">
-                        @if ($this->filters['amount_max'] !== null && $this->filters['amount_max'] !== '')
-                            <button wire:click="$set('filters.amount_max', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear max amount">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- Status --}}
-        @if (in_array('status', $this->visibleColumns))
-            <div x-show="open === 'status'" x-cloak>
-                @foreach ($this->allStatuses as $s)
-                    <label
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
-                        data-name="{{ $s['label'] }}">
-                        <input type="checkbox" value="{{ $s['id'] }}"
-                            wire:click="toggleStatusFilter('{{ $s['id'] }}')"
-                            {{ in_array($s['id'], $this->filters['status'] ?? []) ? 'checked' : '' }}
-                            class="rounded border-gray-300">
-                        <span class="w-2 h-2 rounded-full shrink-0"
-                            style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
-                        {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
-                    </label>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- Assigned Agent --}}
-        @if (in_array('assigned_agent', $this->visibleColumns))
-            <div x-show="open === 'assigned_to'" x-cloak>
-                <button @click="$wire.setFilter('assigned_to', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['assigned_to'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                @foreach ($this->allMembers as $m)
-                    <button @click="$wire.setFilter('assigned_to', '{{ $m['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['assigned_to'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $m['user']['name'] }}">
-                        {{ $m['user']['name'] }}
-                    </button>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- Date --}}
-        @if (in_array('created_at', $this->visibleColumns))
-            <div x-show="open === 'date'" x-cloak>
-                <div class="flex flex-col gap-1">
-                    <div class="relative">
-                        <input type="text" wire:model.blur="filters.date_from"
-                            class="edz-input text-xs w-full flatpickr-input pe-7" placeholder="From"
-                            autocomplete="off">
-                        @if (!empty($this->filters['date_from']))
-                            <button wire:click="$set('filters.date_from', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear from date">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                    <div class="relative">
-                        <input type="text" wire:model.blur="filters.date_to"
-                            class="edz-input text-xs w-full flatpickr-input pe-7" placeholder="To"
-                            autocomplete="off">
-                        @if (!empty($this->filters['date_to']))
-                            <button wire:click="$set('filters.date_to', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear to date">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- Delivery Type --}}
-        @if (in_array('delivery_type', $this->visibleColumns))
-            <div x-show="open === 'delivery_type'" x-cloak>
-                <button @click="$wire.setFilter('delivery_type', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['delivery_type'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                <button @click="$wire.setFilter('delivery_type', 'home')"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['delivery_type'] === 'home' ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('merchant_panel.home_delivery_label') }}
-                </button>
-                <button @click="$wire.setFilter('delivery_type', 'stopdesk')"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['delivery_type'] === 'stopdesk' ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('merchant_panel.stop_desk_label') }}
-                </button>
-            </div>
-        @endif
-
-        {{-- Shipment Type --}}
-        @if (in_array('shipment_type', $this->visibleColumns))
-            <div x-show="open === 'shipment_type'" x-cloak>
-                <button @click="$wire.setFilter('shipment_type', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipment_type'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                <button @click="$wire.setFilter('shipment_type', 'delivery')"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'delivery' ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('merchant_panel.delivery') }}
-                </button>
-                <button @click="$wire.setFilter('shipment_type', 'exchange')"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'exchange' ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('merchant_panel.exchange_label') }}
-                </button>
-                <button @click="$wire.setFilter('shipment_type', 'pickup')"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipment_type'] === 'pickup' ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('merchant_panel.pickup_label') }}
-                </button>
-            </div>
-        @endif
-
-        {{-- Shipping Provider --}}
-        @if (in_array('shipping_provider', $this->visibleColumns))
-            <div x-show="open === 'shipping_provider'" x-cloak>
-                <button @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipping_provider'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                @foreach ($this->allProviders as $pr)
-                    <button
-                        @click="$wire.setFilter('shipping_provider', '{{ $pr['id'] }}'); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints('{{ $pr['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipping_provider'] == $pr['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $pr['name'] }}">
-                        {{ $pr['name'] }}
-                    </button>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- Stopdesk Point (cascades from shipping_provider) --}}
-        @if (in_array('stopdesk_point', $this->visibleColumns))
-            <div x-show="open === 'stopdesk_point'" x-cloak>
-                @if (!filled($this->filters['shipping_provider']))
-                    <div class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">
-                        {{ __('merchant_panel.select_provider_first') }}</div>
-                @else
-                    <button @click="$wire.setFilter('stopdesk_point', null)"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['stopdesk_point'] ? 'bg-surface-secondary font-medium' : '' }}">
-                        —
-                    </button>
-                    @foreach ($this->allStopdeskPoints as $dp)
-                        <button @click="$wire.setFilter('stopdesk_point', '{{ $dp['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['stopdesk_point'] == $dp['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                            data-name="{{ $dp['name'] }}">
-                            {{ $dp['name'] }}
-                        </button>
-                    @endforeach
-                @endif
-            </div>
-        @endif
-
-        {{-- City (cascades from wilaya) --}}
-        @if (in_array('city', $this->visibleColumns))
-            <div x-show="open === 'city'" x-cloak>
-                @if (!filled($this->filters['wilaya']))
-                    <div class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">
-                        {{ __('merchant_panel.select_state_first') }}</div>
-                @else
-                    <button @click="$wire.setFilter('city', null)"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['city'] ? 'bg-surface-secondary font-medium' : '' }}">
-                        —
-                    </button>
-                    @foreach ($this->allCities as $ct)
-                        <button @click="$wire.setFilter('city', '{{ $ct['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['city'] == $ct['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                            data-name="{{ $ct['name'] }}">
-                            {{ $ct['name'] }}
-                        </button>
-                    @endforeach
-                @endif
-            </div>
-        @endif
-
-        {{-- Confirmed By --}}
-        @if (in_array('confirmed_by', $this->visibleColumns))
-            <div x-show="open === 'confirmed_by'" x-cloak>
-                <button @click="$wire.setFilter('confirmed_by', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['confirmed_by'] ? 'bg-surface-secondary font-medium' : '' }}">
-                    —
-                </button>
-                @foreach ($this->allMembers as $m)
-                    <button @click="$wire.setFilter('confirmed_by', '{{ $m['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['confirmed_by'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $m['user']['name'] }}">
-                        {{ $m['user']['name'] }}
-                    </button>
-                @endforeach
-            </div>
-        @endif
-
-        {{-- Address --}}
-        @if (in_array('address', $this->visibleColumns))
-            <div x-show="open === 'address'" x-cloak>
-                <div class="relative">
-                    <input type="text" wire:model.live.debounce.600ms="filters.address"
-                        class="edz-input text-xs w-full pe-6" placeholder="{{ __('merchant_panel.address') }}"
-                        autocomplete="off">
-                    @if ($this->filters['address'] !== '')
-                        <button wire:click="$set('filters.address', '')" type="button"
-                            class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                            aria-label="Clear address">
-                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                        </button>
-                    @endif
-                </div>
-            </div>
-        @endif
-
-        {{-- Notes --}}
-        @if (in_array('notes', $this->visibleColumns))
-            <div x-show="open === 'notes'" x-cloak>
-                <div class="relative">
-                    <input type="text" wire:model.live.debounce.600ms="filters.notes"
-                        class="edz-input text-xs w-full pe-6" placeholder="{{ __('merchant_panel.notes') }}"
-                        autocomplete="off">
-                    @if ($this->filters['notes'] !== '')
-                        <button wire:click="$set('filters.notes', '')" type="button"
-                            class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                            aria-label="Clear notes">
-                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                        </button>
-                    @endif
-                </div>
-            </div>
-        @endif
-
-        {{-- Weight (min/max range) --}}
-        @if (in_array('weight', $this->visibleColumns))
-            <div x-show="open === 'weight'" x-cloak>
-                <div class="flex items-center gap-1">
-                    <div class="relative flex-1">
-                        <input type="number" wire:model.live.debounce.600ms="filters.weight_min"
-                            placeholder="Min" class="edz-input text-xs w-full pe-6" step="0.01">
-                        @if ($this->filters['weight_min'] !== null && $this->filters['weight_min'] !== '')
-                            <button wire:click="$set('filters.weight_min', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear min weight">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                    <div class="relative flex-1">
-                        <input type="number" wire:model.live.debounce.600ms="filters.weight_max"
-                            placeholder="Max" class="edz-input text-xs w-full pe-6" step="0.01">
-                        @if ($this->filters['weight_max'] !== null && $this->filters['weight_max'] !== '')
-                            <button wire:click="$set('filters.weight_max', '')" type="button"
-                                class="absolute end-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
-                                aria-label="Clear max weight">
-                                <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
-                            </button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- Send from carrier warehouse (tri-state) --}}
-        @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
-            <div x-show="open === 'send_from_carrier_warehouse'" x-cloak>
-                <button @click="$wire.setFilter('send_from_carrier_warehouse', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === null ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('general.all') }}
-                </button>
-                <button @click="$wire.setFilter('send_from_carrier_warehouse', true)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === true ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.yes') }}
-                </button>
-                <button @click="$wire.setFilter('send_from_carrier_warehouse', false)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === false ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.no') }}
-                </button>
-            </div>
-        @endif
-    </div>
+    @include('livewire.merchant.orders.partials.filter-portal')
 </div>

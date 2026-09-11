@@ -171,6 +171,28 @@ return [
     'no_carrier_notes' => 'No notes yet',
     'carrier_notes_unsupported' => 'This carrier does not support note archiving via API',
 
+    // ----- Dispatch validation (Phase 36) -----
+    'shipment_validated' => 'Shipment validated by the carrier',
+    'shipment_validation_failed' => 'Failed to validate the shipment at the carrier',
+    'validation_tracking_required' => 'A carrier tracking number is required to validate the shipment',
+    'validation_carrier_required' => 'Only carrier-sent orders can be validated here (a rider leg has no carrier)',
+    'carrier_validation_not_supported' => 'This carrier does not support validating shipments via API',
+    'validate_shipment_title' => 'Validate at carrier',
+    'validate_shipment_btn' => 'Validate shipment',
+    'validate_scan_label' => 'Scan tracking barcode',
+    'validate_scan_placeholder' => 'Paste or scan the tracking number',
+    'validate_shipment_hint' => 'Hands the shipment to the carrier’s logistics. After validation the order can no longer be changed or deleted at the carrier.',
+    'validate_barcode_mismatch' => 'The scanned tracking does not match this shipment',
+    'shipment_validated_badge' => 'Validated at the carrier (handover)',
+    'bulk_validate_btn' => 'Validate at carrier',
+    'bulk_validate_ready_title' => 'Ready to validate',
+    'bulk_validate_skipped_title' => 'Skipped (:count)',
+    'bulk_validate_confirm' => 'Validate',
+    'bulk_validate_confirm_some' => 'Validate :count',
+    'bulk_validate_confirm_none' => 'Nothing to validate',
+    'bulk_validate_done' => 'Validated :done shipment(s) at the carrier',
+    'bulk_validate_failed' => 'Validated :done shipment(s) — :failed could not be validated',
+
     // ----- Bulk sync -----
     'sync_all_statuses' => 'Sync statuses',
     'tracking_sync_none' => 'No shipments to sync with a delivery company',

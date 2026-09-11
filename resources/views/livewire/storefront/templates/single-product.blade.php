@@ -42,11 +42,9 @@ mount(function (): void {
         ? (clone $productQuery)->whereKey($chosenId)->first()
         : null) ?? $productQuery->first();
 
-    if (!$this->product) {
-        abort(404);
+    if ($this->product) {
+        $this->selectedVariant = $this->product->variants->first();
     }
-
-    $this->selectedVariant = $this->product->variants->first();
 });
 
 // Kept for compatibility with deep links that re-select a variant; ordering

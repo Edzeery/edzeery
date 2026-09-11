@@ -74,6 +74,8 @@ return [
     'newest' => 'الأحدث',
     'notes' => 'ملاحظات',
     'not_available' => 'غير متاح',
+    'delivery_unavailable_title' => 'التوصيل غير متاح مؤقتًا',
+    'delivery_unavailable_body' => 'لا توجد شركة شحن مخصصة حاليًا للتوصيل إلى منطقتك. يرجى المحاولة لاحقًا أو التواصل مع المتجر مباشرة.',
     'no_products_found' => 'لم يتم العثور على منتجات',
     'no_results_found' => 'لا توجد نتائج مطابقة لبحثك',
     'clear_filters' => 'مسح الفلاتر',

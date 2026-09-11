@@ -167,6 +167,28 @@ return [
     'no_carrier_notes' => 'Aucune note pour le moment',
     'carrier_notes_unsupported' => 'Ce transporteur ne prend pas en charge l’archivage de notes via l’API',
 
+    // ----- Validation d’expédition (Phase 36) -----
+    'shipment_validated' => 'Expédition validée par le transporteur',
+    'shipment_validation_failed' => 'Échec de la validation de l’expédition auprès du transporteur',
+    'validation_tracking_required' => 'Un numéro de suivi transporteur est requis pour valider l’expédition',
+    'validation_carrier_required' => 'Seules les commandes envoyées par un transporteur peuvent être validées ici (une étape livreur n’a pas de transporteur)',
+    'carrier_validation_not_supported' => 'Ce transporteur ne prend pas en charge la validation des expéditions via l’API',
+    'validate_shipment_title' => 'Valider auprès du transporteur',
+    'validate_shipment_btn' => 'Valider l’expédition',
+    'validate_scan_label' => 'Scanner le code-barres',
+    'validate_scan_placeholder' => 'Collez ou scannez le numéro de suivi',
+    'validate_shipment_hint' => 'Remet l’expédition à la logistique du transporteur. Après validation, la commande ne peut plus être modifiée ni supprimée chez le transporteur.',
+    'validate_barcode_mismatch' => 'Le suivi scanné ne correspond pas à cette expédition',
+    'shipment_validated_badge' => 'Validée chez le transporteur (remise)',
+    'bulk_validate_btn' => 'Valider auprès du transporteur',
+    'bulk_validate_ready_title' => 'Prêtes à valider',
+    'bulk_validate_skipped_title' => 'Ignorées (:count)',
+    'bulk_validate_confirm' => 'Valider',
+    'bulk_validate_confirm_some' => 'Valider :count',
+    'bulk_validate_confirm_none' => 'Rien à valider',
+    'bulk_validate_done' => ':done expédition(s) validée(s) chez le transporteur',
+    'bulk_validate_failed' => ':done validée(s) — :failed non validées',
+
     // ----- Synchronisation groupée -----
     'sync_all_statuses' => 'Synchroniser les statuts',
     'tracking_sync_none' => 'Aucune expédition à synchroniser avec une société de livraison',

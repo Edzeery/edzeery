@@ -127,10 +127,26 @@ updated(['selectedStopdesk'], function (): void {
 });
 
 $availableProviders = computed(function (): \Illuminate\Support\Collection {
-    return ShippingProvider::where('store_id', currentStoreId())
+    $storeId = currentStoreId();
+
+    return ShippingProvider::where('store_id', $storeId)
         ->where('is_active', true)
+        ->where(function ($query) use ($storeId) {
+            $query->whereNotNull('flat_rate')
+                ->orWhereHas('stopdeskPoints', fn ($q) => $q->where('store_id', $storeId)->where('is_active', true))
+                ->orWhereHas('deliveryRates', fn ($q) => $q->where('store_id', $storeId)
+                    ->where('is_active', true)
+                    ->where(fn ($r) => $r->whereNotNull('office_cost')->orWhereNotNull('home_cost')->orWhereNotNull('free_above')))
+                ->orWhereHas('rates', fn ($q) => $q->where('store_id', $storeId)->where('is_active', true));
+        })
         ->orderBy('name')
         ->get(['id', 'name', 'flat_rate']);
+});
+
+$hasActiveProviders = computed(function (): bool {
+    return ShippingProvider::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->exists();
 });
 
 $paymentMethods = computed(function (): array {
@@ -282,6 +298,11 @@ $submitOrder = function () {
     $methods = $this->paymentMethods;
     $providers = $this->availableProviders;
     $hasProviders = $providers->isNotEmpty();
+
+    if ($this->hasActiveProviders && $providers->isEmpty()) {
+        $this->dispatch('edz-notice', tone: 'danger', title: __('storefront.delivery_unavailable_title'));
+        return;
+    }
 
     $rules = [
         'name'          => 'required|string|max:255',
@@ -526,6 +547,7 @@ $submitOrder = function () {
         $providers = $this->availableProviders;
         $hasProviders = $providers->isNotEmpty();
         $isSingleProvider = $providers->count() === 1;
+        $allProvidersDead = $this->hasActiveProviders && $providers->isEmpty();
 
         if ($isSingleProvider) {
             $this->selectedProvider = (string) $providers->first()->id;
@@ -540,7 +562,9 @@ $submitOrder = function () {
         // stopdesk, announced home coverage otherwise. A flat-rate carrier (or a
         // legacy store without carriers) covers every wilaya.
         $states = collect();
-        if (! $hasProviders || ! $providerId) {
+        if ($allProvidersDead) {
+            $states = collect();
+        } elseif (! $hasProviders || ! $providerId) {
             $states = State::active()->orderedByCode()->get();
         } elseif ($this->delivery_type === 'stopdesk') {
             $officeStateIds = DeliveryRate::where('store_id', $storeId)
@@ -716,6 +740,19 @@ $submitOrder = function () {
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    {{-- 0. Dead-carrier empty state: providers exist but none can deliver --}}
+                    @if ($allProvidersDead)
+                        <div class="sm:col-span-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 p-4" role="delivery-unavailable">
+                            <div class="flex items-start gap-3">
+                                <x-edz.icon name="information-circle" class="text-xl text-amber-500 w-5 h-5 shrink-0 mt-0.5" />
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-amber-700 dark:text-amber-300">{{ __('storefront.delivery_unavailable_title') }}</p>
+                                    <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">{{ __('storefront.delivery_unavailable_body') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     {{-- 1. Shipping company offered by this store --}}
                     @if ($hasProviders)

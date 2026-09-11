@@ -93,7 +93,11 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             'adresse' => $order->address ?? ($order->stopdeskPoint?->name ?? ''),
             'wilaya_id' => $stateCode !== null ? (int) $stateCode : 0,
             'commune' => $commune ?? '',
-            'montant' => round((float) $order->total_amount, 2),
+            // COD collectible = goods subtotal + delivery − discount (exactly what
+            // the customer pays as shown in the app). Computed from items rather
+            // than the stored total_amount so it stays correct whatever the age of
+            // the row (legacy rows stored pre-standardization semantics).
+            'montant' => round(max(0, (float) $order->items->sum(fn ($i) => (float) $i->subtotal) + (float) ($order->shipping_cost ?? 0) - (float) $order->discount_amount), 2),
             'produit' => $this->productSummary($order),
             'type_id' => $this->typeId($order),
             'poids' => (float) ($order->weight_kg ?? 0.5),
@@ -230,6 +234,132 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         }
     }
 
+    /**
+     * Validate a single shipped order (dispatch handover) via NOEST /valid/order.
+     * After validation the shipment is locked at the carrier and can no longer be
+     * deleted. NOEST returns HTTP 200 even on logical failure, so the body's
+     * `success` flag is the source of truth (documented errors: "Commande
+     * introuvable", "Commande déjà validée", "Stock insuffisant").
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function validateOrder(ShippingProvider $provider, string $trackingNumber): array
+    {
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+        $guid = (string) ($provider->credentials['guid'] ?? '');
+
+        if ($token === '' || $guid === '' || $trackingNumber === '') {
+            return ['ok' => false, 'message' => __('merchant_panel.connection_missing_credentials')];
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Authorization' => "Bearer {$token}"])
+                ->post(rtrim($this->baseUrl($provider), '/').'/valid/order', [
+                    'user_guid' => $guid,
+                    'tracking' => $trackingNumber,
+                ]);
+
+            $data = $response->json() ?? [];
+
+            if (($data['success'] ?? false) === true) {
+                return ['ok' => true, 'message' => (string) ($data['message'] ?? __('order_flow.shipment_validated'))];
+            }
+
+            return [
+                'ok' => false,
+                'message' => (string) ($data['message'] ?? $data['error'] ?? __('order_flow.shipment_validation_failed')),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Validate several orders in one call via NOEST /valid/orders.
+     *
+     * Response shape (docs v2.3): {success, passed: {tracking: true}, failed:
+     * {tracking: "msg" | {field: ["msg"]}}}. Normalized here into
+     * validated[] / failed[tracking => message]; `ok` is true only when every
+     * submitted tracking passed.
+     *
+     * @param  list<string>  $trackingNumbers
+     * @return array{ok: bool, validated: list<string>, failed: array<string, string>, message?: string}
+     */
+    public function validateOrders(ShippingProvider $provider, array $trackingNumbers): array
+    {
+        $trackings = array_values(array_filter(
+            $trackingNumbers,
+            static fn ($value) => is_string($value) && trim($value) !== '',
+        ));
+
+        if ($trackings === []) {
+            return ['ok' => true, 'validated' => [], 'failed' => []];
+        }
+
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+        $guid = (string) ($provider->credentials['guid'] ?? '');
+
+        if ($token === '' || $guid === '') {
+            return [
+                'ok' => false,
+                'validated' => [],
+                'failed' => array_fill_keys($trackings, __('merchant_panel.connection_missing_credentials')),
+                'message' => __('merchant_panel.connection_missing_credentials'),
+            ];
+        }
+
+        $trackings = array_slice($trackings, 0, 100);
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Authorization' => "Bearer {$token}"])
+                ->post(rtrim($this->baseUrl($provider), '/').'/valid/orders', [
+                    'user_guid' => $guid,
+                    'trackings' => $trackings,
+                ]);
+
+            $data = $response->json() ?? [];
+
+            if ($response->failed() || ! is_array($data)) {
+                $message = (string) ($data['message'] ?? $data['error'] ?? "HTTP {$response->status()}");
+
+                return [
+                    'ok' => false,
+                    'validated' => [],
+                    'failed' => array_fill_keys($trackings, $message),
+                    'message' => $message,
+                ];
+            }
+
+            $passed = is_array($data['passed'] ?? null) ? array_keys($data['passed']) : [];
+            $failed = [];
+
+            foreach ((array) ($data['failed'] ?? []) as $tracking => $error) {
+                $failed[(string) $tracking] = $this->flattenError($error);
+            }
+
+            // When NOEST only returns a top-level success with no per-tracking map,
+            // treat the whole batch as passed.
+            if ($passed === [] && $failed === [] && ($data['success'] ?? false) === true) {
+                $passed = $trackings;
+            }
+
+            return [
+                'ok' => ($data['success'] ?? false) === true && $failed === [],
+                'validated' => array_values(array_map('strval', $passed)),
+                'failed' => $failed,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'validated' => [],
+                'failed' => array_fill_keys($trackings, $e->getMessage()),
+                'message' => $e->getMessage(),
+            ];
+        }
+    }
+
     public function addNote(ShippingProvider $provider, string $trackingNumber, string $content): array
     {
         $content = trim($content);
@@ -318,6 +448,7 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
     protected function baseUrl(ShippingProvider $provider): string
     {
         $base = (string) ($provider->credentials['api_base'] ?? '');
+
         return $base !== '' ? rtrim($base, '/') : self::DEFAULT_BASE;
     }
 
@@ -329,6 +460,33 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
     protected function desksCacheKey(ShippingProvider $provider): string
     {
         return "carrier:noest:desks:{$provider->store_id}:{$provider->id}";
+    }
+
+    /**
+     * NOEST /valid/orders may return failed entries as either a plain string or an
+     * associative array of field → messages[].  Flatten both into a single string
+     * for the gateway/Log payload.
+     */
+    protected function flattenError(mixed $error): string
+    {
+        if (is_string($error)) {
+            return $error;
+        }
+
+        if (is_array($error)) {
+            $parts = [];
+
+            foreach ($error as $field => $messages) {
+                $list = is_array($messages) ? $messages : [$messages];
+                foreach ($list as $message) {
+                    $parts[] = "{$field}: {$message}";
+                }
+            }
+
+            return implode('; ', $parts) ?: (string) json_encode($error, JSON_THROW_ON_ERROR);
+        }
+
+        return (string) $error;
     }
 
     /**

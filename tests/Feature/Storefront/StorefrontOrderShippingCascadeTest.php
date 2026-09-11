@@ -25,7 +25,6 @@ use App\Models\Stores\Store;
  *  - home orders charge home_cost and keep the raw typed address.
  *  - wilaya options carry a numeric-code badge and order by wilaya number.
  */
-
 function oscStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -33,7 +32,7 @@ function oscStore(array $settings = []): Store
     $store = Store::create([
         'user_id' => $user->id,
         'name' => 'Cascade Store',
-        'slug' => 'csc-' . uniqid(),
+        'slug' => 'csc-'.uniqid(),
         'status' => 'active',
         'landing_template' => 'catalog',
     ]);
@@ -53,8 +52,8 @@ function oscProduct(Store $store): Product
     return Product::create([
         'store_id' => $store->id,
         'name' => 'Cascade Product',
-        'slug' => 'cscp-' . uniqid(),
-        'sku' => 'CSCP-' . uniqid(),
+        'slug' => 'cscp-'.uniqid(),
+        'sku' => 'CSCP-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -67,7 +66,7 @@ function oscVariant(Store $store, Product $product, int $stock = 10): ProductVar
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'CSCV-' . uniqid(),
+        'sku' => 'CSCV-'.uniqid(),
         'price' => 500,
         'stock' => $stock,
     ]);
@@ -76,11 +75,11 @@ function oscVariant(Store $store, Product $product, int $stock = 10): ProductVar
 function oscState(string $name): State
 {
     $code = strtoupper(substr(md5($name), 0, 2));
-    $country = Country::create(['name' => $name . 'land', 'code' => $code . 'L', 'is_active' => true]);
+    $country = Country::create(['name' => $name.'land', 'code' => $code.'L', 'is_active' => true]);
 
     return State::create([
         'country_id' => $country->id,
-        'state_code' => $code . '-01',
+        'state_code' => $code.'-01',
         'name' => $name,
         'is_active' => true,
         'is_cod_available' => true,
@@ -494,7 +493,7 @@ test('an office outside the selected carrier rejects the stopdesk order', functi
     $state = oscState('Cascade Cross');
     $city = oscCity($state, 'Cross Com');
     $store = oscStore();
-    $providerA = oscProvider($store, 'Cross A');
+    $providerA = oscProvider($store, 'Cross A', 300.0);
     $providerB = oscProvider($store, 'Cross B');
 
     // The only office belongs to B; the order claims A.
@@ -604,4 +603,104 @@ test('carrier and wilaya option labels render as plain strings, never "[object O
         ->and($html)->toContain('&quot;label&quot;:&quot;Cascade Label A&quot;')
         ->and($html)->not->toContain('&quot;label&quot;:{')
         ->and($html)->not->toContain('[object Object]');
+});
+
+test('dead providers (no offices, no rates, no flat rate) are hidden from the picker', function () {
+    $state = oscState('Cascade Dead');
+    $city = oscCity($state, 'Dead Com');
+    $store = oscStore();
+
+    // A carrier with no offices, no rates and no flat rate is unreachable.
+    oscProvider($store, 'Ghost Carrier');
+
+    // Flat-rate and office-bearing carriers stay.
+    $flat = oscProvider($store, 'Flat Carrier', 400.0);
+    $office = oscProvider($store, 'Office Carrier');
+    StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $office->id,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'name' => 'Office Desk',
+        'is_active' => true,
+    ]);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $html = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('delivery_type', 'home')
+        ->html();
+
+    expect($html)->toContain('role="company-select"')
+        ->and($html)->toContain('&quot;label&quot;:&quot;Flat Carrier&quot;')
+        ->and($html)->toContain('&quot;label&quot;:&quot;Office Carrier&quot;')
+        ->and($html)->not->toContain('Ghost Carrier');
+});
+
+test('the state cascade still resolves for a flat-rate carrier after dead filtering', function () {
+    $state = oscState('Cascade Flat');
+    $store = oscStore();
+    oscProvider($store, 'Dead Carrier');
+    oscProvider($store, 'Flat Only', 250.0);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $variant = oscVariant($store, oscProduct($store));
+
+    \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Flat Customer')
+        ->set('phone', '0559000000')
+        ->set('state_id', (string) $state->id)
+        ->set('delivery_type', 'home')
+        ->set('city_id', (string) oscCity($state, 'Flat Com')->id)
+        ->set('address', 'Flat Road 3')
+        ->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::where('store_id', $store->id)->latest('id')->first();
+
+    expect($order)->not->toBeNull()
+        ->and($order?->delivery_type)->toBe('home')
+        ->and((float) $order?->shipping_cost)->toBe(250.0)
+        ->and((float) $order?->total_amount)->toBe(500.0 + 250.0);
+});
+
+test('a store whose only carriers are dead shows the unavailable state and blocks ordering', function () {
+    $state = oscState('Cascade None');
+    $store = oscStore();
+    oscProvider($store, 'Only Ghost');
+    $blockedCity = oscCity($state, 'Blocked Com');
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $html = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Blocked Customer')
+        ->set('phone', '0557000000')
+        ->set('state_id', (string) $state->id)
+        ->set('city_id', (string) $blockedCity->id)
+        ->set('delivery_type', 'home')
+        ->set('address', 'Blocked Road 1')
+        ->set('payment_method', 'cod')
+        ->html();
+
+    expect($html)->toContain('role="delivery-unavailable"')
+        ->and($html)->toContain(e(__('storefront.delivery_unavailable_title')))
+        ->and($html)->not->toContain('role="company-select"');
+
+    \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Blocked Customer')
+        ->set('phone', '0557000000')
+        ->set('state_id', (string) $state->id)
+        ->set('city_id', (string) $blockedCity->id)
+        ->set('delivery_type', 'home')
+        ->set('address', 'Blocked Road 1')
+        ->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertDispatched('edz-notice');
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });

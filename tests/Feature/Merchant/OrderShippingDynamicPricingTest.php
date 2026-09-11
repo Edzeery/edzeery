@@ -418,3 +418,63 @@ test('createManual home order uses the covering price list', function () {
 
     expect((float) $order->fresh()->shipping_cost)->toBe(650.0);
 });
+
+test('createManual persists the delivery rider id (rider partner survives create)', function () {
+    $rider = \App\Domains\Shipping\Models\DeliveryRider::create([
+        'store_id' => $this->store->id,
+        'name' => 'Riad',
+        'phone' => '0550000000',
+        'vehicle_type' => 'motorcycle',
+        'is_active' => true,
+    ]);
+
+    $product = osdpProduct($this->store, 'Rider Item', 300);
+    $variant = $product->variants()->first();
+
+    $order = app(OrderService::class)->createManual([
+        'delivery_type' => 'home',
+        'delivery_rider_id' => $rider->id,
+        'total_amount' => 300,
+        'items' => [
+            ['product_variant_id' => $variant->id, 'product_id' => $product->id, 'quantity' => 1, 'price' => 300],
+        ],
+    ], $this->membership);
+
+    $fresh = $order->fresh();
+
+    expect($fresh->delivery_rider_id)->toBe($rider->id)
+        ->and($fresh->shipping_provider_id)->toBeNull();
+});
+
+test('createManual standardizes total_amount (subtotal + shipping, pre-discount) and percent discounts apply to the goods subtotal only', function () {
+    $provider = osdpProvider($this->store);
+    $product = osdpProduct($this->store, 'Pct Item', 800);
+
+    DeliveryRate::create([
+        'store_id' => $this->store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'home_cost' => 200,
+        'is_active' => true,
+    ]);
+
+    $variant = $product->variants()->first();
+
+    $order = app(OrderService::class)->createManual([
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $this->state->id,
+        'total_amount' => 800,
+        'discount_type' => 'percent',
+        'discount_value' => 10,
+        'items' => [
+            ['product_variant_id' => $variant->id, 'product_id' => $product->id, 'quantity' => 1, 'price' => 800],
+        ],
+    ], $this->membership);
+
+    $fresh = $order->fresh();
+
+    expect((float) $fresh->shipping_cost)->toBe(200.0)
+        ->and((float) $fresh->total_amount)->toBe(1000.0)
+        ->and((float) $fresh->discount_amount)->toBe(80.0)
+        ->and((float) $fresh->grand_total)->toBe(920.0);
+});

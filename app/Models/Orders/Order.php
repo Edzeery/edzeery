@@ -202,9 +202,13 @@ class Order extends Model
             return 0;
         }
 
+        // Percent discounts always apply to the goods subtotal (never shipping),
+        // matching the modal's financial summary — the single source.
+        $base = (float) $this->items->sum('subtotal');
+
         return match ($this->discount_type) {
             'amount' => (float) $this->discount_value,
-            'percent' => round((float) $this->total_amount * (float) $this->discount_value / 100, 2),
+            'percent' => round($base * (float) $this->discount_value / 100, 2),
             default => 0,
         };
     }

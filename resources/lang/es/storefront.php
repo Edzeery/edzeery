@@ -75,6 +75,8 @@ return [
     'newest' => 'Más reciente',
     'notes' => 'Notas',
     'not_available' => 'No disponible',
+    'delivery_unavailable_title' => 'La entrega no está disponible temporalmente',
+    'delivery_unavailable_body' => 'Actualmente no hay una empresa de envío configurada para entregar en tu zona. Inténtalo de nuevo más tarde o contacta con la tienda directamente.',
     'no_products_found' => 'No se encontraron productos',
     'no_results_found' => 'No hay resultados que coincidan con tu búsqueda',
     'clear_filters' => 'Limpiar filtros',

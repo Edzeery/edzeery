@@ -288,3 +288,27 @@ test('the edit modal reuses the same financial grid (single source for edit too)
     expect($html)->toContain('data-financial-grid')
         ->and($html)->toContain(currency(1500));
 });
+
+test('a rider leg never shows the delivery hint, even for a stopdesk lane without a carrier', function () {
+    [$user, $store] = summaryUser(StoreRoleEnum::OWNER->value);
+    [, $variant] = summaryVariant($store, 500);
+
+    $rider = \App\Domains\Shipping\Models\DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Riad',
+        'phone' => '0550000000',
+        'vehicle_type' => 'motorcycle',
+        'is_active' => true,
+    ]);
+
+    $html = summaryVolt([$user, $store])
+        ->call('openCreateModal')
+        ->call('addFormItem', $variant->id)
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.delivery_rider_id', $rider->id)
+        ->html();
+
+    expect($html)->not->toContain(__('merchant_panel.shipping_hint_delivery'))
+        ->and($html)->toContain(currency(500))
+        ->and($html)->toContain(currency(0));
+});

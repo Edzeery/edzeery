@@ -11,6 +11,7 @@ import orderRowActions, { orderEventsMenu, orderMoreMenu, itemsEditMenu } from "
 import edzRowMenu from "./components/edz-row-menu.js";
 import edzTooltip from "./components/edz-tooltip.js";
 import edzDropdown from "./components/edz-dropdown.js";
+import barcodeScanInput from "./components/barcode-scan-input.js";
 import orderColumnReorderDraft from "./components/order-column-reorder.js";
 import initButtonLoading from "./edz-button-loading.js";
 
@@ -200,6 +201,10 @@ function registerEdzPanel() {
 
     // --- Shared navbar dropdown (notifications / user menu) with viewport clamping ---
     Alpine.data("edzDropdown", edzDropdown);
+
+    // --- Reusable barcode scan input (Phase 36 / Phase E.3): text input + camera modal.
+    //     html5-qrcode itself is code-split and lazy-loaded on first camera open. ---
+    Alpine.data("barcodeScanInput", barcodeScanInput);
 
     // --- Order column settings: drag-and-drop reorder of all columns ---
     Alpine.data("orderColumnReorderDraft", orderColumnReorderDraft);

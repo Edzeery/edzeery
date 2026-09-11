@@ -72,6 +72,18 @@ trait TrackingDrawerConcern
             'rider_name' => $order->deliveryRider?->name,
             'has_provider' => (bool) $order->shipping_provider_id,
             'carrier_supports_api_notes' => (bool) ($order->shippingProvider?->carrier?->capabilityList()['api_notes'] ?? false),
+            'carrier_supports_validation' => (bool) (
+                $order->shippingProvider?->carrier
+                && ($adapterClass = config(
+                    "delivery.carrier_integrations.{$order->shippingProvider->carrier->code}",
+                    config('delivery.carrier_integrations.*'),
+                ))
+                && is_string($adapterClass)
+                && class_exists($adapterClass)
+                && method_exists($adapterClass, 'validateOrder')
+            ),
+            'carrier_validated_at' => $tracking?->carrier_validated_at,
+            'carrier_validation_error' => $tracking?->carrier_validation_error,
             'confirmed_by' => $order->confirmedByHistory?->changedBy?->user?->name ?? null,
             'assigned_to' => $order->assignedMembership?->user?->name ?? null,
         ];
@@ -159,6 +171,7 @@ trait TrackingDrawerConcern
 
         if (! $tracking) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.tracking_sync_failed')]);
+
             return;
         }
 
@@ -167,13 +180,14 @@ trait TrackingDrawerConcern
         if (($result['ok'] ?? false)) {
             $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.tracking_synced')]);
         } else {
-            \Illuminate\Support\Facades\Log::warning("tracking sync failed for [{$tracking->tracking_number}]: " . ($result['error'] ?? 'unknown'));
+            \Illuminate\Support\Facades\Log::warning("tracking sync failed for [{$tracking->tracking_number}]: ".($result['error'] ?? 'unknown'));
             $this->dispatch('swal:toast', [
                 'icon' => 'warning',
                 'title' => $result['error'] === 'no_number'
                     ? __('order_flow.tracking_no_number')
                     : __('order_flow.tracking_sync_failed'),
             ]);
+
             return;
         }
 
@@ -200,10 +214,11 @@ trait TrackingDrawerConcern
             ->whereIn('tracking_status', collect(OrderTrackingStatus::open())->map(fn ($s) => $s->value)->all())
             ->with('shippingProvider')
             ->get()
-            ->filter(fn (OrderTracking $t) => (new StopdeskOfficeSync())->resolve($t->shippingProvider) !== null);
+            ->filter(fn (OrderTracking $t) => (new StopdeskOfficeSync)->resolve($t->shippingProvider) !== null);
 
         if ($trackings->isEmpty()) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.tracking_sync_none')]);
+
             return;
         }
 
@@ -247,6 +262,7 @@ trait TrackingDrawerConcern
 
         if (! $tracking || ! $tracking->shippingProvider?->carrier) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.note_failed')]);
+
             return;
         }
 
@@ -254,11 +270,13 @@ trait TrackingDrawerConcern
         // carrier can't take notes, not just hidden in the UI.
         if (! $tracking->shippingProvider->carrier->supports_api_notes) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.carrier_note_not_supported')]);
+
             return;
         }
 
         if (! $tracking->tracking_number) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.note_failed')]);
+
             return;
         }
 
@@ -278,14 +296,14 @@ trait TrackingDrawerConcern
 
             if (($result['ok'] ?? false)) {
                 OrderTrackingHistory::create([
-                    'store_id'                 => $tracking->store_id,
-                    'order_id'                 => $tracking->order_id,
-                    'order_tracking_id'        => $tracking->id,
-                    'status'                   => 'carrier_note',
+                    'store_id' => $tracking->store_id,
+                    'order_id' => $tracking->order_id,
+                    'order_tracking_id' => $tracking->id,
+                    'status' => 'carrier_note',
                     'changed_by_membership_id' => currentMembership()?->id,
-                    'notes'                    => (string) $this->noteDraft,
-                    'payload'                  => ['carrier_response' => $result],
-                    'created_at'               => now(),
+                    'notes' => (string) $this->noteDraft,
+                    'payload' => ['carrier_response' => $result],
+                    'created_at' => now(),
                 ]);
 
                 $this->noteDraft = '';
@@ -297,7 +315,7 @@ trait TrackingDrawerConcern
                 $this->dispatch('swal:toast', ['icon' => 'error', 'title' => ($result['message'] ?? __('order_flow.note_failed'))]);
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("carrier note failed for tracking [{$tracking->tracking_number}]: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("carrier note failed for tracking [{$tracking->tracking_number}]: ".$e->getMessage());
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $e->getMessage()]);
         } finally {
             $this->sendingNote = false;
@@ -380,7 +398,7 @@ trait TrackingDrawerConcern
         // Preferred: the carrier's own printable label. The merchant proxy
         // re-attaches the bearer token server-side, so the URL is never public.
         if ($tracking?->tracking_number && $order->shippingProvider) {
-            $adapter = (new StopdeskOfficeSync())->resolve($order->shippingProvider);
+            $adapter = (new StopdeskOfficeSync)->resolve($order->shippingProvider);
 
             if ($adapter && method_exists($adapter, 'getLabel')) {
                 $label = $adapter->getLabel($order->shippingProvider, (string) $tracking->tracking_number);
@@ -418,7 +436,7 @@ trait TrackingDrawerConcern
             'stopdesk' => $order->stopdeskPoint?->name,
             'total' => currency($order->total_amount),
             'items' => $order->items
-                ->map(fn ($i) => trim((string) ($i->product?->name ?? '')) . ($i->quantity > 1 ? " ×{$i->quantity}" : ''))
+                ->map(fn ($i) => trim((string) ($i->product?->name ?? '')).($i->quantity > 1 ? " ×{$i->quantity}" : ''))
                 ->filter()
                 ->implode(' + '),
             'barcode' => $tracking?->tracking_number ?? $order->number,
@@ -450,6 +468,7 @@ trait TrackingDrawerConcern
             $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.shipment_cancelled')]);
         } else {
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => ($result['error'] ?? __('order_flow.shipment_cancellation_failed'))]);
+
             return;
         }
 
@@ -459,5 +478,78 @@ trait TrackingDrawerConcern
         if ($this->drawerOrderId !== null && (string) $this->drawerOrderId === (string) $order->id) {
             $this->closeDrawer();
         }
+    }
+
+    // ——— Dispatch validation (Phase 36) — barcode handover to the carrier
+    // logistics. Delegates to OrderShippingGateway::validate which persists
+    // carrier_validated_at / carrier_validation_error and audits the event. ———
+    public function validateShipment(string $orderId): void
+    {
+        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value), 403);
+
+        $order = Order::where('store_id', currentStoreId())
+            ->with(['shippingProvider.carrier'])
+            ->find($orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $result = app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->validate($order, currentMembership());
+
+        if (($result['ok'] ?? false)) {
+            $this->dispatch('swal:toast', [
+                'icon' => 'success',
+                'title' => ($result['message'] ?: __('order_flow.shipment_validated')),
+            ]);
+        } else {
+            $this->dispatch('swal:toast', [
+                'icon' => 'error',
+                'title' => ($result['message'] ?? $result['error'] ?? __('order_flow.shipment_validation_failed')),
+            ]);
+
+            return;
+        }
+
+        $this->loadShipments();
+
+        if ($this->drawerOrderId !== null && (string) $this->drawerOrderId === (string) $order->id) {
+            $this->openDrawer((string) $order->id);
+        }
+    }
+
+    /**
+     * Barcode path of the same handover: the scanned tracking must equal the
+     * open drawer's current tracking number before validating.
+     */
+    public function validateShipmentFromBarcode(string $trackingNumber): void
+    {
+        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value), 403);
+
+        $orderId = $this->drawerOrderId;
+
+        if (! $orderId) {
+            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.validation_tracking_required')]);
+
+            return;
+        }
+
+        $order = Order::where('store_id', currentStoreId())
+            ->with(['shippingProvider.carrier'])
+            ->find($orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $tracking = app(OrderTrackingService::class)->currentTracking($order);
+
+        if (! $tracking?->tracking_number || (string) $tracking->tracking_number !== trim($trackingNumber)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.validate_barcode_mismatch')]);
+
+            return;
+        }
+
+        $this->validateShipment((string) $order->id);
     }
 }
