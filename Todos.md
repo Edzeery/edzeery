@@ -1379,3 +1379,21 @@ git rm "it" "prepareBindings(\$bindings)"
 - **الأدلة:** `npm run build` نظيف (CSS يحوي `.edz-tooltip*` والـ panel chunk يحوي `edzTooltip`)؛ `view:cache` نظيف؛ **37 ناجحة / 156 تأكيدًا** (TrackingTrashWebhookLabelTest 14 + TrackingSearchFilterTest 23) — صفر انحدار.
 
 > **يتطلب تحققًا بصريًا يدويًا من المستخدم:** على 375/768/1440 — التوليب فوق أزرار النسخ/الإجراءات/شارة الحالة/شارتي SD-HM، وظهوره بعد ~400ms بلا قصّ من حاوية السكرول، واختفاؤه فور النقر، وعدم ظهوره على اللمس إطلاقًا. انتهت الدفعات الخمس لمتجر التتبع.
+
+---
+
+## خطة رجال التوصيل على صفحة الطلبيات: المواضع الأربعة + حصرية «شركة/رجل» + إرسال لرجل (سبتمبر 2026) ✅
+
+**بقرارات المستخدم المعتمدة:** النطاق = المواضع الأربعة على صفحة الطلبيات (الخلية المباشرة، نموذج الإضافة/التعديل، مودال التعديل السريع للتوصيل، درج التأكيد) + مطابقة ذلك على صفحة التتبع؛ المكتب يبقى اختياريًا مع الرجل لكنه **مخفي في الواجهة عند اختيار رجل**؛ العرض مقسّم «شركة/رجل»؛ تنفيذ كامل.
+
+- **المواضع الأربعة (`orders/index.blade.php`):** كلها صارت تتعامل عبر **معرّف إرسال واحد** — «شركة» أو «رجل» — مع حصرية كاملة:
+  - الخلية المباشرة: `openOrderProviderEdit` عند اختيار رجل يصفّر `shipping_provider_id`+`stopdesk_point_id` (خطأ `partner_exclusive` إن بقي الاثنان)؛ محرر الـ stopdesk لا يظهر إلا مع شركة.
+  - نموذج الإضافة/التعديل (`submitCreate`/`submitEdit`): عند حشو الرجل تُصفَّر الشركة/المكتب؛ فحص stopdesk في `submitCreate` يستخدم `$this->addError('stopdesk_point_id', __('merchant_panel.office_required_for_stopdesk'))` (واجهة `OrderOfficeSelectionTest` تتطلب `assertHasErrors`).
+  - مودال التعديل السريع للتوصيل (`openDelivery`/`saveDelivery`): نفس قاعدة الاستبدال الحصرية.
+  - درج التأكيد (`submitConfirmAndSend`): يحل الشريك من الدرج قبل أي فحص، ثم يثبّت الساق مسبقًا (persist) ليمر بفحص الاكتمال، وإرسال ساق الرجل عبر `OrderShippingGateway::send(providerId: null)` ثم `ensureRiderTracking($fresh, generateRiderTrackingNumber($fresh))` — توليد فوري لرقم `HM-`/`SD-` (حسب `delivery_type`) عند الإرسال.
+- **القطع المشتركة:** `partials/partner-picker.blade.php` (جديد — picker موحّد `$picker = 'form'|'confirm'` مع إخفاء المكتب عند الرجل، واختصار «شركة واحدة» `data-edz-company-single` بلا `edz-company-select` كما يتطلب `OrdersDefaultProviderTest`) + `partials/confirm-drawer.blade.php` (جديد — درجة التأكيد المستخرجة مع `\App\Enums\Store\StorePermissionEnum::…` بـ FQCN — الرمز القصير كسر التحقق).
+- **ساق الرجل في `OrderCompleteness(forSend)`:** تتطلب **العنوان دائمًا** حتى لساق stopdesk (عكس ضلع الشركة) ولا تتطلب مكتبًا؛ `blank(provider) && blank(rider)` يرفض الإرسال برسالة `confirm_requires_partner` (سلوك جديد رُفِق بإرخاء اختبار سابق ليقبل الشريك أو تحذير items).
+- **صفحة التتبع (المطابقة):** `orders/index`'s `order-form-modal`/`delivery-edit-modal` تُضمَّن عبرها أيضًا — حالة جديدة `delivery_rider_id`/`formPartnerType`/`riderOptions` + `switchFormPartner()` في `TrackingRiderFormConcern` (نفس الحصرية) + `TrackingColumnConcern::loadRiderOptions()` يملأ `riderOptions` (نشطون فقط، شكل value/label/hint/kind مطابق).
+- **الأدلة:** `php -l` نظيف على كل الملفات المتغيِّرة (أربعة PHP + اللغات ×4) + `view:cache` success عبر **PHP 8.3.28** (`C:\laragon\bin\php\php-8.3.28-Win32-vs16-x64\php.exe` — `php` الافتراضي 8.2.12 يفشل قيد Composer ≥8.3). **`OrderCompletenessTest` 22 ناجحًا (46 تأكيدًا)** — منها الجديد: بادئتا HM/SD، عدم تصادم `generateRiderTrackingNumber`، ساق رجل stopdesk تتطلب العنوان لا المكتب، رجل بلا عنوان غير مكتمل عند الإرسال، confirm-and-send لرجل عبر Volt (shipped + `HM-` + حصرية)، ورفض رجل غير نشط/أجنبي. **`OrdersDefaultProviderTest` + `OrderOfficeSelectionTest` 27 ناجحًا (86 تأكيدًا)**. **الجولة الكاملة `Order` + `Merchant`: 398 ناجحًا (1544 تأكيدًا) — صفر انحدار.**
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** على 375/768/1440 — المواضع الأربعة تعرض اختيار «شركة/رجل» مع الحصرية (اختيار أحدهما يصفّر الآخر)، وإخفاء المكتب عند الرجل، وإرسال طلبية لرجل يولّد رقم تتبع HM/SD فورًا ويغلق الدرج، ومطابقة السلوك نفسه على صفحة التتبع.
