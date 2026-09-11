@@ -1,0 +1,78 @@
+// ============================================================
+//  EDZEERY — COMPONENTS / TOOLTIP
+//  Apple-style floating label (x-edz.tooltip).
+//  The bubble is pinned to the viewport with `position: fixed`
+//  so it escapes the table's overflow scroll container; sizing
+//  var --edz-tooltip-max-w lives on the wrapper (Alpine only
+//  writes top/left onto the bubble's inline style).
+// ============================================================
+
+.edz-tooltip {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.edz-tooltip__trigger {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.edz-tooltip__bubble {
+  position: fixed;
+  z-index: var(--edz-z-popover);
+  width: max-content;
+  max-width: var(--edz-tooltip-max-w, 18rem);
+  padding: 0.3125rem 0.625rem;
+  border-radius: var(--edz-radius-md);
+  background-color: rgba(17, 24, 39, 0.92); // ink / 92
+  -webkit-backdrop-filter: saturate(180%) blur(4px);
+  backdrop-filter: saturate(180%) blur(4px);
+  color: #fff;
+  font-family: var(--edz-font-sans);
+  font-size: 0.75rem;
+  line-height: 1.375;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: normal;
+  box-shadow:
+    0 4px 12px -2px rgba(15, 23, 42, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  pointer-events: none; // never intercepts hover/clicks on the trigger
+}
+
+.dark .edz-tooltip__bubble {
+  background-color: rgba(59, 64, 75, 0.95);
+  color: #f3f4f6;
+}
+
+// Measuring frame — rendered but invisible while top/left are computed.
+.edz-tooltip__bubble--positioning {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+// --- Transitions (x-transition) ---
+.edz-tooltip-enter {
+  transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+}
+.edz-tooltip-enter-start {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.edz-tooltip-enter-end {
+  opacity: 1;
+  transform: scale(1);
+}
+.edz-tooltip-leave {
+  transition: opacity 0.08s ease-in, transform 0.08s ease-in;
+}
+.edz-tooltip-leave-start {
+  opacity: 1;
+  transform: scale(1);
+}
+.edz-tooltip-leave-end {
+  opacity: 0;
+  transform: scale(0.96);
+}

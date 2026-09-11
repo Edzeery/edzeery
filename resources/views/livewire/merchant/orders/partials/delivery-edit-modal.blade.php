@@ -15,32 +15,9 @@
                         </button>
                     </div>
 
-                    {{-- Delivery cascade — company → type → wilaya → city → office --}}
-                    <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                    @if (count($this->allProviders) > 1)
-                        <x-edz.select wire:model="form.shipping_provider_id"
-                            wire:change="applyProviderScope($event.target.value)"
-                            :options="$this->allProviders" option-value="id" option-label="name"
-                            placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                            search :disabled="$loadingOffices" class="edz-company-select" />
-                    @elseif (count($this->allProviders) === 1)
-                        @php $singleProvider = $this->allProviders[0]; @endphp
-                        <div data-edz-company-single
-                            class="edz-company-single flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-border bg-surface-secondary">
-                            <x-edz.icon name="truck" class="w-4 h-4 text-brand-600 shrink-0" />
-                            <span class="text-sm font-medium text-ink truncate">{{ $singleProvider['name'] }}</span>
-                            <span class="text-xs text-ink-muted shrink-0">{{ __('merchant_panel.default_provider') }}</span>
-                        </div>
-                    @else
-                        <x-edz.select wire:model="form.shipping_provider_id"
-                            wire:change="applyProviderScope($event.target.value)"
-                            :options="$this->allProviders" option-value="id" option-label="name"
-                            placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                            search :disabled="$loadingOffices" class="edz-company-select" />
-                    @endif
-                    @error('form.shipping_provider_id')
-                        <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                    @enderror
+                    {{-- Delivery cascade — partner (company / rider) → type → wilaya → city → office --}}
+                    <label class="edz-label">{{ __('merchant_panel.shipping_partner') }}</label>
+                    @include('livewire.merchant.orders.partials.partner-picker', ['picker' => 'form'])
 
                     <div>
                         <label class="edz-label">{{ __('merchant_panel.delivery') }}</label>
@@ -89,8 +66,10 @@
                         </div>
                     </div>
 
-                    {{-- Office (office deliveries only, scoped to company + municipality) --}}
+                    {{-- Office (office deliveries only, scoped to company + municipality; hidden
+                         for the rider leg — a rider carries to the address) --}}
                     <div x-show="delivery === 'stopdesk'" x-cloak>
+                    @if (($this->formPartnerType ?? 'provider') === 'provider')
                         <div class="flex items-center gap-2">
                             <div class="flex-1">
                                 <label class="edz-label">{{ __('merchant_panel.office') }}</label>
@@ -122,6 +101,7 @@
                             <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                         @enderror
                     </div>
+                    @endif
 
                     {{-- Submit --}}
                     <div class="flex justify-end gap-2 pt-2 border-t border-surface-border">

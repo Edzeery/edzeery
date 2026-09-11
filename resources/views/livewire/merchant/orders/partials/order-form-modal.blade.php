@@ -17,7 +17,7 @@
                         </div>
                     </div>
 
-                    {{-- Customer & Address â€” 4-col grid (1 @375, 2 @768, 4 @1440) --}}
+                    {{-- Customer & Address — 4-col grid (1 @375, 2 @768, 4 @1440) --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-4 gap-4">
                         <div>
                             <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
@@ -43,37 +43,14 @@
                         </div>
                     </div>
 
-                    {{-- Delivery cascade â€” company â†’ type â†’ wilaya â†’ city â†’ office --}}
+                    {{-- Delivery cascade — company → type → wilaya → city → office --}}
                     <div x-data="{ delivery: $wire.form.delivery_type }"
                         x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
                         x-effect="delivery = $wire.form.delivery_type">
-                        <label class="edz-label">{{ __('merchant_panel.shipping_company') }}</label>
-                        @if (count($this->allProviders) > 1)
-                            <x-edz.select wire:model="form.shipping_provider_id"
-                                wire:change="applyProviderScope($event.target.value)"
-                                :options="$this->allProviders" option-value="id" option-label="name"
-                                placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                                search :disabled="$loadingOffices" class="edz-company-select" />
-                        @elseif (count($this->allProviders) === 1)
-                            @php $singleProvider = $this->allProviders[0]; @endphp
-                            <div data-edz-company-single
-                                class="edz-company-single flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-border bg-surface-secondary">
-                                <x-edz.icon name="truck" class="w-4 h-4 text-brand-600 shrink-0" />
-                                <span class="text-sm font-medium text-ink truncate">{{ $singleProvider['name'] }}</span>
-                                <span class="text-xs text-ink-muted shrink-0">{{ __('merchant_panel.default_provider') }}</span>
-                            </div>
-                        @else
-                            <x-edz.select wire:model="form.shipping_provider_id"
-                                wire:change="applyProviderScope($event.target.value)"
-                                :options="$this->allProviders" option-value="id" option-label="name"
-                                placeholder="{{ __('merchant_panel.select_company') }}" size="sm"
-                                search :disabled="$loadingOffices" class="edz-company-select" />
-                        @endif
-                        @error('form.shipping_provider_id')
-                            <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                        @enderror
+                        <label class="edz-label">{{ __('merchant_panel.shipping_partner') }}</label>
+                    @include('livewire.merchant.orders.partials.partner-picker', ['picker' => 'form'])
 
-                        <label class="edz-label mt-4">{{ __('merchant_panel.delivery') }}</label>
+                    <label class="edz-label mt-4">{{ __('merchant_panel.delivery') }}</label>
                         <div class="inline-flex rounded-lg border border-surface-border overflow-hidden">
                             <button type="button"
                                 :class="delivery === 'home' ? 'bg-brand-500 text-white' : 'bg-surface text-ink'"
@@ -91,12 +68,12 @@
                             </button>
                         </div>
 
-                        {{-- Wilaya â†’ city --}}
+                        {{-- Wilaya → city --}}
                         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="edz-label">{{ __('merchant_panel.state') }}</label>
                                 <x-edz.select wire:model="form.state_id" wire:change="loadCities($event.target.value)"
-                                    :options="$this->formAvailableStates !== [] ? $this->formAvailableStates : $this->allStates" option-value="id" option-label="name" option-code="state_code" placeholder="â€”"
+                                    :options="$this->formAvailableStates !== [] ? $this->formAvailableStates : $this->allStates" option-value="id" option-label="name" option-code="state_code" placeholder="—”"
                                     size="sm" search />
                                 @if ($this->formCoverageHint)
                                     <p class="text-xs text-warning-500 mt-1">{{ __("order_flow.{$this->formCoverageHint}") }}</p>
@@ -118,8 +95,10 @@
                             </div>
                         </div>
 
-                        {{-- Office (office deliveries only, scoped to company + municipality) --}}
+                        {{-- Office (office deliveries only, scoped to company + municipality; hidden
+                             for the rider leg — a rider carries to the address) --}}
                         <div x-show="delivery === 'stopdesk'" x-cloak class="mt-4">
+                        @if (($this->formPartnerType ?? 'provider') === 'provider')
                             <div class="flex items-center gap-2">
                                 <div class="flex-1">
                                     <label class="edz-label">{{ __('merchant_panel.office') }}</label>
@@ -151,6 +130,7 @@
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
                         </div>
+                        @endif
                     </div>
 
                     {{-- Order Info --}}
@@ -205,7 +185,7 @@
                                                 {{ $item['name'] }}
                                             </div>
                                             <div class="text-xs text-ink-muted mt-0.5">
-                                                SKU: {{ $item['sku'] ?? 'â€”' }}
+                                                SKU: {{ $item['sku'] ?? '—' }}
                                                 @if (($item['stock'] ?? 0) <= 0)
                                                     <span
                                                         class="text-danger-500 ml-2">{{ __('merchant_panel.out_of_stock') }}</span>
@@ -316,7 +296,7 @@
                         </div>
                     @endif
 
-                    {{-- Order Summary â€” Shared financial grid (single source for create & edit) --}}
+                    {{-- Order Summary — Shared financial grid (single source for create & edit) --}}
                     @if (!empty($form['items']))
                         @include('livewire.merchant.orders.partials.order-financial-summary')
                     @endif

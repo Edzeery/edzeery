@@ -8,6 +8,8 @@ import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
 import orderRowActions, { orderEventsMenu, orderMoreMenu, itemsEditMenu } from "./components/order-row-actions.js";
+import edzRowMenu from "./components/edz-row-menu.js";
+import edzTooltip from "./components/edz-tooltip.js";
 import edzDropdown from "./components/edz-dropdown.js";
 import orderColumnReorderDraft from "./components/order-column-reorder.js";
 import initButtonLoading from "./edz-button-loading.js";
@@ -186,6 +188,12 @@ function registerEdzPanel() {
 
     // --- Mobile card overflow actions popover (P29.7) ---
     Alpine.data("orderMoreMenu", orderMoreMenu);
+
+    // --- Tracking row actions (anchored over the row / bottom sheet on phones) ---
+    Alpine.data("edzRowMenu", edzRowMenu);
+
+    // --- Apple-style floating tooltip (x-edz.tooltip) ---
+    Alpine.data("edzTooltip", edzTooltip);
 
     // --- Mobile card items-editor menu (P31.9: products/quantity/price modals trigger) ---
     Alpine.data("itemsEditMenu", itemsEditMenu);

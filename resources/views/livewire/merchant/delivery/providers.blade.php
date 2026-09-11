@@ -5,6 +5,7 @@ use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
@@ -75,12 +76,17 @@ $loadData = function (): void {
         ->map(fn (ShippingProvider $p) => [
             'id' => $p->id,
             'name' => $p->name,
+            'code' => $p->code,
             'platform' => $p->carrierPlatform?->name,
             'carrier' => $p->carrier?->name,
+            'carrier_id' => $p->carrier_id,
             'credentials_count' => count((array) ($p->credentials ?? [])),
             'rates_count' => $p->delivery_rates_count,
             'is_active' => $p->is_active,
             'is_default' => $p->is_default,
+            'webhook_enabled' => (bool) $p->webhook_token,
+            'webhook_token' => $p->webhook_token,
+            'webhook_last_seen' => $p->webhook_last_seen_at?->toDateTimeString(),
         ])
         ->all();
 };
@@ -320,6 +326,38 @@ $toggleProviderActive = function (string $id): void {
     $this->loadData();
 };
 
+// ——— Delivery webhook — carrier push endpoint per provider. ———
+$enableWebhook = function (string $id): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+
+    $provider = ShippingProvider::where('store_id', currentStoreId())->findOrFail($id);
+
+    abort_unless($provider->carrier_id, 403);
+
+    if (! $provider->webhook_token) {
+        $provider->update(['webhook_token' => (string) Str::uuid()]);
+    }
+
+    $this->loadData();
+    $this->dispatch('swal', type: 'success', title: __('order_flow.webhook_ready'));
+};
+
+$regenerateWebhook = function (string $id): void {
+    abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
+
+    $provider = ShippingProvider::where('store_id', currentStoreId())->findOrFail($id);
+
+    abort_unless($provider->carrier_id, 403);
+
+    $provider->update([
+        'webhook_token' => (string) Str::uuid(),
+        'webhook_last_seen_at' => null,
+    ]);
+
+    $this->loadData();
+    $this->dispatch('swal', type: 'success', title: __('order_flow.webhook_regenerated'));
+};
+
 $deleteProvider = function (string $id): void {
     abort_unless(canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value), 403);
     $storeId = currentStoreId();
@@ -402,6 +440,87 @@ $deleteProvider = function (string $id): void {
                             <span class="font-medium text-ink">{{ $provider['rates_count'] }}</span>
                         </div>
                     </div>
+
+                    {{-- Delivery webhook — carrier push endpoint (carrier-backed providers only) --}}
+                    @if ($provider['carrier_id'])
+                        <div class="mt-4 pt-3 border-t border-surface-border space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-semibold text-ink">{{ __('order_flow.webhook_endpoint') }}</span>
+                                @if ($provider['webhook_enabled'])
+                                    <x-edz.badge tone="success">{{ __('order_flow.webhook_ready') }}</x-edz.badge>
+                                @else
+                                    <x-edz.badge tone="neutral">{{ __('order_flow.webhook_not_configured') }}</x-edz.badge>
+                                @endif
+                            </div>
+                            @if ($provider['webhook_enabled'])
+                                @php
+                                    $webhookCanonical = $provider['code']
+                                        ? route('webhooks.delivery', ['provider' => $provider['code']])
+                                        : null;
+                                    $webhookFull = $provider['code']
+                                        ? route('webhooks.delivery', ['provider' => $provider['code'], 'token' => $provider['webhook_token']])
+                                        : route('webhooks.delivery', ['provider' => $provider['webhook_token']]);
+                                @endphp
+                                <div class="flex items-center gap-1" x-data="{ copied: false }">
+                                    @if ($webhookCanonical)
+                                        <code dir="ltr"
+                                            class="flex-1 min-w-0 truncate text-[11px] text-ink-muted tabular-nums"
+                                            data-webhook="{{ $webhookFull }}"
+                                            title="{{ $webhookCanonical }}">{{ $webhookCanonical }}</code>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm shrink-0"
+                                            :title="copied ? '{{ __('order_flow.webhook_copy') }} ✓' : '{{ __('order_flow.webhook_copy') }}'"
+                                            x-on:click="navigator.clipboard.writeText($el.closest('.flex').querySelector('code').dataset.webhook); copied = true; setTimeout(() => copied = false, 1500)">
+                                            <x-edz.icon name="clipboard" class="w-4 h-4" />
+                                        </button>
+                                        @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
+                                            <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm shrink-0"
+                                                title="{{ __('order_flow.webhook_token_regenerate') }}"
+                                                wire:click="regenerateWebhook('{{ $provider['id'] }}')">
+                                                <x-edz.icon name="arrow-path" class="w-4 h-4" />
+                                            </button>
+                                        @endif
+                                    @else
+                                        <code dir="ltr"
+                                            class="flex-1 min-w-0 truncate text-[11px] text-ink-muted tabular-nums"
+                                            data-webhook="{{ $webhookFull }}">{{ $webhookFull }}</code>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm shrink-0"
+                                            :title="copied ? '{{ __('order_flow.webhook_copy') }} ✓' : '{{ __('order_flow.webhook_copy') }}'"
+                                            x-on:click="navigator.clipboard.writeText($el.closest('.flex').querySelector('code').dataset.webhook); copied = true; setTimeout(() => copied = false, 1500)">
+                                            <x-edz.icon name="clipboard" class="w-4 h-4" />
+                                        </button>
+                                    @endif
+                                </div>
+                                @if ($webhookCanonical)
+                                    <div class="flex items-center gap-1" x-data="{ copied: false }">
+                                        <span class="text-[11px] text-ink-muted shrink-0">{{ __('order_flow.webhook_token_label') }}:</span>
+                                        <code dir="ltr"
+                                            class="flex-1 min-w-0 truncate text-[11px] font-mono text-ink-muted tabular-nums"
+                                            data-token="{{ $provider['webhook_token'] }}"
+                                            title="{{ $provider['webhook_token'] }}">{{ $provider['webhook_token'] }}</code>
+                                        <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm shrink-0"
+                                            :title="copied ? '{{ __('order_flow.webhook_token_copy') }} ✓' : '{{ __('order_flow.webhook_token_copy') }}'"
+                                            x-on:click="navigator.clipboard.writeText($el.closest('.flex').querySelector('code').dataset.token); copied = true; setTimeout(() => copied = false, 1500)">
+                                            <x-edz.icon name="shield-check" class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                @endif
+                                <p class="text-[11px] leading-snug text-ink-muted">{{ __('order_flow.webhook_header_hint') }}</p>
+                                <p class="text-[11px] text-ink-muted">
+                                    {{ __('order_flow.webhook_last_seen') }}:
+                                    <span class="tabular-nums">{{ $provider['webhook_last_seen'] ?? __('order_flow.webhook_never') }}</span>
+                                </p>
+                            @else
+                                <p class="text-[11px] leading-snug text-ink-muted">{{ __('order_flow.webhook_hint') }}</p>
+                                @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
+                                    <button type="button" wire:click="enableWebhook('{{ $provider['id'] }}')"
+                                        class="edz-btn edz-btn--ghost edz-btn--sm">
+                                        <x-edz.icon name="external-link" class="w-4 h-4" />
+                                        {{ __('order_flow.webhook_enable') }}
+                                    </button>
+                                @endif
+                            @endif
+                        </div>
+                    @endif
 
                     @if (canStore(\App\Enums\Store\StorePermissionEnum::DELIVERY_PRICING_MANAGE->value))
                         <div class="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-surface-border">

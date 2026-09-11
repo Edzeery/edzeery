@@ -22,6 +22,7 @@ class Carrier extends Model
         'supports_free_shipping_mode',
         'supports_express_economic',
         'supports_api_notes',
+        'supports_order_delete',
         'supports_price_sync',
         'sort_order',
     ];
@@ -35,6 +36,7 @@ class Carrier extends Model
         'supports_free_shipping_mode'   => 'boolean',
         'supports_express_economic'     => 'boolean',
         'supports_api_notes'            => 'boolean',
+        'supports_order_delete'         => 'boolean',
         'supports_price_sync'           => 'boolean',
         'sort_order'                    => 'integer',
     ];
@@ -65,7 +67,7 @@ class Carrier extends Model
      * of truth reused by the merchant Blade view and the Filament admin, so
      * raw column-name strings never leak across layers.
      *
-     * @return array{delivery: bool, exchange: bool, pickup: bool, free_shipping_mode: bool, express_economic: bool, api_notes: bool, price_sync: bool}
+     * @return array{delivery: bool, exchange: bool, pickup: bool, free_shipping_mode: bool, express_economic: bool, api_notes: bool, order_delete: bool, price_sync: bool}
      */
     public function capabilityList(): array
     {
@@ -76,6 +78,7 @@ class Carrier extends Model
             'free_shipping_mode' => (bool) $this->supports_free_shipping_mode,
             'express_economic'   => (bool) $this->supports_express_economic,
             'api_notes'          => (bool) $this->supports_api_notes,
+            'order_delete'       => (bool) $this->supports_order_delete,
             'price_sync'         => (bool) $this->supports_price_sync,
         ];
     }

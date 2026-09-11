@@ -70,9 +70,13 @@ state([
     'allStopdeskPoints' => [],
     'allProviders' => [],
 
+    // Active delivery riders of the store (carrier partner pickers / drawer).
+    'riderOptions' => [],
+
     // Inline-edit options for the row currently being edited (31.3 searchable selects)
     'editCityOptions' => [],
     'editProviderOptions' => [],
+    'editingValueKind' => 'provider', // 'provider' | 'rider' for the inline carrier select
     'editStopdeskOptions' => [],
     'editDeliveryTypeOptions' => [],
     'editShipmentTypeOptions' => [],
@@ -127,6 +131,7 @@ state([
         'city_id' => '',
         'delivery_type' => 'home',
         'shipping_provider_id' => '',
+        'delivery_rider_id' => '',
         'stopdesk_point_id' => '',
         'shipment_type' => 'delivery',
         'payment_method' => 'cod',
@@ -141,6 +146,7 @@ state([
     'formProductView' => 'list', // 'list' | 'variants'
     'formSelectedProduct' => null,
     'formSelectedItems' => [],
+    'formPartnerType' => 'provider', // 'provider' | 'rider' segment in the create/edit form
 
     // Carrier-first office picker options (create + edit) for x-edz.select
     'formOffices' => [],
@@ -160,7 +166,9 @@ state([
     // Confirmation drawer (P26)
     'showConfirmModal' => false,
     'confirmOrderId' => null,
+    'confirmPartnerType' => 'provider', // 'provider' | 'rider' segment in the confirm drawer
     'confirmProviderId' => '',
+    'confirmRiderId' => '',
     'confirmContacted' => false,
     'confirmSummary' => null,
     'duplicateWarnings' => [],
@@ -494,9 +502,28 @@ mount(function (): void {
 
     // 31.3 — static option sets shared by the inline searchable selects.
     $this->editProviderOptions = collect($this->allProviders)
-        ->map(fn($p) => ['value' => (string) $p['id'], 'label' => $p['name'], 'hint' => null])
+        ->map(fn($p) => ['value' => (string) $p['id'], 'label' => $p['name'], 'hint' => null, 'kind' => 'provider'])
         ->values()
         ->all();
+
+    // Active delivery riders are also carrier partners: they join the inline
+    // carrier select (searchable by name or phone) so riders-only stores can
+    // assign them straight from the table, exactly like companies.
+    $this->riderOptions = app(\App\Domains\Shipping\Services\DeliveryRiderService::class)
+        ->listForStore($storeId, onlyActive: true)
+        ->map(fn($r) => [
+            'value' => (string) $r->id,
+            'label' => $r->name,
+            'hint' => (string) ($r->phone ?? ''),
+            'kind' => 'rider',
+        ])
+        ->values()
+        ->all();
+
+    $this->editProviderOptions = array_merge(
+        $this->editProviderOptions,
+        $this->riderOptions,
+    );
     $this->editDeliveryTypeOptions = [
         ['value' => 'home', 'label' => __('merchant_panel.home_delivery_label')],
         ['value' => 'stopdesk', 'label' => __('merchant_panel.stop_desk_label')],
@@ -1665,8 +1692,10 @@ $openConfirmModal = function (string $orderId): void {
     }
 
     $this->confirmOrderId = $orderId;
+    $this->confirmPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
+    $this->confirmRiderId = $order->delivery_rider_id ?? '';
     $this->confirmProviderId = $order->shipping_provider_id ?? '';
-    if (blank($this->confirmProviderId)) {
+    if (blank($this->confirmProviderId) && blank($this->confirmRiderId)) {
         $this->confirmProviderId = $this->storeDefaultProviderId();
     }
     $this->confirmContacted = false;
@@ -1783,6 +1812,53 @@ $submitConfirmAndSend = function (): void {
         return;
     }
 
+    // The drawer's carrier segment decides the leg: a company OR a delivery
+    // rider, never both (exclusive partner, per OrdersOperationsPlan §0.2).
+    $providerId = null;
+    $riderId = null;
+
+    if (($this->confirmPartnerType ?? 'provider') === 'rider') {
+        $riderId = ! empty($this->confirmRiderId)
+            ? $this->confirmRiderId
+            : ($order->delivery_rider_id ?? null);
+    } else {
+        $providerId = ! empty($this->confirmProviderId)
+            ? $this->confirmProviderId
+            : ($order->shipping_provider_id ?? null);
+    }
+
+    if (! $providerId && ! $riderId) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.confirm_requires_partner')]);
+        return;
+    }
+
+    // Persist the exclusive leg BEFORE the gateway call: completeness for a
+    // rider hand-off keys off order.delivery_rider_id + address.
+    if ($riderId) {
+        $riderExists = \App\Domains\Shipping\Models\DeliveryRider::where('store_id', currentStoreId())
+            ->where('is_active', true)
+            ->whereKey($riderId)
+            ->exists();
+
+        if (! $riderExists) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.rider_invalid')]);
+            return;
+        }
+
+        $order->update([
+            'delivery_rider_id' => $riderId,
+            'shipping_provider_id' => null,
+            'stopdesk_point_id' => null,
+        ]);
+        $order->unsetRelation('deliveryRider');
+        $order->unsetRelation('shippingProvider');
+    } elseif ($providerId) {
+        $order->update(['delivery_rider_id' => null]);
+        $order->unsetRelation('deliveryRider');
+    }
+
+    // Re-check completeness against the persisted leg: a drawer-selected rider
+    // now counts as the carrier, and the rider leg needs the order address.
     $missing = $this->collectMissingFields($order, true);
 
     if ($missing !== []) {
@@ -1790,17 +1866,6 @@ $submitConfirmAndSend = function (): void {
             'icon' => 'warning',
             'title' => __('order_flow.confirm_missing_fields', ['fields' => implode('، ', $missing)]),
         ]);
-        return;
-    }
-
-    $providerId = ! empty($this->confirmProviderId)
-        ? $this->confirmProviderId
-        : ($order->shipping_provider_id ?? null);
-
-    $isRider = ! empty($order->delivery_rider_id) && empty($providerId);
-
-    if (! $providerId && ! $isRider) {
-        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.confirm_requires_partner')]);
         return;
     }
 
@@ -1818,6 +1883,16 @@ $submitConfirmAndSend = function (): void {
             changedBy: $membership,
             confirmFirst: true,
         );
+
+        // Rider hand-off: backfill the HM/SD tracking number so the rider tab
+        // and the label always carry a scannable code (the shipped transition
+        // creates the tracking row with a null number for the rider leg).
+        if ($riderId) {
+            $fresh = $order->fresh();
+            $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
+            $trackingService->ensureRiderTracking($fresh, $trackingService->generateRiderTrackingNumber($fresh));
+        }
+
         if (! blank($this->confirmNote)) {
         $order->update(['meta' => array_merge($order->meta ?? [], ['confirm_note' => $this->confirmNote])]);
     }
@@ -2809,6 +2884,37 @@ $changeDeliveryType = function (string $type): void {
     }
 };
 
+// Exclusive carrier partner segment (company / rider) in the create/edit and
+// delivery quick-edit forms. Picking one partner clears the other + the office.
+$switchFormPartner = function (string $type): void {
+    $this->formPartnerType = $type === 'rider' ? 'rider' : 'provider';
+
+    if ($this->formPartnerType === 'rider') {
+        $this->form['shipping_provider_id'] = '';
+        $this->form['stopdesk_point_id'] = '';
+        $this->formOffices = [];
+        $this->formHasOffices = false;
+
+        return;
+    }
+
+    $this->form['delivery_rider_id'] = '';
+    $this->form['stopdesk_point_id'] = '';
+    $this->formOffices = [];
+    $this->formHasOffices = false;
+};
+
+// Exclusive carrier partner segment in the confirmation drawer.
+$switchConfirmPartner = function (string $type): void {
+    $this->confirmPartnerType = $type === 'rider' ? 'rider' : 'provider';
+
+    if ($this->confirmPartnerType === 'rider') {
+        $this->confirmProviderId = '';
+    } else {
+        $this->confirmRiderId = '';
+    }
+};
+
 $refreshFormOffices = function (): void {
     if (empty($this->form['shipping_provider_id'])) {
         return;
@@ -2862,12 +2968,15 @@ $openDeliveryModal = function (string $orderId): void {
     $this->deliveryOrderId = $order->id;
     $this->form['delivery_type'] = $order->delivery_type;
     $this->form['shipping_provider_id'] = $order->shipping_provider_id ?? '';
+    $this->form['delivery_rider_id'] = $order->delivery_rider_id ?? '';
     $this->form['state_id'] = $order->state_id ?? '';
     $this->form['city_id'] = $order->city_id ?? '';
     $this->form['stopdesk_point_id'] = $order->stopdesk_point_id ?? '';
+    $this->formPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
 
-    // Single-company stores: the sole carrier is always the effective one.
-    if (blank($this->form['shipping_provider_id'] ?? null)) {
+    // Single-company stores: the sole carrier is always the effective one —
+    // unless the order rides with a delivery rider (exclusive partner).
+    if (blank($this->form['delivery_rider_id'] ?? null) && blank($this->form['shipping_provider_id'] ?? null)) {
         $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
     }
 
@@ -2910,6 +3019,7 @@ $saveDeliveryModal = function (): void {
         $validator = Validator::make($data, [
             'delivery_type' => ['required', 'in:home,stopdesk'],
             'shipping_provider_id' => ['nullable', 'string', 'exists:shipping_providers,id'],
+            'delivery_rider_id' => ['nullable', 'string', 'exists:delivery_riders,id'],
             'state_id' => ['nullable', 'string', 'exists:states,id'],
             'city_id' => ['nullable', 'string', 'exists:cities,id'],
             'stopdesk_point_id' => ['nullable', 'string', 'exists:stopdesk_points,id'],
@@ -2918,6 +3028,17 @@ $saveDeliveryModal = function (): void {
         if ($validator->fails()) {
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => $validator->errors()->first()]);
             return;
+        }
+
+        // Exclusive carrier partner: a company and a rider can never coexist.
+        if (filled($data['shipping_provider_id'] ?? null) && filled($data['delivery_rider_id'] ?? null)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.partner_exclusive')]);
+            return;
+        }
+
+        // A rider carries to the address: office must stay clear on the rider leg.
+        if (filled($data['delivery_rider_id'] ?? null) && filled($data['stopdesk_point_id'] ?? null)) {
+            $data['stopdesk_point_id'] = null;
         }
 
         if (!empty($data['city_id']) && empty($data['state_id'])) {
@@ -2955,17 +3076,21 @@ $saveDeliveryModal = function (): void {
         $prev = [
             'delivery_type' => $order->delivery_type,
             'shipping_provider_id' => $order->shipping_provider_id,
+            'delivery_rider_id' => $order->delivery_rider_id,
             'state_id' => $order->state_id,
             'city_id' => $order->city_id,
             'stopdesk_point_id' => $order->stopdesk_point_id,
         ];
 
+        $riderLeg = filled($data['delivery_rider_id'] ?? null);
+
         $order->update([
             'delivery_type' => $data['delivery_type'],
-            'shipping_provider_id' => filled($data['shipping_provider_id']) ? $data['shipping_provider_id'] : null,
+            'shipping_provider_id' => $riderLeg ? null : (filled($data['shipping_provider_id']) ? $data['shipping_provider_id'] : null),
+            'delivery_rider_id' => $riderLeg ? $data['delivery_rider_id'] : null,
             'state_id' => filled($data['state_id']) ? $data['state_id'] : null,
             'city_id' => filled($data['city_id']) ? $data['city_id'] : null,
-            'stopdesk_point_id' => $data['delivery_type'] === 'stopdesk' && filled($data['stopdesk_point_id']) ? $data['stopdesk_point_id'] : null,
+            'stopdesk_point_id' => ! $riderLeg && $data['delivery_type'] === 'stopdesk' && filled($data['stopdesk_point_id']) ? $data['stopdesk_point_id'] : null,
         ]);
 
         $this->recalculateOrderShipping($order->fresh());
@@ -2973,6 +3098,7 @@ $saveDeliveryModal = function (): void {
         $dirty = array_keys(array_diff_assoc($prev, [
             'delivery_type' => $order->delivery_type,
             'shipping_provider_id' => $order->shipping_provider_id,
+            'delivery_rider_id' => $order->delivery_rider_id,
             'state_id' => $order->state_id,
             'city_id' => $order->city_id,
             'stopdesk_point_id' => $order->stopdesk_point_id,
@@ -2984,7 +3110,7 @@ $saveDeliveryModal = function (): void {
                 'field' => 'order.delivery',
                 'record_id' => $order->id,
                 'before' => $prev,
-                'after' => $order->only(['delivery_type', 'shipping_provider_id', 'state_id', 'city_id', 'stopdesk_point_id']),
+                'after' => $order->only(['delivery_type', 'shipping_provider_id', 'delivery_rider_id', 'state_id', 'city_id', 'stopdesk_point_id']),
                 'changed' => $dirty,
             ])
             ->on($order)
@@ -3372,6 +3498,16 @@ $startOrderProviderEdit = function (string $orderId): void {
 
     $this->editStopdeskOptions = $this->inlineStopdeskOptions($order);
 
+    // The inline carrier select merges active companies and riders. The seeded
+    // value follows whatever the order actually uses; single-company stores
+    // default to their sole carrier, riders-only stores to the rider leg.
+    if (filled($order->delivery_rider_id)) {
+        $this->editingValueKind = 'rider';
+        $this->startEdit('order.shipping_provider', $orderId, $order->delivery_rider_id);
+        return;
+    }
+
+    $this->editingValueKind = 'provider';
     $providerId = $order->shipping_provider_id;
     if (blank($providerId)) {
         $providerId = $this->storeDefaultProviderId();
@@ -3401,25 +3537,41 @@ $saveOrderProvider = function (?string $providerId = null): void {
                     return;
                 }
 
-                $providerExists = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
-                    ->whereKey($candidate)
-                    ->exists();
+                $isRider = collect($this->riderOptions)->contains(fn($o) => $o['value'] === (string) $candidate);
 
-                if (!$providerExists) {
-                    $fail(__('Selected shipping company is invalid'));
+                $exists = $isRider
+                    ? \App\Domains\Shipping\Models\DeliveryRider::where('store_id', currentStoreId())->whereKey($candidate)->exists()
+                    : \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())->whereKey($candidate)->exists();
+
+                if (!$exists) {
+                    $fail(__('Selected shipping partner is invalid'));
                 }
             }]];
         },
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => function (Order $order, $value): void {
-            $providerId = blank($value) ? null : $value;
-            $data = ['shipping_provider_id' => $providerId];
+            $isRider = filled($value) && collect($this->riderOptions)->contains(fn($o) => $o['value'] === (string) $value);
+
+            if ($isRider) {
+                // Rider leg: exclusive carrier — clears the company + office.
+                $order->update([
+                    'delivery_rider_id' => $value,
+                    'shipping_provider_id' => null,
+                    'state_id' => $order->state_id,
+                    'city_id' => $order->city_id,
+                    'stopdesk_point_id' => null,
+                ]);
+
+                return;
+            }
+
+            $data = ['shipping_provider_id' => blank($value) ? null : $value];
 
             // Switching carrier for an office order: a destination the new
             // carrier does not cover is cleared (with a toast), otherwise only
             // an office no longer served by that carrier is dropped.
-            if ($providerId && $order->delivery_type === Order::DELIVERY_STOPDESK) {
-                $coveredStateIds = $this->providerOfficeStates($providerId);
+            if ($data['shipping_provider_id'] && $order->delivery_type === Order::DELIVERY_STOPDESK) {
+                $coveredStateIds = $this->providerOfficeStates($data['shipping_provider_id']);
 
                 if ($coveredStateIds->isNotEmpty() && $order->state_id && !$coveredStateIds->contains($order->state_id)) {
                     $data['state_id'] = null;
@@ -3429,7 +3581,7 @@ $saveOrderProvider = function (?string $providerId = null): void {
                 } elseif ($order->stopdesk_point_id) {
                     $stillValid = \App\Domains\Shipping\Models\StopdeskPoint::where('store_id', currentStoreId())
                         ->whereKey($order->stopdesk_point_id)
-                        ->where(fn($q) => $q->where('shipping_provider_id', $providerId)->orWhereNull('shipping_provider_id'))
+                        ->where(fn($q) => $q->where('shipping_provider_id', $data['shipping_provider_id'])->orWhereNull('shipping_provider_id'))
                         ->exists();
 
                     if (!$stillValid) {
@@ -3439,6 +3591,11 @@ $saveOrderProvider = function (?string $providerId = null): void {
             }
 
             $order->update($data);
+
+            if (($data['shipping_provider_id'] ?? null) !== null) {
+                $order->update(['delivery_rider_id' => null]);
+            }
+
             $this->recalculateOrderShipping($order->fresh());
         },
         'label' => 'order shipping provider',
@@ -3949,6 +4106,7 @@ $openCreateModal = function (): void {
         'city_id' => '',
         'delivery_type' => 'home',
         'shipping_provider_id' => '',
+        'delivery_rider_id' => '',
         'stopdesk_point_id' => '',
         'shipment_type' => 'delivery',
         'payment_method' => 'cod',
@@ -3960,8 +4118,16 @@ $openCreateModal = function (): void {
         'items' => [],
     ];
 
+    $this->formPartnerType = 'provider';
+
     // Auto-select the store's default shipping company (is_default) when set.
     $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
+
+    // Riders-only stores start on the rider segment so their orders can be
+    // handed to a delivery rider right away (exclusive partner picker).
+    if (blank($this->form['shipping_provider_id']) && $this->riderOptions !== []) {
+        $this->formPartnerType = 'rider';
+    }
 
     $this->formCities = [];
     $this->formOffices = [];
@@ -3996,8 +4162,9 @@ $submitCreate = function (): void {
         'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
         'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
         'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
-        'shipping_provider_id' => 'required_if:delivery_type,stopdesk|nullable|exists:shipping_providers,id',
-        'stopdesk_point_id' => 'required_if:delivery_type,stopdesk|nullable|exists:stopdesk_points,id',
+        'shipping_provider_id' => 'nullable|exists:shipping_providers,id',
+        'delivery_rider_id' => 'nullable|exists:delivery_riders,id',
+        'stopdesk_point_id' => 'nullable|exists:stopdesk_points,id',
         'phone_secondary' => 'nullable|string|max:20|regex:/^0[5-7]\d{8}$/',
         'discount_type' => 'nullable|in:amount,percent',
         'discount_value' => 'nullable|numeric|min:0',
@@ -4005,6 +4172,27 @@ $submitCreate = function (): void {
         'weight_kg' => 'nullable|numeric|min:0',
         'notes' => 'nullable|string|max:500',
     ])->validate();
+
+    // Exclusive carrier partner: a company and a rider can never coexist.
+    if (filled($this->form['shipping_provider_id'] ?? null) && filled($this->form['delivery_rider_id'] ?? null)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.partner_exclusive')]);
+        return;
+    }
+
+    // A rider carries to the address: clear the office on the rider leg.
+    $isRiderLeg = filled($this->form['delivery_rider_id'] ?? null);
+    if ($isRiderLeg) {
+        $this->form['stopdesk_point_id'] = '';
+        $this->form['shipping_provider_id'] = '';
+    }
+
+    // Office deliveries need a company: a stopdesk order with no provider and
+    // no rider cannot hold an office (rider legs type stopdesk are allowed and
+    // simply omit the office).
+    if ($this->form['delivery_type'] === 'stopdesk' && ! $isRiderLeg && blank($this->form['stopdesk_point_id'] ?? null)) {
+        $this->addError('stopdesk_point_id', __('merchant_panel.office_required_for_stopdesk'));
+        return;
+    }
 
     // C3+C4: Validate prices from DB + check stock
     $variantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
@@ -4067,9 +4255,11 @@ $submitCreate = function (): void {
             'phone_secondary' => $this->form['phone_secondary'],
             'weight_kg' => $this->form['weight_kg'] ?: 1.00,
             // Carrier applies to both delivery types (dispatch needs it for home too);
-            // the office only applies to stopdesk deliveries.
-            'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
-            'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
+            // the office only applies to stopdesk deliveries AND never on the
+            // rider leg (a rider carries to the address).
+            'shipping_provider_id' => $isRiderLeg ? null : ($this->form['shipping_provider_id'] ?: null),
+            'delivery_rider_id' => $isRiderLeg ? $this->form['delivery_rider_id'] : null,
+            'stopdesk_point_id' => ! $isRiderLeg && $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
             'items' => $this->form['items'],
         ],
         $membership,
@@ -4114,6 +4304,7 @@ $openEditModal = function (string $orderId): void {
         'notes' => $order->notes ?? '',
         'weight_kg' => $order->weight_kg ?? '',
         'shipping_provider_id' => $order->shipping_provider_id ?? '',
+        'delivery_rider_id' => $order->delivery_rider_id ?? '',
         'stopdesk_point_id' => $order->stopdesk_point_id ?? '',
         'items' => $order->items
             ->map(
@@ -4132,8 +4323,11 @@ $openEditModal = function (string $orderId): void {
             ->toArray(),
     ];
 
-    // Single-company stores: the sole carrier is always the effective one.
-    if (blank($this->form['shipping_provider_id'] ?? null)) {
+    $this->formPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
+
+    // Single-company stores: the sole carrier is always the effective one —
+    // unless the order rides with a delivery rider (exclusive partner).
+    if (blank($this->form['delivery_rider_id'] ?? null) && blank($this->form['shipping_provider_id'] ?? null)) {
         $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
     }
 
@@ -4190,15 +4384,30 @@ $submitEdit = function (): void {
         'discount_value' => 'nullable|numeric|min:0',
         'discount_reason' => 'nullable|string|max:255',
         'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
+        'delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
         'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
     ])->validate();
+
+    // Exclusive carrier partner: a company and a rider can never coexist.
+    if (filled($this->form['shipping_provider_id'] ?? null) && filled($this->form['delivery_rider_id'] ?? null)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.partner_exclusive')]);
+        return;
+    }
+
+    // A rider carries to the address: clear the office on the rider leg.
+    $isRiderLeg = filled($this->form['delivery_rider_id'] ?? null);
+    if ($isRiderLeg) {
+        $this->form['stopdesk_point_id'] = '';
+        $this->form['shipping_provider_id'] = '';
+    }
 
     $storeId = currentStoreId();
 
     // Both assignments must belong to this store.
-    foreach (['shipping_provider_id', 'stopdesk_point_id'] as $shipField) {
+    foreach (['shipping_provider_id', 'delivery_rider_id', 'stopdesk_point_id'] as $shipField) {
         if (filled($this->form[$shipField] ?? null)) {
-            $model = $shipField === 'stopdesk_point_id' ? \App\Domains\Shipping\Models\StopdeskPoint::class : \App\Domains\Shipping\Models\ShippingProvider::class;
+            $model = $shipField === 'stopdesk_point_id' ? \App\Domains\Shipping\Models\StopdeskPoint::class
+                : ($shipField === 'delivery_rider_id' ? \App\Domains\Shipping\Models\DeliveryRider::class : \App\Domains\Shipping\Models\ShippingProvider::class);
             $model::where('store_id', $storeId)->findOrFail($this->form[$shipField]);
         }
     }
@@ -4232,9 +4441,11 @@ $submitEdit = function (): void {
         'notes' => $this->form['notes'],
         'phone_secondary' => $this->form['phone_secondary'],
         'weight_kg' => $this->form['weight_kg'] ?: 1.00,
-        'shipping_provider_id' => $this->form['shipping_provider_id'] ?: null,
-        // Desk only applies to stopdesk deliveries; clear it on home.
-        'stopdesk_point_id' => $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
+        'shipping_provider_id' => $isRiderLeg ? null : ($this->form['shipping_provider_id'] ?: null),
+        'delivery_rider_id' => $isRiderLeg ? $this->form['delivery_rider_id'] : null,
+        // Desk only applies to stopdesk deliveries and never on the rider leg;
+        // clear it on home.
+        'stopdesk_point_id' => ! $isRiderLeg && $this->form['delivery_type'] === 'stopdesk' ? ($this->form['stopdesk_point_id'] ?: null) : null,
     ]);
 
     // Sync order items
@@ -5784,148 +5995,7 @@ $submitEdit = function (): void {
 
     @include('livewire.merchant.orders.partials.delivery-edit-modal')
 
-    {{-- Confirmation Drawer (P26) --}}
-    @if ($showConfirmModal)
-        <div @edz-modal-closed.window="$wire.closeConfirmModal()">
-        <x-edz.modal :is-open="true" size="lg" show-close-button wire:key="confirmation-drawer">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-5">
-                    <div>
-                        <h3 class="text-lg font-semibold text-ink">
-                            {{ __('order_flow.confirm_title') }}
-                            @if ($this->confirmSummary)
-                                <span class="text-ink-muted font-normal">#{{ $this->confirmSummary['number'] }}</span>
-                            @endif
-                        </h3>
-                        <p class="text-sm text-ink-muted mt-0.5">{{ __('order_flow.confirm_summary') }}</p>
-                    </div>
-                </div>
-
-                @if ($this->confirmSummary)
-                    <dl
-                        class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('merchant_panel.customer') }}</dt>
-                            <dd class="text-ink text-end font-medium">{{ $this->confirmSummary['customer'] }}</dd>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('merchant_panel.total') }}</dt>
-                            <dd class="text-ink text-end font-bold">{{ $this->confirmSummary['total'] }}</dd>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('merchant_panel.status') }}</dt>
-                            <dd class="text-ink text-end">{{ $this->confirmSummary['status'] }}</dd>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('order_flow.confirm_partner') }}</dt>
-                            <dd class="text-ink text-end">{{ $this->confirmSummary['partner'] }}</dd>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('order_flow.confirm_attempts') }}</dt>
-                            <dd class="text-ink text-end font-medium tabular-nums">{{ $this->confirmSummary['attempts'] }}</dd>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                            <dt class="text-ink-muted">{{ __('order_flow.confirm_last_contact') }}</dt>
-                            <dd class="text-ink text-end">{{ $this->confirmSummary['last_contact'] ?? '—' }}</dd>
-                        </div>
-                    </dl>
-                @endif
-
-                @if (!empty($this->duplicateWarnings))
-                    <div class="mt-4 rounded-xl border border-warning/40 bg-warning/5 p-3">
-                        <div class="flex items-center gap-2 text-warning mb-2">
-                            <x-edz.icon name="exclamation-triangle" class="w-4 h-4" />
-                            <span class="text-sm font-medium">
-                                {{ __('order_flow.duplicate_detected', ['count' => count($this->duplicateWarnings)]) }}
-                            </span>
-                        </div>
-                        <ul class="space-y-1.5 text-sm">
-                            @foreach ($this->duplicateWarnings as $dup)
-                                <li class="flex items-center justify-between gap-2">
-                                    <span class="text-ink truncate">
-                                        #{{ $dup['number'] }}
-                                        <span class="text-ink-muted">• {{ \Carbon\Carbon::parse($dup['created_at'])->diffForHumans() }}</span>
-                                    </span>
-                                    <span class="shrink-0 text-xs text-ink-muted">
-                                        ×{{ $dup['total_overlap_qty'] }}
-                                    </span>
-                                </li>
-                            @endforeach
-                        </ul>
-                        @if ($this->confirmOrderId)
-                            <button wire:click="markOrderDuplicate('{{ $this->confirmOrderId }}')" type="button"
-                                class="mt-3 edz-btn edz-btn--ghost edz-btn--sm">
-                                <x-edz.icon name="copy" class="w-3.5 h-3.5" />
-                                {{ __('order_flow.mark_as_duplicate') }}
-                            </button>
-                        @endif
-                    </div>
-                @elseif ($this->confirmOrderId)
-                    <div class="mt-4 flex items-center gap-2 text-xs text-ink-muted">
-                        <x-edz.icon name="check-circle" class="w-4 h-4 text-success" />
-                        {{ __('order_flow.no_duplicates') }}
-                    </div>
-                @endif
-
-                <div class="mt-5">
-                    <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide mb-2">
-                        {{ __('order_flow.confirm_partner') }}
-                    </h4>
-                    <x-edz.select wire:model="confirmProviderId"
-                        :options="$allProviders"
-                        option-value="id" option-label="name" search
-                        placeholder="{{ __('order_flow.confirm_provider_placeholder') }}" />
-                </div>
-
-                <div class="mt-5 flex items-center justify-between gap-4 rounded-xl border border-surface-border p-3">
-                    <div class="flex items-center gap-2 text-sm text-ink">
-                        <x-edz.icon name="phone" class="w-4 h-4 text-ink-muted" />
-                        {{ __('order_flow.confirm_contacted') }}
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" wire:model="confirmContacted" class="sr-only peer">
-                        <div
-                            class="w-10 h-6 bg-surface-tertiary rounded-full peer-checked:bg-accent-600 transition"></div>
-                        <div
-                            class="absolute left-1 top-0.5 w-5 h-5 bg-white rounded-full shadow transition peer-checked:translate-x-4">
-                        </div>
-                    </label>
-                </div>
-
-                <div class="mt-4">
-                    <label for="confirm-note" class="edz-label">
-                        {{ __('order_flow.confirm_note') }}
-                    </label>
-                    <textarea id="confirm-note" wire:model="confirmNote" rows="2"
-                        class="edz-input mt-1 w-full resize-none @if ($this->editingError) edz-inline-edit__input--error @endif"
-                        placeholder="{{ __('order_flow.confirm_note_placeholder') }}"></textarea>
-                </div>
-
-                <div class="mt-6 flex flex-col-reverse sm:flex-row gap-2 justify-end">
-                    <button wire:click="closeConfirmModal" type="button"
-                        class="edz-btn edz-btn--ghost">
-                        {{ __('buttons.cancel') }}
-                    </button>
-                    @if (canStore(StorePermissionEnum::ORDER_CONFIRM->value))
-                        <button wire:click="submitConfirmOnly" type="button"
-                            class="edz-btn edz-btn--ghost"
-                            wire:loading.attr="disabled">
-                            <span>{{ __('order_flow.confirm_only') }}</span>
-                        </button>
-                    @endif
-                    @if (canStore(StorePermissionEnum::ORDER_MANAGE->value))
-                        <button wire:click="submitConfirmAndSend" type="button"
-                            class="edz-btn edz-btn--primary"
-                            wire:loading.attr="disabled">
-                            <x-edz.icon name="truck" class="w-4 h-4" />
-                            <span>{{ __('order_flow.confirm_and_send') }}</span>
-                        </button>
-                    @endif
-                </div>
-            </div>
-        </x-edz.modal>
-        </div>
-    @endif
+    @include('livewire.merchant.orders.partials.confirm-drawer')
 
     {{-- Bulk Status Change (P29) --}}
     @if ($showBulkStatusModal)

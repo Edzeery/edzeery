@@ -3,6 +3,7 @@
 use App\Domains\Order\Exceptions\OrderIncompleteException;
 use App\Domains\Order\Services\OrderCompleteness;
 use App\Domains\Order\Services\OrderService;
+use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\DeliveryRate;
 use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
@@ -15,6 +16,7 @@ use App\Models\Locations\Country;
 use App\Models\Locations\State;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
+use App\Models\Orders\OrderTracking;
 use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Status;
@@ -302,7 +304,8 @@ test('confirm-and-send refuses an incomplete order without any transition', func
         ->assertDispatched('swal:toast', function ($name, $params) {
             $title = ocoToast($params)['title'] ?? '';
 
-            return ocoToast($params)['icon'] === 'warning' && str_contains($title, __('merchant_panel.items'));
+            return ocoToast($params)['icon'] === 'warning'
+                && (str_contains($title, __('order_flow.confirm_requires_partner')) || str_contains($title, __('merchant_panel.items')));
         });
 
     expect($order->fresh()->status?->key)->toBe('pending');
@@ -354,6 +357,159 @@ test('an active rider satisfies store readiness', function () {
 
     expect($result['order']->fresh()->status?->key)->toBe('shipped')
         ->and($result['rate_note'])->toBeNull();
+});
+
+// ——— Rider leg: the order ADDRESS drives completeness (never the office) ———
+
+test('a rider stopdesk-leg order requires the address, not the office, when sending', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'pending', [
+        'delivery_type' => 'stopdesk',
+        'stopdesk_point_id' => null,
+        'with_provider' => false,
+    ]);
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider Stop',
+        'phone' => '0551111222',
+        'is_active' => true,
+    ]);
+    $order->update(['delivery_rider_id' => $rider->id]);
+
+    $sendKeys = array_column(app(OrderCompleteness::class)->missing($order, true), 'key');
+
+    expect($sendKeys)->not->toContain('stopdesk_point')
+        ->and($sendKeys)->not->toContain('delivery_address');
+});
+
+test('a rider order without an address is incomplete when sending', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', [
+        'with_address' => false,
+        'with_provider' => false,
+    ]);
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider NoAddr',
+        'phone' => '0552222333',
+        'is_active' => true,
+    ]);
+    $order->update(['delivery_rider_id' => $rider->id]);
+
+    $sendKeys = array_column(app(OrderCompleteness::class)->missing($order, true), 'key');
+
+    expect($sendKeys)->toContain('delivery_address')
+        ->and(app(OrderCompleteness::class)->isComplete($order, true))->toBeFalse();
+});
+
+// ——— Rider tracking number: HM/SD prefix by delivery type, store-unique ———
+
+test('generateRiderTrackingNumber prefixes HM for home and SD for stopdesk', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $service = app(OrderTrackingService::class);
+    $order = ocoOrder($store, 'pending');
+
+    expect(str_starts_with($service->generateRiderTrackingNumber($order), 'HM-'))->toBeTrue();
+
+    $order->update(['delivery_type' => 'stopdesk']);
+
+    expect(str_starts_with($service->generateRiderTrackingNumber($order), 'SD-'))->toBeTrue();
+});
+
+test('generateRiderTrackingNumber never collides with existing tracking numbers', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'pending');
+    $service = app(OrderTrackingService::class);
+
+    $existing = collect(range(1, 20))->map(fn () => $service->generateRiderTrackingNumber($order));
+    OrderTracking::create([
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'tracking_number' => $existing->first(),
+        'tracking_status' => 'shipped',
+    ]);
+
+    $next = $service->generateRiderTrackingNumber($order);
+
+    expect($existing->doesntContain($next))->toBeTrue();
+});
+
+// ——— Confirm-and-send to a rider through the actual drawer component ———
+
+test('confirm-and-send to a rider ships the order and backfills an HM/SD tracking number', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider Volt',
+        'phone' => '0553333444',
+        'is_active' => true,
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('confirmOrderId', $order->id)
+        ->set('showConfirmModal', true)
+        ->set('confirmPartnerType', 'rider')
+        ->set('confirmRiderId', $rider->id)
+        ->call('submitConfirmAndSend')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ocoToast($params)['icon'] === 'success');
+
+    $shipped = $order->fresh();
+
+    expect($shipped->status?->key)->toBe('shipped')
+        ->and($shipped->delivery_rider_id)->toBe($rider->id)
+        ->and($shipped->shipping_provider_id)->toBeNull();
+
+    $tracking = OrderTracking::where('order_id', $order->id)->first();
+
+    expect($tracking)->not->toBeNull()
+        ->and($tracking->tracking_number)->toMatch('/^HM-/');
+});
+
+test('confirm-and-send refuses an inactive or foreign rider', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
+
+    [$otherUser, $otherStore] = ocoUser(StoreRoleEnum::OWNER->value);
+    $inactiveRider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider Off',
+        'phone' => '0554444555',
+        'is_active' => false,
+    ]);
+    $foreignRider = DeliveryRider::create([
+        'store_id' => $otherStore->id,
+        'name' => 'Rider Foreign',
+        'phone' => '0555555666',
+        'is_active' => true,
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('confirmOrderId', $order->id)
+        ->set('showConfirmModal', true)
+        ->set('confirmPartnerType', 'rider')
+        ->set('confirmRiderId', $inactiveRider->id)
+        ->call('submitConfirmAndSend')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ocoToast($params)['icon'] === 'error');
+
+    expect($order->fresh()->status?->key)->toBe('confirmed');
+
+    Volt::test('merchant.orders.index')
+        ->set('confirmOrderId', $order->id)
+        ->set('showConfirmModal', true)
+        ->set('confirmPartnerType', 'rider')
+        ->set('confirmRiderId', $foreignRider->id)
+        ->call('submitConfirmAndSend')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ocoToast($params)['icon'] === 'error');
+
+    expect($order->fresh()->status?->key)->toBe('confirmed');
 });
 
 // ——— Rate note: unpriced / zero-cost announced prices are flagged at send ———

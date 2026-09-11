@@ -24,6 +24,8 @@ class ShippingProvider extends Model
         'shipment_types_enabled',
         'is_active',
         'is_default',
+        'webhook_token',
+        'webhook_last_seen_at',
         'flat_rate',
         'rider_name',
         'rider_phone',
@@ -35,6 +37,7 @@ class ShippingProvider extends Model
         'is_active'               => 'boolean',
         'is_default'              => 'boolean',
         'flat_rate'               => 'decimal:2',
+        'webhook_last_seen_at'    => 'datetime',
     ];
 
     /* =========================

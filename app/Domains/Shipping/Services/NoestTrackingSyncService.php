@@ -85,10 +85,26 @@ class NoestTrackingSyncService
             $status = NoestTrackingMapper::eventTextToStatus($eventText);
         }
 
-        if ($status === null) {
+if ($status === null) {
             // A valid carrier response was parsed even if no status mapping matched:
-            // the row was still successfully polled, so it counts as synced.
-            $tracking->update(['last_synced_at' => now()]);
+            // the row was still successfully polled, so it counts as synced. When the
+            // row never had a status we fall back to a safe IN_TRANSIT so a polled
+            // shipment is never left blank.
+            $updates = ['last_synced_at' => now()];
+
+            if (blank($tracking->tracking_status)) {
+                $updates['tracking_status'] = OrderTrackingStatus::IN_TRANSIT->value;
+
+                OrderTrackingHistory::create([
+                    'store_id'          => $tracking->store_id,
+                    'order_id'          => $tracking->order_id,
+                    'order_tracking_id' => $tracking->id,
+                    'status'            => OrderTrackingStatus::IN_TRANSIT->value,
+                    'payload'           => ['carrier_sync' => true, 'fallback_in_transit' => true],
+                ]);
+            }
+
+            $tracking->update($updates);
 
             return;
         }

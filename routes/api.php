@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\ProductsController;
 use App\Http\Controllers\Api\Webhooks\ChargilyWebhookController;
+use App\Http\Controllers\Api\Webhooks\DeliveryWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,3 +36,20 @@ Route::prefix('v1')
 Route::post('/webhooks/chargily', ChargilyWebhookController::class)
     ->name('webhooks.chargily')
     ->middleware('throttle:60,1');
+
+/*
+|--------------------------------------------------------------------------
+| Delivery Webhooks
+|--------------------------------------------------------------------------
+| Public endpoint fed by carrier delivery-tracking push events. Each carrier
+| gets a stable per-domain, per-provider URL (/webhooks/delivery/{provider}
+| where {provider} is the shipping_provider.code, e.g. "noest"). The store is
+| identified by its secret token, sent via the X-Delivery-Token header with a
+| ?token= query fallback. The controller reuses NoestTrackingSyncService::apply
+| so pushes behave exactly like scheduled polls. The legacy token-in-path form
+| (the segment was the secret itself) keeps working transiently.
+*/
+
+Route::post('/webhooks/delivery/{provider}', DeliveryWebhookController::class)
+    ->name('webhooks.delivery')
+    ->middleware('throttle:120,1');

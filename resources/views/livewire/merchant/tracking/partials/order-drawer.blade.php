@@ -43,12 +43,13 @@
                             <dd class="text-ink text-end font-mono">
                                 {{ $this->drawerTracking['tracking_number'] ?? '—' }}
                                 @if (!empty($this->drawerTracking['tracking_number']))
-                                    <button
-                                        x-on:click="navigator.clipboard.writeText('{{ $this->drawerTracking['tracking_number'] }}').then(() => EdzSwal.toast ? EdzSwal.toast('{{ __('order_flow.copy_done') }}') : null)"
-                                        class="text-accent-600 hover:text-accent-700 ms-1 align-middle"
-                                        title="{{ __('order_flow.tracking_number_copy') }}">
-                                        <x-edz.icon name="clipboard" class="w-3.5 h-3.5 inline-block" />
-                                    </button>
+                                    <x-edz.tooltip label="{{ __('order_flow.tracking_number_copy') }}">
+                                        <button
+                                            x-on:click="navigator.clipboard.writeText('{{ $this->drawerTracking['tracking_number'] }}').then(() => EdzSwal.success('', '{{ __('order_flow.copy_done') }}'))"
+                                            class="text-accent-600 hover:text-accent-700 ms-1 align-middle">
+                                            <x-edz.icon name="clipboard" class="w-3.5 h-3.5 inline-block" />
+                                        </button>
+                                    </x-edz.tooltip>
                                 @endif
                             </dd>
                         </div>

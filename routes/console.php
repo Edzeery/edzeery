@@ -30,10 +30,12 @@ Schedule::command('subscriptions:check-expired')->daily();
 // Release stock locked by orders left pending >48h (common in COD markets).
 Schedule::command('orders:auto-cancel-pending --hours=48')->dailyAt('03:00');
 
-// Poll NOEST tracking activity for every carrier-backed provider.
+// Poll NOEST tracking activity for every carrier-backed provider that has NOT
+// enabled a delivery webhook (webhook-enabled providers push statuses instead).
 Schedule::call(function () {
     $storeIds = ShippingProvider::query()
         ->where('is_active', true)
+        ->whereNull('webhook_token')
         ->whereHas('carrier', fn ($query) => $query->where('code', 'noest'))
         ->select('store_id')
         ->distinct()

@@ -36,8 +36,9 @@ class OrderService
         Status $newStatus,
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
+        bool $force = false,
     ): Order {
-        if (! $this->canTransition($order, $newStatus->key)) {
+        if (! $force && ! $this->canTransition($order, $newStatus->key)) {
             throw new \DomainException(
                 "Cannot transition order from [{$order->status?->key}] to [{$newStatus->key}]"
             );
@@ -66,7 +67,7 @@ class OrderService
         }
     }
 
-    public function availableTransitions(Order $order): array
+public function availableTransitions(Order $order): array
     {
         // Use the relationship (lazy-loads if not eager-loaded).
         // This eliminates the N+1 when loadOrders() eager-loads 'status'.
@@ -106,6 +107,27 @@ class OrderService
     public function canTransition(Order $order, string $statusKey): bool
     {
         return in_array($statusKey, $this->availableTransitions($order));
+    }
+
+    /**
+     * Revert an order to a backward status key without the public workflow
+     * gate. Only used by internal services that own their own validation and
+     * side effects (e.g. the shipment-cancel gateway returning a shipped order
+     * to 'confirmed' after the carrier deleted the parcel). History + audit
+     * still record normally via the observer.
+     */
+    public function revertTo(
+        Order $order,
+        string $newStatusKey,
+        ?string $reason = null,
+        ?StoreMembership $changedBy = null,
+    ): Order {
+        $newStatus = Status::system()
+            ->forType('order')
+            ->where('key', $newStatusKey)
+            ->firstOrFail();
+
+        return $this->transitionToStatus($order, $newStatus, $reason, $changedBy, true);
     }
 
     public function confirm(Order $order, ?StoreMembership $changedBy = null): Order

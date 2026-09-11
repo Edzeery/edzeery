@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Account\SecurityController;
 use App\Http\Controllers\Account\SettingsController;
+use App\Http\Controllers\Merchant\DeliveryLabelController;
 use App\Http\Middleware\Merchant\Store\EnsureCanCreateStore;
 use App\Http\Middleware\Merchant\Store\EnsureHasStoreRole;
 use App\Http\Middleware\Merchant\Store\EnsureStoreIsActive;
@@ -92,6 +93,8 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/teams', 'merchant.teams.index')->name('teams.index');
         Volt::route('/{store:slug}/orders', 'merchant.orders.index')->name('orders.index');
         Volt::route('/{store:slug}/tracking', 'merchant.tracking.index')->name('tracking.index');
+        Route::get('/{store:slug}/tracking/label/{tracking}', [DeliveryLabelController::class, 'show'])
+            ->name('tracking.label');
         Volt::route('/{store:slug}/returns', 'merchant.returns.index')->name('returns.index');
         Volt::route('/{store:slug}/order-settings', 'merchant.order-settings')->name('order-settings');
 

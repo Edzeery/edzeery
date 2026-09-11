@@ -176,6 +176,60 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         Cache::forget($this->desksCacheKey($provider));
     }
 
+    /**
+     * NOEST prints the shipment label at /get/order/label?tracking=… — an
+     * authenticated GET (Bearer) that returns a printable PDF/ZPL. We hand the
+     * URL back to the merchant proxy, which re-attaches the bearer token, so
+     * the store can open the label in a new tab and print it.
+     */
+    public function getLabel(ShippingProvider $provider, string $trackingNumber): array
+    {
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+
+        if ($token === '' || $trackingNumber === '') {
+            return ['ok' => false, 'message' => __('merchant_panel.connection_missing_credentials')];
+        }
+
+        return ['ok' => true, 'url' => $this->labelUrl($provider, $trackingNumber)];
+    }
+
+    public function deleteOrder(ShippingProvider $provider, string $trackingNumber): array
+    {
+        $token = (string) ($provider->credentials['api_token'] ?? '');
+        $guid = (string) ($provider->credentials['guid'] ?? '');
+
+        if ($token === '' || $guid === '' || $trackingNumber === '') {
+            return ['ok' => false, 'message' => __('merchant_panel.connection_missing_credentials')];
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders(['Authorization' => "Bearer {$token}"])
+                ->post(rtrim($this->baseUrl($provider), '/').'/delete/order', [
+                    'user_guid' => $guid,
+                    'tracking' => $trackingNumber,
+                ]);
+
+            $data = $response->json() ?? [];
+
+            // NOEST quirk (shared with addNote): the API returns HTTP 200 even
+            // when the logical call failed (already-validated order, unknown
+            // tracking number...), so inspect the body, never the status alone.
+            if (($data['success'] ?? false) === true) {
+                return [
+                    'ok' => true,
+                    'message' => (string) ($data['message'] ?? __('order_flow.shipment_cancelled')),
+                ];
+            }
+
+            $message = (string) ($data['message'] ?? $data['error'] ?? __('order_flow.shipment_cancellation_failed'));
+
+            return ['ok' => false, 'message' => $message];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     public function addNote(ShippingProvider $provider, string $trackingNumber, string $content): array
     {
         $content = trim($content);

@@ -56,6 +56,30 @@ interface CarrierIntegrationContract
     public function addNote(ShippingProvider $provider, string $trackingNumber, string $content): array;
 
     /**
+     * Delete an unvalidated shipment at the carrier (cancel-send pre-expedition).
+     * Carriers only allow deleting orders that have not been validated yet; the
+     * gateway enforces that gate via order_trackings.carrier_validated_at.
+     * Must inspect the response body — NOEST returns HTTP 200 even on logical
+     * failure (e.g. "Commande inexistante" or an already-validated order).
+     *
+     * @return array{ok: bool, message: string}
+     */
+    public function deleteOrder(ShippingProvider $provider, string $trackingNumber): array;
+
+    /**
+     * Resolve a label for an existing shipment.
+     *
+     * Carriers that can issue a printable label (PDF/ZPL) return
+     * ['ok' => true, 'url' => <auth-proxy or public url>]. The URL is fetched
+     * with the provider's credentials by the merchant label proxy so printed
+     * labels always carry the carrier's bearer token. Adapters without a label
+     * endpoint return ['ok' => false] and the UI falls back to our own sheet.
+     *
+     * @return array{ok: bool, url?: string, message?: string}
+     */
+    public function getLabel(ShippingProvider $provider, string $trackingNumber): array;
+
+    /**
      * Bust any internal cache (e.g. office lists) for this provider.
      */
     public function forgetCache(ShippingProvider $provider): void;

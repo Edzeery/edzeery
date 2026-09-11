@@ -2,7 +2,7 @@
 <div class="edz-card edz-card--padded mb-4">
     <div class="flex flex-wrap items-center gap-3">
         @php
-            $quickActiveCount = collect(['provider', 'tracking_statuses', 'date_from', 'date_to'])
+            $quickActiveCount = collect(['provider', 'tracking_statuses', 'date_from', 'date_to', 'assigned_to', 'confirmed_by', 'rider'])
                 ->filter(function ($k) {
                     if ($k === 'tracking_statuses') {
                         return count($this->filters['tracking_statuses'] ?? []) > 0;
@@ -33,7 +33,19 @@
             </button>
         </div>
 
-        {{-- Filters popover --}}
+        @if (! $this->showTrash)
+            {{-- Bulk status sync — refreshes every open adapter-backed tracking row. --}}
+            <x-edz.tooltip label="{{ __('order_flow.sync_all_statuses') }}">
+                <button wire:click="syncAllTracking" type="button" wire:loading.attr="disabled"
+                    wire:loading.class="opacity-60 pointer-events-none"
+                    class="edz-btn edz-btn--ghost edz-btn--sm">
+                    <x-edz.icon name="arrow-path" wire:loading.remove wire:target="syncAllTracking" class="w-4 h-4" />
+                    <x-edz.spinner wire:target="syncAllTracking" class="w-4 h-4" />
+                    <span class="hidden lg:inline">{{ __('order_flow.sync_all_statuses') }}</span>
+                </button>
+            </x-edz.tooltip>
+
+            {{-- Filters popover --}}
         <x-edz.dropdown align="right" width="340px"
             trigger-class="edz-btn edz-btn--ghost edz-btn--sm {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}">
             <x-slot name="trigger">
@@ -109,6 +121,33 @@
                 </div>
             </div>
         </x-edz.dropdown>
+
+        {{-- Assigned-to / confirmed-by quick filters — hidden once their column is visible (header filter takes over). --}}
+        @if (! in_array('assigned_to', $this->visibleColumns) && ! empty($this->allMembers))
+            <div class="w-44 min-w-[11rem]">
+                <x-edz.select wire:model.live="filters.assigned_to" :options="$this->allMembers"
+                    option-value="id" option-label="name" placeholder="{{ __('merchant_panel.assigned_agent') }}"
+                    size="sm" search wire:key="toolbar-assigned-to" />
+            </div>
+        @endif
+
+        @if (! in_array('confirmed_by', $this->visibleColumns) && ! empty($this->allMembers))
+            <div class="w-44 min-w-[11rem]">
+                <x-edz.select wire:model.live="filters.confirmed_by" :options="$this->allMembers"
+                    option-value="id" option-label="name" placeholder="{{ __('merchant_panel.confirmed_by') }}"
+                    size="sm" search wire:key="toolbar-confirmed-by" />
+            </div>
+        @endif
+
+        {{-- Column settings (advanced grid) --}}
+        <x-edz.tooltip label="{{ __('merchant_panel.table_settings') }}">
+            <button wire:click="openTableSettings" type="button"
+                class="edz-btn edz-btn--ghost edz-btn--sm">
+                <x-edz.icon name="view-columns" class="w-4 h-4" />
+                <span class="hidden lg:inline">{{ __('merchant_panel.columns') }}</span>
+            </button>
+        </x-edz.tooltip>
+        @endif
     </div>
 </div>
 
@@ -117,7 +156,10 @@
     $hasActiveFilters = filled($this->filters['provider'] ?? null)
         || count($this->filters['tracking_statuses'] ?? []) > 0
         || filled($this->filters['date_from'] ?? null)
-        || filled($this->filters['date_to'] ?? null);
+        || filled($this->filters['date_to'] ?? null)
+        || filled($this->filters['assigned_to'] ?? null)
+        || filled($this->filters['confirmed_by'] ?? null)
+        || filled($this->filters['rider'] ?? null);
 @endphp
 @if ($hasActiveFilters)
     <div class="mb-3 flex flex-wrap items-center gap-2">
@@ -150,6 +192,26 @@
                 <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
                     wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
                         class="w-3 h-3" /></button>
+            </span>
+        @endif
+
+        @if (filled($this->filters['assigned_to']))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('merchant_panel.assigned_agent') }}:</span>
+                <span class="max-w-[12rem] truncate">{{ collect($this->allMembers)->firstWhere('id', $this->filters['assigned_to'])['name'] ?? $this->filters['assigned_to'] }}</span>
+                <button wire:click="setFilter('assigned_to', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
+        @if (filled($this->filters['confirmed_by']))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('merchant_panel.confirmed_by') }}:</span>
+                <span class="max-w-[12rem] truncate">{{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['name'] ?? $this->filters['confirmed_by'] }}</span>
+                <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
             </span>
         @endif
 

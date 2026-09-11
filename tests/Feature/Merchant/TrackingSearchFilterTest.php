@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Order\Models\UserColumnPreference;
 use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\DeliveryRider;
@@ -98,11 +99,6 @@ function tsfOrder(Store $store, ShippingProvider $provider, string $trackingNumb
     return $order;
 }
 
-function tsfNumbers(array $rows): array
-{
-    return $rows;
-}
-
 function tsfRider(Store $store, string $name): DeliveryRider
 {
     return DeliveryRider::create([
@@ -175,18 +171,41 @@ test('the tracking page renders the two tabs and defaults to the carrier tab', f
 
     Volt::test('merchant.tracking.index')
         ->assertSet('trackingTab', 'carrier')
+        ->assertSet('visibleColumns', fn ($cols) => in_array('provider', $cols, true) && ! in_array('delivery_rider', $cols, true))
         ->assertSee(__('order_flow.tracking_tab_carrier'))
         ->assertSee(__('order_flow.tracking_tab_rider'));
 });
 
-test('switching to the rider tab renders the placeholder for now', function () {
+test('switching to the rider tab equips the unified grid with the rider column', function () {
     [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Dz Carriers');
+    $rider = tsfRider($store, 'Switch Rider');
+    tsfOrder($store, $provider, 'TRK-RD-1', OrderTrackingStatus::IN_TRANSIT->value)
+        ->update(['delivery_rider_id' => $rider->id]);
+
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
         ->set('trackingTab', 'rider')
         ->assertSet('trackingTab', 'rider')
-        ->assertSee(__('order_flow.rider_tab_empty_title'));
+        ->assertSet('visibleColumns', fn ($cols) => in_array('delivery_rider', $cols, true))
+        ->assertSet('shipments', fn ($rows) => count($rows) === 1);
+});
+
+test('the rider tab only lists orders with an assigned rider', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Dz Carriers');
+    $rider = tsfRider($store, 'Selective Rider');
+    tsfOrder($store, $provider, 'TRK-WITH-RIDER', OrderTrackingStatus::IN_TRANSIT->value)
+        ->update(['delivery_rider_id' => $rider->id]);
+    $withoutRider = tsfOrder($store, $provider, 'TRK-NO-RIDER', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('shipments', fn ($rows) => count($rows) === 1
+            && collect($rows)->pluck('number')->doesntContain($withoutRider->number));
 });
 
 test('search narrows the list by tracking number and restores on clear', function () {
@@ -252,6 +271,27 @@ test('provider filter narrows to a single shipping provider and counts the filte
         ->assertSet('shipments', fn ($rows) => count($rows) === 2);
 });
 
+test('amount and city header filters narrow the grid and its stats', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Amount Co');
+    $o1 = tsfOrder($store, $provider, 'TRK-AMT-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $o1->update(['total_amount' => 1500]);
+    $o2 = tsfOrder($store, $provider, 'TRK-AMT-2', OrderTrackingStatus::IN_TRANSIT->value);
+    $o2->update(['total_amount' => 800]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->assertSet('stats.active', 2)
+        ->call('setFilter', 'amount_min', 1000)
+        ->assertSet('filters.amount_min', 1000)
+        ->assertSet('filteredTotal', 1)
+        ->assertSet('stats.active', 1)
+        ->assertSet('shipments', fn ($rows) => count($rows) === 1 && collect($rows)->pluck('number')->contains($o1->number))
+        ->call('setFilter', 'amount_min', null)
+        ->assertSet('stats.active', 2);
+});
+
 test('clearFilters resets search and filters back to the full list', function () {
     [$user, $store, $membership] = tsfOwner();
     $provider = tsfProvider($store, 'Clear Co');
@@ -267,6 +307,9 @@ test('clearFilters resets search and filters back to the full list', function ()
         ->assertSet('search', '')
         ->assertSet('filters.tracking_statuses', [])
         ->assertSet('filters.provider', null)
+        ->assertSet('filters.amount_min', null)
+        ->assertSet('filters.city', null)
+        ->assertSet('filters.rider', null)
         ->assertSet('shipments', fn ($rows) => count($rows) === 2);
 });
 
@@ -314,47 +357,49 @@ test('the drawer sync action does not render for a shipment without a tracking n
         ->assertDontSee(__('order_flow.tracking_sync_section'));
 });
 
-test('the rider tab lists store riders with their shipment counts', function () {
+test('the rider tab shows configured riders plus filter-responsive per-rider counts', function () {
     [$user, $store, $membership] = tsfOwner();
     $provider = tsfProvider($store, 'Dz Carriers');
     $riderA = tsfRider($store, 'Karim Rider');
     $riderB = tsfRider($store, 'Sami Rider');
-    tsfOrder($store, $provider, 'TRK-RD-1', OrderTrackingStatus::IN_TRANSIT->value)
-        ->update(['delivery_rider_id' => $riderA->id]);
+    $order = tsfOrder($store, $provider, 'TRK-RD-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $order->update(['delivery_rider_id' => $riderA->id]);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
         ->set('trackingTab', 'rider')
-        ->assertSet('riderRiders', fn ($rows) => count($rows) === 2
-            && collect($rows)->firstWhere('id', $riderA->id)['total'] === 1
-            && collect($rows)->firstWhere('id', $riderA->id)['active'] === 1
-            && collect($rows)->firstWhere('id', $riderB->id)['total'] === 0)
+        ->assertSet('allRiders', fn ($rows) => count($rows) === 2)
+        ->assertSet('riderRiders', fn ($rows) => count($rows) === 1
+            && collect($rows)->firstWhere('id', $riderA->id)['total'] === 1)
         ->assertSee('Karim Rider')
         ->assertSee('Sami Rider');
 });
 
-test('expanding a rider shows only that rider shipments', function () {
+test('filtering the rider column narrows the unified grid to that rider', function () {
     [$user, $store, $membership] = tsfOwner();
     $provider = tsfProvider($store, 'Rapid Co');
     $riderA = tsfRider($store, 'Rider Alpha');
     $riderB = tsfRider($store, 'Rider Beta');
 
-    $a1 = tsfOrder($store, $provider, 'TRK-A1-'.uniqid(), OrderTrackingStatus::IN_TRANSIT->value)->update(['delivery_rider_id' => $riderA->id]);
-    $a2 = tsfOrder($store, $provider, 'TRK-A2-'.uniqid(), OrderTrackingStatus::OUT_FOR_DELIVERY->value)->update(['delivery_rider_id' => $riderA->id]);
-    $b1 = tsfOrder($store, $provider, 'TRK-B1-'.uniqid(), OrderTrackingStatus::SHIPPED->value)->update(['delivery_rider_id' => $riderB->id]);
+    $a1 = tsfOrder($store, $provider, 'TRK-A1-'.uniqid(), OrderTrackingStatus::IN_TRANSIT->value);
+    $a1->update(['delivery_rider_id' => $riderA->id]);
+    $a2 = tsfOrder($store, $provider, 'TRK-A2-'.uniqid(), OrderTrackingStatus::OUT_FOR_DELIVERY->value);
+    $a2->update(['delivery_rider_id' => $riderA->id]);
+    $b1 = tsfOrder($store, $provider, 'TRK-B1-'.uniqid(), OrderTrackingStatus::SHIPPED->value);
+    $b1->update(['delivery_rider_id' => $riderB->id]);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
         ->set('trackingTab', 'rider')
-        ->call('toggleRider', $riderA->id)
-        ->assertSet('selectedRiderId', $riderA->id)
-        ->assertSet('riderShipmentTotal', 2)
-        ->assertSet('riderShipments', fn ($rows) => count($rows) === 2)
-        ->call('toggleRider', $riderA->id)
-        ->assertSet('selectedRiderId', null)
-        ->assertSet('riderShipments', []);
+        ->assertSet('shipments', fn ($rows) => count($rows) === 3)
+        ->call('setFilter', 'rider', $riderA->id)
+        ->assertSet('filters.rider', $riderA->id)
+        ->assertSet('shipments', fn ($rows) => count($rows) === 2
+            && collect($rows)->pluck('number')->contains($a1->number)
+            && collect($rows)->pluck('number')->contains($a2->number)
+            && collect($rows)->pluck('number')->doesntContain($b1->number));
 });
 
 test('assigning a rider from the drawer updates the order and the overview', function () {
@@ -367,11 +412,70 @@ test('assigning a rider from the drawer updates the order and the overview', fun
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
         ->call('assignRider', (string) $order->id, $rider->id)
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success')
         ->assertSet('riderRiders', fn ($rows) => collect($rows)->firstWhere('id', $rider->id)['total'] === 1);
 
     expect($order->refresh()->delivery_rider_id)->toBe($rider->id);
+});
+
+test('assigning a rider creates an open tracking with a generated HM/SD number', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $rider = tsfRider($store, 'Rider Gen');
+
+    $order = Order::create([
+        'store_id' => $store->id,
+        'status_id' => tsfCarrierStatus()->id,
+        'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
+        'total_amount' => 1800,
+        'shipping_provider_id' => null,
+        'delivery_type' => 'home',
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->call('assignRider', (string) $order->id, $rider->id);
+
+    $tracking = OrderTracking::where('order_id', $order->id)->latest('created_at')->first();
+
+    expect($order->refresh()->delivery_rider_id)->toBe($rider->id)
+        ->and($tracking)->not->toBeNull()
+        ->and($tracking->tracking_number)->toStartWith('HM-')
+        ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::SHIPPED->value)
+        ->and($tracking->shipping_provider_id)->toBeNull()
+        ->and($tracking->delivered_at)->toBeNull();
+
+    // Re-assigning the same rider must not duplicate the tracking leg.
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->call('assignRider', (string) $order->id, $rider->id);
+
+    expect(OrderTracking::where('order_id', $order->id)->count())->toBe(1);
+});
+
+test('the stopdesk delivery type is stamped with an SD tracking prefix', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $rider = tsfRider($store, 'Rider Stopdesk');
+
+    $order = Order::create([
+        'store_id' => $store->id,
+        'status_id' => tsfCarrierStatus()->id,
+        'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
+        'total_amount' => 1400,
+        'shipping_provider_id' => null,
+        'delivery_type' => 'stopdesk',
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->call('assignRider', (string) $order->id, $rider->id);
+
+    expect(OrderTracking::where('order_id', $order->id)->latest('created_at')->first()->tracking_number)->toStartWith('SD-');
 });
 
 test('assigning a rider is refused when the order already has a shipping provider', function () {
@@ -402,4 +506,166 @@ test('assigning a rider requires the order.assign permission', function () {
         ->assertForbidden();
 
     expect($order->refresh()->delivery_rider_id)->toBeNull();
+});
+
+test('the rider tab renders aggregate stats for today open shipments, scoped to the active filters', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Rapid Co');
+    $otherProvider = tsfProvider($store, 'Slow Co');
+    $riderA = tsfRider($store, 'Stats Rider A');
+    $riderB = tsfRider($store, 'Stats Rider B');
+
+    $o1 = tsfOrder($store, $provider, 'TRK-ST-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $o1->update(['delivery_rider_id' => $riderA->id, 'total_amount' => 1500]);
+    $o2 = tsfOrder($store, $provider, 'TRK-ST-2', OrderTrackingStatus::OUT_FOR_DELIVERY->value);
+    $o2->update(['delivery_rider_id' => $riderA->id, 'total_amount' => 800]);
+    $o3 = tsfOrder($store, $otherProvider, 'TRK-ST-3', OrderTrackingStatus::SHIPPED->value);
+    $o3->update(['delivery_rider_id' => $riderB->id, 'total_amount' => 3400]);
+
+    // Delivered today → excluded from the active/COD aggregates.
+    $o4 = tsfOrder($store, $otherProvider, 'TRK-ST-4', OrderTrackingStatus::DELIVERED->value);
+    $o4->update(['delivery_rider_id' => $riderA->id, 'total_amount' => 9999]);
+    OrderTracking::where('order_id', $o4->id)->first()->update(['delivered_at' => now()]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $test = Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('riderStatsActiveCount', 2)
+        ->assertSet('riderStatsActiveShipments', 3)
+        ->assertSet('riderStatsCodDueToday', 1500 + 800 + 3400)
+        ->assertSee(__('order_flow.rider_stats_active'))
+        ->assertSee(__('order_flow.rider_stats_active_shipments'))
+        ->assertSee(__('order_flow.rider_stats_cod_due_today'));
+
+    // The provider filter narrows the rider aggregates too (o3 belongs to another provider).
+    $test->call('setFilter', 'provider', $provider->id)
+        ->assertSet('riderStatsActiveCount', 1)
+        ->assertSet('riderStatsActiveShipments', 2)
+        ->assertSet('riderStatsCodDueToday', 1500 + 800);
+});
+
+test('the unified grid paginates with next/previous across all shipments', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Rapid Co');
+    $rider = tsfRider($store, 'Heavy Rider');
+
+    for ($i = 0; $i < 25; $i++) {
+        tsfOrder($store, $provider, 'TRK-LM-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), OrderTrackingStatus::SHIPPED->value)
+            ->update(['delivery_rider_id' => $rider->id]);
+    }
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $test = Volt::test('merchant.tracking.index')
+        ->assertSet('filteredTotal', 25)
+        ->assertSet('page', 1)
+        ->assertSet('shipments', fn ($rows) => count($rows) === 20);
+
+    $test->call('nextPage')
+        ->assertSet('page', 2)
+        ->assertSet('shipments', fn ($rows) => count($rows) === 5);
+
+    $test->call('previousPage')
+        ->assertSet('page', 1)
+        ->assertSet('shipments', fn ($rows) => count($rows) === 20);
+});
+
+test('column preferences persist per view_key and reorder via the settings modal', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Col Co');
+    tsfOrder($store, $provider, 'TRK-COL-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('openTableSettings')
+        ->assertSet('showTableSettings', true)
+        ->assertSet('draftColumns', fn ($cols) => in_array('city', $cols, true))
+        ->call('toggleDraftColumn', 'notes')
+        ->assertSet('draftColumns', fn ($cols) => ! in_array('notes', $cols, true))
+        ->call('moveDraftColumn', 'city', 'up')
+        ->assertSet('draftColumns', fn ($cols) => ($cols[3] ?? null) === 'city')
+        ->call('saveTableSettings')
+        ->assertSet('showTableSettings', false)
+        ->assertSet('visibleColumns', fn ($cols) => ($cols[3] ?? null) === 'city' && ! in_array('notes', $cols, true));
+
+    $pref = UserColumnPreference::where('membership_id', $membership->id)
+        ->where('view_key', 'tracking_carrier')
+        ->first();
+
+    expect($pref)->not->toBeNull()
+        ->and($pref->visible_columns)->toBe([
+            'number',
+            'tracking_number',
+            'customer',
+            'city',
+            'state',
+            'total',
+            'tracking_status',
+            'provider',
+            'assigned_to',
+            'confirmed_by',
+            'shipping_date',
+            'actions',
+        ]);
+
+    // A fresh mount restores the saved order.
+    Volt::test('merchant.tracking.index')
+        ->assertSet('visibleColumns', fn ($cols) => ($cols[3] ?? null) === 'city' && ! in_array('notes', $cols, true));
+});
+
+test('mandatory columns can never be hidden via the settings modal', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Lock Co');
+    tsfOrder($store, $provider, 'TRK-LOCK-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('openTableSettings')
+        ->call('toggleDraftColumn', 'number')
+        ->call('toggleDraftColumn', 'customer')
+        ->call('toggleDraftColumn', 'tracking_status')
+        ->assertSet('draftColumns', fn ($cols) => in_array('number', $cols, true)
+            && in_array('customer', $cols, true)
+            && in_array('tracking_status', $cols, true))
+        ->call('saveTableSettings')
+        ->assertSet('visibleColumns', fn ($cols) => in_array('number', $cols, true)
+            && in_array('customer', $cols, true)
+            && in_array('tracking_status', $cols, true));
+});
+
+test('table style (status tint) persists per tab', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Style Co');
+    tsfOrder($store, $provider, 'TRK-STYLE-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('openTableSettings')
+        ->set('draftStyle', 'status')
+        ->call('saveTableSettings')
+        ->assertSet('tableStyle', 'status');
+
+    expect(UserColumnPreference::where('membership_id', $membership->id)
+        ->where('view_key', 'tracking_carrier')->first()->table_style)->toBe('status');
+});
+
+test('the active tab is persisted to browser storage, not the database', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Tab Co');
+    tsfOrder($store, $provider, 'TRK-TAB-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->assertSet('trackingTab', 'carrier')
+        ->assertSee('edz-tracking-active-tab')
+        ->set('trackingTab', 'rider')
+        ->assertSet('trackingTab', 'rider');
+
+    // No tab state is stored server-side — the schema has no active_tab column.
+    expect(\Illuminate\Support\Facades\Schema::hasColumn('user_column_preferences', 'active_tab'))->toBeFalse();
 });

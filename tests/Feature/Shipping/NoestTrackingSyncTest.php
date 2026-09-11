@@ -221,6 +221,23 @@ test('terminal orders are not regressed and not re-polled once fresh', function 
         ->and($tracking->refresh()->last_synced_at->equalTo($firstSync))->toBeTrue();
 });
 
+test('the polling job skips providers that enabled the delivery webhook', function () {
+    [$user, $store, $provider] = ntEnv();
+
+    $tracking = ntTracking($store, $provider, 'TRK555555555');
+
+    $provider->update(['webhook_token' => 'wb-'.uniqid()]);
+
+    Http::fake();
+
+    (new SyncNoestTrackingJob($store->id))->handle();
+
+    expect($tracking->refresh()->last_synced_at)->toBeNull()
+        ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::SHIPPED->value);
+
+    Http::assertNothingSent();
+});
+
 test('the adapter posts the bearer-authorized tracking batch', function () {
     [$user, $store, $provider] = ntEnv();
 

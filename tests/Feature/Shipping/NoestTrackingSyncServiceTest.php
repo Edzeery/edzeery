@@ -176,6 +176,35 @@ test('syncOne with unmapped events leaves the status untouched but refreshes las
         ->and(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->count())->toBe(0);
 });
 
+test('syncOne with unmapped events on a blank-status row falls back to in-transit so the shipment is never blank', function () {
+    [$user, $store, $provider] = ntssEnv();
+
+    $tracking = ntssTracking($store, $provider, 'TRK-SVC-444444');
+    $tracking->update(['tracking_status' => null]);
+
+    Http::fake([
+        'noest.test/*' => Http::response(ntssEntry($provider, 'TRK-SVC-444444', [
+            ['event' => 'Price modified', 'event_key' => 'edit_price'],
+        ])),
+    ]);
+
+    $result = app(NoestTrackingSyncService::class)->syncOne($tracking);
+
+    $tracking->refresh();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::IN_TRANSIT->value)
+        ->and($tracking->delivered_at)->toBeNull()
+        ->and($tracking->returned_at)->toBeNull()
+        ->and($tracking->last_synced_at)->not->toBeNull()
+        ->and(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->where('status', OrderTrackingStatus::IN_TRANSIT->value)->exists())->toBeTrue();
+
+    // Re-polling with the same unmapped events adds no second history row.
+    app(NoestTrackingSyncService::class)->syncOne($tracking);
+
+    expect(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->where('status', OrderTrackingStatus::IN_TRANSIT->value)->count())->toBe(1);
+});
+
 test('syncOne without a tracking number fails cleanly without side effects', function () {
     [$user, $store, $provider] = ntssEnv();
 

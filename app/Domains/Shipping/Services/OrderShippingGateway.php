@@ -4,7 +4,9 @@ namespace App\Domains\Shipping\Services;
 
 use App\Domains\Order\Services\OrderAuditService;
 use App\Domains\Order\Services\OrderService;
+use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\Order;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +123,205 @@ class OrderShippingGateway
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * إلغاء الشحنة قبل الاكسبيديشن (cancel-send): حذف الطلبية من شركة التوصيل
+     * عبر API + إلغاء تعيين رجل التوصيل، ثم إعادة الطلبية إلى حالة «confirmed»
+     * لتعود للظهور في قائمة الطلبيات وتُعاد معالجتها.
+     *
+     * القواعد:
+     * - غير قابلة للإلغاء بعد حالة «تأكيد شركة التوصيل» لشحنة الشركة
+     *   (order_trackings.carrier_validated_at) — حذف NOEST ممنوع بعد التحقق.
+     * - حذف الشركة يتم عبر أدابتور يملك deleteOrder؛ الشركات بلا دعم تُرفض هنا
+     *   (لا حذف محلي زائف للشحنة المسجلة لدى شركة).
+     * - سجل التتبع يبقى للتدقيق مع رقم تتبع محذوف + سطر تاريخ cancelled، بينما
+     *   الغرض: لا يرتبط الاوردر بشحنة ميتة بعد الآن.
+     *
+     * @return array{ok: bool, order?: Order, error?: string}
+     */
+    public function cancel(
+        Order $order,
+        ?string $reason = null,
+        ?StoreMembership $changedBy = null,
+    ): array {
+        DB::beginTransaction();
+
+        try {
+            $order->refresh();
+
+            $statusKey = $order->status?->key;
+            if (! in_array($statusKey, ['shipped', 'in_transit', 'out_for_delivery'], true)) {
+                throw new \DomainException(__('order_flow.shipment_cancellation_status'));
+            }
+
+            $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
+            $tracking = $trackingService->currentTracking($order);
+
+            // Carrier leg — delete the unvalidated shipment at the carrier.
+            if ($order->shipping_provider_id && $tracking?->tracking_number) {
+                if ($tracking->isCarrierValidated()) {
+                    throw new \DomainException(__('order_flow.shipment_already_validated'));
+                }
+
+                $provider = $order->shippingProvider;
+                $carrier = $provider?->carrier;
+                $adapterClass = $carrier
+                    ? config(
+                        "delivery.carrier_integrations.{$carrier->code}",
+                        config('delivery.carrier_integrations.*'),
+                    )
+                    : null;
+
+                if (! $adapterClass || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'deleteOrder')) {
+                    throw new \DomainException(__('order_flow.carrier_delete_not_supported'));
+                }
+
+                $result = app($adapterClass)->deleteOrder($provider, (string) $tracking->tracking_number);
+
+                if (! ($result['ok'] ?? false)) {
+                    throw new \DomainException(
+                        (string) ($result['message'] ?? __('order_flow.shipment_cancellation_failed'))
+                    );
+                }
+
+                Log::info("shipment cancelled at carrier for order [{$order->number}] (tracking {$tracking->tracking_number})");
+            }
+
+            // Rider leg — unassign the delivery rider.
+            if ($order->delivery_rider_id) {
+                $order->update(['delivery_rider_id' => null]);
+                $order->unsetRelation('deliveryRider');
+            }
+
+            // Keep the tracking row for audit but detach the live carrier number
+            // and mark the leg cancelled so the order no longer syncs the dead
+            // shipment via the carrier polling.
+            if ($tracking) {
+                $sentTrackingNumber = $tracking->tracking_number;
+                $previousStatus = $tracking->tracking_status;
+
+                $tracking->update([
+                    'tracking_number' => null,
+                    'carrier_status' => 'cancelled',
+                    'tracking_status' => null,
+                ]);
+
+                \App\Models\Orders\OrderTrackingHistory::create([
+                    'store_id'                 => $tracking->store_id,
+                    'order_id'                 => $tracking->order_id,
+                    'order_tracking_id'        => $tracking->id,
+                    'status'                   => 'cancelled',
+                    'changed_by_membership_id' => $changedBy?->id,
+                    'notes'                    => $reason,
+                    'payload'                  => [
+                        'shipment_cancelled' => true,
+                        'tracking_number' => $sentTrackingNumber,
+                        'previous_tracking_status' => $previousStatus,
+                        'previous_order_status' => $statusKey,
+                    ],
+                    'created_at'               => now(),
+                ]);
+
+                $this->audit->tracking(
+                    $order,
+                    'cancelled',
+                    $sentTrackingNumber,
+                    $changedBy,
+                );
+            }
+
+            // Return the order to 'confirmed' via the internal revert (bypasses
+            // the public workflow — shipped→confirmed is not a user-facing
+            // transition). Inventory stays reserved: 'confirmed' keeps the
+            // existing RESERVE leg and never double-applies.
+            $this->orders->revertTo($order, 'confirmed', $reason, $changedBy);
+
+            DB::commit();
+
+            return [
+                'ok' => true,
+                'order' => $order->fresh(),
+            ];
+        } catch (\DomainException $e) {
+            DB::rollBack();
+
+            return ['ok' => false, 'error' => $e->getMessage()];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::warning("shipment cancel failed for order [{$order->number}]: " . $e->getMessage());
+
+            return ['ok' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * يحذف الشحنة عند شركة التوصيل (NOEST...) لطلبية شُحنت بالناقل لكنها لم
+     * تتحقق carrier-validated — يُستدعى قبل الحذف النهائي الدائم كي لا يبقى رقم
+     * التتبع حيًا عند الشركة بعد طهارة السجل محليًا. فشل شركة التوصيل أو غياب
+     * ساق ناقل (رجل/بلا ناقل) لا يمنع الحذف المحلي أبدًا: يُسجَّل ويُرمى
+     * النتيجة للمتصل.
+     *
+     * @return array{
+     *     ok: bool,
+     *     skipped?: 'no_provider'|'no_tracking'|'validated'|'unsupported',
+     *     message?: ?string,
+     *     error?: string,
+     *     tracking_number?: ?string,
+     * }
+     */
+    public function deleteAtCarrier(Order $order): array
+    {
+        $order->refresh();
+
+        if (! $order->shipping_provider_id || ! $order->shippingProvider) {
+            return ['ok' => true, 'skipped' => 'no_provider'];
+        }
+
+        $tracking = app(OrderTrackingService::class)->currentTracking($order);
+
+        if (! $tracking?->tracking_number) {
+            return ['ok' => true, 'skipped' => 'no_tracking'];
+        }
+
+        // NOEST refuses to delete a carrier-validated order; never attempt it.
+        if ($tracking->isCarrierValidated()) {
+            return ['ok' => true, 'skipped' => 'validated'];
+        }
+
+        $carrier = $order->shippingProvider->carrier;
+        $adapterClass = $carrier
+            ? config(
+                "delivery.carrier_integrations.{$carrier->code}",
+                config('delivery.carrier_integrations.*'),
+            )
+            : null;
+
+        if (! $adapterClass || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'deleteOrder')) {
+            return ['ok' => true, 'skipped' => 'unsupported'];
+        }
+
+        try {
+            $result = app($adapterClass)->deleteOrder($order->shippingProvider, (string) $tracking->tracking_number);
+
+            if (($result['ok'] ?? false) !== true) {
+                Log::warning(
+                    "carrier delete failed for order [{$order->number}] (tracking {$tracking->tracking_number}): ".($result['message'] ?? 'unknown error')
+                );
+            }
+
+            return [
+                'ok' => (bool) ($result['ok'] ?? false),
+                'message' => $result['message'] ?? null,
+                'tracking_number' => (string) $tracking->tracking_number,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning(
+                "carrier delete threw for order [{$order->number}] (tracking {$tracking->tracking_number}): {$e->getMessage()}"
+            );
+
+            return ['ok' => false, 'error' => $e->getMessage()];
         }
     }
 

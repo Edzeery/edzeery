@@ -1208,6 +1208,47 @@ git rm "it" "prepareBindings(\$bindings)"
 
 ---
 
+## إعادة تصميم صفحة التتبع — المرحلة D-fix: تجانس عرض تبويب «رجل التوصيل» (بصري فقط، لا منطق جديد) (سبتمبر 2026) ✅
+
+**النطاق:** رفع تبويب الرجل إلى تكافؤ بصري مع تبويب الشركات (stat cards + جدول سطح مكتب/بطاقات موبايل + زر نسخ رقم التتبع + ترقيم صفحات حقيقي + سطر ملخص)، بلا أي تغيير في منطق D (`toggleRider`/`assignRider` دون لمس، و`loadRiderShipments` بقي مع تغيير هيكلي واحد: استبدال `limit(200) الصامت` بترقيم صفحات).
+
+- **`partials/tracking-rider-stats.blade.php` (جديد):** 3 بطاقات إحصاء تعكس `tracking-stats` حرفيًا (edz-card + رموز `accent-surface/success/warning` وحدها): رجال نشطون (أيقونة users)، شحنات نشطة لليوم (cube)، مستحقات COD لليوم بالـ `currency()` (banknotes) — `grid-cols-1 sm:grid-cols-3 gap-4 mb-6`.
+- **`tracking/index.blade.php`:** state جديد (`riderShipmentsPage`, `riderStatsActiveCount/ActiveShipments/CodDueToday`). في `loadRiderOverview` استعلام تجميعي **واحد** فقط (لا استعلام لكل رجل): `groupBy delivery_rider_id` + `whereDate(created_at, today())` + `whereNotNull('delivery_rider_id')` + `whereIn(status_id, carrier)` + `whereDoesntHave('latestTracking', delivered/returned)` → `count(*)` و`sum(total_amount)` → يغذّي الاستات الثلاثة. أُعيدت هيكلة `loadRiderShipments`: `$mapRiderShipment` (closure مشترك) + `forPage(riderShipmentsPage, 20)` + `riderShipmentTotal = (clone $query)->count()` (الإجمالي الحقيقي عبر كل الصفحات)؛ `$loadMoreRiderShipments` جديد يضيف الصفحة التالية `array_merge` من دون إعادة ضبط `selectedRiderId`. (كلا العملين `use ($mapRiderShipment)` — غياب capture سبّب «Undefined variable» أُصلح.)
+- **`partials/tracking-rider-tab.blade.php`:** تضمين الاستات أعلى فرع `@else` + سطر ملخص «:riders رجل · :shipments شحنة نشطة» بنفس وزن موضع سطر `filteredTotal` في تبويب الشركات.
+- **`partials/tracking-rider-shipments.blade.php` (إعادة كتابة):** جدول سطح مكتب `hidden md:block` (رقم/زبون/مدينة/الإجمالي/badge الحالة/رقم التتبع بزر نسخ/عرض الدرج — بارتفاع 7 أعمدة) + بطاقات موبايل `md:hidden` بنفس لغة بطاقات `tracking-list` (زر النسخ Alpine `navigator.clipboard` + `EdzSwal.toast` نفسه) + زر «عرض المزيد» يظهر فقط عندما `riderShipmentTotal > count(riderShipments)` بنمط `wire:click="$set('riderShipmentsPage', N); $wire.loadMoreRiderShipments()"` — تحت 300 سطر Blade.
+- **الترجمة:** 5 مفاتيح ×4 لغات (`rider_stats_active/active_shipments/cod_due_today/summary` + `rider_shipments_load_more`)؛ fr بلا أي قوس مفرد (استخدم `aujourd’hui` U+2019).
+- **التحقق:** `php -l` ×5 نظيف + `view:cache` success + TrackingSearchFilterTest **15 ناجحًا (61 تأكيدًا)** من دون انحدار — منها **اختباران جديدان**: (1) استات التبويب تعرض الأرقام التجميعية الصحيحة (عدّاد رجلان/3 شحنات/COD 5700 مع استبعاد المسلَّمة اليوم)، (2) عرض المزيد يجلب الصفحة التالية (25 شحنة → 20 ثم 25) من دون إعادة ضبط `selectedRiderId`. جولة مجاورة: RiderManagementTest (10) + NoestTrackingSyncTest (6) + NoestTrackingSyncServiceTest (6) + OrderEventLogVisibilityTest (11) خضراء (فشل وحيد كان قفل ملف مؤقت Windows `rename Access denied` عند تجميع Blade متوازٍ — ناجح فورًا عند الإعادة).
+- **تركّته عن النطاق عمدًا:** لا بحث/فلاتر داخلي ضمن شحنات الرجل الموسّع (مؤجّل لشاشة «رحلة اليوم» في E.2)؛ عدم لمس `order-drawer.blade.php`.
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| D-fix تجانس تبويب الرجل (بصري) | ✅ | partials/tracking-rider-stats (جديد) + tracking-rider-shipments (إعادة كتابة) + tracking-rider-tab + tracking/index (استات تجميعية + ترقيم صفحات `forPage` + loadMoreRiderShipments) + order_flow.php ×4 (+5 مفاتيح) + TrackingSearchFilterTest (+2) | +2 على الصفحة + TrackingSearchFilterTest 15 (61) نظيفة + جولة مجاورة 33 خضراء |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — التفاف بطاقات الاستات بشكل صحيح على الموبايل، محاذاة أعمدة جدول الرجل مع جدول الشركات على سطح المكتب، عمل زر النسخ، وظهور «عرض المزيد» فقط عندما تتجاوز شحنات الرجل 20.
+
+---
+
+## إعادة تصميم صفحة التتبع — ترقية تبويبي tracking إلى شبكة متقدمة بنمط `/orders` (سبتمبر 2026) ✅
+
+**النطاق:** ترقية كلا تبويبي صفحة `merchant/tracking` (carrier + rider) من قائمتين منفصلتين إلى شبكة بيانات واحدة متطورة بنمط صفحة `/orders`: كل الطلبيات في شبكة موحّدة، فلترة برجل التوصيل في تبويب الرجل، تخصيص/إخفاء/ترتيب الأعمدة مع أعمدة إلزامية لا تُخفى، فلترة من رؤوس الأعمدة (status/provider/rider/city/amount/date) تبقى مع الفلاتر الجانبية الموجودة، بطاقات إحصائية تستجيب للفلترة، وتذكّر آخر تبويب مفتوح (عبر تخزين المتصفح) + تفضيلات الأعمدة لكل تبويب عند إعادة التحميل.
+
+- **`tracking/index.blade.php` (إعادة كتابة PHP):** state جديد — فلاتر `amount_min/amount_max/city/rider` + `allCities`؛ أُزيلت `selectedRiderId/riderShipments/riderShipmentTotal/riderShipmentsPage` و`loadRiderOverview/toggleRider/mapRiderShipment/loadRiderShipments/loadMoreRiderShipments` (استُبدلت بفلتر `rider` في `filters`). `$baseTrackingQuery(bool $forAggregate)` مصدر وحيد للاستعلام (provider/search/statuses/date/amount/city/rider + نطاق workflow) — تستمد منه الشبكة والاستات وعدّادات رأس الأعمدة. `$loadTrackingStats` (carrier: active/delivered_today/returned_today؛ rider: riderStatsActiveCount/ActiveShipments/CodDueToday + riderRiders من `groupBy delivery_rider_id` مرشّحة عبر `DeliveryRiderService::listForStore`)؛ `$loadShipments` ترقيم صفحات حقيقي (paginate) + خريطة صفوف؛ استات تُحسب قبل الترقيم من نفس الاستعلام المفلتر. `updated()` hooks لـ `filters.date_from/date_to/amount_min/amount_max/city/rider` (بـ `use function Livewire\Volt\updated;`) + `trackingTab` (يحمل prefs التبويب → `saveColumnPreferences` → `loadShipments`). closures: `trackingColumns` (carrier/provider+shipping_date، rider/delivery_rider+shipping_date)، `trackingDefaultOrder`، `trackingViewKey`، `getMembership`، `loadTrackingTabPreferences` (legacy `prefs_version!==1` → defaults؛ إعادة إدراج الإلزامي في الموضع الافتراضي؛ tableStyle default/status)، `saveColumnPreferences` (updateOrCreate + إعادة إدراج الإلزامي)، `openTableSettings/discardTableSettings/saveTableSettings/toggleDraftColumn/moveDraftColumn/reorderDraftColumns/resetColumns`، `loadRiderOptions`، `assignRider` (loadRiderOptions + loadShipments). `mount` يملأ providers/cities/riders.
+- **partials الجديدة ×3 + إعادة كتابة `tracking-tabs`:** `tracking-table-header.blade.php` (خريطة headerFilterKeys city/total/status/provider/rider/date + شارة فعّال + حدث `edz-filter-open`)، `tracking-filter-portal.blade.php` (dropdownPosition + أقسام مبوّبة بـ visibleColumns + عدّادات ريدر من riderCounts)، `tracking-table-settings-modal.blade.php` (محمي بـ showTableSettings + تبويبا columns/style + `orderColumnReorderDraft` drag/up/down + لوك الإلزامي + footer reset/cancel/save + `@edz-modal-closed.window`). `tracking-tabs.blade.php` (إعادة كتابة): تذكّر آخر تبويب عبر **تخزين المتصفح** `localStorage('edz-tracking-active-tab')` فقط — لا عمود DB (`@click` يحفظ، `x-init` يستعيد بـ `$wire.set` عند اختلاف القيمة) — بدل الاقتراح الأصلي `active_tab` في DB (مرفوض من المستخدم: لا حاجة لإضافته للترحيل، ونُحذف الملف قبل تشغيله).
+- **`partials/tracking-list.blade.php` (إعادة كتابة كاملة):** جدول سطح مكتب بأعمدة `visibleColumns` عبر `@include` لكل عمود + صفوف `$rowTint` (status: delivered→success، returned/cancelled/failed→danger) + خلايا @switch (number/customer/city/total/tracking_status pill/openStatusHistory/tracking_number copy→navigator.clipboard/provider/delivery_rider/shipping_date) + بطاقات موبايل + ترقيم prev/next عبر `pagination.*` + صف فارغ colspan=count+1.
+- **`tracking-rider-tab.blade.php` (إعادة كتابة):** rider-stats + سطر ملخص `rider_stats_summary` + toolbar + سطر count + `tracking-list` — بلا بطاقات رجل موسّعة. حُذف `partials/tracking-rider-shipments.blade.php` + زر إعدادات columns في `tracking-toolbar` (أيقونة view-columns).
+- **لا migration جديدة:** اقتراح `active_tab` (string nullable في user_column_preferences) **أُلغي** بطلب المستخدم — التبويب النشط يُتذكر عبر تخزين المتصفح فقط، ولا ضجة خادم/ترحيل. (`2026_09_10_123500_add_active_tab_...` حُذف الملف قبل تشغيله — حالة Pending لم تُشغّل.)
+- **الترجمة:** `order_flow` ×4 لغات +3 مفاتيح (`filter_amount/amount_min_placeholder/amount_max_placeholder` بعد `filter_date`).
+- **التحقق:** `php -l` نظيف + `view:cache` success + TrackingSearchFilterTest أعيدت كتابتها بالكامل **20 ناجحًا (89 تأكيدًا)** — استبدال اختبارات التوسعة/load-more بفلتر rider وpagination prev/next، واختبارات prefs (per view_key، إلزامي لا يُخفى، ترتيب يُستعاد، tableStyle، والتبويب يُتذكر في المتصفح لا في DB مع `Schema::hasColumn('active_tab')` false)، واستات تستجيب للفلترة (provider + amount). جولة مجاورة: OrderIndexPreferencesTest (9) — 29 ناجحًا (114 تأكيدًا). grep لا يجد أي مرجع متبقٍّ لـ `toggleRider/loadRiderShipments/loadMoreRiderShipments/selectedRiderId/riderShipmentsPage/tracking-rider-shipments/active_tab` في كود حي.
+- **تركّت عن النطاق عمدًا:** لا فرز صفوف في الشبكة (نفس `/orders`؛ لا مسح ضوئي/مكوّن barcode — مؤجل لـ Phase 32)؛ لا سرد رجل داخلي منفصل (الفلترة كافية للمرحلة الحالية).
+
+| فرع | الحالة | الملفات الرئيسية | اختبارات/تأكيدات |
+|---|---|---|---|
+| ترقية التتبع: شبكة متقدمة + prefs | ✅ | tracking/index (PHP rework) + partials tracking-list/table-header/filter-portal/table-settings-modal (جديدة) + tracking-tabs (localStorage) + tracking-rider-tab (إعادة كتابة) + حذف tracking-rider-shipments + tracking-toolbar (زر إعدادات) + order_flow ×4 (+3) + TrackingSearchFilterTest (إعادة كتابة كاملة) | TrackingSearchFilterTest 20 (89) نظيفة + جولة مجاورة (OrderIndexPreferences 24) — 29 (114) نظيفة |
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — عرض الشبكة الموحّدة في كلا التبويبين، فلاتر رؤوس الأعمدة، modal إعدادات الأعمدة (سحب/ترتيب + أعمدة إلزامية مقيّدة)، استجابة الاستات للفلترة، واسترجاع آخر تبويب+الأعمدة عند إعادة التحميل.
+
+---
+
 ## المرحلة E — بوابة رجل التوصيل: قرارات المستخدم المعتمدة (سبتمبر 2026) 📋
 
 **طلب المستخدم (نصي، بتاريخ اليوم):** لوحة رجل توصيل احترافية تنافسية بسوق جزائري:
@@ -1220,3 +1261,121 @@ git rm "it" "prepareBindings(\$bindings)"
 **إضافة لدقة الصلاحيات:** عضو الفريق ذو الاطلاع المقيّد (staff/manager) يرى في تبويب الرجل شحنات **المسندة إليه فقط** (`assigned_to_membership_id`) — نفس قاعدة سجل أحداث الطلبية الحالية. (سيُراعى في F/G.)
 
 **المطلوب الآن:** عرض خطة مراجعة للموافقة قبل كتابة الكود (انظر الرسالة التالية في الدردشة).
+
+---
+
+## دفعة صفحة التتبع: فلاتر المسنَد/المؤكِّد + عمود الولاية + ملاحظات الناقل + إجراءات الحذف/الإلغاء/التعديل (سبتمبر 2026) ✅
+
+**بقرارات المستخدم المعتمدة:** (1) زر التعديل يفتح مودال التعديل داخل صفحة التتبع نفسها (بورت من orders — لا توجيه)؛ (2) عمود «الملاحظات» = ملاحظة شركة الشحن API في بوب أب (تاريخ + مُرسِل + مُرسِل جديد) بنفس `sendCarrierNote`؛ (3) بوابة التعديل في سياق التتبع = منع الحالات النهائية فقط `delivered/returned` (الشبكة تعرض حالات carrier فقط)؛ (4) إلغاء الإرسال يمر عبر `OrderShippingGateway::cancel` (حالات `shipped/in_transit/out_for_delivery` فقط، حارس إضافي `isCarrierValidated`) — حذف سجل الشركة عبر API ثم إعادة الطلبية لـ `confirmed` (launch leg بعكس مع RESTORE؛ `tracking_number=null` + `carrier_status='cancelled'` + `tracking_status=null`) — **لا حذف فعلي من DB**، والحذف الناعم يبقى سلوكًا قائمًا للزر الثاني.
+
+- **الخلفي:** `CarrierIntegrationContract::deleteOrder(string $number, array $credentials): array` + `NoestIntegrationAdapter::deleteOrder` (POST `/delete/order`، Bearer api_token + user_guid + tracking) + ميغريشن `defines_capability`/`supports_order_delete` (noest→true) + `Carrier::capabilityList()['order_delete']` + `OrderShippingGateway::cancel()` (فئة نطاق الحالة، حذف ضلع الناقل، `OrderService::revertTo` → confirmed، تراجع/إرجاع).
+- **الصفحة (`tracking/index.blade.php`):** `baseTrackingQuery` — eager loads `assignedMembership.user`/`confirmedByHistory.changedBy.user` + فلاتر `assigned_to` (assigned_to_membership_id) و`confirmed_by` (whereHas confirmedByHistory.changedBy) + تبويب الرجل `whereNotNull('delivery_rider_id')`؛ `loadShipments` — أحدث carrier-note واحدة (استعلام واحد `whereIn`/groupBy، بلا N+1) + صفوف `state/confirmed_by/assigned_to/latest_note/tracking_id/carrier_supports_api_notes/can_edit_order/can_cancel_shipment`؛ `shipmentCancelable` — flag/حارس موحّد (نطاق الحالة + غير مُصادَق + carrier يدعم `order_delete` أو رجل مُعيَّن)؛ closures منسوخة من orders: `openEditModal` (بوابة terminal) /`submitEdit` (بلا حارس shipped) /`deleteOrder` /`cancelShipment` /`openShipmentNotes`؛ أعمدة جديدة (ترتيب: number, customer, state, city, assigned_to, total, tracking_status, tracking_number, confirmed_by, notes, actions) + default order جديد.
+- **Blades:** toolbar (selects `assigned_to`/`confirmed_by` مخفية عند ظهور العمود + chips)؛ table-header (مفاتيح `assigned`/`confirmed`)؛ filter-portal (قسمان جديدان)؛ tracking-list (خلايا state/assigned_to/confirmed_by/notes + قائمة إجراءات منسدلة: Details/Edit/Cancel/Delete عبر `EdzSwal`)؛ `tracking-notes-popup.blade.php` (جديد)؛ تضمين `order-form-modal` + `orders-product-picker` + شيم `openOrderDetails`.
+- **الترجمات ×4:** `order_flow`: cancel_shipment_title/confirm/shipment_cancelled/cancellation_status/cancellation_failed/already_validated/carrier_delete_not_supported/carrier_notes/no_carrier_notes/carrier_notes_unsupported؛ `merchant_panel`: cannot_edit_terminal.
+- **الأدلة:** `tests/Feature/Merchant/TrackingGridBatchTest.php` (جديد، **10 ناجحة / 40 تأكيدًا** — فلاتر assigned_to/confirmed_by، row-map الجديدة، منع التعديل لنهاية الطلبية، تحميل المودال، submitEdit يحدّث + يعيد الحساب، حذف ناعم + إفراغ الدرج، إلغاء عبر fake HTTP يقتل سجل الشركة ويعيد confirmed مع خلو tracking، رفض بلا قدرة delete، منع المُصادَق) + تحديث `TrackingSearchFilterTest` (تبويب الرجل: شحنات برجل فقط عند تعيينه؛ ترتيب أعمدة افتراضي جديد) — **31 ناجحًا (140 تأكيدًا)** في الملفّين؛ `php -l` نظيف + `view:cache` success.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — فلاترا المعيّن/المؤكِّد (شريط + رؤوس)، قائمة إجراءات الصف في الجدول والبطاقات، بوب أب الملاحظات، مودال التعديل داخل صفحة التتبع، وتوستهما (توست إلغاء + توست عدم دعم الناقل للدائرة).
+
+---
+
+## دفعة تتبّع: ترتيب الأعمدة الجديد + سلة المهملات + المزامنة الجماعية + ويب هوك الشركات + طباعة الملصق (سبتمبر 2026) ✅
+
+**بقرارات المستخدم المعتمدة:** (1) الأعمدة الثلاثة الجديدة (الولاية/الحالة/الناقل أو الموصّل) أصبحت إلزامية، وترتيبها الافتراضي الجديد 13 عمودًا مع `prefsVersion = 2` للتهجير فيزيائيًا؛ (2) «الحذف» الناعم يتحوّل لنقلٍ إلى سلة المهملات بفراغ ضمن الحالة لمرة واحدة والاسترجاع منها، والنهائي محصور بـ `ORDER_DELETE`؛ (3) السلة/الحذف النهائي/الاسترجاع والويب هوك — كلها تحت تبويب «الشركات» ذاته.
+
+- **ترتيب الأعمدة (`tracking/index.blade.php`):** default = number → tracking_number → customer → **state (إلزامي)** → city → total → tracking_status → **provider (carrier) / delivery_rider (rider) (إلزامي)** → assigned_to → confirmed_by → notes → shipping_date → actions؛ `trackingColumns`/`trackingDefaultOrder`/مواضع الإلزامي في restore/save أُعيدت لتتوافق، و`prefsVersion = 2` يهجّر القديم مرة واحدة.
+- **سلة المهملات:** `deleteOrder` = نقل ناعم (توست `order_moved_to_trash` + إغلاق الدرج إن كان مفتوحًا)؛ بلا فراغ جنّي أثناء السلة؛ `trashCount` في الحالة + `showTrash`؛ `restoreOrder`/`restoreAll` (توست `orders_restored`) + `forceDeleteOrder`/`forceDeleteAll` محصورة بـ `ORDER_DELETE`؛ ترتيب `$purgeOrderRows` = OrderTrackingHistory → OrderEvent → OrderStatusHistory → OrderTracking → OrderItem::forceDelete → order->forceDelete؛ بانر إشعاري أعلى الجدول في وضع السلة + `toggleTrash` في شريط الأدوات وإخفاء الإجراءات غير المتعلقة في االسلة.
+- **المزامنة الجماعية (`$syncAllTracking`):** عبر `StopdeskOfficeSync::resolve` + `NoestTrackingSyncService::apply` لكل تتبع مفتوح (order + تاریخ + activity) وتوست ملخص `sync_all_tracking_result` بـ `sync_updated/sync_failed/sync_no_open`.
+- **ويب هوك التوصيل:** ميغريشن `2026_09_11_200000_add_webhook_token_to_shipping_providers.php` (عمودا `webhook_token` uuid فريد nullable + `webhook_last_seen_at`؛ index على `webhook_token`؛ fillable/casts في `ShippingProvider`)؛ `DeliveryWebhookController@store` — يحدد الشركة بالتوكن (يجب `is_active`، وإلا 404)، يحدّث last_seen، يستخرج رقم التتبع (aliases: tracking_number/tracking/code/data.tracking_number)، يؤكّد OK إن لم يوجد تتبع (لا retry)، يطبّع إحداث الناقل إلى `normalizeEntry` (activity/events/OrderInfo/order_info/صف واحد) ويطبّق عبر `app(NoestTrackingSyncService::class)->apply()`؛ مسار `POST /webhooks/delivery/{token}` باسم `webhooks.delivery` بـ throttle:120,1 خارج أي مصادقة متجر.
+- **واجهة الويب هوك (`providers.blade.php`):** كارت لكل شركة — شارة `webhook_ready/webhook_not_configured` + كتلة نسخ للتوكن + زر إعادة توليد بآلية uuid + سطر آخر استقبال `webhook_last_seen` أو زر تفعيل؛ `$enableWebhook/$regenerateWebhook` تحت حارس `DELIVERY_PRICING_MANAGE` وحقل `carrier_id` مطلوب (`$enableAll` يبقى لتعبئة الاعتمادات فقط). أيقونة `link` غير موجودة في `icon.blade.php` → استُخدمت `external-link` (الخريطة تحوي truck-x-mark/printer/arrow-path/shield-check/arrow-uturn-left/clipboard/external-link).
+- **طباعة الملصق:** ① `CarrierIntegrationContract::getLabel(ShippingProvider, string $tracking)` (ويتطلب تعبئة الاعتمادات → `connection_missing_credentials`) + `NoestIntegrationAdapter::getLabel` (URL `/get/order/label?tracking=` بتوكن الشركة، وبلا توكن ok=false)؛ ② `DeliveryLabelController@show(Store $store, Request, string $tracking)` — حارس `ORDER_VIEW`، يسترجع التتبع بالشركة، يعرّف المحوّل، يجلب URL الملصق بـ `Bearer` ثم يبثّ البايتات inline (`Content-Disposition: inline; filename=label-{T.N.}`) — CVE سدّ للتوكن أمام المتصفح؛ ③ مسار `GET /merchant/{store:slug}/tracking/label/{tracking}` باسم `merchant.tracking.label` في Layer 3؛ ④ واجهة التتبّع: `$openLabel` (carrier أولًا: حدث متصفح `open-label` + `window.open` ببروكسي) و`$closeLabel` + مودال `label-print-modal` (ورقة `#edz-label-sheet` + CSS طباعة يحصر الرؤية + شريط الباركود) + مكوّن `x-edz.barcode` (Code128 كامل: جدول الأنماط، subset C للأرقام الزوجية، checksum mod 103، SVG `crispEdges`)؛ ⑤ **خدعة Laravel 12 Positional Resolution** اكتُشفت أثناء التصحيح: مع `(Request $request, string $tracking)` ومسارين، حقن `Request` يزيح `$tracking` فاستقبل سلَغ المتجر → الحل وضع `Store $store` أولًا في التوقيع (النموذج يُربط بالقيمة فيُبقى الترتيب صحيحًا).
+- **الترجمات ×4 (ar/en/fr/es) `order_flow.php`:** trash_restored/trash_restore_all/permanent_delete_title/permanent_delete_confirm/order_moved_to_trash/orders_restored/delete_confirmation_title/delete_confirmation_message/delete_permanently/trash_count/trash_empty_trash_label+confirmation/all_orders_restored/sync_all_tracking/sync_all_tracking_result/sync_updated/sync_failed/sync_no_open/webhook_enable (+ كل مفتاح الطباعة: print_label/label_print/close/label × المختلفة) — وجُمعت عناصر السلة أسفل `order_moved_to_trash` الحالي.
+- **الأدلة:** `tests/Feature/Merchant/TrackingTrashWebhookLabelTest.php` (**10 ناجحة / 46 تأكيدًا** — ترتيب الأعمدة، سلة/استرجاع، restoreAll، purge صفوف كاملة بمنتج/متغير حقيقيين، رفض سلة/نهائي بدون `ORDER_DELETE` (عبر `canStore` + بقاء الحالة لأن Livewire يبتلع HTTPException في `call()` في المختبر)، syncAllTracking، ويب هوك يطبّق الإحداث مثل الاقتراع، رفض توكن مجهول/شركة غير نشطة، `getLabel` بالتوكن/بدونه، بروكسي الملصق يبثّ PDF بأشرطة الإطار) + تحديث `TrackingSearchFilterTest` (الترتيب الجديد + الإلزامي في modal — مع `total` إلزاميًا الآن يستهدف الاختبار إخفاء/تحريك `notes`/`city` بدل `total`)؛ جولة مجاورة: TrackingGridBatchTest + TrackingSearchFilterTest + TrackingStatusHistoryPopupTest + OrdersTrackingColumnTest (**38 ناجحًا بعد إعادةٍ لاحقة**) و 6 سويتات شحن/تتبّع (OrderTracking/BulkSendCarrierGrouping/DirectSendConfirmedOrder/NoestIntegration/OrderShippingProviderColumn/DeliverySettings) **54 ناجحة (236 تأكيدًا)** — صفر انحدار؛ `php -l` نظيف على الملفات المتغيرة + `migrate --force` ناجح للميغريشنات الثلاث (سلة/seed NOEST + الويب هوك).**إصلاح** فردي unrelated: فشل وحيد في جولة كانت قفل ملف Windows مؤقت (`rename Access denied`) — نجح فورًا عند الإعادة.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — ترتيب الأعمدة الجديد مع الإلزامي، سلة المهملات (بانر/توستس/الاسترجاع/النهائي)، زر المزامنة الجماعية، كارت الويب هوك في الإعدادات، وتدفق الطباعة الكامل (قائمة صف → فتح ملصق الشركة في تبويب أو ملصقنا بباركود + طباعة).
+
+---
+
+## دفعة صفحة التتبع: سلات منفصلة لكل تبويب + رقم تتبع الرجل + نظافة الترميز + وقت التاريخ (سبتمبر 2026) ✅
+
+**بقرارات المستخدم المعتمدة أثناء التنفيذ:** سلة المهملات صارت **لكل تبويب** في الجهة المقابلة (`ms-auto`) مع زر «الرجوع» بدل الأحمر — زر السلة انتقل من هيدر الصفحة إلى `tracking-tabs` ويتبدل عند التفعيل؛ نطاق السلة في `baseTrackingQuery`/`trashCount`/`restoreAll`/`forceDeleteAll` = carrier `whereNotNull('shipping_provider_id')` / rider `whereNotNull('delivery_rider_id')`؛ قوائم إجراءات الصف أصبحت `position:fixed` بفلْب للأعلى قرب أسفل الشاشة (لم تَعُد تُقص داخل `overflow-hidden` للكارد)؛ رقم تتبع الرجل يُولَّد فورًا عند الإرسال؛ الكرون لا يلمس الشركات ذات الويب هوك؛ والسبب الجذري لرموز «â€”» المعطوبة هو **تلف UTF-8 في السورس نفسه** وليس تشفير المتصفح.
+
+- **نظافة الترميز:** `tracking-list.blade.php` — استبدال حرفي `â€”`→`—` و`â€¢`→`•` (بما فيها أعمدة `notes` و`—`/`•` في الواجهة). **بقي تلف مماثل غير مُبلَّغ عنه في `orders/partials/order-form-modal.blade.php`** (الأسطر 20/46/99/208/319) — خارج هذه الدفعة، يُصلَح متى طلب المستخدم.
+- **عمود التاريخ:** desktop + بطاقة الموبايل يعرضان `Y-m-d H:i` (تاريخ+وقت كاملان).
+- **شارة نوع التوصيل HM/SD:** عمود `tracking_number` (desktop) وموبايل — رموز بجهة مقابلة (`ms-auto`): `HM` (muted) / `SD` (accent) عبر `'delivery_type' => $order->delivery_type` في خريطة loadShipments.
+- **زر النسخ:** `truncate max-w-[7rem] group-hover:max-w-none` — يظهر رقم التتبع كاملًا عند الهوفر فقط.
+- **القوائم:** desktop+موبايل `x-ref="menu"` + `EdzMenu.position($el, $refs.menu)` الجديدة في سكربت الصفحة (fixed + أيمن + فلْب: تفتح أعلى الصف عند ضيق المساحة السفلية).
+- **السلة لكل تبويب:** `tracking-tabs` (زر + عداد + «الرجوع» بأيقونة arrow-left و`text-accent-600`)؛ `tracking-trash-banner` جديد بتوكنز داكنة `bg-danger-surface/text-danger-fg/border-danger-border` (الخامُّ `danger-50/200/700` لا يتكيف مع الدارك)؛ `tracking-rider-tab` بفرع سلة + شريط البحث (تكافؤ مع carrier)؛ `updated('trackingTab')` يعيد `showTrash=false`.
+- **رقم تتبع رجل التوصيل:** في `$assignRider` — `OrderTrackingService::ensureRiderTracking($order, $number)` (جديد): إن وُجد تتبع مفتوح يُملأ رقمه الفارغ فقط، وإلا `startShipment` جديد؛ الرقم = `{HM|SD}-{STR(RANDOM 8)}` حسب `delivery_type` مع فحص تفرد في المتجر (حلقة do/while) — اتجاه الرجل لا يُسبَر (سجل `dueTrackings` بلا provider).
+- **الكرون/الويب هوك:** `SyncNoestTrackingJob::handle` + `routes/console.php` يضيفان `whereNull('webhook_token')` (الشركات ذات الويب هوك تدفع بنفسها؛ الاقتراع لها فقط بلا ويب هوك).
+- **مزامنة بلا فراغ:** `NoestTrackingSyncService::apply` — عندما لا تُطابِق الأحداث حالة والصف بلا حالة سابقة: يكتب `IN_TRANSIT` + سجل حالة `fallback_in_transit` بدل ترك «—» (idempotent بلا سجل مكرر).
+- **الترجمات:** `order_flow` ×4 لغات: `back_from_trash` / `delivery_type_home` / `delivery_type_stopdesk`.
+- **الأدلة:** `TrackingTrashWebhookLabelTest` 10 ناجح + `TrackingSearchFilterTest` 24 (+3 جديد: توليد رقم HM، بادئة SD لـ stopdesk، وعدم تكرار leg عند إعادة التعيين) + `NoestTrackingSyncTest` 7 (+1: الجوب يتخطّى شركة الويب هوك `Http::assertNothingSent`) + `NoestTrackingSyncServiceTest` 7 (+1: fallback IN_TRANSIT على صف بلا حالة) — **67 ناجحًا بلا انحدار**؛ `php -l` نظيف ×5 + `view:cache` success.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** 375/768/1440 — زر السلة/الرجوع في التبويبات، القوائم المعلّقة بفلْب الأعلى في آخر صف، شارة HM/SD + رقم التتبع الممتد عند الهوفر، عمود التاريخ+الوقت، كارت سلة الرجل ببحثه، ورقم تتبع الرجل (HM/SD-XXXXXXXX) في درج الطلبية وطباعة الملصق.
+
+---
+
+## دفعة صفحة التتبع (1/5): الجدول القابل للسكرول + قوائم الصف المثبتة + رسالة النسخ + نظافة الترميز (سبتمبر 2026) ✅
+
+**بقرارات المستخدم المعتمدة:** تنفيذ التحسينات **بَدْفعات** تُعرض قبل كل دفعة؛ توكن الويب هوك ينتقل لترويسة `X-Delivery-Token` مع `?token=` احتياطيًا (دفعة 2)؛ `thead` لاصق مع سكرول عمودي (هذه الدفعة)؛ الهيكلة traits بـ closures رفيعة (دفعة 4).
+
+- **الجدول:** غلاف new = `relative` → `overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll` (سكرول أفقي+عمودي داخل الكارد)؛ الجدول `w-max min-w-full` (الأعمدة تحتفظ بعرضها الطبيعي والسكرول يأكل الزائد)؛ `thead` = `sticky top-0 z-10 bg-surface [&_th]:bg-surface` (هيدر ثابت أثناء السكرول العمودي).
+- **قوائم الصف:** مكوّن Alpine عام **`edzRowMenu`** (`resources/js/components/edz-row-menu.js` — جديد، n=224/280، `x-ref="trigger"`، موبايل <640 = ورقة سفلية، وإلا fixed بفلْب للأعلى/أيمن مع clamppping) + تسجيل في `panel.js` + تم حذف سكربت `window.EdzMenu` المضمّن من `index.blade.php`؛ desktop وَموبايل يَسخدمان `x-edz.mobile-bottom-sheet` (scrim + لوحة موحدة) بدل `x-ref="menu"` الخام — القائمة تظهر **فوق الصف** دائمًا.
+- **رسالة النسخ:** السبب الجذري: `EdzSwal.toast` غير موجود إطلاقًا في `swal.js` (يوجد `success/error/...`) — استُبدل بـ `EdzSwal.success('', copy_done)` في المواضع الثلاثة (tracking-list:178/265 + order-drawer:47).
+- **نظافة الترميز:** `orders/partials/order-form-modal.blade.php` — تلف UTF-8 المُبقّى (أسطر 20/46/94/99/208/319: `â€”`, `â†’` → `—`, `→`).
+- **الأدلة:** `TrackingTrashWebhookLabelTest` 10 ناجح + `TrackingSearchFilterTest` 24 ناجح (9+دُرجة [145 تأكيدًا]) — أول جولة اصطدمت بقفل ملف Windows مؤقت (rename Access denied) ونجحت عند الإعادة؛ `view:cache` + `npm run build` نظيفان.
+
+## دفعة صفحة التتبع (2/5): ويب هوك لكل دومين + لكل شركة (سبتمبر 2026) ✅
+
+**حسب قرار المستخدم:** التوكن ينتقل من المسار إلى ترويسة `X-Delivery-Token` مع احتياطي `?token=`.
+
+- **القرار التصميمي:** استُخدم عمود `shipping_providers.code` الموجود (`noest`) كمعرّف الشركة في الرابط — لا حاجة لميغريشن slug (الـ `code` بلا فهرس فريد، ومكرر بين المتاجر بشكل مقصود؛ التمييز بالتوكن).
+- **المسار:** `POST /api/webhooks/delivery/{provider}` باسم `webhooks.delivery` (بدل `/{token}`) — رابط ثابت لكل شركة لكل دومين (`route()` يبني host تلقائيًا من الدومين الحالي).
+- **`DeliveryWebhookController::resolveProvider`:** توكن من `X-Delivery-Token` ثم `?token=` → `where code + webhook_token`؛ بلا توكن → الـ segment نفسه هو السر (النمط القديم) → `where webhook_token = segment`؛ يلزم `is_active` في الحالتين (404 وإلا).
+- **كارت الإعدادات** (`providers.blade.php`): يعرض الرابط الأساسي `/webhooks/delivery/noest` + صف توكن منفصل (نسخ) + تلميح `X-Delivery-Token`/`?token=`؛ زر النسخ ينسخ الرابط الكامل بـ `?token=` (يعمل فورًا ويخدم الناقل الذي لا يدعم الترويسات)؛ إعادة التوليد تغيّر التوكن «فقط» مع بقاء الرابط ثابتًا.
+- **الترجمات ×4:** مفاتيح جديدة `webhook_token_label` / `webhook_token_copy` / `webhook_header_hint` + تحديث قيم `webhook_token_regenerate` و`webhook_regenerated` (توكن لا رابط).
+- **الأدلة:** `TrackingTrashWebhookLabelTest` → **12 ناجحة / 52 تأكيدًا** (+3: `?token=` fallback، legacy token-in-path، رفض code مجهول/توكن مجهول/شركة غير نشطة على الشكل الأساسي) + جولة جوار: StopdeskSyncUiTest + NoestTrackingSyncTest + NoestIntegrationTest **22 ناجحة / 97 تأكيدًا** — صفر انحدار؛ `php -l` ×3 + `view:cache` نظيفان.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** كارت الويب هوك في إعدادات التوصيل (رابط `.../delivery/noest` + صف التوكن + التلميح) وإعادة توليد التوكن (الرابط ثابت). **الدفعة 3 (التالي):** الحذف النهائي يحذف عند شركة التوصيل (`OrderShippingGateway::deleteAtCarrier`).
+
+## دفعة صفحة التتبع (3/5): الحذف النهائي يحذف أيضًا عند شركة التوصيل (سبتمبر 2026) ✅
+
+**حسب قرار المستخدم:** الحذف النهائي للطلبية من سلة المهملات يحذف الشحنة غير المُتحقَّق منها عند الناقل أولًا (بلا حجب الحذف المحلي أبدًا).
+
+- **`OrderShippingGateway::deleteAtCarrier(Order $order): array`** (جديد) — لا يرمي أبدًا؛ يُعيد مصفوفة `ok`/`skipped` بأسباب صريحة (`no_provider`/`no_tracking`/`validated`/`unsupported`) أو `ok`/`message`/`error`؛ يسجّل فشل الناقل عبر `Log::warning`. يستخدم `OrderTrackingService::currentTracking` + `config('delivery.carrier_integrations.{code}')` — بلا ترميز صعب لناقل واحد.
+- **السحب:** إجراءا `$forceDeleteOrder` و`$forceDeleteAll` في `tracking/index.blade.php` يستدعيان `app(OrderShippingGateway::class)->deleteAtCarrier($order)` قبل `purgeOrderRows` (الفحص `isCarrierValidated()` يتخطّى ناقل الشحنة المتحقَّق منها تلقائيًا).
+- **اختبارات:** أُضيف `Http::fake` لمسار الفشل في اختبار الحذف النهائي القائم + اختباران جديدان: «يُحذف الشحنة غير المتحقَّق منها عند الناقل أولًا» (يؤكد `assertSent` لـ `/delete/order` بـ `tracking=TRK-CDEL-1`) و«يتخطى حذف الناقل لشحنة مُتحقَّق منها» (`assertNothingSent`). **14 ناجحة / 56 تأكيدًا.**
+- `php -l` + `view:cache` نظيفان.
+
+## دفعة صفحة التتبع (4/5): هيكلة `index.blade.php` — نقل الـ 68 closure إلى 5 traits (سبتمبر 2026) ✅
+
+**حسب قرار المستخدم:** الهيكلة عبر traits (الـ `state()`/`updated()`/`mount()` تبقى في الـ blade؛ الطرائز تُنقل كتوابع حقيقية بنفس الأسماء فتبقى استدعاءات القالب `$wire.*`/`$this->*()` كما هي تمامًا).
+
+- **5 traits جديدة تحت `app/Livewire/Concerns/`** (مثل `HasOrderProductPicker` القائم):
+  - `TrackingGridConcern` — `baseTrackingQuery`/`loadTrackingStats`/`loadShipments`/`refresh`/`clearFilters`/`setFilter`/`toggleTrackingStatus`/`nextPage`/`previousPage`/`shipmentCancelable`.
+  - `TrackingColumnConcern` — `trackingColumns`/`trackingDefaultOrder`/`trackingViewKey`/`getMembership`/`loadTrackingTabPreferences`/`saveColumnPreferences`/`openTableSettings`/`discardTableSettings`/`saveTableSettings`/`toggleDraftColumn`/`moveDraftColumn`/`reorderDraftColumns`/`resetColumns`/`loadRiderOptions`.
+  - `TrackingDrawerConcern` — `loadDrawerHistories`/`openDrawer`/`closeDrawer`/`openStatusHistory`/`closeStatusHistory`/`syncTracking`/`syncAllTracking`/`sendCarrierNote`/`openShipmentNotes`/`closeShipmentNotes`/`openOrderDetails`/`openLabel`/`closeLabel`/`cancelShipment`.
+  - `TrackingRiderFormConcern` — `generateRiderTrackingNumber`/`assignRider`/`storeDefaultProviderId`/`formShipmentTypeOptions`/سلسلة المدن والمكاتب (`cityOptionsFor`/`loadFormCitiesLazy`/`loadCities`/`officeOptionsFor`/`loadFormOfficesLazy`/`rebuildFormOffices`/`loadFormOffices`/`providerOfficeStates`/`providerHomeStates`/`homeCoveredCityIds`/`loadFormScope`/`releaseStaleDestination`/`applyProviderScope`/`changeDeliveryType`/`refreshFormOffices`)/`refreshFormDuplicateWarnings`/`recalculateOrderShipping`/`openEditModal`/`submitEdit`.
+  - `TrackingTrashConcern` — `deleteOrder`/`toggleTrash`/`restoreOrder`/`restoreAll`/`purgeOrderRows`/`forceDeleteOrder`/`forceDeleteAll`.
+- **التنفيذ:** الأجساد منقولة حرفيًا (نفس الشروط والمفاتيح والنصوص) من الـ closures إلى توابع عامة بنفس الأسماء والتوقيعات؛ استُبدل رأس الـ blade (13 `use` كلاسًا زائدة + `uses([HasOrderProductPicker::class])`) بكتلة خفيفة تسجّل الـ 6 traits في `uses([...])` وأُعيد `use StorePermissionEnum`/`use Order` لأن `mount()` يستخدمهما؛ كتلة «الـ 68 closure» حُذفت من الـ blade بحفظ `state()` و`updated()` و`mount()` كما هما — **2355 سطرًا → 304 سطرًا** مع بقاء القالب/الجزئيات بلا تغيير.
+- **التحقق من فجوات السطح:** كل أسماء `$wire.*` و`$this->method()` في partials صفحة التتبع + `order-form-modal`/`orders-product-picker` إمّا من الـ traits الخمسة أو `HasOrderProductPicker` (لا اسم مفقود).
+- **الأدلة:** `TrackingTrashWebhookLabelTest` **14 ناجحة / 56 تأكيدًا** + `TrackingSearchFilterTest` **23 ناجحة / 100 تأكيدًا** (37/156) — صفر انحدار؛ `php -l` ×6 + `view:cache` نظيفان.
+
+> **الدفعة 5 (تالية):** توليب تعليمي احترافي بمكوّن `x-edz.tooltip` على عناصر `title` في صفحة التتبع.
+
+## دفعة صفحة التتبع (5/5): توليب تعليمي احترافي `x-edz.tooltip` (سبتمبر 2026) ✅
+
+**المواصفات المعتمدة (Apple):** قالب عائم بلون الحبر بشفافية 92% + `backdrop-blur` + تأخير ظهور ~400ms + مخفي كليًا على أجهزة اللمس/الماوس الخشن.
+
+- **المكوّن الجديد `resources/views/components/edz/tooltip.blade.php`:** `<x-edz.tooltip label="..." side="top|bottom" maxWidth="...">` يلتف حول العنصر ويُضيف فقاعة `role="tooltip"`؛ بلا label يُمرَّر الـ slot كما هو (لا شيء يظهر). الوسم `display:inline-flex` يلتف حول أي عنصر (زر/شارة) دون كسر التخطيط؛ `max-width` عبر متغير CSS على الغلاف.
+- **النمط `resources/css/components/_tooltip.scss`** (مُسجَّل في `_index.scss`): الفقاعة `position:fixed` بمستوى `--edz-z-popover` → تهرب من حاوية السكرول الخاصة بالجدول (`overflow-x-auto`) بلا قصّ؛ خلفية ink rgba(17,24,39,.92) + `backdrop-filter: saturate(180%) blur(4px)` + نسخة داكنة أفتح؛ `pointer-events:none` (لا تحجب التمرير/النقر)؛ انتقال `opacity/transform` قصير مثل قوائم `edzDropdown`.
+- **المحرك `resources/js/components/edz-tooltip.js`** (مُسجَّل `edzTooltip` في `panel.js`): تحريض دخول `hover: hover and pointer: fine` فقط (بدون لمس)، تأخير ظهور 400ms وتأخير إخفاء 60ms، يُقاس `trigger.getBoundingClientRect()` ثم يثبّت الفقاعة فوق/تحت مع انقلاب تلقائي عند ضيق الرأسي وتثبيت أفقي بحواف 8px؛ `@click.capture` يخفيها فور أي نقرة داخل الغلاف (متوافق مع قائمة الصف `edzRowMenu` المغلَّفة).
+- **التطبيق في صفحة التتبع** (استبدال `title` الأصلي بالتوليب، مع فقاعة «رقم التتبع الممتد» على زر النسخ الذي يعرض الرقم مقتطعًا):
+  - `tracking-list`: زر النسخ (label = الرقم الكامل) + شارة الحالة/السجل ×2 + زر النوتات + زرا الإجراءات ⋯ (غلاف حول حاوية `edzRowMenu` كاملة حتى لا تتعارض مراجع x-ref/التعبيرات) + شارتا SD/HM ×2 (desktop+mobile).
+  - `order-drawer`: زر نسخ رقم التتبع في كارت الناقل.
+  - `tracking-toolbar`: زر المزامنة الجماعية + زر إعدادات الأعمدة.
+  - `tracking-tabs`: زر سلة المهملات/العودة (label ديناميكي + `ms-auto` على الغلاف).
+- **التزامات gated بـ hover:** على الموبايل كل المقابض الفارغة تعمل بلا توليب (سلوك Apple) — لا تسريب توليب على اللمس.
+- **الأدلة:** `npm run build` نظيف (CSS يحوي `.edz-tooltip*` والـ panel chunk يحوي `edzTooltip`)؛ `view:cache` نظيف؛ **37 ناجحة / 156 تأكيدًا** (TrackingTrashWebhookLabelTest 14 + TrackingSearchFilterTest 23) — صفر انحدار.
+
+> **يتطلب تحققًا بصريًا يدويًا من المستخدم:** على 375/768/1440 — التوليب فوق أزرار النسخ/الإجراءات/شارة الحالة/شارتي SD-HM، وظهوره بعد ~400ms بلا قصّ من حاوية السكرول، واختفاؤه فور النقر، وعدم ظهوره على اللمس إطلاقًا. انتهت الدفعات الخمس لمتجر التتبع.

@@ -44,6 +44,43 @@ class OrderTrackingService
     }
 
     /**
+     * Unique, rider-scoped tracking number (HM/SD prefix by delivery type) used
+     * when handing an order to a delivery rider. Printed on the label as a
+     * scannable Code128 barcode. Uniqueness is guarded against every other
+     * tracking number of the store.
+     */
+    public function generateRiderTrackingNumber(Order $order): string
+    {
+        $prefix = $order->delivery_type === 'stopdesk' ? 'SD' : 'HM';
+
+        do {
+            $candidate = $prefix . '-' . strtoupper(Str::random(8));
+        } while (OrderTracking::where('store_id', $order->store_id)->where('tracking_number', $candidate)->exists());
+
+        return $candidate;
+    }
+
+    /**
+     * Ensure a rider hand-off has a tracking row + number so the rider tab is never
+     * blank: creates a fresh open SHIPPED tracking when none exists, otherwise only
+     * backfills the number on the current open row. Idempotent.
+     */
+    public function ensureRiderTracking(Order $order, string $trackingNumber): OrderTracking
+    {
+        $open = $this->currentOpenTracking($order);
+
+        if ($open) {
+            if (blank($open->tracking_number)) {
+                $open->update(['tracking_number' => $trackingNumber]);
+            }
+
+            return $open;
+        }
+
+        return $this->startShipment($order, $trackingNumber);
+    }
+
+    /**
      * Mark the order's currently open tracking record as delivered.
      */
     public function markDelivered(Order $order, int|string|null $actorMembershipId = null, ?string $notes = null): ?OrderTracking

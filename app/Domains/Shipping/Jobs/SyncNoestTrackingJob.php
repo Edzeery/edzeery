@@ -40,6 +40,9 @@ class SyncNoestTrackingJob implements ShouldQueue
             ->with('carrier')
             ->where('store_id', $this->storeId)
             ->where('is_active', true)
+            // Providers with a webhook token push statuses on their own; polling
+            // is only for carriers that have NOT enabled a delivery webhook.
+            ->whereNull('webhook_token')
             ->whereHas('carrier', fn ($query) => $query->where('code', 'noest'))
             ->get();
 

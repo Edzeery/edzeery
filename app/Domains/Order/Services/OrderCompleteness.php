@@ -35,7 +35,14 @@ class OrderCompleteness
         }
 
         if ($forSend) {
-            if ($order->delivery_type === Order::DELIVERY_STOPDESK) {
+            // A delivery rider always carries to the order address (no office
+            // concept on the rider leg), so an address is required even when
+            // the order is typed stopdesk.
+            if (filled($order->delivery_rider_id)) {
+                if (blank($order->address)) {
+                    $missing[] = ['key' => 'delivery_address', 'label' => __('merchant_panel.address')];
+                }
+            } elseif ($order->delivery_type === Order::DELIVERY_STOPDESK) {
                 if (blank($order->stopdesk_point_id)) {
                     $missing[] = ['key' => 'stopdesk_point', 'label' => __('merchant_panel.stopdesk_point')];
                 }
