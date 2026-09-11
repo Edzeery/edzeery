@@ -72,4 +72,15 @@ class StoreOrderPermissions
 
         return false;
     }
+
+    /**
+     * Whether a membership is "restricted" for data-scoping purposes —
+     * everyone except OWNER / ADMIN.  Mirrors the unrestricted boundary
+     * used by canViewOrderEventLog (the same source of truth for who
+     * sees full-store data vs. only their own).
+     */
+    public static function isRestrictedMembership(StoreMembership $membership): bool
+    {
+        return ! $membership->isOwner() && ! $membership->isAdmin();
+    }
 }

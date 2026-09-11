@@ -669,3 +669,111 @@ test('the active tab is persisted to browser storage, not the database', functio
     // No tab state is stored server-side — the schema has no active_tab column.
     expect(\Illuminate\Support\Facades\Schema::hasColumn('user_column_preferences', 'active_tab'))->toBeFalse();
 });
+
+// ————— Phase E — restricted-member rider-tab scoping (assigned_to_membership_id) —————
+
+function tsfOtherMember(Store $store, string $storeRole = StoreRoleEnum::OWNER->value): StoreMembership
+{
+    $user = roleUser('merchant');
+    $user->assignRole(Role::findOrCreate($storeRole, 'merchant'));
+
+    return StoreMembership::create([
+        'store_id' => $store->id,
+        'user_id' => $user->id,
+        'invited_by' => $user->id,
+        'is_active' => true,
+        'role' => $storeRole,
+    ]);
+}
+
+test('a restricted staff member sees only shipments assigned to their membership on the rider tab', function () {
+    [$staff, $store, $staffMembership] = tsfOwner(StoreRoleEnum::STAFF->value);
+    $otherMembership = tsfOtherMember($store);
+
+    $provider = tsfProvider($store, 'Dz Riders');
+    $rider = tsfRider($store, 'Scoped Rider');
+
+    $mine = tsfOrder($store, $provider, 'TRK-MINE-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $mine->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $staffMembership->id]);
+
+    $theirs = tsfOrder($store, $provider, 'TRK-THEIRS-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $theirs->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $otherMembership->id]);
+
+    actingAs($staff)->withSession(['current_store_id' => $store->id]);
+
+    $component = Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('trackingTab', 'rider');
+
+    $rows = collect($component->get('shipments'));
+
+    expect($rows->count())->toBe(1)
+        ->and($rows->pluck('number')->contains($mine->number))->toBeTrue()
+        ->and($rows->pluck('number')->contains($theirs->number))->toBeFalse();
+});
+
+test('a restricted staff member rider-tab stats include only their own assigned shipments', function () {
+    [$staff, $store, $staffMembership] = tsfOwner(StoreRoleEnum::STAFF->value);
+    $otherMembership = tsfOtherMember($store);
+
+    $provider = tsfProvider($store, 'Dz Riders');
+    $rider = tsfRider($store, 'Scoped Rider');
+
+    $mine = tsfOrder($store, $provider, 'TRK-MINE-2', OrderTrackingStatus::IN_TRANSIT->value);
+    $mine->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $staffMembership->id]);
+
+    $theirs = tsfOrder($store, $provider, 'TRK-THEIRS-2', OrderTrackingStatus::IN_TRANSIT->value);
+    $theirs->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $otherMembership->id]);
+
+    actingAs($staff)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('riderStatsActiveShipments', 1)
+        ->assertSet('riderStatsActiveCount', 1)
+        ->assertSet('riderStatsCodDueToday', 900)
+        ->assertSet('stats.active', 1);
+});
+
+test('a restricted manager sees only shipments assigned to their membership on the rider tab', function () {
+    [$manager, $store, $managerMembership] = tsfOwner(StoreRoleEnum::MANAGER->value);
+    $otherMembership = tsfOtherMember($store);
+
+    $provider = tsfProvider($store, 'Dz Riders');
+    $rider = tsfRider($store, 'Scoped Rider');
+
+    $mine = tsfOrder($store, $provider, 'TRK-MGR-MINE', OrderTrackingStatus::IN_TRANSIT->value);
+    $mine->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $managerMembership->id]);
+
+    $theirs = tsfOrder($store, $provider, 'TRK-MGR-THEIRS', OrderTrackingStatus::IN_TRANSIT->value);
+    $theirs->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $otherMembership->id]);
+
+    actingAs($manager)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('shipments', fn ($rows) => count($rows) === 1
+            && collect($rows)->pluck('number')->contains($mine->number)
+            && collect($rows)->pluck('number')->doesntContain($theirs->number));
+});
+
+test('an unrestricted owner still sees every rider shipment on the rider tab', function () {
+    [$owner, $store, $ownerMembership] = tsfOwner();
+    $otherMembership = tsfOtherMember($store);
+
+    $provider = tsfProvider($store, 'Dz Riders');
+    $rider = tsfRider($store, 'Scoped Rider');
+
+    $first = tsfOrder($store, $provider, 'TRK-OWN-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $first->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $ownerMembership->id]);
+
+    $second = tsfOrder($store, $provider, 'TRK-OWN-2', OrderTrackingStatus::IN_TRANSIT->value);
+    $second->update(['delivery_rider_id' => $rider->id, 'assigned_to_membership_id' => $otherMembership->id]);
+
+    actingAs($owner)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('trackingTab', 'rider')
+        ->assertSet('shipments', fn ($rows) => count($rows) === 2)
+        ->assertSet('riderStatsActiveShipments', 2);
+});

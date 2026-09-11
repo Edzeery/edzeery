@@ -131,6 +131,12 @@ trait TrackingGridConcern
             if (filled($f['rider'] ?? null)) {
                 $query->where('delivery_rider_id', $f['rider']);
             }
+
+            $membership = $this->getMembership();
+
+            if ($membership && \App\Support\StoreOrderPermissions::isRestrictedMembership($membership)) {
+                $query->where('assigned_to_membership_id', $membership->id);
+            }
         }
 
         if (filled($f['assigned_to'] ?? null)) {
