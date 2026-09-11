@@ -96,6 +96,8 @@ return [
     'step_pricing_desc' => 'Establecer precios y márgenes de beneficio',
     'step_review' => 'Revisión y publicación',
     'step_review_desc' => 'Revisar detalles antes de publicar',
+    'step_locked_title' => 'Paso bloqueado',
+    'step_locked_text' => 'Completa los pasos anteriores antes de avanzar.',
     'stock' => 'Stock',
     'stock_label' => 'Stock',
     'subtitle' => 'Gestionar el catálogo de :store',

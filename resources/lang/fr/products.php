@@ -159,6 +159,8 @@ return [
     'step_pricing_desc' => 'Définir les prix et marges',
     'step_review' => 'Révision et publication',
     'step_review_desc' => 'Réviser les détails avant publication',
+    'step_locked_title' => 'Étape verrouillée',
+    'step_locked_text' => 'Terminez les étapes précédentes avant de passer à la suite.',
     'stock' => 'Stock',
     'stock_label' => 'Stock',
     'subtitle' => 'Gérer le catalogue de :store',

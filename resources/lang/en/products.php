@@ -159,6 +159,8 @@ return [
     'step_pricing_desc' => 'Set prices and profit margins',
     'step_review' => 'Review & Publish',
     'step_review_desc' => 'Review details before publishing',
+    'step_locked_title' => 'Step locked',
+    'step_locked_text' => 'Complete the previous steps before jumping ahead.',
     'stock' => 'Stock',
     'stock_label' => 'Stock',
     'subtitle' => 'Manage the catalog of :store',

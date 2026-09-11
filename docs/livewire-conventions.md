@@ -128,3 +128,6 @@ with([
 - Dark toggle: `<x-dark-toggle>`
 - Product images: `ProductImage` polymorphic model (MorphMany), `asset('storage/' . $path)`
 - Mini-cart: `CartService` session-based, sidebar slide-in pattern
+
+
+

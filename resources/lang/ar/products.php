@@ -159,6 +159,8 @@ return [
     'step_pricing_desc' => 'تحديد الأسعار وهامش الربح',
     'step_review' => 'المراجعة والنشر',
     'step_review_desc' => 'مراجعة التفاصيل قبل النشر',
+    'step_locked_title' => 'الخطوة مقفلة',
+    'step_locked_text' => 'أكمل الخطوات السابقة قبل الانتقال إلى الأمام.',
     'stock' => 'المخزون',
     'stock_label' => 'المخزون',
     'subtitle' => 'إدارة كتالوج :store',
