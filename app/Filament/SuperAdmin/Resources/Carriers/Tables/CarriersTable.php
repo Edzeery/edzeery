@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -15,6 +16,13 @@ class CarriersTable
     {
         return $table
             ->columns([
+                ImageColumn::make('logo')
+                    ->label('Logo')
+                    ->disk('public')
+                    ->visibility('public')
+                    ->default('/img/icons/noimg.png')
+                    ->circular()
+                    ->size(40),
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),

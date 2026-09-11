@@ -55,8 +55,8 @@ mount(function (): void {
     $this->allow_backorder = $settings->allow_backorder ?? false;
     $this->allow_price_edit = $settings->allow_price_edit ?? false;
     if (Schema::hasColumn('store_settings', 'min_order_qty')) {
-        $this->min_order_qty = $settings->min_order_qty;
-        $this->max_order_qty = $settings->max_order_qty;
+        $this->min_order_qty = $settings->min_order_qty ?? null;
+        $this->max_order_qty = $settings->max_order_qty ?? null;
     }
 });
 

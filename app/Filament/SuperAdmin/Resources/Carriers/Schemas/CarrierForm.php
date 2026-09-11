@@ -2,6 +2,7 @@
 
 namespace App\Filament\SuperAdmin\Resources\Carriers\Schemas;
 
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -27,6 +28,12 @@ class CarrierForm
                 TextInput::make('code')
                     ->maxLength(100)
                     ->nullable(),
+                FileUpload::make('logo')
+                    ->image()
+                    ->disk('public')
+                    ->directory('img/carriers/logos')
+                    ->visibility('public')
+                    ->maxFiles(1),
                 Repeater::make('credential_fields')
                     ->label('Credential fields shown to merchants')
                     ->schema([
@@ -56,6 +63,7 @@ class CarrierForm
                         Toggle::make('supports_free_shipping_mode')->label('Free shipping mode'),
                         Toggle::make('supports_express_economic')->label('Express / Economic'),
                         Toggle::make('supports_api_notes')->label('API notes'),
+                        Toggle::make('supports_order_delete')->label('Order delete'),
                         Toggle::make('supports_price_sync')->label('Price sync'),
                     ]),
                 Toggle::make('is_active')

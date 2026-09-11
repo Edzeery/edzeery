@@ -14,6 +14,7 @@ class Carrier extends Model
         'platform_id',
         'name',
         'code',
+        'logo',
         'credential_fields',
         'is_active',
         'supports_delivery',

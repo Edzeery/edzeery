@@ -34,13 +34,13 @@ class ProductService
             $autoBarcode = $data['auto_generate_barcode'] ?? false;
             $barcode = $autoBarcode
                 ? BarcodeService::product(null)
-                : ($data['barcode'] ?? null);
+                : (($data['barcode'] ?? null) ?: null);
 
             $autoSku = $data['auto_generate_sku'] ?? false;
 
             $baseSku = $autoSku
                 ? SkuGenerator::product(currentStore()->slug, $data['slug'])
-                : ($data['sku'] ?? null);
+                : (($data['sku'] ?? null) ?: null);
 
             if (!$baseSku) {
                 throw ValidationException::withMessages([
@@ -63,7 +63,9 @@ class ProductService
                         'images',
                         'has_variants',
                         'auto_generate_sku',
-                        'auto_generate_barcode'
+                        'auto_generate_barcode',
+                        'sku',
+                        'barcode',
                     ]),
                 )
             );
@@ -92,13 +94,17 @@ class ProductService
 
             $baseSku = $autoSku
                 ? SkuGenerator::product(currentStore()->slug, $data['slug'])
-                : ($data['sku'] ?? null);
+                : (($data['sku'] ?? null) ?: null);
 
             $barcode = $autoBarcode
                 ? BarcodeService::product(null) // توليد تلقائي
-                : ($data['barcode'] ?? null);
+                : (($data['barcode'] ?? null) ?: null);
 
-
+            if (!$baseSku) {
+                throw ValidationException::withMessages([
+                    'sku' => __('messages.sku_required'),
+                ]);
+            }
 
             $product->update(
                 array_merge(
@@ -116,6 +122,8 @@ class ProductService
                         'has_variants',
                         'auto_generate_sku',
                         'auto_generate_barcode',
+                        'sku',
+                        'barcode',
                     ])
                 )
             );
@@ -164,10 +172,10 @@ class ProductService
                 'name'       => $preview['name'] ?? $product->name,
                 'sku' => ($data['auto_generate_sku'] ?? false)
                     ? SkuGenerator::variant(currentStore()->slug, $product->slug, $preview['sku_parts'] ?? [])
-                    : ($preview['sku'] ?? throw ValidationException::withMessages(['sku' => __('messages.variant_sku_required')])),
+                    : (($preview['sku'] ?? null) ?: throw ValidationException::withMessages(['sku' => __('messages.variant_sku_required')])),
                 'barcode' => ($data['auto_generate_barcode'] ?? false)
                     ? BarcodeService::variant(null)
-                    : ($preview['barcode'] ?? null),
+                    : (($preview['barcode'] ?? null) ?: null),
                 'price'      => $preview['price'],
                 'compare_price' => $preview['compare_price'] ?? null,
                 'cost_price' => $preview['cost_price'],
