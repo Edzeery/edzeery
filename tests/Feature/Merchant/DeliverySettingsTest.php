@@ -185,6 +185,35 @@ test('carrier credentials marked required block saving when missing', function (
     expect(ShippingProvider::where('store_id', $store->id)->count())->toBe(0);
 });
 
+test('the carrier logo persists on the carrier and renders on the provider card', function () {
+    [$user, $store] = createDeliveryStore('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $carrier = Carrier::where('code', 'ecotrack')->first();
+    $carrier->update(['logo' => 'img/carriers/logos/ecotrack.png']);
+
+    expect($carrier->refresh()->logo)->toBe('img/carriers/logos/ecotrack.png');
+
+    $provider = deliveryProvider($store->id, ['carrier_id' => $carrier->id]);
+
+    $component = Volt::test('merchant.delivery.providers');
+
+    expect($component->html())->toContain('img/carriers/logos/ecotrack.png')
+        ->and($component->html())->toContain($provider->name);
+});
+
+test('a provider without a carrier logo falls back to the truck placeholder', function () {
+    [$user, $store] = createDeliveryStore('owner');
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    deliveryProvider($store->id);
+
+    $component = Volt::test('merchant.delivery.providers');
+
+    expect(ShippingProvider::first()->carrier_id)->not->toBeNull()
+        ->and($component->html())->not->toContain('storage/img/carriers');
+});
+
 // ————— Announced rates page (merchant.delivery.announced-rates) —————
 
 test('owner manages per-state office/home pricing on the announced-rates page', function () {

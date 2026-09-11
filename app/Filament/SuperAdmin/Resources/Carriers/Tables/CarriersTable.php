@@ -52,6 +52,9 @@ class CarriersTable
                 IconColumn::make('supports_api_notes')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('supports_order_delete')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('supports_price_sync')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),

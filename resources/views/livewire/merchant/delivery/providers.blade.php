@@ -80,6 +80,7 @@ $loadData = function (): void {
             'platform' => $p->carrierPlatform?->name,
             'carrier' => $p->carrier?->name,
             'carrier_id' => $p->carrier_id,
+            'carrier_logo' => $p->carrier?->logo,
             'credentials_count' => count((array) ($p->credentials ?? [])),
             'rates_count' => $p->delivery_rates_count,
             'is_active' => $p->is_active,
@@ -96,6 +97,7 @@ $carrierOption = function (Carrier $c): array {
         'id' => $c->id,
         'name' => $c->name,
         'code' => $c->code,
+        'logo' => $c->logo,
         'credential_fields' => $c->credentialFieldList(),
     ];
 };
@@ -399,8 +401,14 @@ $deleteProvider = function (string $id): void {
                 <div wire:key="provider-{{ $provider['id'] }}" class="edz-card edz-card--padded">
                     <div class="flex items-start justify-between mb-4">
                         <div class="flex items-center gap-3">
-                            <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center">
-                                <x-edz.icon name="truck" class="w-5 h-5 text-brand-500" />
+                            <div class="w-11 h-11 rounded-xl bg-brand-surface flex items-center justify-center overflow-hidden">
+                                @if ($provider['carrier_logo'])
+                                    <img src="{{ asset('storage/' . $provider['carrier_logo']) }}" alt="{{ $provider['name'] }}"
+                                        class="w-full h-full object-cover" onerror="this.style.display='none'">
+                                @endif
+                                <span @if ($provider['carrier_logo']) class="hidden" @endif>
+                                    <x-edz.icon name="truck" class="w-5 h-5 text-brand-500" />
+                                </span>
                             </div>
                             <div class="min-w-0">
                                 <p class="font-semibold text-ink truncate">{{ $provider['name'] }}</p>

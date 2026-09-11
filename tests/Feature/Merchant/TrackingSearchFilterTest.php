@@ -75,7 +75,7 @@ function tsfOrder(Store $store, ShippingProvider $provider, string $trackingNumb
 {
     $customer = Customer::firstOrCreate(
         ['store_id' => $store->id, 'phone' => '0560'.fake()->unique()->numerify('######')],
-        ['name' => 'TSF ' . fake()->unique()->firstName(), 'status' => true],
+        ['name' => 'TSF '.fake()->unique()->firstName(), 'status' => true],
     );
 
     $order = Order::create([
@@ -311,6 +311,21 @@ test('clearFilters resets search and filters back to the full list', function ()
         ->assertSet('filters.city', null)
         ->assertSet('filters.rider', null)
         ->assertSet('shipments', fn ($rows) => count($rows) === 2);
+});
+
+test('the drawer exposes the carrier logo alongside the provider', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfNoestProvider($store);
+    $provider->carrier()->update(['logo' => 'img/carriers/logos/noest.png']);
+    $order = tsfOrder($store, $provider, 'TRK-LOGO-001', OrderTrackingStatus::IN_TRANSIT->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('openDrawer', (string) $order->id)
+        ->assertSet('drawerOrderId', (string) $order->id)
+        ->assertSet('drawerTracking.provider_logo', 'img/carriers/logos/noest.png')
+        ->assertSeeHtml('img/carriers/logos/noest.png');
 });
 
 test('the drawer sync action re-polls the carrier and refreshes the open drawer', function () {

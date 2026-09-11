@@ -36,7 +36,14 @@
                         class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                             <dt class="text-ink-muted shrink-0">{{ __('order_flow.tracking_provider') }}</dt>
-                            <dd class="text-ink text-end">{{ $this->drawerTracking['provider'] }}</dd>
+                            <dd class="text-ink text-end flex items-center justify-end gap-1.5">
+                                @if (!empty($this->drawerTracking['provider_logo']))
+                                    <img src="{{ asset('storage/' . $this->drawerTracking['provider_logo']) }}"
+                                        alt="" class="w-5 h-5 rounded object-cover"
+                                        onerror="this.style.display='none'">
+                                @endif
+                                {{ $this->drawerTracking['provider'] }}
+                            </dd>
                         </div>
                         <div class="flex items-start justify-between gap-3 px-3 py-2">
                             <dt class="text-ink-muted shrink-0">{{ __('merchant_panel.tracking_number') }}</dt>

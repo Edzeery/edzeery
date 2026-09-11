@@ -62,6 +62,7 @@ trait TrackingDrawerConcern
             'state' => $order->state?->name ?? '—',
             'address' => $order->address,
             'provider' => $order->shippingProvider?->name ?? ($order->deliveryRider?->name ?? '—'),
+            'provider_logo' => $order->shippingProvider?->carrier?->logo,
             'tracking_number' => $tracking?->tracking_number,
             'tracking_status' => $tracking?->tracking_status,
             'shipped_at' => $tracking?->shipped_at,
