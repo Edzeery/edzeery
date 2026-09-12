@@ -40,18 +40,39 @@ function wizardStepLabels(): array
     );
 }
 
-test('wizard renders the six dynamic steps in canonical order', function () {
-    [$user, $store] = skuUser();
-
-    $html = Volt::test('merchant.products.form')->html();
-
+function wizardNav(string $html): string
+{
     $navStart = strpos($html, 'aria-label="Progress"');
     $navEnd = strpos($html, '</nav>', $navStart);
 
     expect($navStart)->not->toBeFalse()
         ->and($navEnd)->not->toBeFalse();
 
-    $nav = substr($html, $navStart, $navEnd - $navStart);
+    return substr($html, $navStart, $navEnd - $navStart);
+}
+
+test('simple product wizard renders five tabs and never shows the options tab', function () {
+    [$user, $store] = skuUser();
+
+    $nav = wizardNav(Volt::test('merchant.products.form')->html());
+
+    $position = -1;
+    foreach (array_merge(array_slice(wizardStepLabels(), 0, 3), array_slice(wizardStepLabels(), 4, 2)) as $label) {
+        $pos = strpos($nav, $label);
+        expect($pos)->not->toBeFalse("Step label \"{$label}\" not rendered in the nav");
+        expect($pos)->toBeGreaterThan($position);
+        $position = $pos;
+    }
+
+    expect($nav)->not->toContain(str_replace('&', '&amp;', __('products.step_options')));
+});
+
+test('variable product wizard renders all six tabs in canonical order', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true);
+
+    $nav = wizardNav($volt->html());
 
     $position = -1;
     foreach (wizardStepLabels() as $label) {
@@ -78,7 +99,7 @@ test('a locked step cannot be navigated to at fresh mount', function () {
 test('completed steps unlock and free navigation preserves state', function () {
     [$user, $store] = skuUser();
 
-    $volt = Volt::test('merchant.products.form');
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true);
 
     // Step 4 (options) and step 2 (images) are unreachable before basic info.
     $volt->call('goToStep', ProductWizardSteps::STEP_OPTIONS);
@@ -168,8 +189,9 @@ test('the images step renders persisted images and the upload input', function (
 
 function walkWizardToInventory($volt, string $name, string $slug): void
 {
+    // Simple product (has_variants off): Basic → Images → Pricing → Inventory;
+    // the hidden Options step is skipped by the engine.
     $volt->set(['name' => $name, 'slug' => $slug])
-        ->call('nextStep')
         ->call('nextStep')
         ->call('nextStep')
         ->call('nextStep');
@@ -191,7 +213,6 @@ test('empty sku with auto-generation off blocks advancing past inventory', funct
             ProductWizardSteps::STEP_BASIC,
             ProductWizardSteps::STEP_IMAGES,
             ProductWizardSteps::STEP_PRICING,
-            ProductWizardSteps::STEP_OPTIONS,
         ])
         ->assertHasErrors(['sku']);
 
@@ -218,7 +239,6 @@ test('enabling automatic sku generation clears the inventory block', function ()
             ProductWizardSteps::STEP_BASIC,
             ProductWizardSteps::STEP_IMAGES,
             ProductWizardSteps::STEP_PRICING,
-            ProductWizardSteps::STEP_OPTIONS,
             ProductWizardSteps::STEP_INVENTORY,
         ]);
 });
@@ -408,4 +428,86 @@ test('unchanged variants do not trigger per-variant image queries on save', func
         ->filter(fn ($q) => str_contains($q['query'], 'product_images'));
 
     expect($imageQueries->count())->toBe(1);
+});
+
+test('visible drops options without variants and restores it with variants', function () {
+    expect(ProductWizardSteps::visibleIds(['has_variants' => false]))
+        ->toBe([1, 2, 3, 5, 6])
+        ->and(count(ProductWizardSteps::visible(['has_variants' => false])))->toBe(5)
+        ->and(ProductWizardSteps::isStepVisible(ProductWizardSteps::STEP_OPTIONS, ['has_variants' => false]))->toBeFalse();
+
+    expect(ProductWizardSteps::visibleIds(['has_variants' => true]))
+        ->toBe([1, 2, 3, 4, 5, 6])
+        ->and(count(ProductWizardSteps::visible(['has_variants' => true])))->toBe(6)
+        ->and(ProductWizardSteps::isStepVisible(ProductWizardSteps::STEP_OPTIONS, ['has_variants' => true]))->toBeTrue();
+});
+
+test('nextStep and prevStep skip the hidden options step for simple products', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set(['name' => 'Simple Skip', 'slug' => 'simple-skip'])
+        ->call('nextStep')
+        ->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING);
+
+    $volt->call('nextStep');
+
+    // Options (4) is skipped entirely: the next visible step is Inventory (5).
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_INVENTORY)
+        ->assertSet('validated_steps', [
+            ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
+            ProductWizardSteps::STEP_PRICING,
+        ]);
+
+    // Going back from Inventory skips Options too, landing straight on Pricing.
+    $volt->call('prevStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING);
+
+    $volt->call('nextStep')->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_REVIEW);
+});
+
+test('unchecking variants while on the options step relocates to pricing and drops it from validated steps', function () {
+    [$user, $store] = skuUser();
+
+    [$product, $variants] = makeVariableProduct($store, 'toggle-off-variants');
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    $volt->assertSet('has_variants', true)
+        ->call('goToStep', ProductWizardSteps::STEP_OPTIONS)
+        ->assertSet('currentStep', ProductWizardSteps::STEP_OPTIONS);
+
+    // Toggling off while standing on Options immediately relocates to Pricing.
+    $volt->set('has_variants', false);
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING)
+        ->assertSet('validated_steps', [
+            ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
+            ProductWizardSteps::STEP_PRICING,
+            ProductWizardSteps::STEP_INVENTORY,
+            ProductWizardSteps::STEP_REVIEW,
+        ])
+        ->assertSet('options', [])
+        ->assertSet('variants_preview', []);
+
+    // A hidden step is not merely locked — jumping to it is a silent no-op.
+    $volt->call('goToStep', ProductWizardSteps::STEP_OPTIONS)
+        ->assertSet('currentStep', ProductWizardSteps::STEP_PRICING)
+        ->assertNotDispatched('swal');
+
+    // Re-enabling brings the Options tab back, freely reachable again without
+    // re-validating already-passed steps.
+    $volt->set('has_variants', true)
+        ->call('goToStep', ProductWizardSteps::STEP_OPTIONS)
+        ->assertSet('currentStep', ProductWizardSteps::STEP_OPTIONS);
+
+    expect(in_array(ProductWizardSteps::STEP_OPTIONS, $volt->instance()->validated_steps, true))->toBeTrue();
 });

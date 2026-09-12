@@ -126,6 +126,22 @@ updated([
     },
     'has_variants' => function ($value): void {
         if (! $value) {
+            // Options drops out of the visible sequence: never strand the user
+            // on a tab that just disappeared.
+            if ($this->currentStep === ProductWizardSteps::STEP_OPTIONS) {
+                $this->currentStep = ProductWizardSteps::firstVisibleStepBefore(
+                    ProductWizardSteps::STEP_OPTIONS,
+                    ['has_variants' => false]
+                ) ?? ProductWizardSteps::STEP_PRICING;
+            }
+
+            // A hidden step must not count as validated. Re-adding it is
+            // handled naturally the next time the user reaches Options.
+            $this->validated_steps = array_values(array_filter(
+                $this->validated_steps,
+                fn (int $id) => $id !== ProductWizardSteps::STEP_OPTIONS
+            ));
+
             $this->options = [];
             $this->variants_preview = [];
             $this->options_changed = false;
@@ -419,19 +435,36 @@ $nextStep = action(function (): void {
     if (! in_array($this->currentStep, $this->validated_steps, true)) {
         $this->validated_steps[] = $this->currentStep;
     }
-    $this->currentStep = min(ProductWizardSteps::count(), $this->currentStep + 1);
+    $this->currentStep = $this->adjacentVisibleStep($this->currentStep, 1) ?? $this->currentStep;
 });
 
 $prevStep = action(function (): void {
-    $this->currentStep = max(1, $this->currentStep - 1);
+    $this->currentStep = $this->adjacentVisibleStep($this->currentStep, -1) ?? $this->currentStep;
+});
+
+$adjacentVisibleStep = protect(function (int $from, int $direction): ?int {
+    $ids = ProductWizardSteps::visibleIds(['has_variants' => (bool) $this->has_variants]);
+    $index = array_search($from, $ids, true);
+
+    if ($index === false) {
+        return null;
+    }
+
+    $index += $direction;
+
+    if ($index < 0 || $index >= count($ids)) {
+        return null;
+    }
+
+    return $ids[$index];
 });
 
 $isStepUnlocked = protect(function (int $step): bool {
-    if (! ProductWizardSteps::isExistingStep($step)) {
+    if (! ProductWizardSteps::isStepVisible($step, ['has_variants' => (bool) $this->has_variants])) {
         return false;
     }
 
-    foreach (ProductWizardSteps::ids() as $id) {
+    foreach (ProductWizardSteps::visibleIds(['has_variants' => (bool) $this->has_variants]) as $id) {
         if ($id >= $step) {
             break;
         }
@@ -444,7 +477,9 @@ $isStepUnlocked = protect(function (int $step): bool {
 });
 
 $goToStep = action(function (int $step): void {
-    if (! ProductWizardSteps::isExistingStep($step) || $step === $this->currentStep) {
+    // A step hidden by the current has_variants state is not merely locked —
+    // it is outside the flow entirely, so treat it like any nonexistent id.
+    if (! ProductWizardSteps::isStepVisible($step, ['has_variants' => (bool) $this->has_variants]) || $step === $this->currentStep) {
         return;
     }
 
@@ -555,12 +590,12 @@ $save = action(function (): void {
     $this->redirectRoute('merchant.products.edit', [currentStore(), $product]);
 });
 
-$lockedSteps = computed(fn () => collect(ProductWizardSteps::ids())
+$lockedSteps = computed(fn () => collect(ProductWizardSteps::visibleIds(['has_variants' => (bool) $this->has_variants]))
     ->filter(fn (int $id) => ! $this->isStepUnlocked($id))
     ->values()
     ->all());
 
-$wizardSteps = computed(fn () => array_values(ProductWizardSteps::all()));
+$wizardSteps = computed(fn () => array_values(ProductWizardSteps::visible(['has_variants' => (bool) $this->has_variants])));
 ?>
 
 <div x-data="{ step: @entangle('currentStep') }">

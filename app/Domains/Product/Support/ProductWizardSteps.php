@@ -85,9 +85,72 @@ final class ProductWizardSteps
         return count(self::all());
     }
 
-    public static function isExistingStep(int $step): bool
+    /**
+     * Ordered definitions for the currently visible wizard steps.
+     *
+     * Whatever the context, Review is always the terminal step. Options is the
+     * only step whose membership changes: it disappears entirely from the
+     * navigable sequence when the product has no variants.
+     *
+     * @param array{has_variants?: bool} $context
+     * @return array<int, array{id:int, label:string, icon:string, partial:string}>
+     */
+    public static function visible(array $context): array
     {
-        return isset(self::all()[$step]);
+        $steps = self::all();
+
+        if (empty($context['has_variants'])) {
+            unset($steps[self::STEP_OPTIONS]);
+        }
+
+        return $steps;
+    }
+
+    /**
+     * Keys of the visible steps only — the wrapper navigation iterates.
+     *
+     * @param array{has_variants?: bool} $context
+     * @return array<int, int>
+     */
+    public static function visibleIds(array $context): array
+    {
+        return array_keys(self::visible($context));
+    }
+
+    /**
+     * Whether a step is part of the current navigable sequence.
+     *
+     * Distinct from isExistingStep(): a hidden step exists in the canonical
+     * list but is simply absent from the current flow.
+     *
+     * @param array{has_variants?: bool} $context
+     */
+    public static function isStepVisible(int $step, array $context): bool
+    {
+        return isset(self::visible($context)[$step]);
+    }
+
+    /**
+     * The nearest visible step strictly before the given step, or null.
+     *
+     * Used to relocate the wizard when the current step drops out of the
+     * visible sequence (e.g. Options while toggling has_variants off).
+     *
+     * @param array{has_variants?: bool} $context
+     */
+    public static function firstVisibleStepBefore(int $step, array $context): ?int
+    {
+        $previous = null;
+
+        foreach (self::visibleIds($context) as $id) {
+            if ($id >= $step) {
+                break;
+            }
+
+            $previous = $id;
+        }
+
+        return $previous;
     }
 
     /**

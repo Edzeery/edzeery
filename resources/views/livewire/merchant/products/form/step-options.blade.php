@@ -199,15 +199,6 @@
                         @endif
                     </div>
                 </div>
-            @else
-                <div class="edz-card">
-                    <div class="edz-card__body">
-                        <div class="rounded-lg border border-surface-border bg-surface-secondary/60 p-8 text-center">
-                            <p class="text-sm text-ink-muted">{{ __('products.add_options_hint') }}</p>
-                            <p class="mt-1 text-xs text-ink-muted">{{ __('products.product_type_hint') }}</p>
-                        </div>
-                    </div>
-                </div>
             @endif
         </div>
     </div>
