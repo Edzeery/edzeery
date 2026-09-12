@@ -138,11 +138,13 @@ class ProductService
 
                 if (!empty($data['options_changed'])) {
                     // الخيارات تغيرت → أعد إنشاء Variants
+                    $this->deleteVariantImages($product);
                     $product->variants()->delete();
                     $this->syncVariants($product, $data);
                 }
             } else {
                 // Simple Product
+                $this->deleteVariantImages($product);
                 $product->variants()->delete();
                 $this->createSingleVariant($product, $data);
             }
@@ -207,6 +209,17 @@ class ProductService
 
                 $variant->optionValues()->sync($pivotData);
             }
+
+            if (!empty($preview['new_image'])) {
+                $path = $preview['new_image']->store('products', 'public');
+
+                $variant->images()->create([
+                    'path' => $path,
+                    'store_id' => $product->store_id,
+                    'is_primary' => true,
+                    'sort_order' => 0,
+                ]);
+            }
         }
     }
 
@@ -236,9 +249,16 @@ class ProductService
         }
     }
 
+    protected function deleteVariantImages(Product $product): void
+    {
+        \App\Models\Products\ProductImage::where('imageable_type', \App\Models\Products\ProductVariant::class)
+            ->whereIn('imageable_id', $product->variants()->pluck('id'))
+            ->delete();
+    }
+
     public function buildEditFormData(Product $product): array
     {
-        $product->load(['variants.optionValues.option', 'images']);
+        $product->load(['variants.optionValues.option', 'variants.images', 'images']);
 
         $data = [
             'images' => $product->images->sortBy('sort_order')->pluck('path')->toArray(),
@@ -302,6 +322,8 @@ class ProductService
                 'width' => $variant->width,
                 'height' => $variant->height,
                 'is_active' => $variant->is_active,
+                'image' => $variant->images->firstWhere('is_primary', true)?->path,
+                'new_image' => null,
                 'profit' => $variant->price - $variant->cost_price,
                 'margin' => $variant->price > 0
                     ? round((($variant->price - $variant->cost_price) / $variant->price) * 100, 2)

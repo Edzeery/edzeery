@@ -106,6 +106,8 @@ return [
     'title' => 'Productos',
     'try_adjusting' => 'Intenta modificar tu búsqueda o filtros.',
     'variant_product' => 'Producto con variantes',
+    'remove_variant_image' => 'Eliminar imagen',
+    'variant_image' => 'Imagen',
     'variants_label' => 'Variantes',
     'min_order_qty' => 'Cantidad mínima de pedido',
     'max_order_qty' => 'Cantidad máxima de pedido',

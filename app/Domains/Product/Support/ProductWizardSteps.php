@@ -97,7 +97,7 @@ final class ProductWizardSteps
      * freely navigate to) the given step. Steps without input (options, review)
      * resolve to an empty rule set.
      *
-     * @param array{store_id?: string|null, product_id?: string|null, min_order_qty?: int|string|null} $context
+     * @param array{store_id?: string|null, product_id?: string|null, min_order_qty?: int|string|null, auto_generate_sku?: bool} $context
      * @return array<string, mixed>
      */
     public static function rulesFor(int $step, array $context = []): array
@@ -134,10 +134,29 @@ final class ProductWizardSteps
             self::STEP_INVENTORY => [
                 'stock' => ['nullable', 'integer', 'min:0'],
                 'low_stock_threshold' => ['nullable', 'integer', 'min:0'],
-                'sku' => ['nullable', 'string', 'max:255', Rule::unique('products', 'sku')->where('store_id', $storeId)->whereNull('deleted_at')->ignore($productId)],
+                'sku' => [
+                    'string', 'max:255',
+                    Rule::unique('products', 'sku')->where('store_id', $storeId)->whereNull('deleted_at')->ignore($productId),
+                    Rule::requiredIf(fn () => ! ($context['auto_generate_sku'] ?? false)),
+                ],
                 'barcode' => ['nullable', 'string', 'max:255', Rule::unique('products', 'barcode')->where('store_id', $storeId)->whereNull('deleted_at')->ignore($productId)],
             ],
             default => [],
+        };
+    }
+
+    /**
+     * Map a validated field to the wizard step that owns it, so save-time
+     * ValidationExceptions surface on the correct step.
+     */
+    public static function stepForField(string $field): ?int
+    {
+        return match (true) {
+            in_array($field, ['name', 'slug', 'brand_id', 'categories', 'short_description', 'description', 'unit', 'meta_title', 'meta_description', 'is_active', 'is_featured', 'primary_category_id'], true) => self::STEP_BASIC,
+            in_array($field, ['price', 'compare_price', 'cost_price', 'min_order_qty', 'max_order_qty'], true) => self::STEP_PRICING,
+            str_starts_with($field, 'variants_preview') => self::STEP_OPTIONS,
+            in_array($field, ['stock', 'low_stock_threshold', 'sku', 'barcode'], true) => self::STEP_INVENTORY,
+            default => null,
         };
     }
 }

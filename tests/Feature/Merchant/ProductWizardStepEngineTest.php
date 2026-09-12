@@ -1,10 +1,20 @@
 <?php
 
 use App\Domains\Product\Support\ProductWizardSteps;
+use App\Enums\Store\ProductOptionInputType;
+use App\Models\Products\Product;
+use App\Models\Products\ProductImage;
+use App\Models\Products\ProductOption;
+use App\Models\Products\ProductOptionValue;
+use App\Models\Products\ProductVariant;
+use App\Models\Stores\Store;
 use App\Services\ProductService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -154,4 +164,248 @@ test('the images step renders persisted images and the upload input', function (
         ->and($html)->toContain('type="file"')
         ->and($html)->toContain('accept="image/*"')
         ->and($html)->toContain('wire:model="newImages"');
+});
+
+function walkWizardToInventory($volt, string $name, string $slug): void
+{
+    $volt->set(['name' => $name, 'slug' => $slug])
+        ->call('nextStep')
+        ->call('nextStep')
+        ->call('nextStep')
+        ->call('nextStep');
+}
+
+test('empty sku with auto-generation off blocks advancing past inventory', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    walkWizardToInventory($volt, 'Sku Blocked', 'sku-blocked');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_INVENTORY);
+
+    $volt->set('auto_generate_sku', false)->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_INVENTORY)
+        ->assertSet('validated_steps', [
+            ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
+            ProductWizardSteps::STEP_PRICING,
+            ProductWizardSteps::STEP_OPTIONS,
+        ])
+        ->assertHasErrors(['sku']);
+
+    expect($volt->html())->toContain('edz-field__error');
+});
+
+test('enabling automatic sku generation clears the inventory block', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    walkWizardToInventory($volt, 'Sku Auto', 'sku-auto');
+
+    $volt->set('auto_generate_sku', false)->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_INVENTORY)
+        ->assertHasErrors(['sku']);
+
+    $volt->set('auto_generate_sku', true)->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_REVIEW)
+        ->assertHasNoErrors(['sku'])
+        ->assertSet('validated_steps', [
+            ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
+            ProductWizardSteps::STEP_PRICING,
+            ProductWizardSteps::STEP_OPTIONS,
+            ProductWizardSteps::STEP_INVENTORY,
+        ]);
+});
+
+test('a save-time sku validation failure jumps back to the inventory step', function () {
+    [$user, $store] = skuUser();
+    $service = app(ProductService::class);
+
+    $product = $service->create($store, dataShape('jump-edit-target'));
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    $volt->set('auto_generate_sku', true)->set('sku', '')->call('goToStep', ProductWizardSteps::STEP_REVIEW);
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_REVIEW);
+
+    $volt->set(['auto_generate_sku' => false, 'sku' => ''])->call('save');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_INVENTORY)
+        ->assertHasErrors(['sku']);
+});
+
+function makeVariableProduct(Store $store, string $slug, array $imageByVariant = []): array
+{
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => "Variable {$slug}",
+        'slug' => $slug,
+        'sku' => 'VAR-' . strtoupper($slug),
+        'type' => 'variable',
+        'price' => 100,
+        'is_active' => true,
+    ]);
+
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $variants = collect();
+
+    foreach (['S', 'M'] as $index => $label) {
+        $value = ProductOptionValue::create([
+            'store_id' => $store->id,
+            'product_option_id' => $option->id,
+            'value' => $label,
+            'sort_order' => $index,
+        ]);
+
+        $variant = ProductVariant::create([
+            'store_id' => $store->id,
+            'product_id' => $product->id,
+            'name' => $label,
+            'sku' => "VAR-" . strtoupper($slug) . "-{$index}",
+            'price' => 100,
+            'cost_price' => 50,
+            'stock' => 10,
+            'is_default' => $index === 0,
+        ]);
+
+        $variant->optionValues()->sync([$value->id => ['product_option_id' => $option->id]]);
+
+        $variants->push($variant);
+    }
+
+    foreach ($imageByVariant as $variantIndex => $path) {
+        $variants[$variantIndex]->images()->create([
+            'path' => $path,
+            'store_id' => $store->id,
+            'is_primary' => true,
+            'sort_order' => 0,
+        ]);
+    }
+
+    return [$product, $variants];
+}
+
+test('variant images are persisted scoped to their variant on create', function () {
+    [$user, $store] = skuUser();
+    Storage::fake('public');
+
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $valueS = ProductOptionValue::create(['store_id' => $store->id, 'product_option_id' => $option->id, 'value' => 'S', 'sort_order' => 0]);
+    $valueM = ProductOptionValue::create(['store_id' => $store->id, 'product_option_id' => $option->id, 'value' => 'M', 'sort_order' => 1]);
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set([
+        'name' => 'Variant Upload Create',
+        'slug' => 'variant-upload-create',
+        'has_variants' => true,
+        'auto_generate_sku' => true,
+        'options' => [[
+            'product_option_id' => $option->id,
+            'type' => ProductOptionInputType::SELECT->value,
+            'values' => [$valueS->id, $valueM->id],
+        ]],
+    ])->call('valuesChanged', 0);
+
+    $volt->assertCount('variants_preview', 2);
+
+    $volt->set('variants_preview.0.price', 100)
+        ->set('variants_preview.0.cost_price', 50)
+        ->set('variants_preview.1.price', 120)
+        ->set('variants_preview.1.cost_price', 60);
+
+    $volt->upload('variants_preview.0.new_image', [UploadedFile::fake()->image('variant-1.jpg')]);
+
+    $volt->call('save');
+
+    $product = Product::where('slug', 'variant-upload-create')->first();
+
+    expect($product)->not->toBeNull()
+        ->and($product->variants()->count())->toBe(2);
+
+    $images = ProductImage::where('imageable_type', ProductVariant::class)
+        ->whereIn('imageable_id', $product->variants()->pluck('id'))
+        ->get();
+
+    expect($images)->toHaveCount(1);
+
+    $imagedVariant = $product->variants()->find($images->first()->imageable_id);
+
+    expect($imagedVariant->optionValues->pluck('value')->contains('S'))->toBeTrue();
+
+    $other = $product->variants()->where('id', '!=', $imagedVariant->id)->get();
+
+    expect($other)->toHaveCount(1)
+        ->and($other->first()->images()->count())->toBe(0);
+});
+
+test('editing loads variant image paths and replacing removes the old record', function () {
+    [$user, $store] = skuUser();
+    Storage::fake('public');
+
+    [$product, $variants] = makeVariableProduct($store, 'variant-edit-replace', [0 => 'products/variant-cover.jpg']);
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    $volt->assertSet('variants_preview.0.image', 'products/variant-cover.jpg')
+        ->assertSet('variants_preview.1.image', null);
+
+    $volt->upload('variants_preview.0.new_image', [UploadedFile::fake()->image('new-variant.jpg')])
+        ->call('save');
+
+    expect($variants[0]->images()->count())->toBe(1)
+        ->and($variants[0]->images()->first()->path)->not->toBe('products/variant-cover.jpg')
+        ->and($variants[1]->images()->count())->toBe(0);
+});
+
+test('a variant without an image renders a neutral placeholder instead of a broken thumbnail', function () {
+    [$user, $store] = skuUser();
+
+    [$product, $variants] = makeVariableProduct($store, 'variant-placeholder');
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    $html = $volt->html();
+
+    expect($html)->toContain('wire:model="variants_preview.0.new_image"')
+        ->and($html)->toContain('wire:model="variants_preview.1.new_image"')
+        ->and($html)->toContain(__('products.variant_image'))
+        ->and($html)->toContain('overflow-x-auto')
+        ->and($html)->not->toContain('removeVariantImage')
+        ->and($html)->not->toContain('temporaryUrl(');
+});
+
+test('unchanged variants do not trigger per-variant image queries on save', function () {
+    [$user, $store] = skuUser();
+
+    [$product, $variants] = makeVariableProduct($store, 'variant-query-count', [0 => 'products/cover.jpg']);
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $volt->call('save');
+
+    $imageQueries = collect(DB::getQueryLog())
+        ->filter(fn ($q) => str_contains($q['query'], 'product_images'));
+
+    expect($imageQueries->count())->toBe(1);
 });

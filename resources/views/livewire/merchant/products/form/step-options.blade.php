@@ -106,6 +106,7 @@
                                     <thead>
                                         <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
                                             <th class="px-3 py-2 text-start font-semibold">{{ __('products.variant') }}</th>
+                                            <th class="px-3 py-2 text-start font-semibold">{{ __('products.variant_image') }}</th>
                                             <th class="px-3 py-2 text-start font-semibold">{{ __('products.price') }}</th>
                                             <th class="px-3 py-2 text-start font-semibold">{{ __('products.cost') }}</th>
                                             <th class="px-3 py-2 text-start font-semibold">{{ __('products.compare') }}</th>
@@ -121,6 +122,34 @@
                                             <tr class="border-b border-surface-border last:border-0">
                                                 <td class="max-w-48 px-3 py-2 align-top text-xs font-medium text-ink-soft">
                                                     {{ $variant['labels'] ?? $variant['name'] ?? '—' }}
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <label class="group relative block h-10 w-10 cursor-pointer overflow-hidden rounded-md border border-surface-border bg-surface-secondary/60">
+                                                            @if (($variant['new_image'] ?? null))
+                                                                <img src="{{ $variant['new_image']->temporaryUrl() }}" alt="" class="h-full w-full object-cover">
+                                                            @elseif (($variant['image'] ?? null))
+                                                                <img src="{{ Storage::disk('public')->url($variant['image']) }}" alt="" class="h-full w-full object-cover">
+                                                            @else
+                                                                <span class="flex h-full w-full items-center justify-center text-ink-muted">
+                                                                    <x-edz.icon name="camera" class="h-4 w-4" />
+                                                                </span>
+                                                            @endif
+                                                            <span class="pointer-events-none absolute inset-0 hidden items-center justify-center bg-surface-secondary/60 text-ink-muted group-hover:flex">
+                                                                <x-edz.icon name="camera" class="h-4 w-4" />
+                                                            </span>
+                                                            <input type="file" accept="image/*" class="sr-only"
+                                                                   wire:model="variants_preview.{{ $index }}.new_image">
+                                                        </label>
+                                                        @if (($variant['new_image'] ?? null) || ($variant['image'] ?? null))
+                                                            <button type="button"
+                                                                    wire:click="removeVariantImage({{ $index }})"
+                                                                    title="{{ __('products.remove_variant_image') }}"
+                                                                    class="flex h-6 w-6 items-center justify-center rounded-full text-ink-muted transition hover:bg-danger-soft hover:text-danger-600">
+                                                                <x-edz.icon name="x-mark" class="h-3 w-3" />
+                                                            </button>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                                 <td class="px-3 py-2">
                                                     <input type="number" step="0.01" min="0" class="edz-input min-w-24 px-2 py-1 text-xs"

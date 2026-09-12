@@ -9,11 +9,13 @@ use App\Models\Category;
 use App\Models\Products\Product;
 use App\Models\Products\ProductOption;
 use App\Models\Products\ProductOptionValue;
+use App\Models\Products\ProductVariant;
 use App\Services\ProductService;
 use App\Support\VariantPreviewBuilder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use function Livewire\Volt\action;
@@ -173,12 +175,15 @@ $normalizeOptions = protect(function (array $options): array {
 });
 
 $rebuildPreview = protect(function (): void {
-    $this->variants_preview = VariantPreviewBuilder::fromOptions(
+    $this->variants_preview = collect(VariantPreviewBuilder::fromOptions(
         collect($this->options)
             ->filter(fn ($o) => ($o['type'] ?? null) !== ProductOptionInputType::TEXT->value)
             ->values()
             ->all()
-    );
+    ))
+        ->map(fn (array $row) => array_merge($row, ['image' => null, 'new_image' => null]))
+        ->values()
+        ->all();
 
     $this->options_changed = true;
 });
@@ -206,19 +211,46 @@ $optionsChanged = protect(function (): bool {
 $syncExistingVariants = protect(function (array $preview): void {
     $fields = ['sku', 'barcode', 'price', 'compare_price', 'cost_price', 'stock', 'low_stock_threshold', 'weight', 'length', 'width', 'height', 'is_active'];
 
-    $dbVariants = $this->product->variants()->get()->values();
+    $dbVariants = $this->product->variants()->with(['images', 'optionValues'])->get()->values();
 
     $existing = $dbVariants
         ->map(fn ($v) => [
             'id' => $v->id,
-            'combo' => implode('-', $v->optionValues()->pluck('product_option_values.id')->map(fn ($id) => (string) $id)->sort()->values()->all()),
+            'combo' => implode('-', $v->optionValues->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all()),
         ]);
 
     $hasDuplicateCombos = $existing->pluck('combo')->duplicates()->isNotEmpty();
 
-    if ($hasDuplicateCombos) {
-        $matched = [];
+    $syncVariantRow = function (ProductVariant $variant, array $row): void {
+        $fields = ['sku', 'barcode', 'price', 'compare_price', 'cost_price', 'stock', 'low_stock_threshold', 'weight', 'length', 'width', 'height', 'is_active'];
 
+        $dirty = collect($fields)
+            ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
+            ->filter(fn ($value, $key) => $variant->{$key} != $value)
+            ->all();
+
+        if (! empty($dirty)) {
+            $variant->update($dirty);
+        }
+
+        $hasStoredImage = $variant->images->isNotEmpty();
+
+        if (! empty($row['new_image'])) {
+            $path = $row['new_image']->store('products', 'public');
+
+            $variant->images()->delete();
+            $variant->images()->create([
+                'path' => $path,
+                'store_id' => $this->product->store_id,
+                'is_primary' => true,
+                'sort_order' => 0,
+            ]);
+        } elseif ($hasStoredImage && blank($row['image'] ?? null)) {
+            $variant->images()->delete();
+        }
+    };
+
+    if ($hasDuplicateCombos) {
         foreach ($preview as $index => $row) {
             $variant = $dbVariants[$index] ?? null;
 
@@ -226,20 +258,11 @@ $syncExistingVariants = protect(function (array $preview): void {
                 continue;
             }
 
-            $dirty = collect($fields)
-                ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
-                ->filter(fn ($value, $key) => $variant->{$key} != $value)
-                ->all();
-
-            if (! empty($dirty)) {
-                $variant->update($dirty);
-            }
-
-            $matched[] = $variant->id;
+            $syncVariantRow($variant, $row);
         }
     } else {
         $existingByCombo = $existing->keyBy('combo');
-        $matched = [];
+        $variantsById = $dbVariants->keyBy('id');
 
         foreach ($preview as $row) {
             $combo = implode('-', collect($row['value_ids'] ?? [])
@@ -248,22 +271,13 @@ $syncExistingVariants = protect(function (array $preview): void {
                 ->values()
                 ->all());
 
-            $variant = $this->product->variants()->find($existingByCombo->get($combo)['id'] ?? null);
+            $variant = $variantsById->get($existingByCombo->get($combo)['id'] ?? null);
 
             if (! $variant) {
                 continue;
             }
 
-            $dirty = collect($fields)
-                ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
-                ->filter(fn ($value, $key) => $variant->{$key} != $value)
-                ->all();
-
-            if (! empty($dirty)) {
-                $variant->update($dirty);
-            }
-
-            $matched[] = $variant->id;
+            $syncVariantRow($variant, $row);
         }
     }
 });
@@ -275,7 +289,7 @@ $fillPreviewFromExisting = protect(function (array $preview): array {
 
     $fields = ['sku', 'barcode', 'price', 'compare_price', 'cost_price', 'stock', 'low_stock_threshold', 'weight', 'length', 'width', 'height', 'is_active'];
 
-    $existing = $this->product->variants()->with('optionValues')->get()->keyBy('id');
+    $existing = $this->product->variants()->with(['optionValues', 'images'])->get()->keyBy('id');
 
     $comboOf = fn ($v) => implode('-', $v->optionValues->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all());
 
@@ -305,6 +319,12 @@ $fillPreviewFromExisting = protect(function (array $preview): array {
             if (($row[$f] ?? null) === null || $row[$f] === '') {
                 $row[$f] = $variant->{$f};
             }
+        }
+
+        $primary = $variant->images->firstWhere('is_primary', true);
+
+        if ($primary) {
+            $row['image'] = $primary->path;
         }
 
         return $row;
@@ -352,6 +372,11 @@ $removeNewImage = action(function (int $index): void {
     $this->newImages = array_values($this->newImages);
 });
 
+$removeVariantImage = action(function (int $index): void {
+    $this->variants_preview[$index]['image'] = null;
+    $this->variants_preview[$index]['new_image'] = null;
+});
+
 $applyAll = action(function (): void {
     $fieldMap = [
         'price' => 'apply_all_price',
@@ -380,6 +405,7 @@ $stepRules = protect(function (int $step): array {
         'store_id' => currentStoreId(),
         'product_id' => $this->product?->id,
         'min_order_qty' => $this->min_order_qty,
+        'auto_generate_sku' => (bool) $this->auto_generate_sku,
     ]);
 });
 
@@ -389,6 +415,7 @@ $nextStep = action(function (): void {
         $this->stepRules($this->currentStep)
     );
     $v->validate();
+    $this->resetErrorBag();
     if (! in_array($this->currentStep, $this->validated_steps, true)) {
         $this->validated_steps[] = $this->currentStep;
     }
@@ -466,26 +493,26 @@ $save = action(function (): void {
         'max_order_qty' => ['nullable', 'integer', 'min:1', 'max:100000'],
     ];
 
-    $v = \Illuminate\Support\Facades\Validator::make($this->all(), $allRules);
-    $v->validate();
-    $data = $v->validated();
-
-    $data['has_variants'] = (bool) $this->has_variants;
-    $data['auto_generate_sku'] = (bool) $this->auto_generate_sku;
-    $data['auto_generate_barcode'] = (bool) $this->auto_generate_barcode;
-    $data['is_active'] = (bool) $this->is_active;
-    $data['is_featured'] = (bool) $this->is_featured;
-    $data['brand_id'] = $this->brand_id ?: null;
-    $data['primary_category_id'] = $this->categories[0] ?? null;
-    $data['options'] = array_values($this->options);
-    $data['variants_preview'] = $this->has_variants ? $this->variants_preview : [];
-    $data['images'] = collect($this->images)
-        ->concat(collect($this->newImages)->map(fn ($upload) => $upload->store('products', 'public')))
-        ->all();
-
-    $service = app(ProductService::class);
-
     try {
+        $v = \Illuminate\Support\Facades\Validator::make($this->all(), $allRules);
+        $v->validate();
+        $data = $v->validated();
+
+        $data['has_variants'] = (bool) $this->has_variants;
+        $data['auto_generate_sku'] = (bool) $this->auto_generate_sku;
+        $data['auto_generate_barcode'] = (bool) $this->auto_generate_barcode;
+        $data['is_active'] = (bool) $this->is_active;
+        $data['is_featured'] = (bool) $this->is_featured;
+        $data['brand_id'] = $this->brand_id ?: null;
+        $data['primary_category_id'] = $this->categories[0] ?? null;
+        $data['options'] = array_values($this->options);
+        $data['variants_preview'] = $this->has_variants ? $this->variants_preview : [];
+        $data['images'] = collect($this->images)
+            ->concat(collect($this->newImages)->map(fn ($upload) => $upload->store('products', 'public')))
+            ->all();
+
+        $service = app(ProductService::class);
+
         if ($this->product) {
             if ($data['has_variants']) {
                 $data['options_changed'] = $this->optionsChanged();
@@ -512,6 +539,14 @@ $save = action(function (): void {
         $this->dispatch('swal', type: 'error', title: $e->getMessage());
 
         return;
+    } catch (ValidationException $e) {
+        $field = (string) array_key_first($e->errors());
+
+        if (ProductWizardSteps::stepForField($field) !== null) {
+            $this->currentStep = ProductWizardSteps::stepForField($field);
+        }
+
+        throw $e;
     }
 
     $product->categories()->sync($this->categories);
