@@ -60,11 +60,16 @@ state([
     'options_changed' => false,
     'variants_preview' => [],
     'images' => [],
-    'newImages' => [],
+    'committedImages' => [],
     'apply_all_price' => null,
     'apply_all_cost_price' => null,
     'apply_all_stock' => null,
     'apply_all_low_stock' => null,
+    'optionModal' => ['name' => '', 'type' => ''],
+    'optionModalRow' => null,
+    'optionModalCreatedId' => null,
+    'optionNewValue' => '',
+    'quickValueDraft' => '',
     'currentStep' => 1,
     'validated_steps' => [],
 ]);
@@ -86,6 +91,8 @@ mount(function (?Product $product = null): void {
         $this->categories = $product->categories()->pluck('categories.id')->toArray();
         $this->min_order_qty = $product->min_order_qty;
         $this->max_order_qty = $product->max_order_qty;
+
+        $this->committedImages = $this->images;
 
         // Keep existing codes stable by default on edit.
         $this->auto_generate_sku = false;
@@ -147,6 +154,17 @@ updated([
             $this->options_changed = false;
         }
     },
+    'images' => function (): void {
+        if ($this->committedImages === $this->images) {
+            return;
+        }
+
+        // Livewire swaps the gallery to only the freshly selected files on every
+        // pick. committedImages still holds the last committed list, so uploads
+        // append instead of silently replacing existing images.
+        $this->images = array_values(array_merge($this->committedImages, $this->images));
+        $this->committedImages = $this->images;
+    },
 ]);
 
 $brands = computed(fn () => Brand::query()
@@ -164,6 +182,8 @@ $productOptions = computed(fn () => ProductOption::query()
     ->where('store_id', currentStoreId())
     ->orderBy('name')
     ->get(['id', 'name', 'type']));
+
+$optionInputTypes = computed(fn () => ProductOptionInputType::options());
 
 $optionValuesByOption = computed(fn () => ProductOptionValue::query()
     ->where('store_id', currentStoreId())
@@ -242,7 +262,17 @@ $syncExistingVariants = protect(function (array $preview): void {
 
         $dirty = collect($fields)
             ->mapWithKeys(fn ($f) => [$f => $row[$f] ?? null])
-            ->filter(fn ($value, $key) => $variant->{$key} != $value)
+            ->filter(function ($value, $key) use ($variant): bool {
+                // Sales codes may never be wiped to blank/null when the DB
+                // variant already carries one (sku is NOT NULL).
+                if (in_array($key, ['sku', 'barcode'], true)
+                    && blank($value)
+                    && filled((string) $variant->{$key})) {
+                    return false;
+                }
+
+                return $variant->{$key} != $value;
+            })
             ->all();
 
         if (! empty($dirty)) {
@@ -378,14 +408,161 @@ $removeOption = action(function (int $index): void {
     $this->rebuildPreview();
 });
 
+$openCreateOption = action(function (?int $index = null): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_CREATE->value), 403);
+
+    // Without an explicit row, reuse the first row that has no option yet;
+    // otherwise append a blank row so the created option always lands on a
+    // stable index within the draft.
+    if ($index === null) {
+        $index = collect($this->options)->search(fn ($o) => empty($o['product_option_id']));
+
+        if ($index === false) {
+            $index = count($this->options);
+            $this->options[] = [
+                'product_option_id' => null,
+                'type' => null,
+                'values' => [],
+            ];
+        }
+    }
+
+    $this->optionModal = ['name' => '', 'type' => ''];
+    $this->optionModalRow = (int) $index;
+    $this->optionModalCreatedId = null;
+    $this->optionNewValue = '';
+});
+
+$createOptionInline = action(function (): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_CREATE->value), 403);
+
+    $validated = $this->validate([
+        'optionModal.name' => 'required|string|max:100',
+        'optionModal.type' => ['required', Rule::in(array_column(ProductOptionInputType::cases(), 'value'))],
+    ]);
+
+    $option = ProductOption::create([
+        'store_id' => currentStoreId(),
+        'name' => $validated['optionModal']['name'],
+        'type' => $validated['optionModal']['type'],
+    ]);
+
+    $this->optionModalCreatedId = $option->id;
+    $this->options[$this->optionModalRow] = [
+        'product_option_id' => $option->id,
+        'type' => $option->type->value,
+        'values' => [],
+    ];
+
+    $this->rebuildPreview();
+});
+
+$addOptionValueInline = action(function (): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_UPDATE->value), 403);
+
+    $value = trim($this->optionNewValue);
+
+    if ($value === '') {
+        return;
+    }
+
+    $option = ProductOption::query()
+        ->where('store_id', currentStoreId())
+        ->findOrFail($this->optionModalCreatedId);
+
+    $newValue = $option->addValue($value);
+
+    // Auto-select the freshly added value in the current draft row so the
+    // variant builder reflects it immediately on close.
+    $this->options[$this->optionModalRow]['values'][] = $newValue->id;
+    $this->options[$this->optionModalRow]['values'] = array_values(array_unique(
+        $this->options[$this->optionModalRow]['values']
+    ));
+
+    $this->optionNewValue = '';
+    $this->rebuildPreview();
+});
+
+$quickAddValue = action(function (int $index): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_UPDATE->value), 403);
+
+    $value = trim($this->quickValueDraft);
+
+    if ($value === '' || empty($this->options[$index]['product_option_id'])) {
+        return;
+    }
+
+    $option = ProductOption::query()
+        ->where('store_id', currentStoreId())
+        ->findOrFail($this->options[$index]['product_option_id']);
+
+    $newValue = $option->addValue($value);
+
+    // Like the create-option modal, the freshly added value is selected in the
+    // row right away so the variant builder reflects it immediately.
+    $this->options[$index]['values'][] = $newValue->id;
+    $this->options[$index]['values'] = array_values(array_unique(
+        $this->options[$index]['values']
+    ));
+
+    $this->quickValueDraft = '';
+    $this->valuesChanged($index);
+});
+
+$removeOptionValueInline = action(function (string $valueId): void {
+    abort_unless(canStore(StorePermissionEnum::PRODUCT_UPDATE->value), 403);
+
+    $value = ProductOptionValue::query()
+        ->where('store_id', currentStoreId())
+        ->findOrFail($valueId);
+
+    if ($value->variants()->exists()) {
+        $this->dispatch('swal', type: 'error', title: __('product_options.value_in_use'));
+
+        return;
+    }
+
+    $value->delete();
+
+    // Drop the removed value from the draft rows that reference it.
+    $this->options = collect($this->options)
+        ->map(function (array $row) use ($valueId): array {
+            $row['values'] = array_values(array_filter(
+                $row['values'] ?? [],
+                fn ($v) => (string) $v !== (string) $valueId
+            ));
+
+            return $row;
+        })
+        ->values()
+        ->all();
+
+    $this->rebuildPreview();
+});
+
+$closeOptionModal = action(function (): void {
+    $this->optionModalRow = null;
+    $this->optionModalCreatedId = null;
+    $this->optionNewValue = '';
+    $this->optionModal = ['name' => '', 'type' => ''];
+});
+
 $removeImage = action(function (int $index): void {
     unset($this->images[$index]);
     $this->images = array_values($this->images);
+    $this->committedImages = $this->images;
 });
 
-$removeNewImage = action(function (int $index): void {
-    unset($this->newImages[$index]);
-    $this->newImages = array_values($this->newImages);
+$makeMainImage = action(function (int $index): void {
+    if ($index <= 0 || ! array_key_exists($index, $this->images)) {
+        return;
+    }
+
+    $main = $this->images[$index];
+
+    unset($this->images[$index]);
+    array_unshift($this->images, $main);
+    $this->committedImages = $this->images;
 });
 
 $removeVariantImage = action(function (int $index): void {
@@ -543,7 +720,10 @@ $save = action(function (): void {
         $data['options'] = array_values($this->options);
         $data['variants_preview'] = $this->has_variants ? $this->variants_preview : [];
         $data['images'] = collect($this->images)
-            ->concat(collect($this->newImages)->map(fn ($upload) => $upload->store('products', 'public')))
+            ->map(fn ($image) => is_string($image)
+                ? $image
+                : $image->store('products', 'public'))
+            ->values()
             ->all();
 
         $service = app(ProductService::class);
@@ -643,6 +823,8 @@ $wizardSteps = computed(fn () => array_values(ProductWizardSteps::visible(['has_
         @foreach ($this->wizardSteps as $wizardStep)
             @include($wizardStep['partial'])
         @endforeach
+
+        @include('livewire.merchant.products.form.create-option-modal')
 
         {{-- Navigation --}}
         <div class="mt-6 flex items-center justify-between">

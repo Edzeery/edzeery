@@ -143,6 +143,8 @@ Découvrez les fonctionnalités avancées, augmentez votre productivité et avan
     'settings_page' => 'Personnalisez vos paramètres en fonction de votre type de compte, que vous soyez un commerçant ou un client.',
     'settings_saved' => 'Paramètres enregistrés avec succès ⚙️',
     'sku_required' => 'Le SKU est obligatoire. Activez la génération automatique ou saisissez-le manuellement.',
+    'sku_duplicate' => 'Le code SKU ":sku" est déjà utilisé par un autre produit ou une autre déclinaison.',
+    'variant_sku_duplicate' => 'Le code SKU ":sku" est déjà utilisé par une autre déclinaison.',
     'stats_overview' => 'Aperçu des statistiques du système',
     'status' => 'Statut',
     'stay' => 'Rester',

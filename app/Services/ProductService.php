@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Domains\Plan\Services\FeatureUsageService;
 use App\Models\Products\Product;
+use App\Models\Products\ProductVariant;
 use App\Models\Stores\Store;
 use App\Support\SkuGenerator;
 use Illuminate\Support\Arr;
@@ -37,9 +38,10 @@ class ProductService
                 : (($data['barcode'] ?? null) ?: null);
 
             $autoSku = $data['auto_generate_sku'] ?? false;
+            $reservedSkus = [];
 
             $baseSku = $autoSku
-                ? SkuGenerator::product(currentStore()->slug, $data['slug'])
+                ? SkuGenerator::product($store->slug, $data['slug'])
                 : (($data['sku'] ?? null) ?: null);
 
             if (!$baseSku) {
@@ -47,6 +49,13 @@ class ProductService
                     'sku' => __('messages.sku_required'),
                 ]);
             }
+
+            // The default variant mirrors the product SKU and SKUs are unique
+            // per store across ALL variants, so the base SKU itself must also
+            // dodge existing variant SKUs - not just other product rows.
+            $baseSku = $autoSku
+                ? $this->resolveUniqueSku($store, $baseSku, null, $reservedSkus)
+                : $this->ensureSkuFree($store, $baseSku, null, $reservedSkus, 'sku', 'sku_duplicate');
 
             $product = Product::create(
                 array_merge(
@@ -73,7 +82,7 @@ class ProductService
             $this->syncImages($product, $data['images'] ?? []);
 
             if (!empty($data['has_variants'])) {
-                $this->syncVariants($product, $data);
+                $this->syncVariants($product, $data, $store, $reservedSkus);
             } else {
                 $this->createSingleVariant($product, $data);
             }
@@ -89,11 +98,14 @@ class ProductService
     {
         return DB::transaction(function () use ($product, $data) {
 
+            $store = $product->store;
+
             $autoSku = $data['auto_generate_sku'] ?? false;
             $autoBarcode = $data['auto_generate_barcode'] ?? false;
+            $reservedSkus = [];
 
             $baseSku = $autoSku
-                ? SkuGenerator::product(currentStore()->slug, $data['slug'])
+                ? SkuGenerator::product($store->slug, $data['slug'])
                 : (($data['sku'] ?? null) ?: null);
 
             $barcode = $autoBarcode
@@ -105,6 +117,10 @@ class ProductService
                     'sku' => __('messages.sku_required'),
                 ]);
             }
+
+            $baseSku = $autoSku
+                ? $this->resolveUniqueSku($store, $baseSku, $product->id, $reservedSkus)
+                : $this->ensureSkuFree($store, $baseSku, $product->id, $reservedSkus, 'sku', 'sku_duplicate');
 
             $product->update(
                 array_merge(
@@ -140,7 +156,7 @@ class ProductService
                     // الخيارات تغيرت → أعد إنشاء Variants
                     $this->deleteVariantImages($product);
                     $product->variants()->delete();
-                    $this->syncVariants($product, $data);
+                    $this->syncVariants($product, $data, $store, $reservedSkus);
                 }
             } else {
                 // Simple Product
@@ -154,13 +170,15 @@ class ProductService
         });
     }
 
-    protected function syncVariants(Product $product, array $data): void
+    protected function syncVariants(Product $product, array $data, Store $store, array &$reservedSkus): void
     {
         if (empty($data['variants_preview'])) {
             throw ValidationException::withMessages([
                 'variants_preview' => __('messages.variants_preview_required'),
             ]);
         }
+
+        $autoSku = $data['auto_generate_sku'] ?? false;
 
         foreach ($data['variants_preview'] as $index => $preview) {
 
@@ -170,11 +188,33 @@ class ProductService
                 ]);
             }
 
+            if ($autoSku) {
+                // Option values that normalize to nothing (e.g. non-Latin text)
+                // collapse distinct variants onto the same auto SKU, and the
+                // store's unique constraint is (store_id, sku): resolve each
+                // candidate against the batch and every other variant in the
+                // store so a plain INSERT can never trip it.
+                $sku = $this->resolveUniqueSku(
+                    $store,
+                    SkuGenerator::variant($store->slug, $product->slug, $preview['sku_parts'] ?? []),
+                    $product->id,
+                    $reservedSkus
+                );
+            } else {
+                $sku = $preview['sku'] ?? null;
+
+                if (blank($sku)) {
+                    throw ValidationException::withMessages([
+                        'variants_preview' => __('messages.variant_sku_required'),
+                    ]);
+                }
+
+                $this->ensureSkuFree($store, $sku, $product->id, $reservedSkus, 'variants_preview');
+            }
+
             $variant = $product->variants()->create([
                 'name'       => $preview['name'] ?? $product->name,
-                'sku' => ($data['auto_generate_sku'] ?? false)
-                    ? SkuGenerator::variant(currentStore()->slug, $product->slug, $preview['sku_parts'] ?? [])
-                    : (($preview['sku'] ?? null) ?: throw ValidationException::withMessages(['sku' => __('messages.variant_sku_required')])),
+                'sku' => $sku,
                 'barcode' => ($data['auto_generate_barcode'] ?? false)
                     ? BarcodeService::variant(null)
                     : (($preview['barcode'] ?? null) ?: null),
@@ -227,7 +267,9 @@ class ProductService
     {
         $product->variants()->create([
             'name'       => $product->name,
-            'sku'        => ($data['auto_generate_sku'] ?? false) ? SkuGenerator::product(currentStore()->slug, $product->slug) : $product->sku,
+            // The base product SKU was already resolved and reserved in
+            // create()/update(); the default variant mirrors it verbatim.
+            'sku'        => $product->sku,
             'barcode'    => ($data['auto_generate_barcode'] ?? false) ? BarcodeService::product(null) : $product->barcode,
             'price'      => $data['price'] ?? 0,
             'cost_price' => $data['cost_price'],
@@ -236,6 +278,58 @@ class ProductService
             'is_active'  => $data['is_active'] ?? true,
             'is_default' => true,
         ]);
+    }
+
+    /**
+     * Whether a SKU is already claimed inside the current save batch or by any
+     * other variant in the store. Auto-generating a SKU must never write a
+     * value the (store_id, sku) unique constraint would reject.
+     */
+    protected function isSkuTaken(Store $store, string $sku, ?string $ignoreProductId, array $reservedSkus): bool
+    {
+        if (isset($reservedSkus[$sku])) {
+            return true;
+        }
+
+        return ProductVariant::query()
+            ->where('store_id', $store->id)
+            ->when($ignoreProductId !== null, fn ($query) => $query->where('product_id', '!=', $ignoreProductId))
+            ->where('sku', $sku)
+            ->exists();
+    }
+
+    /**
+     * Return the given base SKU uniquely: append -2, -3, ... until it is free.
+     */
+    protected function resolveUniqueSku(Store $store, string $base, ?string $ignoreProductId, array &$reservedSkus): string
+    {
+        $candidate = $base;
+        $counter = 2;
+
+        while ($this->isSkuTaken($store, $candidate, $ignoreProductId, $reservedSkus)) {
+            $candidate = $base.'-'.$counter++;
+        }
+
+        $reservedSkus[$candidate] = true;
+
+        return $candidate;
+    }
+
+    /**
+     * Manual SKUs are user-owned: collisions are surfaced as validation errors
+     * instead of being silently renamed.
+     */
+    protected function ensureSkuFree(Store $store, string $sku, ?string $ignoreProductId, array &$reservedSkus, string $field, string $messageKey = 'variant_sku_duplicate'): string
+    {
+        if ($this->isSkuTaken($store, $sku, $ignoreProductId, $reservedSkus)) {
+            throw ValidationException::withMessages([
+                $field => __("messages.{$messageKey}", ['sku' => $sku]),
+            ]);
+        }
+
+        $reservedSkus[$sku] = true;
+
+        return $sku;
     }
 
     protected function syncImages(Product $product, array $images): void

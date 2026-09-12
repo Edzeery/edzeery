@@ -4,6 +4,7 @@ import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import Chart from "chart.js/auto";
 import edzSelect from "./components/edz-select.js";
+import edzMultiSelect from "./components/edz-multi-select.js";
 import orderProductPicker from "./components/order-product-picker.js";
 import productSelect from "./components/product-select.js";
 import dropdownPosition from "./components/dropdown-position.js";
@@ -176,6 +177,10 @@ function registerEdzPanel() {
 
     // --- edzSelect custom dropdown component ---
     Alpine.data("edzSelect", edzSelect);
+
+    // --- edzMultiSelect: searchable chips multi-select (x-edz.multi-select) ---
+    Alpine.data("edzMultiSelect", edzMultiSelect);
+
     Alpine.data("dropdownPosition", dropdownPosition);
 
     // --- Order product picker component ---

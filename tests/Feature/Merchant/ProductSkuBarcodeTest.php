@@ -193,3 +193,89 @@ test('update preserves generated sku and does not let empty string override', fu
     // SKU must be preserved as the explicitly provided non-empty value, not overridden
     expect($product->sku)->toBe($originalSku);
 });
+
+test('auto skus never collide when option values strip to the same normalized parts', function () {
+    [$user, $store] = skuUser();
+    $service = app(ProductService::class);
+
+    $data = dataShape('collide-parts');
+    $data['has_variants'] = true;
+    $data['variants_preview'] = [
+        ['name' => 'Black / عربي-أ', 'sku_parts' => ['black', ''], 'price' => 100, 'cost_price' => 50, 'value_ids' => [], 'stock' => 1],
+        ['name' => 'Black / عربي-ب', 'sku_parts' => ['black', ''], 'price' => 110, 'cost_price' => 55, 'value_ids' => [], 'stock' => 1],
+    ];
+
+    // Both rows normalize to the same candidate; the save must NOT hit the
+    // (store_id, sku) unique constraint.
+    $product = $service->create($store, $data);
+
+    $skus = $product->variants()->pluck('sku')->all();
+
+    expect($skus)->toHaveCount(2)
+        ->and(array_unique($skus))->toHaveCount(2)
+        ->and($skus[1])->toBe($skus[0].'-2');
+});
+
+test('auto skus stay unique across products in the same store', function () {
+    [$user, $store] = skuUser();
+    $service = app(ProductService::class);
+
+    $first = dataShape('kane-wright');
+    $first['has_variants'] = true;
+    $first['variants_preview'] = [
+        ['name' => 'Kane / Black', 'sku_parts' => ['black'], 'price' => 100, 'cost_price' => 50, 'value_ids' => [], 'stock' => 1],
+    ];
+
+    $p1 = $service->create($store, $first);
+
+    // Slug "kane-wright-black" makes the second product's base variant SKU
+    // exactly equal to the first product's variant SKU.
+    $second = dataShape('kane-wright-black');
+    $second['has_variants'] = true;
+    $second['variants_preview'] = [
+        ['name' => 'Kane Wright Black', 'sku_parts' => [''], 'price' => 100, 'cost_price' => 50, 'value_ids' => [], 'stock' => 1],
+    ];
+
+    $p2 = $service->create($store, $second);
+
+    $storeSkus = \App\Models\Products\ProductVariant::where('store_id', $store->id)->pluck('sku')->all();
+
+    expect($storeSkus)->toHaveCount(2)
+        ->and(array_unique($storeSkus))->toHaveCount(2);
+});
+
+test('manual duplicate variant skus in one product yield a clean validation error', function () {
+    [$user, $store] = skuUser();
+    $service = app(ProductService::class);
+
+    $data = dataShape('manual-dup-variants', 'P-MANUAL', '', false, false);
+    $data['has_variants'] = true;
+    $data['variants_preview'] = [
+        ['name' => 'S', 'sku' => 'DUP-SKU', 'price' => 100, 'cost_price' => 50, 'value_ids' => []],
+        ['name' => 'M', 'sku' => 'DUP-SKU', 'price' => 110, 'cost_price' => 55, 'value_ids' => []],
+    ];
+
+    $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+    $service->create($store, $data);
+});
+
+test('manual skus colliding with an existing store variant yield a clean validation error', function () {
+    [$user, $store] = skuUser();
+    $service = app(ProductService::class);
+
+    $variable = dataShape('occupied-target');
+    $variable['has_variants'] = true;
+    $variable['variants_preview'] = [
+        ['name' => 'Occupied', 'sku_parts' => ['black'], 'price' => 100, 'cost_price' => 50, 'value_ids' => [], 'stock' => 1],
+    ];
+
+    $existing = $service->create($store, $variable);
+    $existingVariantSku = $existing->variants()->first()->sku;
+
+    // A simple product whose manual base SKU copies an existing variant SKU
+    // must fail validation (the products table alone would not catch it).
+    $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+    $service->create($store, dataShape('manual-cross', $existingVariantSku, '', false, false));
+});

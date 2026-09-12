@@ -40,7 +40,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ __('products.images_label') }}</p>
-                            <p class="mt-0.5 text-ink">{{ count($images) + count($newImages) }} images</p>
+                            <p class="mt-0.5 text-ink">{{ count($images) }} {{ __('products.images_label') }}</p>
                         </div>
                     </div>
                 </div>

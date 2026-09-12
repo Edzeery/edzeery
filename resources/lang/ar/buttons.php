@@ -25,6 +25,7 @@ return [
     'delete' => 'حذف',
     'details' => 'التفاصيل',
     'disable' => 'إيقاف',
+    'done' => 'تم',
     'download' => 'تحميل',
     'edit' => 'تعديل',
     'enable' => 'تفعيل',

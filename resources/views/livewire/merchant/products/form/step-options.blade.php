@@ -8,42 +8,71 @@
                             <h2 class="edz-card__title">{{ __('products.options') }}</h2>
                             <p class="text-sm text-ink-400">{{ __('products.options_hint') }}</p>
                         </div>
-                        <button type="button" wire:click="addOption" wire:loading.attr="disabled" class="edz-btn edz-btn--secondary edz-btn--sm">{{ __('products.add_option') }}</button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if (canStore(\App\Enums\Store\StorePermissionEnum::PRODUCT_CREATE->value))
+                                <button type="button" wire:click="openCreateOption" wire:loading.attr="disabled"
+                                        class="edz-btn edz-btn--secondary edz-btn--sm">
+                                    <x-edz.icon name="plus" class="h-4 w-4" />
+                                    {{ __('products.new_option') }}
+                                </button>
+                            @endif
+                            <button type="button" wire:click="addOption" wire:loading.attr="disabled"
+                                    class="edz-btn edz-btn--secondary edz-btn--sm">{{ __('products.add_option') }}</button>
+                        </div>
                     </div>
                     <div class="edz-card__body space-y-4">
                         @forelse ($options as $index => $option)
                             <div class="grid grid-cols-1 gap-3 rounded-lg border border-surface-border p-4 md:grid-cols-2">
                                 <div class="edz-field">
-                                    <label class="edz-field__label" for="option-{{ $index }}">{{ __('products.option') }}</label>
-                                    <select id="option-{{ $index }}" class="edz-select"
-                                            wire:change="optionChanged({{ $index }}, $event.target.value)">
-                                        <option value="">{{ __('products.select_option') }}</option>
-                                        @foreach ($this->productOptions as $opt)
-                                            <option value="{{ $opt->id }}"
-                                                    @selected(($option['product_option_id'] ?? null) === $opt->id)>
-                                                {{ $opt->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <label class="edz-field__label">{{ __('products.option') }}</label>
+                                    <x-edz.select
+                                        wire:model="options.{{ $index }}.product_option_id"
+                                        wire:change="optionChanged({{ $index }}, $event.target.value)"
+                                        :options="$this->productOptions->all()"
+                                        option-value="id"
+                                        option-label="name"
+                                        placeholder="{{ __('products.select_option') }}"
+                                        search
+                                        icon="cube"
+                                        size="sm"
+                                    />
                                 </div>
 
                                 <div class="edz-field">
-                                    <label class="edz-field__label" for="option-values-{{ $index }}">{{ __('products.values') }}</label>
+                                    <label class="edz-field__label">{{ __('products.values') }}</label>
                                     @if (($option['type'] ?? null) === \App\Enums\Store\ProductOptionInputType::TEXT->value)
                                         <div class="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted">
                                             {{ __('products.text_options_hint') }}
                                         </div>
                                     @elseif (! empty($option['product_option_id']))
-                                        <select id="option-values-{{ $index }}" class="edz-select" multiple size="3"
-                                                wire:model="options.{{ $index }}.values"
-                                                wire:change="valuesChanged({{ $index }})">
-                                            @foreach ($this->optionValuesByOption->get($option['product_option_id'], collect()) as $value)
-                                                <option value="{{ $value->id }}"
-                                                        @selected(in_array($value->id, $option['values'] ?? []))>
-                                                    {{ $value->value }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <x-edz.multi-select
+                                            wire:model="options.{{ $index }}.values"
+                                            wire:change="valuesChanged({{ $index }})"
+                                            :options="$this->optionValuesByOption->get($option['product_option_id'], collect())->all()"
+                                            option-value="id"
+                                            option-label="value"
+                                            :selected="$option['values'] ?? []"
+                                            placeholder="{{ __('products.select_values') }}"
+                                            search
+                                            search-placeholder="{{ __('products.values') }}"
+                                            size="sm"
+                                        />
+
+                                        @if (canStore(\App\Enums\Store\StorePermissionEnum::PRODUCT_UPDATE->value))
+                                            <div class="mt-2 flex items-center gap-2">
+                                                <input type="text" class="edz-input min-w-0 flex-1"
+                                                       wire:model="quickValueDraft"
+                                                       @keydown.enter.prevent="$wire.quickAddValue({{ $index }})"
+                                                       placeholder="{{ __('product_options.add_value_placeholder') }}">
+                                                <button type="button"
+                                                        wire:click="quickAddValue({{ $index }})"
+                                                        class="edz-btn edz-btn--secondary edz-btn--sm shrink-0"
+                                                        title="{{ __('products.new_value') }}">
+                                                    <x-edz.icon name="plus" class="h-4 w-4" />
+                                                    <span class="hidden sm:inline">{{ __('products.new_value') }}</span>
+                                                </button>
+                                            </div>
+                                        @endif
                                     @else
                                         <div class="rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted">
                                             {{ __('products.select_option_to_configure') }}

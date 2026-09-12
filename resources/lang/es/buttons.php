@@ -25,6 +25,7 @@ return [
     'delete' => 'Borrar',
     'details' => 'Detalles',
     'disable' => 'Desactivar',
+    'done' => 'Hecho',
     'download' => 'Descargar',
     'edit' => 'Editar',
     'enable' => 'Permitir',

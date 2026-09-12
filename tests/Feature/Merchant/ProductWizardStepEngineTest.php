@@ -15,6 +15,7 @@ use Database\Seeders\StoreRolesAndPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Volt\Volt;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
@@ -184,7 +185,118 @@ test('the images step renders persisted images and the upload input', function (
         ->and($html)->toContain('products/alt.jpg')
         ->and($html)->toContain('type="file"')
         ->and($html)->toContain('accept="image/*"')
-        ->and($html)->toContain('wire:model="newImages"');
+        ->and($html)->toContain('wire:model="images"')
+        ->and($html)->toContain(__('products.main_image'))
+        ->and($html)->toContain('wire:click="makeMainImage(1)"');
+});
+
+test('makeMainImage moves the chosen image to the front', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('images', ['a.jpg', 'b.jpg', 'c.jpg']);
+
+    $volt->call('makeMainImage', 2);
+
+    expect($volt->get('images'))->toBe(['c.jpg', 'a.jpg', 'b.jpg']);
+});
+
+test('makeMainImage ignores the already-main image and out-of-range indexes', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('images', ['a.jpg', 'b.jpg']);
+
+    $volt->call('makeMainImage', 0)
+        ->call('makeMainImage', 7);
+
+    expect($volt->get('images'))->toBe(['a.jpg', 'b.jpg']);
+});
+
+test('uploading new images appends to an existing saved gallery instead of replacing it', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('images', ['products/kept.jpg']);
+
+    $volt->upload('images', [UploadedFile::fake()->image('new.png')], true);
+
+    $images = $volt->get('images');
+
+    expect($images)->toHaveCount(2)
+        ->and($images[0])->toBe('products/kept.jpg')
+        ->and($images[1])->toBeInstanceOf(TemporaryUploadedFile::class);
+});
+
+test('uploading a second batch in create mode appends instead of replacing the first one', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->upload('images', [UploadedFile::fake()->image('first.png')], true);
+
+    expect($volt->get('images'))->toHaveCount(1);
+
+    $volt->upload('images', [UploadedFile::fake()->image('second.png')], true);
+
+    $images = $volt->get('images');
+
+    expect($images)->toHaveCount(2)
+        ->and($images[0])->toBeInstanceOf(TemporaryUploadedFile::class)
+        ->and($images[1])->toBeInstanceOf(TemporaryUploadedFile::class);
+});
+
+test('saving the wizard persists the primary image as the first product image', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('name', 'Main Image Product')
+        ->set('slug', 'main-image-product')
+        ->set('images', ['products/main.jpg', 'products/second.jpg'])
+        ->set('price', 100)
+        ->set('cost_price', 50)
+        ->set('stock', 10)
+        ->set('low_stock_threshold', 5);
+
+    $volt->call('save');
+
+    $product = Product::where('store_id', $store->id)->where('slug', 'main-image-product')->first();
+
+    expect($product)->not->toBeNull();
+
+    $paths = $product->images()->orderBy('sort_order')->pluck('path')->all();
+
+    expect($paths)->toBe(['products/main.jpg', 'products/second.jpg'])
+        ->and($product->images()->first()->path)->toBe('products/main.jpg');
+});
+
+test('saving the wizard keeps the promoted image first after makeMainImage', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('name', 'Promoted Image')
+        ->set('slug', 'promoted-image')
+        ->set('images', ['products/first.jpg', 'products/second.jpg', 'products/third.jpg'])
+        ->set('price', 100)
+        ->set('cost_price', 50)
+        ->set('stock', 10)
+        ->set('low_stock_threshold', 5);
+
+    $volt->call('makeMainImage', 2)
+        ->call('save');
+
+    $product = Product::where('store_id', $store->id)->where('slug', 'promoted-image')->first();
+
+    expect($product)->not->toBeNull();
+
+    $paths = $product->images()->orderBy('sort_order')->pluck('path')->all();
+
+    expect($paths)->toBe(['products/third.jpg', 'products/first.jpg', 'products/second.jpg']);
 });
 
 function walkWizardToInventory($volt, string $name, string $slug): void
@@ -471,6 +583,294 @@ test('nextStep and prevStep skip the hidden options step for simple products', f
     $volt->call('nextStep')->call('nextStep');
 
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_REVIEW);
+});
+
+test('openCreateOption without an index appends a blank draft row and opens the modal', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true);
+
+    $volt->call('openCreateOption');
+
+    $volt->assertSet('optionModalRow', 0)
+        ->assertSet('optionModalCreatedId', null)
+        ->assertSet('options.0.product_option_id', null)
+        ->assertSet('options.0.values', []);
+
+    // Calling it again reuses the already-empty row rather than duplicating it.
+    $volt->call('openCreateOption');
+
+    $volt->assertSet('optionModalRow', 0)
+        ->assertCount('options', 1);
+});
+
+test('openCreateOption resolves the requested draft row index', function () {
+    [$user, $store] = skuUser();
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true);
+
+    $volt->set('options', [
+        0 => ['product_option_id' => $option->id, 'type' => 'select', 'values' => []],
+        1 => ['product_option_id' => null, 'type' => null, 'values' => []],
+    ])->call('openCreateOption', 1);
+
+    $volt->assertSet('optionModalRow', 1);
+});
+
+test('createOptionInline validates input and wires a created option into the draft row', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true)->call('openCreateOption');
+
+    $volt->call('createOptionInline');
+
+    $volt->assertHasErrors(['optionModal.name', 'optionModal.type']);
+
+    $volt->set('optionModal', ['name' => 'Color', 'type' => ProductOptionInputType::SELECT->value])
+        ->call('createOptionInline');
+
+    expect(ProductOption::where('store_id', $store->id)->where('name', 'Color')->exists())->toBeTrue();
+
+    $option = ProductOption::where('store_id', $store->id)->where('name', 'Color')->first();
+
+    $volt->assertSet('optionModalCreatedId', $option->id)
+        ->assertSet('options.0.product_option_id', $option->id)
+        ->assertSet('options.0.type', ProductOptionInputType::SELECT->value)
+        ->assertSet('options.0.values', []);
+});
+
+test('addOptionValueInline creates and immediately selects the value in the draft row', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true)->call('openCreateOption');
+
+    $volt->set('optionModal', ['name' => 'Color', 'type' => ProductOptionInputType::SELECT->value])
+        ->call('createOptionInline');
+
+    $option = ProductOption::where('store_id', $store->id)->where('name', 'Color')->first();
+
+    $volt->call('addOptionValueInline');
+
+    expect(ProductOptionValue::where('product_option_id', $option->id)->count())->toBe(0)
+        ->and($volt->get('options.0.values'))->toBe([]);
+
+    $volt->set('optionNewValue', 'Red')->call('addOptionValueInline');
+
+    $value = ProductOptionValue::where('product_option_id', $option->id)->where('value', 'Red')->first();
+
+    expect($value)->not->toBeNull()
+        ->and($volt->get('optionNewValue'))->toBe('')
+        ->and($volt->get('options.0.values'))->toBe([$value->id]);
+
+    // Adding the same value again neither duplicates the row not the draft selection.
+    $volt->set('optionNewValue', 'Red')->call('addOptionValueInline');
+
+    $volt->assertCount('options.0.values', 1);
+});
+
+test('removeOptionValueInline deletes an unused value and strips it from the draft', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form')->set('has_variants', true)->call('openCreateOption');
+
+    $volt->set('optionModal', ['name' => 'Color', 'type' => ProductOptionInputType::SELECT->value])
+        ->call('createOptionInline');
+
+    $option = ProductOption::where('store_id', $store->id)->where('name', 'Color')->first();
+
+    $volt->set('optionNewValue', 'Red')->call('addOptionValueInline');
+    $volt->set('optionNewValue', 'Blue')->call('addOptionValueInline');
+
+    $red = ProductOptionValue::where('product_option_id', $option->id)->where('value', 'Red')->first();
+    $blue = ProductOptionValue::where('product_option_id', $option->id)->where('value', 'Blue')->first();
+
+    $volt->call('removeOptionValueInline', $blue->id);
+
+    expect(ProductOptionValue::find($blue->id))->toBeNull()
+        ->and($volt->get('options.0.values'))->toBe([$red->id]);
+});
+
+test('removeOptionValueInline is blocked when the value is attached to variants', function () {
+    [$user, $store] = skuUser();
+
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $value = ProductOptionValue::create([
+        'store_id' => $store->id,
+        'product_option_id' => $option->id,
+        'value' => 'S',
+        'sort_order' => 0,
+    ]);
+
+    $product = Product::create([
+        'store_id' => $store->id,
+        'name' => 'Used Value Product',
+        'slug' => 'used-value-product',
+        'sku' => 'USED-S',
+        'type' => 'variable',
+        'price' => 100,
+        'is_active' => true,
+    ]);
+
+    $variant = ProductVariant::create([
+        'store_id' => $store->id,
+        'product_id' => $product->id,
+        'name' => 'S',
+        'sku' => 'USED-S-0',
+        'price' => 100,
+        'stock' => 1,
+    ]);
+
+    $variant->optionValues()->sync([$value->id => ['product_option_id' => $option->id]]);
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('has_variants', true)
+        ->set('optionModalRow', 0)
+        ->set('optionModalCreatedId', $option->id)
+        ->set('options', [[
+            'product_option_id' => $option->id,
+            'type' => ProductOptionInputType::SELECT->value,
+            'values' => [$value->id],
+        ]])
+        ->call('removeOptionValueInline', $value->id);
+
+    expect(ProductOptionValue::find($value->id))->not->toBeNull()
+        ->and($volt->get('options.0.values'))->toBe([$value->id]);
+
+    $volt->assertDispatched('swal', type: 'error');
+});
+
+test('quickAddValue creates a value in the row option and auto-selects it', function () {
+    [$user, $store] = skuUser();
+
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('has_variants', true)
+        ->set('options', [[
+            'product_option_id' => $option->id,
+            'type' => ProductOptionInputType::SELECT->value,
+            'values' => [],
+        ]]);
+
+    // An empty draft is a silent no-op: nothing is created.
+    $volt->call('quickAddValue', 0);
+
+    expect(ProductOptionValue::where('product_option_id', $option->id)->count())->toBe(0);
+
+    $volt->set('quickValueDraft', 'XL')->call('quickAddValue', 0);
+
+    $value = ProductOptionValue::where('product_option_id', $option->id)->where('value', 'XL')->first();
+
+    expect($value)->not->toBeNull()
+        ->and($volt->get('quickValueDraft'))->toBe('')
+        ->and($volt->get('options.0.values'))->toBe([$value->id]);
+
+    // valuesChanged runs for the row: the variant preview is rebuilt.
+    $volt->assertCount('variants_preview', 1);
+});
+
+test('quickAddValue on a row without an option is ignored', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('has_variants', true)
+        ->set('options', [[
+            'product_option_id' => null,
+            'type' => null,
+            'values' => [],
+        ]])
+        ->set('quickValueDraft', 'Anything')
+        ->call('quickAddValue', 0);
+
+    expect($volt->get('options.0.values'))->toBe([])
+        ->and(ProductOptionValue::count())->toBe(0);
+});
+
+test('editing a variable product never wipes an existing variant sku to null', function () {
+    [$user, $store] = skuUser();
+
+    [$product, $variants] = makeVariableProduct($store, 'keep-variant-sku');
+
+    $variants[0]->update(['barcode' => 'BAR-KEEP-VARIANT-SKU-0']);
+    $variants[1]->update(['barcode' => 'BAR-KEEP-VARIANT-SKU-1']);
+
+    $volt = Volt::test('merchant.products.form', ['product' => $product]);
+
+    // Preview rows rebuilt server-side carry a null/skeleton sku; save must
+    // keep the stored codes instead of forcing UPDATE product_variants sku = null.
+    $volt->set('variants_preview.0.sku', null)
+        ->set('variants_preview.0.barcode', null)
+        ->set('variants_preview.0.price', 6800)
+        ->set('variants_preview.0.cost_price', 3500)
+        ->set('variants_preview.0.stock', 25)
+        ->set('variants_preview.1.sku', null);
+
+    $volt->call('save');
+
+    expect($variants[0]->fresh()->sku)->toBe('VAR-KEEP-VARIANT-SKU-0')
+        ->and($variants[0]->fresh()->barcode)->toBe('BAR-KEEP-VARIANT-SKU-0')
+        ->and($variants[0]->fresh()->price)->toBe('6800.00')
+        ->and($variants[0]->fresh()->cost_price)->toBe('3500.00')
+        ->and($variants[0]->fresh()->stock)->toBe(25)
+        ->and($variants[1]->fresh()->sku)->toBe('VAR-KEEP-VARIANT-SKU-1')
+        ->and($variants[1]->fresh()->barcode)->toBe('BAR-KEEP-VARIANT-SKU-1');
+
+    // No new variants were created and none were deleted.
+    expect($product->variants()->count())->toBe(2);
+});
+
+test('the options step renders the header new-option trigger and the searchable pickers', function () {
+    [$user, $store] = skuUser();
+
+    $option = ProductOption::create([
+        'store_id' => $store->id,
+        'name' => 'Size',
+        'type' => ProductOptionInputType::SELECT->value,
+    ]);
+
+    $valueS = ProductOptionValue::create(['store_id' => $store->id, 'product_option_id' => $option->id, 'value' => 'S', 'sort_order' => 0]);
+    $valueM = ProductOptionValue::create(['store_id' => $store->id, 'product_option_id' => $option->id, 'value' => 'M', 'sort_order' => 1]);
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('has_variants', true)
+        ->set('options', [[
+            'product_option_id' => $option->id,
+            'type' => ProductOptionInputType::SELECT->value,
+            'values' => [$valueS->id, $valueM->id],
+        ]]);
+
+    $html = $volt->html();
+
+    expect($html)->toContain(__('products.new_option'))
+        ->and($html)->toContain('wire:click="openCreateOption"')
+        ->and($html)->toContain('edz-select')
+        ->and($html)->toContain('edz-multi-select')
+        ->and($html)->toContain(__('products.select_values'))
+        ->and($html)->toContain('wire:model="options.0.product_option_id"')
+        ->and($html)->toContain('wire:model="options.0.values"')
+        ->and($html)->toContain('wire:click="quickAddValue(0)"')
+        ->and($html)->toContain('@keydown.enter.prevent="$wire.quickAddValue(0)"')
+        ->and($html)->toContain(__('products.new_value'))
+        ->and(str_contains($html, '<form wire:submit="quickAddValue'))
+        ->toBeFalse();
 });
 
 test('unchecking variants while on the options step relocates to pricing and drops it from validated steps', function () {
