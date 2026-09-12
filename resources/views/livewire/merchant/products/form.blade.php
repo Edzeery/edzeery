@@ -590,7 +590,7 @@ $wizardSteps = computed(fn () => array_values(ProductWizardSteps::all()));
                    class="edz-btn edz-btn--ghost">{{ __('products.cancel') }}</a>
 
                 <button type="button"
-                        x-show="step < 5"
+                        x-show="step < {{ ProductWizardSteps::count() }}"
                         @click="$wire.nextStep()"
                         wire:loading.attr="disabled"
                         :disabled="! $wire.hasActiveSubscription"
@@ -605,7 +605,7 @@ $wizardSteps = computed(fn () => array_values(ProductWizardSteps::all()));
                 </button>
 
                 <button type="submit"
-                        x-show="step === 5"
+                        x-show="step === {{ ProductWizardSteps::LAST_STEP }}"
                         wire:loading.attr="disabled"
                         :disabled="! $wire.hasActiveSubscription"
                         class="edz-btn edz-btn--primary"

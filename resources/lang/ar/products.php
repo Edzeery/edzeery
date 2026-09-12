@@ -151,6 +151,8 @@ return [
     'status_label' => 'الحالة',
     'step_basic_info' => 'المعلومات الأساسية',
     'step_basic_info_desc' => 'الاسم والوصف والعلامة التجارية والفئات',
+    'step_images' => 'الصور',
+    'step_images_desc' => 'رفع وإدارة صور المنتج',
     'step_inventory' => 'المخزون',
     'step_inventory_desc' => 'مستويات المخزون والحدود',
     'step_options' => 'الخيارات والمتغيرات',

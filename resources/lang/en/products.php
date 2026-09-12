@@ -151,6 +151,8 @@ return [
     'status_label' => 'Status',
     'step_basic_info' => 'Basic Information',
     'step_basic_info_desc' => 'Name, description, brand and categories',
+    'step_images' => 'Images',
+    'step_images_desc' => 'Upload and manage product photos',
     'step_inventory' => 'Inventory',
     'step_inventory_desc' => 'Stock levels and thresholds',
     'step_options' => 'Options & Variants',

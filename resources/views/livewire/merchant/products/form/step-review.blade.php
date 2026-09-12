@@ -1,4 +1,4 @@
-<div x-show="step === 5" x-transition.opacity>
+<div x-show="step === 6" x-transition.opacity>
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div class="space-y-6 xl:col-span-2">
             <div class="edz-card">

@@ -151,6 +151,8 @@ return [
     'status_label' => 'Statut',
     'step_basic_info' => 'Informations de base',
     'step_basic_info_desc' => 'Nom, description, marque et catégories',
+    'step_images' => 'Images',
+    'step_images_desc' => 'Télécharger et gérer les photos du produit',
     'step_inventory' => 'Inventaire',
     'step_inventory_desc' => 'Niveaux de stock et seuils',
     'step_options' => 'Options et variantes',

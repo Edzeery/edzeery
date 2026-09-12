@@ -88,6 +88,8 @@ return [
     'status_label' => 'Estado',
     'step_basic_info' => 'Información básica',
     'step_basic_info_desc' => 'Nombre, descripción, marca y categorías',
+    'step_images' => 'Imágenes',
+    'step_images_desc' => 'Sube y gestiona las fotos del producto',
     'step_inventory' => 'Inventario',
     'step_inventory_desc' => 'Niveles de stock y umbrales',
     'step_options' => 'Opciones y variantes',

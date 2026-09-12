@@ -15,13 +15,15 @@ final class ProductWizardSteps
 {
     public const STEP_BASIC = 1;
 
-    public const STEP_PRICING = 2;
+    public const STEP_IMAGES = 2;
 
-    public const STEP_OPTIONS = 3;
+    public const STEP_PRICING = 3;
 
-    public const STEP_INVENTORY = 4;
+    public const STEP_OPTIONS = 4;
 
-    public const STEP_REVIEW = 5;
+    public const STEP_INVENTORY = 5;
+
+    public const STEP_REVIEW = 6;
 
     public const LAST_STEP = self::STEP_REVIEW;
 
@@ -38,6 +40,12 @@ final class ProductWizardSteps
                 'label' => __('products.step_basic_info'),
                 'icon' => 'information-circle',
                 'partial' => 'livewire.merchant.products.form.step-basic',
+            ],
+            self::STEP_IMAGES => [
+                'id' => self::STEP_IMAGES,
+                'label' => __('products.step_images'),
+                'icon' => 'image',
+                'partial' => 'livewire.merchant.products.form.step-images',
             ],
             self::STEP_PRICING => [
                 'id' => self::STEP_PRICING,
@@ -107,6 +115,7 @@ final class ProductWizardSteps
                 'short_description' => ['nullable', 'string', 'max:500'],
                 'description' => ['nullable', 'string'],
             ],
+            self::STEP_IMAGES => [],
             self::STEP_PRICING => [
                 'price' => ['nullable', 'numeric', 'min:0'],
                 'compare_price' => ['nullable', 'numeric', 'min:0'],

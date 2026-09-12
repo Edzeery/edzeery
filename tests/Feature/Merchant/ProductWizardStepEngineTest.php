@@ -21,6 +21,7 @@ function wizardStepLabels(): array
         fn (string $label) => str_replace('&', '&amp;', $label),
         [
             __('products.step_basic_info'),
+            __('products.step_images'),
             __('products.step_pricing'),
             __('products.step_options'),
             __('products.step_inventory'),
@@ -29,15 +30,23 @@ function wizardStepLabels(): array
     );
 }
 
-test('wizard renders the five dynamic steps in canonical order', function () {
+test('wizard renders the six dynamic steps in canonical order', function () {
     [$user, $store] = skuUser();
 
     $html = Volt::test('merchant.products.form')->html();
 
+    $navStart = strpos($html, 'aria-label="Progress"');
+    $navEnd = strpos($html, '</nav>', $navStart);
+
+    expect($navStart)->not->toBeFalse()
+        ->and($navEnd)->not->toBeFalse();
+
+    $nav = substr($html, $navStart, $navEnd - $navStart);
+
     $position = -1;
     foreach (wizardStepLabels() as $label) {
-        $pos = strpos($html, $label);
-        expect($pos)->not->toBeFalse("Step label \"{$label}\" not rendered");
+        $pos = strpos($nav, $label);
+        expect($pos)->not->toBeFalse("Step label \"{$label}\" not rendered in the nav");
         expect($pos)->toBeGreaterThan($position);
         $position = $pos;
     }
@@ -61,33 +70,54 @@ test('completed steps unlock and free navigation preserves state', function () {
 
     $volt = Volt::test('merchant.products.form');
 
-    // Step 3 is unreachable until steps 1 and 2 are validated.
+    // Step 4 (options) and step 2 (images) are unreachable before basic info.
     $volt->call('goToStep', ProductWizardSteps::STEP_OPTIONS);
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_BASIC);
 
-    // Validate step 1 and advance to step 2.
+    $volt->call('goToStep', ProductWizardSteps::STEP_IMAGES);
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_BASIC);
+
+    // Validate step 1 and advance: Images becomes the active step right after it.
     $volt->set(['name' => 'Free Nav Product', 'slug' => 'free-nav-product'])
         ->call('nextStep');
 
-    $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING)
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_IMAGES)
         ->assertSet('validated_steps', [ProductWizardSteps::STEP_BASIC]);
 
-    // Step 3 still locked, step 1 unlocked (backwards navigation ok).
+    // Pricing (step 3) is still locked until Images itself is validated.
+    $volt->call('goToStep', ProductWizardSteps::STEP_PRICING);
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_IMAGES);
+
+    // Options (step 4) stays locked too.
+    $volt->call('goToStep', ProductWizardSteps::STEP_OPTIONS);
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_IMAGES);
+
+    // Passing the empty Images rule set unlocks Pricing.
+    $volt->call('nextStep');
+
+    $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING)
+        ->assertSet('validated_steps', [
+            ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
+        ]);
+
+    // Step 4 still locked, step 1 unlocked (backwards navigation ok).
     $volt->call('goToStep', ProductWizardSteps::STEP_OPTIONS);
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING);
 
     $volt->call('goToStep', ProductWizardSteps::STEP_BASIC);
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_BASIC);
 
-    // Forward to step 2 again and validate it.
+    // Forward to step 3 again and validate it.
     $volt->call('goToStep', ProductWizardSteps::STEP_PRICING);
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_PRICING)
         ->assertSet('validated_steps', [
             ProductWizardSteps::STEP_BASIC,
+            ProductWizardSteps::STEP_IMAGES,
             ProductWizardSteps::STEP_PRICING,
         ]);
 
-    // Step 3 is now reachable.
+    // Step 4 is now reachable.
     $volt->set(['price' => 100, 'cost_price' => 50])
         ->call('goToStep', ProductWizardSteps::STEP_OPTIONS);
 
@@ -108,4 +138,20 @@ test('edit mode pre-unlocks every step for free navigation', function () {
 
     $volt->assertSet('currentStep', ProductWizardSteps::STEP_REVIEW)
         ->assertNotDispatched('swal');
+});
+
+test('the images step renders persisted images and the upload input', function () {
+    [$user, $store] = skuUser();
+
+    $volt = Volt::test('merchant.products.form');
+
+    $volt->set('images', ['products/cover.jpg', 'products/alt.jpg']);
+
+    $html = $volt->html();
+
+    expect($html)->toContain('products/cover.jpg')
+        ->and($html)->toContain('products/alt.jpg')
+        ->and($html)->toContain('type="file"')
+        ->and($html)->toContain('accept="image/*"')
+        ->and($html)->toContain('wire:model="newImages"');
 });
