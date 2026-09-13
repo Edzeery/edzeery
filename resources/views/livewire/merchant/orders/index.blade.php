@@ -21,7 +21,7 @@ use function Livewire\Volt\uses;
 
 layout('components.layouts.store');
 
-uses([\App\Livewire\Concerns\HasInlineEdit::class, \App\Livewire\Concerns\HasOrderProductPicker::class]);
+uses([\App\Livewire\Concerns\HasInlineEdit::class, \App\Livewire\Concerns\HasOrderProductPicker::class, \App\Livewire\Concerns\CancelsShipmentFromOrdersTable::class, \App\Livewire\Concerns\OrderDeliveryPartnerConcern::class]);
 
 state([
     'search' => '',
@@ -146,7 +146,7 @@ state([
     'formProductView' => 'list', // 'list' | 'variants'
     'formSelectedProduct' => null,
     'formSelectedItems' => [],
-    'formPartnerType' => 'provider', // 'provider' | 'rider' segment in the create/edit form
+    'formPartnerType' => '', // encoded 'p:{id}' | 'r:{id}' | '' — unified picker (create/edit form)
 
     // Carrier-first office picker options (create + edit) for x-edz.select
     'formOffices' => [],
@@ -166,7 +166,7 @@ state([
     // Confirmation drawer (P26)
     'showConfirmModal' => false,
     'confirmOrderId' => null,
-    'confirmPartnerType' => 'provider', // 'provider' | 'rider' segment in the confirm drawer
+    'confirmPartnerType' => '', // encoded 'p:{id}' | 'r:{id}' | '' — unified picker (confirm drawer)
     'confirmProviderId' => '',
     'confirmRiderId' => '',
     'confirmContacted' => false,
@@ -1285,6 +1285,13 @@ $confirmBulkSend = function (): void {
                 changedBy: $membership,
             );
 
+            // Carrier rejection (returned, not thrown): the order keeps its
+            // status for retry — count it as skipped with the carrier message.
+            if (! empty($result['error'])) {
+                $skipped[] = $order->number . ' (' . $result['error'] . ')';
+                continue;
+            }
+
             if (! empty($result['rate_note'])) {
                 $rateNotes++;
             }
@@ -1825,12 +1832,14 @@ $openConfirmModal = function (string $orderId): void {
     }
 
     $this->confirmOrderId = $orderId;
-    $this->confirmPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
     $this->confirmRiderId = $order->delivery_rider_id ?? '';
     $this->confirmProviderId = $order->shipping_provider_id ?? '';
     if (blank($this->confirmProviderId) && blank($this->confirmRiderId)) {
         $this->confirmProviderId = $this->storeDefaultProviderId();
     }
+    $this->confirmPartnerType = filled($this->confirmRiderId)
+        ? 'r:' . $this->confirmRiderId
+        : (filled($this->confirmProviderId) ? 'p:' . $this->confirmProviderId : '');
     $this->confirmContacted = false;
     $this->confirmNote = $order->meta['confirm_note'] ?? '';
     $this->confirmSummary = [
@@ -1950,7 +1959,7 @@ $submitConfirmAndSend = function (): void {
     $providerId = null;
     $riderId = null;
 
-    if (($this->confirmPartnerType ?? 'provider') === 'rider') {
+    if (filled($this->confirmRiderId)) {
         $riderId = ! empty($this->confirmRiderId)
             ? $this->confirmRiderId
             : ($order->delivery_rider_id ?? null);
@@ -2016,6 +2025,16 @@ $submitConfirmAndSend = function (): void {
             changedBy: $membership,
             confirmFirst: true,
         );
+
+        // Carrier failure: the order stays confirmed (committed by the gateway)
+        // so the merchant can retry. Nothing is marked shipped, no tracking is
+        // created — show the carrier's message and close the drawer.
+        if (! empty($result['error'])) {
+            $this->showConfirmModal = false;
+            $this->loadOrders();
+            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => $result['error']]);
+            return;
+        }
 
         // Rider hand-off: backfill the HM/SD tracking number so the rider tab
         // and the label always carry a scannable code (the shipped transition
@@ -2099,6 +2118,14 @@ $sendConfirmedOrder = function (string $orderId): void {
         );
 
         $this->loadOrders();
+
+        if (! empty($result['error'])) {
+            // The order stays confirmed/preparing so it can be retried; the
+            // carrier rejected it before any tracking/shipped side effects.
+            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => $result['error']]);
+            return;
+        }
+
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_sent')]);
 
         if (! empty($result['rate_note'])) {
@@ -2374,18 +2401,14 @@ $refreshOrders = function () {
 // ——— Order form modal (Phase 9 @include partial — logic lives in
 // HasOrderProductPicker / HasInlineEdit; state is kept on the parent instance) ———
 
-// Shipment-type picker options gated by the selected carrier's capabilities.
-// Legacy/manual providers (carrier_id = null) keep all three options, and the
-// current selection is reset to 'delivery' with a toast when a carrier switch
-// makes it invalid, mirroring the office-reset behaviour.
-$formShipmentTypeOptions = function (): array {
+// Single source for shipment-type options: read-only, derived from the carrier's
+// capabilityList(). Legacy/manual providers (carrier_id = null) keep all three.
+$shipmentTypeOptionsFor = function (?string $providerId): array {
     $defaultOptions = [
         ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
         ['value' => 'exchange', 'label' => __('merchant_panel.exchange_label')],
         ['value' => 'pickup', 'label' => __('merchant_panel.pickup_label')],
     ];
-
-    $providerId = $this->form['shipping_provider_id'] ?? null;
 
     if (! $providerId) {
         return $defaultOptions;
@@ -2415,9 +2438,20 @@ $formShipmentTypeOptions = function (): array {
         fn ($opt) => ! empty($enabled[$opt['value']]),
     ));
 
-    if ($options === []) {
-        $options = $defaultOptions;
+    return $options === [] ? $defaultOptions : $options;
+};
+
+// Create/Edit form picker: capability-gated, with a toast reset when a carrier
+// switch makes the current selection invalid (mirrors the office-reset behaviour).
+// A rider leg is always a plain "delivery" (exchange/pickup are carrier lanes) —
+// the picker collapses to that single option and the value is forced accordingly.
+$formShipmentTypeOptions = function (): array {
+    if (filled($this->form['delivery_rider_id'] ?? null)) {
+        $this->form['shipment_type'] = 'delivery';
+        return [['value' => 'delivery', 'label' => __('merchant_panel.delivery')]];
     }
+
+    $options = $this->shipmentTypeOptionsFor($this->form['shipping_provider_id'] ?? null);
 
     $availableValues = array_column($options, 'value');
     $current = (string) ($this->form['shipment_type'] ?? 'delivery');
@@ -2465,12 +2499,13 @@ $cityOptionsFor = function (string $stateId, string $type, string $providerId): 
             ->find($providerId);
 
         if ($provider) {
-            // Carrier-backed providers refresh the (cached) office list for the
-            // chosen wilaya first so the commune list reflects live points.
+            // Carrier-backed providers refresh the local office rows for the
+            // chosen wilaya first when none exist yet (syncIfNeeded: our DB is
+            // the source of truth once warmed, so this stays a fast read).
             if ($provider->carrier) {
                 try {
                     $state = \App\Models\Locations\State::find($stateId);
-                    app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, null);
+                    app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->syncIfNeeded($provider, $state, null);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning("office sync failed for provider [{$providerId}] while loading communes: " . $e->getMessage());
                 }
@@ -2572,6 +2607,8 @@ $loadCities = function (string $stateId, bool $resetCity = true): void {
     $this->rebuildFormOffices();
 };
 
+
+
 // Full, scoped office option list for provider + state + city (office
 // deliveries). Delegates to the shared model query so the lazily fetched list,
 // the cascade auto-select/reset logic and the inline editor all agree.
@@ -2586,26 +2623,15 @@ $officeOptionsFor = function (string $providerId, string $stateId, ?string $city
 
 // Full office options for the lazily-loaded modal select. Scope carries the
 // provider + state + city (+ refresh version) so the client cache keys on all
-// of them and a forced refresh invalidates the previous payload.
+// of them and a forced refresh invalidates the previous payload. Pure DB read:
+// reconciliation against the carrier happens via syncIfNeeded when a provider
+// is chosen or the wilaya changes, so opening the picker never blocks on the
+// carrier API (that was the office "slow to load" root cause).
 $loadFormOfficesLazy = function (string $scope): array {
     [$providerId, $stateId, $cityId] = array_pad(explode('|', $scope, 4), 4, '');
 
     if ($providerId === '' || $stateId === '') {
         return [];
-    }
-
-    $provider = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', currentStoreId())
-        ->where('is_active', true)
-        ->find($providerId);
-
-    if ($provider) {
-        try {
-            $state = \App\Models\Locations\State::find($stateId);
-            $city = $cityId !== '' ? \App\Models\Locations\City::find($cityId) : null;
-            app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, $city);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("office sync failed for provider [{$providerId}] while loading offices lazily: " . $e->getMessage());
-        }
     }
 
     return $this->officeOptionsFor($providerId, $stateId, $cityId !== '' ? $cityId : null);
@@ -2649,7 +2675,9 @@ $rebuildFormOffices = function (): void {
 
     $officeOptions = $offices
         ->map(function ($office) use ($cityId) {
-            $hint = trim(($office->city?->name ?? '') . ($office->address ? ' — ' . $office->address : ''), ' —');
+            // The office row reads as "code + commune" only; the street address
+            // is dropped so the picker stays scannable at 375px.
+            $hint = (string) ($office->city?->name ?? '');
 
             return [
                 'value' => (string) $office->id,
@@ -2665,7 +2693,9 @@ $rebuildFormOffices = function (): void {
     $cityOffices = empty($cityId) ? collect() : $offices->filter(fn($office) => $office->city_id === $cityId);
 
     // Chain: company -> type -> wilaya -> city -> office. When the chosen
-    // municipality has a single office, auto-select it.
+    // municipality has a single office, auto-select it (real because unique.
+    // A lone office of the whole wilaya is never guessed: the commune step
+    // stays a genuine user choice.
     if (($this->form['delivery_type'] ?? null) === 'stopdesk' && $cityOffices->count() === 1) {
         $this->form['stopdesk_point_id'] = (string) $cityOffices->first()->id;
     } elseif (!collect($officeOptions)->contains(fn($o) => $o['value'] === (string) ($this->form['stopdesk_point_id'] ?? ''))) {
@@ -2730,7 +2760,9 @@ $loadFormOffices = function (?string $providerId = null, bool $preserveOffice = 
         $state = !empty($this->form['state_id']) ? \App\Models\Locations\State::find($this->form['state_id']) : null;
         $city = !empty($this->form['city_id']) ? \App\Models\Locations\City::find($this->form['city_id']) : null;
 
-        app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->sync($provider, $state, $city);
+        // Local rows are authoritative once synced; the carrier API is only
+        // contacted when our store has no offices for this scope yet.
+        app(\App\Domains\Shipping\Services\StopdeskOfficeSync::class)->syncIfNeeded($provider, $state, $city);
 
         $this->rebuildFormOffices();
     } catch (\Exception $e) {
@@ -2989,8 +3021,10 @@ $applyProviderScope = function (?string $providerId = null, bool $preserveOffice
 
     // Rescope wilayas + communes for the chosen carrier and release any
     // destination it no longer covers (office points or home price coverage).
+    // The commune is preserved when still covered (resetCity: false) — a type
+    // or company change must not wipe a genuine user destination.
     $this->loadFormScope();
-    $this->loadCities((string) ($this->form['state_id'] ?? ''));
+    $this->loadCities((string) ($this->form['state_id'] ?? ''), resetCity: false);
     $this->releaseStaleDestination();
 
     if ($type !== 'stopdesk') {
@@ -3004,7 +3038,14 @@ $applyProviderScope = function (?string $providerId = null, bool $preserveOffice
 // Delivery type switch: rebuild office options (which auto-selects the single
 // office of the chosen municipality on stopdesk) without requiring a provider
 // change. Home delivery rescopes wilayas + communes to the carrier price scope.
+// A rider leg is always home delivery: clicking "office" while a rider is active
+// is rejected with a warning so the user does not land in a meaningless state.
 $changeDeliveryType = function (string $type): void {
+    if ($type === 'stopdesk' && filled($this->form['delivery_rider_id'] ?? null)) {
+        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.rider_delivery_only')]);
+        return;
+    }
+
     $this->form['delivery_type'] = $type;
 
     if (!empty($this->form['shipping_provider_id'])) {
@@ -3017,36 +3058,7 @@ $changeDeliveryType = function (string $type): void {
     }
 };
 
-// Exclusive carrier partner segment (company / rider) in the create/edit and
-// delivery quick-edit forms. Picking one partner clears the other + the office.
-$switchFormPartner = function (string $type): void {
-    $this->formPartnerType = $type === 'rider' ? 'rider' : 'provider';
 
-    if ($this->formPartnerType === 'rider') {
-        $this->form['shipping_provider_id'] = '';
-        $this->form['stopdesk_point_id'] = '';
-        $this->formOffices = [];
-        $this->formHasOffices = false;
-
-        return;
-    }
-
-    $this->form['delivery_rider_id'] = '';
-    $this->form['stopdesk_point_id'] = '';
-    $this->formOffices = [];
-    $this->formHasOffices = false;
-};
-
-// Exclusive carrier partner segment in the confirmation drawer.
-$switchConfirmPartner = function (string $type): void {
-    $this->confirmPartnerType = $type === 'rider' ? 'rider' : 'provider';
-
-    if ($this->confirmPartnerType === 'rider') {
-        $this->confirmProviderId = '';
-    } else {
-        $this->confirmRiderId = '';
-    }
-};
 
 $refreshFormOffices = function (): void {
     if (empty($this->form['shipping_provider_id'])) {
@@ -3105,13 +3117,15 @@ $openDeliveryModal = function (string $orderId): void {
     $this->form['state_id'] = $order->state_id ?? '';
     $this->form['city_id'] = $order->city_id ?? '';
     $this->form['stopdesk_point_id'] = $order->stopdesk_point_id ?? '';
-    $this->formPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
 
     // Single-company stores: the sole carrier is always the effective one —
     // unless the order rides with a delivery rider (exclusive partner).
     if (blank($this->form['delivery_rider_id'] ?? null) && blank($this->form['shipping_provider_id'] ?? null)) {
         $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
     }
+    $this->formPartnerType = filled($this->form['delivery_rider_id'] ?? null)
+        ? 'r:' . $this->form['delivery_rider_id']
+        : (filled($this->form['shipping_provider_id'] ?? null) ? 'p:' . $this->form['shipping_provider_id'] : '');
 
     // Carrier-scoped cascade: available wilayas/communes for the order's carrier,
     // releasing a destination the carrier no longer covers (with a toast).
@@ -3792,10 +3806,13 @@ $startOrderShipmentTypeEdit = function (string $orderId): void {
         return;
     }
 
+    $order = Order::where('store_id', currentStoreId())->whereKey($orderId)->first();
+    $this->editShipmentTypeOptions = $this->shipmentTypeOptionsFor($order?->shipping_provider_id);
+
     $this->startEdit(
         'order.shipment_type',
         $orderId,
-        Order::where('store_id', currentStoreId())->whereKey($orderId)->value('shipment_type'),
+        $order?->shipment_type,
     );
 };
 
@@ -4245,7 +4262,7 @@ $openCreateModal = function (): void {
         'stopdesk_point_id' => '',
         'shipment_type' => 'delivery',
         'payment_method' => 'cod',
-        'discount_type' => null,
+        'discount_type' => 'amount',
         'discount_value' => null,
         'discount_reason' => '',
         'notes' => '',
@@ -4253,16 +4270,13 @@ $openCreateModal = function (): void {
         'items' => [],
     ];
 
-    $this->formPartnerType = 'provider';
+    $this->formPartnerType = '';
 
     // Auto-select the store's default shipping company (is_default) when set.
     $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
-
-    // Riders-only stores start on the rider segment so their orders can be
-    // handed to a delivery rider right away (exclusive partner picker).
-    if (blank($this->form['shipping_provider_id']) && $this->riderOptions !== []) {
-        $this->formPartnerType = 'rider';
-    }
+    $this->formPartnerType = filled($this->form['shipping_provider_id'])
+        ? 'p:' . $this->form['shipping_provider_id']
+        : '';
 
     $this->formCities = [];
     $this->formOffices = [];
@@ -4286,31 +4300,44 @@ $submitCreate = function (): void {
 
     $maxWeightKg = Order::resolveMaxWeightKg($this->form['shipping_provider_id'] ?? null);
 
-    \Illuminate\Support\Facades\Validator::make($this->form, [
-        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
-        'customer_name' => 'required|string|max:255',
-        'items' => 'required|array|min:1',
-        'items.*.product_variant_id' => 'required|string',
-        'items.*.quantity' => 'required|integer|min:1',
-        'items.*.price' => 'required|numeric|min:0',
-        'delivery_type' => 'required|in:home,stopdesk',
-        'shipment_type' => 'required|in:delivery,exchange,pickup',
-        'payment_method' => 'required|in:cod',
-        'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
-        'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
-        'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
-        'shipping_provider_id' => 'nullable|exists:shipping_providers,id',
-        'delivery_rider_id' => 'nullable|exists:delivery_riders,id',
-        'stopdesk_point_id' => 'nullable|exists:stopdesk_points,id',
-        'phone_secondary' => 'nullable|string|max:20|regex:/^0[5-7]\d{8}$/',
-        'discount_type' => 'nullable|in:amount,percent',
-        'discount_value' => 'nullable|numeric|min:0',
-        'discount_reason' => 'nullable|string|max:255',
-        'weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
-        'notes' => 'nullable|string|max:500',
+    // TEMP-PATCH (2026-09-13): $this->validate() with form.* rule keys so the error bag matches the
+    // modal's @error('form.*') directives (Livewire keeps errors keyed by rule name; flat keys were
+    // invisible to the forms and were filtered out of the request memo).
+    $this->validate([
+        'form.customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'form.customer_name' => 'required|string|max:255',
+        'form.items' => 'required|array|min:1',
+        'form.items.*.product_variant_id' => 'required|string',
+        'form.items.*.quantity' => 'required|integer|min:1',
+        'form.items.*.price' => 'required|numeric|min:0',
+        'form.delivery_type' => 'required|in:home,stopdesk',
+        'form.shipment_type' => 'required|in:delivery,exchange,pickup',
+        'form.payment_method' => 'required|in:cod',
+        'form.address' => 'required_if:form.delivery_type,home|nullable|string|max:1000',
+        'form.state_id' => 'required_if:form.delivery_type,home|nullable|exists:states,id',
+        'form.city_id' => 'required_if:form.delivery_type,home|nullable|exists:cities,id',
+        'form.shipping_provider_id' => 'nullable|exists:shipping_providers,id',
+        'form.delivery_rider_id' => 'nullable|exists:delivery_riders,id',
+        'form.stopdesk_point_id' => 'nullable|exists:stopdesk_points,id',
+        'form.phone_secondary' => 'nullable|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'form.discount_type' => 'nullable|in:amount,percent',
+        // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+        'form.discount_value' => [
+            'nullable',
+            'numeric',
+            'min:0',
+            function (string $attribute, $candidate, $fail): void {
+                if (($this->form['discount_type'] ?? null) === 'percent' && (float) $candidate > 100) {
+                    $fail(__('merchant_panel.discount_percent_max'));
+                }
+            },
+        ],
+        'form.discount_reason' => 'nullable|string|max:255',
+        'form.weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
+        'form.notes' => 'nullable|string|max:500',
     ], [
-        'weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
-    ])->validate();
+        'form.weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
+    ]);
 
     // Exclusive carrier partner: a company and a rider can never coexist.
     if (filled($this->form['shipping_provider_id'] ?? null) && filled($this->form['delivery_rider_id'] ?? null)) {
@@ -4329,7 +4356,7 @@ $submitCreate = function (): void {
     // no rider cannot hold an office (rider legs type stopdesk are allowed and
     // simply omit the office).
     if ($this->form['delivery_type'] === 'stopdesk' && ! $isRiderLeg && blank($this->form['stopdesk_point_id'] ?? null)) {
-        $this->addError('stopdesk_point_id', __('merchant_panel.office_required_for_stopdesk'));
+        $this->addError('form.stopdesk_point_id', __('merchant_panel.office_required_for_stopdesk'));
         return;
     }
 
@@ -4462,13 +4489,23 @@ $openEditModal = function (string $orderId): void {
             ->toArray(),
     ];
 
-    $this->formPartnerType = blank($order->delivery_rider_id) ? 'provider' : 'rider';
+    // Sub-phase-B: the discount editor is amount-only. A legacy percent
+    // discount on the stored order is converted to its DZD equivalent so the
+    // amount input and the financial grid always show one consistent figure.
+    if (($this->form['discount_type'] ?? null) === 'percent' && filled($this->form['discount_value'] ?? null)) {
+        $subtotal = collect($this->form['items'])->sum(fn ($i) => ($i['price'] ?? 0) * ($i['quantity'] ?? 0));
+        $this->form['discount_value'] = round(($subtotal * (float) $this->form['discount_value']) / 100, 2);
+    }
+    $this->form['discount_type'] = 'amount';
 
     // Single-company stores: the sole carrier is always the effective one —
     // unless the order rides with a delivery rider (exclusive partner).
     if (blank($this->form['delivery_rider_id'] ?? null) && blank($this->form['shipping_provider_id'] ?? null)) {
         $this->form['shipping_provider_id'] = $this->storeDefaultProviderId();
     }
+    $this->formPartnerType = filled($this->form['delivery_rider_id'] ?? null)
+        ? 'r:' . $this->form['delivery_rider_id']
+        : (filled($this->form['shipping_provider_id'] ?? null) ? 'p:' . $this->form['shipping_provider_id'] : '');
 
     $this->formProductResults = [];
     $this->formProductView = 'list';
@@ -4506,26 +4543,49 @@ $submitEdit = function (): void {
         return;
     }
 
-    \Illuminate\Support\Facades\Validator::make($this->form, [
-        'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
-        'customer_name' => 'required|string|max:255',
-        'items' => 'required|array|min:1',
-        'items.*.product_variant_id' => 'required|string',
-        'items.*.quantity' => 'required|integer|min:1',
-        'items.*.price' => 'required|numeric|min:0',
-        'delivery_type' => 'required|in:home,stopdesk',
-        'shipment_type' => 'required|in:delivery,exchange,pickup',
-        'payment_method' => 'required|in:cod',
-        'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
-        'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
-        'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
-        'discount_type' => 'nullable|in:amount,percent',
-        'discount_value' => 'nullable|numeric|min:0',
-        'discount_reason' => 'nullable|string|max:255',
-        'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
-        'delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
-        'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
-    ])->validate();
+    // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+    $maxWeightKg = Order::resolveMaxWeightKg($this->form['shipping_provider_id'] ?? null);
+
+    // TEMP-PATCH (2026-09-13): $this->validate() with form.* rule keys so the error bag matches the
+    // modal's @error('form.*') directives (Livewire keeps errors keyed by rule name; flat keys were
+    // invisible to the forms and were filtered out of the request memo).
+    $this->validate([
+        'form.customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'form.customer_name' => 'required|string|max:255',
+        'form.items' => 'required|array|min:1',
+        'form.items.*.product_variant_id' => 'required|string',
+        'form.items.*.quantity' => 'required|integer|min:1',
+        'form.items.*.price' => 'required|numeric|min:0',
+        'form.delivery_type' => 'required|in:home,stopdesk',
+        'form.shipment_type' => 'required|in:delivery,exchange,pickup',
+        'form.payment_method' => 'required|in:cod',
+        'form.address' => 'required_if:form.delivery_type,home|nullable|string|max:1000',
+        'form.state_id' => 'required_if:form.delivery_type,home|nullable|exists:states,id',
+        'form.city_id' => 'required_if:form.delivery_type,home|nullable|exists:cities,id',
+        'form.discount_type' => 'nullable|in:amount,percent',
+        // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+        'form.discount_value' => [
+            'nullable',
+            'numeric',
+            'min:0',
+            function (string $attribute, $candidate, $fail): void {
+                if (($this->form['discount_type'] ?? null) === 'percent' && (float) $candidate > 100) {
+                    $fail(__('merchant_panel.discount_percent_max'));
+                }
+            },
+        ],
+        'form.discount_reason' => 'nullable|string|max:255',
+        'form.shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
+        'form.delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
+        'form.stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
+        // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+        'form.phone_secondary' => 'nullable|string|max:20|regex:/^0[5-7]\d{8}$/',
+        'form.weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
+        'form.notes' => 'nullable|string|max:500',
+    ], [
+        // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+        'form.weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
+    ]);
 
     // Exclusive carrier partner: a company and a rider can never coexist.
     if (filled($this->form['shipping_provider_id'] ?? null) && filled($this->form['delivery_rider_id'] ?? null)) {
@@ -4538,6 +4598,12 @@ $submitEdit = function (): void {
     if ($isRiderLeg) {
         $this->form['stopdesk_point_id'] = '';
         $this->form['shipping_provider_id'] = '';
+    }
+
+    // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — relocate when index.blade.php is split (see ARCHITECTURE_RULES.md)
+    if ($this->form['delivery_type'] === 'stopdesk' && ! $isRiderLeg && blank($this->form['stopdesk_point_id'] ?? null)) {
+        $this->addError('form.stopdesk_point_id', __('merchant_panel.office_required_for_stopdesk'));
+        return;
     }
 
     $storeId = currentStoreId();

@@ -67,6 +67,21 @@
         </button>
     @endif
 
+    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+     && !$showTrash && in_array($order['status_key'] ?? null, ['shipped', 'in_transit', 'out_for_delivery'], true))
+        <button x-on:click="EdzSwal.confirmAction('{{ __('order_flow.cancel_shipment_title') }}', '{{ __('order_flow.cancel_shipment_confirm') }}', { confirmText: '{{ __('order_flow.cancel_shipment') }}', confirmColor: '#d97706' }).then((ok) => { if (ok) $wire.cancelShipment('{{ $orderId }}'); })"
+            @if ($layout === 'list') @click="close()" @endif
+            class="{{ $layout === 'list'
+                ? $btnClass . ' text-warning-600'
+                : $btnClass . ' text-warning-600 hover:text-warning-700' }}"
+            title="{{ __('order_flow.cancel_shipment') }}">
+            <x-edz.icon name="x-circle" class="{{ $icon }}" />
+            @if ($layout === 'list')
+                <span>{{ __('order_flow.cancel_shipment') }}</span>
+            @endif
+        </button>
+    @endif
+
     @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$showTrash)
         @php $editCloser = $layout === 'list' ? '; close()' : ''; @endphp
         <button @click="$wire.openEditModal('{{ $orderId }}'){{ $editCloser }}"

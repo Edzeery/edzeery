@@ -324,6 +324,69 @@ trait TrackingGridConcern
         $this->loadShipments();
     }
 
+    // Filter groups available to the toolbar "Filters" drill-down portal. A group
+    // is offered ONLY when its underlying column is NOT currently visible in the
+    // grid — a visible column already exposes the same filter via its header icon.
+    public function availableFilterGroups(): array
+    {
+        $map = [
+            'provider' => ['column' => 'provider', 'tab' => 'carrier'],
+            'tracking_statuses' => ['column' => 'tracking_status'],
+            'date' => ['column' => 'shipping_date'],
+            'amount' => ['column' => 'total'],
+            'city' => ['column' => 'city'],
+            'rider' => ['column' => 'delivery_rider', 'tab' => 'rider'],
+            'assigned_to' => ['column' => 'assigned_to'],
+            'confirmed_by' => ['column' => 'confirmed_by'],
+        ];
+
+        $available = [];
+
+        foreach ($map as $group => $cfg) {
+            if (! empty($cfg['tab']) && $this->trackingTab !== $cfg['tab']) {
+                continue;
+            }
+            if (! in_array($cfg['column'], $this->visibleColumns, true)) {
+                $available[] = $group;
+            }
+        }
+
+        return $available;
+    }
+
+    // Counts active filters among the *available* drill-down groups only — the
+    // badge on the Filters trigger mirrors what the menu can actually clear.
+    public function activeFilterCount(): int
+    {
+        $count = 0;
+
+        foreach ($this->availableFilterGroups() as $group) {
+            switch ($group) {
+                case 'tracking_statuses':
+                    if (count($this->filters['tracking_statuses'] ?? []) > 0) {
+                        $count++;
+                    }
+                    break;
+                case 'date':
+                    if (filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null)) {
+                        $count++;
+                    }
+                    break;
+                case 'amount':
+                    if (filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null)) {
+                        $count++;
+                    }
+                    break;
+                default:
+                    if (filled($this->filters[$group] ?? null)) {
+                        $count++;
+                    }
+            }
+        }
+
+        return $count;
+    }
+
     public function setFilter(string $key, $value): void
     {
         if ($key === 'rider' && $value !== null) {

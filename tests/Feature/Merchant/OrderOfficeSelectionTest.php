@@ -264,7 +264,42 @@ test('a stopdesk order without an office is rejected and nothing is created', fu
         ])
         ->call('submitCreate');
 
-    $volt->assertHasErrors(['stopdesk_point_id']);
+    $volt->assertHasErrors(['form.stopdesk_point_id']);
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('create-modal field errors resolve under the form.* namespace for @error display', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    [$product, $variant] = officeVariant($store);
+
+    $volt = officeVolt([$user, $store])
+        ->set('form', [
+            'customer_name' => '',
+            'customer_phone' => '',
+            'phone_secondary' => '123-invalid',
+            'address' => '',
+            'state_id' => $state->id,
+            'city_id' => $city->id,
+            'delivery_type' => 'home',
+            'shipping_provider_id' => null,
+            'stopdesk_point_id' => '',
+            'shipment_type' => 'delivery',
+            'payment_method' => 'cod',
+            'discount_type' => null,
+            'discount_value' => null,
+            'discount_reason' => '',
+            'notes' => '',
+            'weight_kg' => '',
+            'items' => [],
+        ])
+        ->call('submitCreate');
+
+    $volt->assertHasErrors(['form.customer_name' => 'required'])
+        ->assertHasErrors(['form.customer_phone' => 'required'])
+        ->assertHasErrors(['form.items' => 'required'])
+        ->assertHasErrors(['form.phone_secondary' => 'regex']);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });
@@ -363,6 +398,115 @@ test('choosing a carrier for a home-delivery order does not load or require an o
         ->assertSet('form.stopdesk_point_id', '');
 });
 
+// ——— Stopdesk commune flow (refined cascade: real selection, no forecast) ———
+//
+// The commune is a first-class step for office delivery: picking a wilaya
+// clears the previous commune + office so the merchant CHOOSES again (a real
+// selection, never a forecast). Auto-selection happens only when the chosen
+// commune owns exactly one office (a unique, non-guessed pick).
+
+test('the create form keeps the commune field for stopdesk and guides state then commune', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+
+    $volt = officeVolt([$user, $store])
+        ->set('showCreateModal', true)
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', '')
+        ->call('rebuildFormOffices');
+
+    expect($volt->html())
+        ->toContain('wire:model="form.city_id"')
+        ->toContain(__('storefront.select_city_for_desks'))
+        ->not->toContain("x-show=\"delivery === 'home'\" x-cloak");
+});
+
+test('changing the wilaya clears the commune and the office for a genuine re-pick', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+
+    $stateB = State::create([
+        'country_id' => $state->country_id,
+        'state_code' => '31',
+        'name' => 'Oran',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.stopdesk_point_id', $point->id)
+        ->call('loadFormOffices', $provider->id)
+        ->assertSet('form.stopdesk_point_id', $point->id)
+        ->call('changeFormState', $stateB->id)
+        ->assertSet('form.state_id', $stateB->id)
+        ->assertSet('form.city_id', '')
+        ->assertSet('form.stopdesk_point_id', '')
+        ->assertSet('formOffices', []);
+});
+
+test('a single office of the chosen commune auto-selects while a lone state-wide office is never guessed', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+
+    // No commune chosen yet: the wilaya's lone office must NOT auto-select —
+    // the commune step is a genuine choice, never a forecast.
+    officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', '')
+        ->call('loadFormOffices', $provider->id)
+        ->assertSet('form.stopdesk_point_id', '');
+
+    // Picking the commune that owns the single office auto-selects it — real
+    // because unique (Decision B).
+    officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->call('loadFormOffices', $provider->id)
+        ->assertSet('form.stopdesk_point_id', $point->id);
+});
+
+test('picking a stopdesk office among several back-fills the commune from the office record', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+
+    $cityB = City::create([
+        'state_id' => $state->id,
+        'name' => 'El Harrach',
+        'post_code' => '16200',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    officePoint($store, $provider, $state, $cityB);
+
+    officeVolt([$user, $store])
+        ->set('form.delivery_type', 'stopdesk')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', '')
+        ->call('loadFormOffices', $provider->id)
+        ->assertSet('form.stopdesk_point_id', '')
+        ->set('form.stopdesk_point_id', $point->id)
+        ->call('onFormOfficePicked')
+        ->assertSet('form.city_id', $city->id);
+});
+
 // ——— Delivery quick-edit modal (30.2) ———
 
 function officeHomeOrder(Store $store, ShippingProvider $provider, State $state, City $city): Order
@@ -412,6 +556,54 @@ test('the delivery quick-edit modal restores carrier, office and destination', f
 
     $offices = data_get($volt->get('formOffices'), '*.value');
     expect(collect($offices))->toContain($point->id);
+});
+
+test('the delivery quick-edit modal keeps the commune and a state change clears the destination fields', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+    $order = officeStopdeskOrder($store, $provider, $point, $state, $city);
+
+    $volt = officeVolt([$user, $store])
+        ->call('openDeliveryModal', $order->id)
+        ->assertSet('form.city_id', $city->id)
+        ->assertSet('form.stopdesk_point_id', $point->id);
+
+    expect($volt->html())
+        ->toContain('wire:model="form.city_id"')
+        ->not->toContain("x-show=\"delivery === 'home'\" x-cloak");
+
+    $stateB = State::create([
+        'country_id' => $state->country_id,
+        'state_code' => '31',
+        'name' => 'Oran',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+
+    $volt->set('form.state_id', $stateB->id)
+        ->call('changeFormState', $stateB->id)
+        ->assertSet('form.city_id', '')
+        ->assertSet('form.stopdesk_point_id', '')
+        ->assertSet('formOffices', []);
+});
+
+test('switching to stopdesk preserves the commune and auto-selects its single office', function () {
+    [$user, $store] = officeUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = officeGeography();
+    $provider = officeProvider($store);
+    $point = officePoint($store, $provider, $state, $city);
+
+    officeVolt([$user, $store])
+        ->set('form.delivery_type', 'home')
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.stopdesk_point_id', '')
+        ->call('changeDeliveryType', 'stopdesk')
+        ->assertSet('form.city_id', $city->id)
+        ->assertSet('form.stopdesk_point_id', $point->id);
 });
 
 test('saving the delivery quick-edit modal switches a stopdesk order to home and clears the office', function () {

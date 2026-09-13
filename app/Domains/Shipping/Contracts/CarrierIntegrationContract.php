@@ -39,6 +39,17 @@ interface CarrierIntegrationContract
     public function offices(ShippingProvider $provider, ?State $state = null, ?City $city = null): array;
 
     /**
+     * Pre-flight validation of an order against this carrier's documented field
+     * rules, before any network call is made. Returns validated=false with a
+     * per-field map of human-readable messages when the carrier would reject
+     * the order. The send gateway blocks the post (and only then creates local
+     * tracking) while any error remains.
+     *
+     * @return array{validated: bool, errors: array<string, list<string>>}
+     */
+    public function validateForCarrier(ShippingProvider $provider, Order $order): array;
+
+    /**
      * Push an order to the carrier.
      *
      * @return array{tracking: string, label_url: string|null, raw: array}

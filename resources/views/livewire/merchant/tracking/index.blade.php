@@ -276,6 +276,9 @@ mount(function (): void {
     {{-- Header-column filter portal (advanced grid) --}}
     @include('livewire.merchant.tracking.partials.tracking-filter-portal')
 
+    {{-- Toolbar drill-down filter portal (products-style) — opened by the Filters trigger. --}}
+    @include('livewire.merchant.tracking.partials.tracking-filter-bar-portal')
+
     {{-- Table settings modal (columns / style) --}}
     @include('livewire.merchant.tracking.partials.tracking-table-settings-modal')
 

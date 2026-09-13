@@ -103,7 +103,9 @@ class StopdeskPoint extends Model
         }
 
         return $query->get()->map(function ($office) {
-            $hint = trim(($office->city?->name ?? '') . ($office->address ? ' — ' . $office->address : ''), ' —');
+            // The office row reads as "code + commune" only; the street address
+            // is dropped so the picker stays scannable at 375px.
+            $hint = (string) ($office->city?->name ?? '');
 
             return [
                 'value' => (string) $office->id,

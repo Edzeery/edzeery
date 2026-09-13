@@ -42,11 +42,11 @@ export default function edzSelect(config) {
         get filteredOptions() {
             if (!this.searchable || this.query.trim() === '') return this.allOptions;
             const q = this.query.toLowerCase();
-            return this.allOptions.filter(o =>
+            return this.allOptions.filter(o => !o.isDivider && (
                 (o.code && o.code.toLowerCase().includes(q)) ||
                 o.label.toLowerCase().includes(q) ||
                 (o.hint && o.hint.toLowerCase().includes(q))
-            );
+            ));
         },
 
         get currentLabel() {
@@ -187,7 +187,10 @@ export default function edzSelect(config) {
         },
 
         _trimCache() {
-            while (this._remoteCache.size > 12) {
+            // 48 scopes ≈ the cascade of a busy session (partner × wilaya ×
+            // version bumps) — high enough to avoid refetches on a round trip
+            // through the order form, low enough to not hold stale payloads.
+            while (this._remoteCache.size > 48) {
                 this._remoteCache.delete(this._remoteCache.keys().next().value);
             }
         },
@@ -360,7 +363,14 @@ export default function edzSelect(config) {
         },
 
         select(value) {
-            if (this.loading || this._selectBusy) return;
+            // A roundtrip (server-ack) select must not be re-picked while its
+            // request is still in flight — that starts a second racing request.
+            // Plain list selects (the modal cascade) are allowed: with the pick
+            // landing in ONE deferred round-trip, the panel closes immediately
+            // instead of swallowing the click while the lazy list is loading.
+            if ((this.roundtrip && this.loading) || this._selectBusy) return;
+            const opt = this.allOptions.find(o => o.value === value);
+            if (opt?.isDivider) return;
             this._selectBusy = true;
             setTimeout(() => { this._selectBusy = false; }, 200);
 
@@ -418,13 +428,18 @@ export default function edzSelect(config) {
 
         moveHighlight(delta) {
             if (!this.open) { this.toggle(); return; }
-            const max = this.filteredOptions.length - 1;
-            this.highlighted = Math.min(max, Math.max(0, this.highlighted + delta));
+            const list = this.filteredOptions;
+            let idx = this.highlighted + delta;
+            while (idx >= 0 && idx < list.length && list[idx].isDivider) {
+                idx += delta;
+            }
+            const max = list.length - 1;
+            this.highlighted = Math.min(max, Math.max(0, idx));
         },
 
         selectHighlighted() {
             const opt = this.filteredOptions[this.highlighted];
-            if (opt) this.select(opt.value);
+            if (opt && !opt.isDivider) this.select(opt.value);
         }
     };
 }

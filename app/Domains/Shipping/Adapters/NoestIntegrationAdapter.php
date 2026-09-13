@@ -73,6 +73,102 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         return $offices;
     }
 
+    /**
+     * Pre-flight validation of an order against the NOEST v2.3 field rules
+     * (docs/توثيق_واجهة_برمجة_تطبيقات_NOEST_v2.3.md). Runs before any network
+     * call: a field the carrier would reject must never reach the API — and
+     * never grant a local order_trackings row. Completeness's generic checks
+     * (customer name/phone, state, city, items, partner, address-for-rider)
+     * are complements, not duplicates: this validates format & carrier rules.
+     *
+     * @return array{validated: bool, errors: array<string, list<string>>}
+     */
+    public function validateForCarrier(ShippingProvider $provider, Order $order): array
+    {
+        $errors = [];
+
+        if (trim((string) ($provider->credentials['api_token'] ?? '')) === ''
+            || trim((string) ($provider->credentials['guid'] ?? '')) === '') {
+            $errors['credentials'][] = __('merchant_panel.connection_missing_credentials');
+        }
+
+        $client = trim((string) ($order->customer?->name ?? ''));
+        if ($client === '') {
+            $errors['client'][] = __('order_flow.carrier_validation_required_field', ['field' => __('merchant_panel.customer_name')]);
+        } elseif (mb_strlen($client) > 255) {
+            $errors['client'][] = __('order_flow.carrier_validation_max_length', ['field' => __('merchant_panel.customer_name'), 'limit' => 255]);
+        }
+
+        if (! $this->isValidNoestPhone($order->customer?->phone)) {
+            $errors['phone'][] = __('order_flow.carrier_validation_phone_digits');
+        }
+
+        if (! empty($order->phone_secondary) && ! $this->isValidNoestPhone($order->phone_secondary)) {
+            $errors['phone_2'][] = __('order_flow.carrier_validation_phone_digits');
+        }
+
+        // NOEST groups the destination into wilaya_id (1–58) + commune.
+        // Completeness already guarantees a state/city are set; here we verify
+        // the stored state code is a numeric wilaya ID the carrier accepts.
+        $stateCode = $order->state?->state_code ? (string) (int) $order->state->state_code : null;
+        if ($stateCode === null) {
+            $errors['wilaya'][] = __('merchant_panel.state');
+        } elseif ((int) $stateCode < 1 || (int) $stateCode > 58) {
+            $errors['wilaya'][] = __('order_flow.carrier_validation_wilaya');
+        }
+
+        if ($order->delivery_type === Order::DELIVERY_STOPDESK) {
+            if (blank($order->stopdeskPoint?->external_code)) {
+                $errors['station_code'][] = __('order_flow.carrier_validation_station_required');
+            }
+            $address = trim((string) ($order->stopdeskPoint?->name ?? ''));
+        } else {
+            $address = trim((string) ($order->address ?? ''));
+        }
+
+        if ($address === '') {
+            $errors['address'][] = __('order_flow.carrier_validation_required_field', ['field' => __('merchant_panel.address')]);
+        } elseif (mb_strlen($address) > 255) {
+            $errors['address'][] = __('order_flow.carrier_validation_max_length', ['field' => __('merchant_panel.address'), 'limit' => 255]);
+        }
+
+        if (! empty($order->notes) && mb_strlen((string) $order->notes) > 255) {
+            $errors['remarque'][] = __('order_flow.carrier_validation_max_length', ['field' => __('merchant_panel.notes'), 'limit' => 255]);
+        }
+
+        if (mb_strlen((string) $order->number) < 5) {
+            $errors['reference'][] = __('order_flow.carrier_validation_min_length', ['limit' => 5]);
+        }
+
+        return [
+            'validated' => $errors === [],
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * NOEST requires the phone as 9–10 digits (docs v2.3). Normalizes common
+     * formatting (+213/213 prefix, spaces, dashes, dots) before counting the
+     * remaining digits.
+     */
+    protected function isValidNoestPhone(mixed $phone): bool
+    {
+        $phone = trim((string) $phone);
+
+        if ($phone === '') {
+            return false;
+        }
+
+        $phone = (string) preg_replace('/[\s\-\.\(\)]/', '', $phone);
+        $phone = ltrim($phone, '+');
+
+        if (str_starts_with($phone, '213')) {
+            $phone = substr($phone, 3);
+        }
+
+        return (bool) preg_match('/^\d{9,10}$/', $phone);
+    }
+
     public function createOrder(ShippingProvider $provider, Order $order): array
     {
         $token = (string) ($provider->credentials['api_token'] ?? '');

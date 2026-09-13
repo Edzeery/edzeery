@@ -246,7 +246,15 @@ return [
 
     'office_reset_for_destination' => "Le bureau précédemment sélectionné n'est plus disponible pour la nouvelle destination, le choix a été effacé",
     'shipment_type_reset_for_carrier' => "Le type d'expédition sélectionné n'est pas pris en charge par ce transporteur, il a donc été réinitialisé à livraison",
+    'rider_delivery_only' => "Un livreur livre toujours à l'adresse — livraison à domicile uniquement, envoi toujours « livraison »",
     'destination_reset_for_carrier' => "La destination sélectionnée n'est pas couverte par ce transporteur, elle a donc été effacée",
     'no_company_coverage' => 'Aucune région synchronisée pour ce transporteur pour le moment — actualisez les bureaux pour les voir',
     'no_home_coverage' => "Cette entreprise n'a pas de tarif de livraison à domicile pour cette destination",
+
+    'carrier_validation_required_field' => 'Le champ :field est obligatoire',
+    'carrier_validation_phone_digits' => 'Le numéro de téléphone doit contenir entre 9 et 10 chiffres',
+    'carrier_validation_max_length' => 'Le champ :field ne doit pas dépasser :limit caractères',
+    'carrier_validation_min_length' => 'La référence doit contenir au moins :limit caractères',
+    'carrier_validation_wilaya' => "La wilaya de la commande est invalide pour ce transporteur (doit être entre 1 et 58)",
+    'carrier_validation_station_required' => 'Un bureau de réception (station) est requis pour envoyer la commande avec ce transporteur',
 ];

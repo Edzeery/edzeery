@@ -93,10 +93,10 @@ class Order extends Model
     const DELIVERY_STOPDESK = 'stopdesk';
 
     // Fallback ceiling for an order's total weight (kg) when no shipping
-    // company is involved. Each shipping company carries its own cap
-    // (shipping_providers.max_weight_kg); this default kicks in for the
-    // rider-leg / no-carrier case.
-    const DEFAULT_MAX_WEIGHT_KG = 50;
+    // company is involved, or a company has no cap configured. Each shipping
+    // company carries its own cap (shipping_providers.max_weight_kg); this
+    // default kicks in for the rider-leg / no-carrier case.
+    const DEFAULT_MAX_WEIGHT_KG = 100;
 
     /**
      * Resolve the weight ceiling (kg) that applies to an order, from the

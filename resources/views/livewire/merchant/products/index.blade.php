@@ -2,6 +2,7 @@
 
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Products\Product;
 use Illuminate\Support\Facades\Storage;
 use function Livewire\Volt\computed;
@@ -18,9 +19,11 @@ layout('components.layouts.store');
 state([
     'search' => '',
     'brand_id' => '',
+    'category_id' => '',
     'is_active' => '',
     'is_featured' => '',
-    'created_at' => '',
+    'created_from' => '',
+    'created_to' => '',
     'selected' => [],
     'select_all' => false,
 ]);
@@ -47,18 +50,54 @@ $products = computed(function () {
             });
         })
         ->when($this->brand_id !== '', fn($q) => $q->where('brand_id', $this->brand_id))
+        ->when($this->category_id !== '', fn($q) => $q->where('primary_category_id', $this->category_id))
         ->when($this->is_active !== '', fn($q) => $q->where('is_active', filter_var($this->is_active, FILTER_VALIDATE_BOOLEAN)))
         ->when($this->is_featured !== '', fn($q) => $q->where('is_featured', filter_var($this->is_featured, FILTER_VALIDATE_BOOLEAN)))
-        ->when($this->created_at !== '', fn($q) => $q->whereDate('created_at', $this->created_at))
+        ->when($this->created_from !== '', fn($q) => $q->whereDate('created_at', '>=', $this->created_from))
+        ->when($this->created_to !== '', fn($q) => $q->whereDate('created_at', '<=', $this->created_to))
         ->latest()
         ->paginate(15);
 });
 
 $brands = computed(fn() => Brand::query()->where('store_id', currentStoreId())->orderBy('name')->pluck('name', 'id'));
 
+$categories = computed(function () {
+    return Category::query()
+        ->where('store_id', currentStoreId())
+        ->orderBy('name')
+        ->get(['id', 'parent_id', 'name']);
+});
+
+$activeFilterCount = function (): int {
+    return collect([
+        filled($this->brand_id),
+        filled($this->category_id),
+        filled($this->is_active),
+        filled($this->is_featured),
+        filled($this->created_from) || filled($this->created_to),
+    ])->filter()->count();
+};
+
+$setFilter = function (string $key, ?string $value): void {
+    $this->{$key} = $value ?? '';
+    $this->page = 1;
+};
+
+$clearFilters = function (): void {
+    $this->brand_id = '';
+    $this->category_id = '';
+    $this->is_active = '';
+    $this->is_featured = '';
+    $this->created_from = '';
+    $this->created_to = '';
+    $this->page = 1;
+};
+
 $canCreate = fn() => canStore(StorePermissionEnum::PRODUCT_CREATE->value);
 $canUpdate = fn() => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
 $canDelete = fn() => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
+$canExport = fn() => canStore(StorePermissionEnum::PRODUCT_VIEW->value);
+$canImport = fn() => canStore(StorePermissionEnum::PRODUCT_CREATE->value);
 
 $imageUrl = function (Product $product): string {
     $path = $product->primaryImage?->path;
@@ -106,9 +145,23 @@ $deactivateSelected = function (): void {
 };
 ?>
 
-<div>
+<div x-data="{ exportOpen: false, importOpen: false }">
     <x-edz.page-header :title="__('products.title')" :description="__('products.subtitle', ['store' => currentStore()?->name])">
         <x-slot:actions>
+            @if ($this->canExport())
+                <button type="button" @click="exportOpen = true"
+                    class="edz-btn edz-btn--secondary edz-btn--sm">
+                    <x-edz.icon name="download" class="h-4 w-4" />
+                    {{ __('products.export') }}
+                </button>
+            @endif
+            @if ($this->canImport())
+                <button type="button" @click="importOpen = true"
+                    class="edz-btn edz-btn--secondary edz-btn--sm">
+                    <x-edz.icon name="upload" class="h-4 w-4" />
+                    {{ __('products.import') }}
+                </button>
+            @endif
             @if ($this->canCreate())
                 <a href="{{ route('merchant.products.create', currentStore()) }}" wire:navigate
                     class="edz-btn edz-btn--primary edz-btn--sm">{{ __('products.new_product') }}</a>
@@ -120,46 +173,11 @@ $deactivateSelected = function (): void {
         <div class="edz-card__header">
             <div>
                 <h2 class="edz-card__title">{{ __('products.list_title') }}</h2>
-                <p class="text-sm text-ink-400">{{ __('products.list_subtitle') }}</p>
+                <p class="text-sm text-ink-500">{{ __('products.list_subtitle') }}</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-3 border-b border-surface-border p-4 sm:grid-cols-2 lg:grid-cols-6">
-            <div class="lg:col-span-2">
-                <input type="search" class="edz-input" placeholder="{{ __('products.search_placeholder') }}"
-                    wire:model.live.debounce.300ms="search">
-            </div>
-            <div>
-                <x-edz.select
-                    wire:model.live="brand_id"
-                    :options="$this->brands"
-                    placeholder="{{ __('products.all_brands') }}"
-                />
-            </div>
-            <div>
-                <x-edz.select
-                    wire:model.live="is_active"
-                    :options="[
-                        ['value' => '', 'label' => __('products.all_statuses')],
-                        ['value' => '1', 'label' => __('products.active')],
-                        ['value' => '0', 'label' => __('products.inactive')],
-                    ]"
-                />
-            </div>
-            <div>
-                <x-edz.select
-                    wire:model.live="is_featured"
-                    :options="[
-                        ['value' => '', 'label' => __('products.all_featured')],
-                        ['value' => '1', 'label' => __('products.featured')],
-                        ['value' => '0', 'label' => __('products.not_featured')],
-                    ]"
-                />
-            </div>
-            <div>
-                <input type="date" class="edz-input" wire:model.live="created_at">
-            </div>
-        </div>
+        @include('livewire.merchant.products.index.partials.filter-bar')
 
         @if (!empty($selected))
             <div
@@ -178,7 +196,7 @@ $deactivateSelected = function (): void {
 
         <div class="relative">
             <div wire:loading class="absolute inset-0 z-10 bg-surface/80 backdrop-blur-sm p-4 space-y-3 overflow-hidden"
-                wire:target="search,brand_id,is_active,is_featured,created_at">
+                wire:target="search,brand_id,category_id,is_active,is_featured,created_from,created_to">
                 @for ($i = 0; $i < 5; $i++)
                     <div class="flex items-center gap-3 py-2">
                         <x-edz.skeleton width="2.5rem" height="2.5rem" rounded="lg" />
@@ -197,11 +215,11 @@ $deactivateSelected = function (): void {
             </div>
 
             <div class="overflow-x-auto" wire:loading.class="opacity-40 pointer-events-none"
-                wire:target="search,brand_id,is_active,is_featured,created_at">
+                wire:target="search,brand_id,category_id,is_active,is_featured,created_from,created_to">
                 <table class="w-full text-sm">
                     <thead>
                         <tr
-                            class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">
+                            class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-soft">
                             <th class="w-10 px-4 py-3">
                                 <input type="checkbox" wire:model.live="select_all" aria-label="Select all">
                             </th>
@@ -237,8 +255,8 @@ $deactivateSelected = function (): void {
                                                 </a>
 
                                             </p>
-                                            @if ($product->barcode)
-                                                <p class="font-mono text-xs text-ink-muted">{{ $product->barcode }}
+@if ($product->barcode)
+                                                <p class="font-mono text-xs text-ink-soft">{{ $product->barcode }}
                                                 </p>
                                             @endif
                                         </div>
@@ -258,7 +276,7 @@ $deactivateSelected = function (): void {
                                         @endif
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-xs text-ink-muted">
+                                <td class="px-4 py-3 text-xs text-ink-soft">
                                     {{ $product->created_at?->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3">
                                     <div class="flex items-center justify-end gap-1">
@@ -310,4 +328,6 @@ $deactivateSelected = function (): void {
             @endif
         </div>
     </div>
+
+    @include('livewire.merchant.products.index.export-import-modal')
 </div>

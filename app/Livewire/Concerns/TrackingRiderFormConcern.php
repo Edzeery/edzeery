@@ -840,29 +840,34 @@ trait TrackingRiderFormConcern
 
         $maxWeightKg = Order::resolveMaxWeightKg($this->form['shipping_provider_id'] ?? null);
 
-        \Illuminate\Support\Facades\Validator::make($this->form, [
-            'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
-            'customer_name' => 'required|string|max:255',
-            'items' => 'required|array|min:1',
-            'items.*.product_variant_id' => 'required|string',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-            'delivery_type' => 'required|in:home,stopdesk',
-            'shipment_type' => 'required|in:delivery,exchange,pickup',
-            'payment_method' => 'required|in:cod',
-            'address' => 'required_if:delivery_type,home|nullable|string|max:1000',
-            'state_id' => 'required_if:delivery_type,home|nullable|exists:states,id',
-            'city_id' => 'required_if:delivery_type,home|nullable|exists:cities,id',
-            'discount_type' => 'nullable|in:amount,percent',
-            'discount_value' => 'nullable|numeric|min:0',
-            'discount_reason' => 'nullable|string|max:255',
-            'weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
-            'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
-            'delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
-            'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
+        // TEMP-PATCH (2026-09-13): $this->validate() with form.* rule keys so the error bag matches the
+        // modal's @error('form.*') directives (same fix as the main orders page).
+        $this->validate([
+            'form.customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
+            'form.customer_name' => 'required|string|max:255',
+            'form.items' => 'required|array|min:1',
+            'form.items.*.product_variant_id' => 'required|string',
+            'form.items.*.quantity' => 'required|integer|min:1',
+            'form.items.*.price' => 'required|numeric|min:0',
+            'form.delivery_type' => 'required|in:home,stopdesk',
+            'form.shipment_type' => 'required|in:delivery,exchange,pickup',
+            'form.payment_method' => 'required|in:cod',
+            'form.address' => 'required_if:form.delivery_type,home|nullable|string|max:1000',
+            'form.state_id' => 'required_if:form.delivery_type,home|nullable|exists:states,id',
+            'form.city_id' => 'required_if:form.delivery_type,home|nullable|exists:cities,id',
+            'form.discount_type' => 'nullable|in:amount,percent',
+            'form.discount_value' => 'nullable|numeric|min:0',
+            'form.discount_reason' => 'nullable|string|max:255',
+            'form.weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
+            'form.shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
+            'form.delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
+            'form.stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
+            // TEMP-PATCH (Sub-phase A, 2026-09-13): validation parity fix — tracking edit path (see ARCHITECTURE_RULES.md)
+            'form.notes' => 'nullable|string|max:500',
+            'form.phone_secondary' => 'nullable|string|max:20|regex:/^0[5-7]\d{8}$/',
         ], [
-            'weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
-        ])->validate();
+            'form.weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
+        ]);
 
         // Exclusive carrier partner: a company and a rider can never coexist.
         if (filled($this->form['shipping_provider_id'] ?? null) && filled($this->form['delivery_rider_id'] ?? null)) {

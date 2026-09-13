@@ -5,6 +5,7 @@
     'optionHint' => null,
     'optionCode' => null,
     'optionExtra' => null,
+    'optionDivider' => null,
     'placeholder' => '—',
     'search' => false,
     'searchPlaceholder' => null,
@@ -24,7 +25,7 @@
     $uid = 'edz-select-' . \Illuminate\Support\Str::random(8);
 
     $jsOptions = collect($options)
-        ->map(function ($item, $key) use ($optionValue, $optionLabel, $optionHint, $optionCode, $optionExtra) {
+        ->map(function ($item, $key) use ($optionValue, $optionLabel, $optionHint, $optionCode, $optionExtra, $optionDivider) {
             if (is_array($item) || is_object($item)) {
                 $value = data_get($item, $optionValue);
                 $label = data_get($item, $optionLabel);
@@ -35,12 +36,14 @@
                         ->filter(fn($v) => filled($v))
                         ->values()
                     : collect();
+                $isDivider = $optionDivider ? (bool) data_get($item, $optionDivider) : false;
                 return [
                     'value' => (string) ($value ?? $key),
                     'label' => (string) ($label ?? $value ?? $key),
                     'hint' => $hint !== null ? (string) $hint : null,
                     'code' => $code !== null && $code !== '' ? (string) $code : null,
                     'extra' => $extra->map(fn($v) => (string) $v)->all(),
+                    'isDivider' => $isDivider,
                 ];
             }
             return [
@@ -49,6 +52,7 @@
                 'hint' => null,
                 'code' => null,
                 'extra' => [],
+                'isDivider' => false,
             ];
         })
         ->values()
@@ -179,23 +183,29 @@
             <template x-for="(opt, idx) in filteredOptions" :key="opt.value">
                 <li role="option" class="edz-select__option"
                     :class="{
-                        'edz-select__option--highlighted': highlighted === idx,
-                        'edz-select__option--selected': opt.value === selected
+                        'edz-select__divider': opt.isDivider,
+                        'edz-select__option--highlighted': highlighted === idx && !opt.isDivider,
+                        'edz-select__option--selected': opt.value === selected && !opt.isDivider
                     }"
-                    :aria-selected="(opt.value === selected).toString()"
-                    @click="select(opt.value)"
-                    @mouseenter="highlighted = idx">
-                    <span class="edz-select__option-check" x-show="opt.value === selected">
+                    :aria-selected="(!opt.isDivider && opt.value === selected).toString()"
+                    @click="!opt.isDivider && select(opt.value)"
+                    @mouseenter="if (!opt.isDivider) highlighted = idx">
+                    <span class="edz-select__option-check" x-show="!opt.isDivider && opt.value === selected">
                         <x-edz.icon name="check" class="w-3.5 h-3.5" />
                     </span>
                     <span class="edz-select__option-content">
                         <span class="edz-select__option-line">
-                            <template x-if="opt.code">
+                            <template x-if="opt.isDivider">
+                                <span class="text-[10px] font-semibold text-ink-muted uppercase tracking-wide" x-text="opt.label"></span>
+                            </template>
+                            <template x-if="!opt.isDivider && opt.code">
                                 <span class="edz-code-badge" x-text="opt.code"></span>
                             </template>
-                            <span class="edz-select__option-label" x-text="opt.label"></span>
+                            <template x-if="!opt.isDivider">
+                                <span class="edz-select__option-label" x-text="opt.label"></span>
+                            </template>
                         </span>
-                        <template x-if="opt.hint">
+                        <template x-if="!opt.isDivider && opt.hint">
                             <span class="edz-select__option-hint" x-text="opt.hint"></span>
                         </template>
                         <template x-for="(ln, i) in opt.extra" :key="i">

@@ -404,3 +404,32 @@ test('staff without order.manage permission is forbidden from the inline selects
     expect(Activity::query()->count())->toBe(0)
         ->and($order->fresh()->shipping_provider_id)->toBeNull();
 });
+
+test('the inline shipment-type editor is capped to the carrier capabilities', function () {
+    [$user, $store] = selectEditUser(StoreRoleEnum::OWNER->value);
+    [$stateA] = selectEditGeography($store);
+
+    $carrier = \App\Domains\Shipping\Models\Carrier::create([
+        'name' => 'Delivery Only',
+        'code' => 'delivery_only_'.uniqid(),
+        'is_active' => true,
+        'supports_delivery' => true,
+    ]);
+
+    $provider = ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => 'Delivery Only Carrier',
+        'carrier_id' => $carrier->id,
+        'credentials' => [],
+        'is_active' => true,
+    ]);
+
+    $order = selectEditOrder($store, $stateA, null, 'pending', 'home', $provider);
+
+    selectEditVolt($user, $store)
+        ->call('startOrderShipmentTypeEdit', $order->id)
+        ->assertSet('editingField', 'order.shipment_type')
+        ->assertSet('editShipmentTypeOptions', [
+            ['value' => 'delivery', 'label' => __('merchant_panel.delivery')],
+        ]);
+});

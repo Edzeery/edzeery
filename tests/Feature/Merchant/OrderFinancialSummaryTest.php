@@ -133,6 +133,10 @@ test('the create modal renders the shared financial grid with subtotal, weight, 
         ->and($html)->toContain('0.00 kg')
         ->and($html)->toContain(__('merchant_panel.shipping_hint_delivery'))
         ->and($html)->toContain('—');
+
+    // Unified items list: one card with row separators (modal) — single list source.
+    expect($html)->toContain('data-order-items-list')
+        ->and($html)->toContain('divide-y divide-surface-border');
 });
 
 test('the financial grid tracks item quantity changes live (single source)', function () {
@@ -311,4 +315,31 @@ test('a rider leg never shows the delivery hint, even for a stopdesk lane withou
     expect($html)->not->toContain(__('merchant_panel.shipping_hint_delivery'))
         ->and($html)->toContain(currency(500))
         ->and($html)->toContain(currency(0));
+});
+
+test('the discount cell shows the no-offers placeholder when nothing is set', function () {
+    [$user, $store] = summaryUser(StoreRoleEnum::OWNER->value);
+    [, $variant] = summaryVariant($store, 500);
+
+    $html = summaryVolt([$user, $store])
+        ->call('openCreateModal')
+        ->call('addFormItem', $variant->id)
+        ->html();
+
+    expect($html)->toContain('data-financial-discount')
+        ->and($html)->toContain(__('merchant_panel.no_offers_available'));
+});
+
+test('the discount cell suggests savings drawn from comparison prices', function () {
+    [$user, $store] = summaryUser(StoreRoleEnum::OWNER->value);
+    [, $variant] = summaryVariant($store, 700);
+    $variant->update(['compare_price' => 1000]);
+
+    $html = summaryVolt([$user, $store])
+        ->call('openCreateModal')
+        ->call('addFormItem', $variant->id)
+        ->call('updateFormItemQty', 0, 2)
+        ->html();
+
+    expect($html)->toContain(__('merchant_panel.compare_price_savings', ['amount' => currency(600)]));
 });

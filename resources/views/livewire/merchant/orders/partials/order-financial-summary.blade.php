@@ -1,12 +1,20 @@
 {{--
     Shared order financial summary — single source for the create & edit order forms.
-    Renders a read-only grid: subtotal / weight / delivery cost / discount / total.
+    Renders a grid: subtotal / weight (editable) / delivery cost / discount / total.
     Responsive: 1 col @375, 2 cols @768, 5 cols @1440.
 --}}
 @php
     $subtotal = collect($form['items'] ?? [])->sum(fn($i) => ($i['price'] ?? 0) * ($i['quantity'] ?? 0));
     $itemCount = collect($form['items'] ?? [])->sum('quantity');
     $totalWeight = (float) ($form['weight_kg'] ?? 0);
+
+    // Compare-price savings (offer flow) — computed by the domain action.
+    $suggestion = app(\App\Domains\Order\Actions\SuggestCompareDiscountAction::class)
+        ->execute($form['items'] ?? [], $subtotal);
+    $compareSavings = (float) $suggestion['amount'];
+    $comparePercent = $suggestion['percent'];
+
+    $autoWeight = round(collect($form['items'] ?? [])->sum(fn($i) => ((float) ($i['weight'] ?? 0)) * (int) ($i['quantity'] ?? 0)), 3);
 
     $discount = 0;
     if (($form['discount_type'] ?? null) && ($form['discount_value'] ?? null)) {
@@ -100,13 +108,21 @@
         </span>
     </div>
 
-    {{-- Weight (read) --}}
+    {{-- Weight (editable; auto-calculated from line items, capped server-side) --}}
     <div data-financial-weight class="bg-surface rounded-lg p-3 min-w-0">
         <span class="block text-xs text-ink-muted">{{ __('merchant_panel.total_weight') }}</span>
-        <span class="block text-base font-semibold text-ink tabular-nums mt-1">
-            {{ number_format($totalWeight, 2) }} kg
+        <input type="number" wire:model="form.weight_kg" step="0.01"
+            class="edz-input text-sm mt-1 w-full"
+            placeholder="{{ __('merchant_panel.weight_kg') }}">
+        <span class="block text-xs text-ink-muted mt-1">
+            {{ __('order_flow.weight_auto_hint') }}: <span class="font-medium text-ink-soft">{{ number_format($autoWeight, 2) }} kg</span>
         </span>
-        <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        <span class="block text-xs mt-1 text-warning-600">
+            {{ __('merchant_panel.weight_max_limit', ['max' => \App\Models\Orders\Order::resolveMaxWeightKg((string) ($this->form['shipping_provider_id'] ?? ''))]) }}
+        </span>
+        @error('form.weight_kg')
+            <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+        @enderror
     </div>
 
     {{-- Delivery cost (read-only, dynamic) --}}
@@ -144,7 +160,18 @@
         <span class="block text-base font-semibold tabular-nums mt-1 {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
             {{ $discount > 0 ? '-' . currency($discount) : '—' }}
         </span>
-        <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        @if ($discount > 0)
+            <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
+        @elseif ($compareSavings > 0)
+            <span class="block text-xs text-success-500 mt-1">
+                {{ __('merchant_panel.compare_price_savings', ['amount' => currency($compareSavings)]) }}
+                @if ($comparePercent !== null)
+                    <span class="text-success-600 font-medium">({{ number_format($comparePercent, 1) }}%)</span>
+                @endif
+            </span>
+        @else
+            <span class="block text-xs text-ink-muted mt-1">{{ __('merchant_panel.no_offers_available') }}</span>
+        @endif
     </div>
 
     {{-- Total (read) --}}
@@ -155,23 +182,15 @@
     </div>
 </div>
 
-{{-- Discount editor (below the grid, kept interactive) --}}
+{{-- Discount editor (amount only, manually editable) --}}
 <div class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border">
-    <div class="flex items-center gap-2">
-        <x-edz.select wire:model="form.discount_type" :options="[
-            ['value' => '', 'label' => __('merchant_panel.discount')],
-            ['value' => 'amount', 'label' => __('merchant_panel.fixed_amount')],
-            ['value' => 'percent', 'label' => __('merchant_panel.percentage')],
-        ]" size="sm"
-            class="w-28" />
-        @if ($form['discount_type'])
-            <input type="number" wire:model="form.discount_value"
-                class="edz-input text-xs py-1 w-20" min="0"
-                placeholder="{{ $form['discount_type'] === 'percent' ? '%' : 'DZD' }}">
-        @endif
-        @if ($form['discount_type'] && $form['discount_value'])
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm text-ink-muted whitespace-nowrap">{{ __('merchant_panel.fixed_amount') }}</span>
+        <input type="number" wire:model="form.discount_value" min="0" step="10"
+            class="edz-input text-xs py-1 w-28" placeholder="DZD">
+        @if (($form['discount_value'] ?? null) !== null && (string) $form['discount_value'] !== '')
             <input type="text" wire:model="form.discount_reason"
-                class="edz-input text-xs py-1 flex-1 max-w-xs"
+                class="edz-input text-xs py-1 flex-1 max-w-xs min-w-[11rem]"
                 placeholder="{{ __('merchant_panel.discount_reason') }}">
         @endif
     </div>
@@ -180,3 +199,6 @@
         {{ $discount > 0 ? '-' . currency($discount) : '—' }}
     </span>
 </div>
+@error('form.discount_value')
+    <span class="block text-danger-500 text-xs mt-1">{{ $message }}</span>
+@enderror

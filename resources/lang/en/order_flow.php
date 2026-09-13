@@ -252,7 +252,15 @@ return [
 
     'office_reset_for_destination' => 'The previously selected office is not available for the new destination, so the choice was cleared',
     'shipment_type_reset_for_carrier' => 'The selected shipment type is not supported by this carrier, so it was reset to delivery',
+    'rider_delivery_only' => 'A rider always delivers to the address — home delivery only, shipment always "delivery"',
     'destination_reset_for_carrier' => 'The selected destination is not covered by this carrier, so it was cleared',
     'no_company_coverage' => 'No synced regions for this carrier yet — refresh offices to see them',
     'no_home_coverage' => 'This company has no home-delivery price for this destination',
+
+    'carrier_validation_required_field' => 'The :field field is required',
+    'carrier_validation_phone_digits' => 'The phone number must be 9 to 10 digits',
+    'carrier_validation_max_length' => 'The :field field must not exceed :limit characters',
+    'carrier_validation_min_length' => 'The reference must be at least :limit characters',
+    'carrier_validation_wilaya' => 'The order wilaya is invalid for this carrier (must be 1-58)',
+    'carrier_validation_station_required' => 'A stopdesk office (station) is required to send this order with this carrier',
 ];

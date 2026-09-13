@@ -222,19 +222,19 @@ test('a created order persists the auto-calculated weight_kg', function () {
         ->and($created->delivery_type)->toBe('home');
 });
 
-test('an order heavier than the 50 kg ceiling is rejected at save with a clean max error', function () {
+test('an order heavier than the 100 kg default ceiling is rejected at save with a clean max error', function () {
     [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = weightGeography();
 
-    // Two legal catalog weights whose sum blows through the 50 kg order ceiling.
-    [, $a] = weightVariant($store, 25);
-    [, $b] = weightVariant($store, 30);
+    // Two legal catalog weights whose sum blows through the 100 kg default ceiling.
+    [, $a] = weightVariant($store, 50);
+    [, $b] = weightVariant($store, 60);
 
     $volt = weightVolt([$user, $store])
         ->call('addFormItem', $a->id)
         ->call('addFormItem', $b->id);
 
-    expect((float) $volt->get('form.weight_kg'))->toBe(55.0);
+    expect((float) $volt->get('form.weight_kg'))->toBe(110.0);
 
     $volt->set('form.customer_name', 'Heavy Weight Customer')
         ->set('form.customer_phone', '0550987654')
@@ -245,23 +245,23 @@ test('an order heavier than the 50 kg ceiling is rejected at save with a clean m
         ->set('form.shipment_type', 'delivery')
         ->set('form.payment_method', 'cod')
         ->call('submitCreate')
-        ->assertHasErrors(['weight_kg' => 'max']);
+        ->assertHasErrors(['form.weight_kg' => 'max']);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });
 
-test('an order of exactly the 50 kg ceiling persists', function () {
+test('an order of exactly the 100 kg default ceiling persists', function () {
     [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = weightGeography();
 
-    [, $variant] = weightVariant($store, 50);
+    [, $variant] = weightVariant($store, 100);
 
     $volt = weightVolt([$user, $store])
         ->call('addFormItem', $variant->id);
 
-    expect((float) $volt->get('form.weight_kg'))->toBe(50.0);
+    expect((float) $volt->get('form.weight_kg'))->toBe(100.0);
 
-    $volt->set('form.customer_name', 'Exactly 50 Customer')
+    $volt->set('form.customer_name', 'Exactly 100 Customer')
         ->set('form.customer_phone', '0550987654')
         ->set('form.address', 'Rue Nationale 12')
         ->set('form.delivery_type', 'home')
@@ -273,7 +273,7 @@ test('an order of exactly the 50 kg ceiling persists', function () {
 
     $created = Order::where('store_id', $store->id)->first();
     expect($created)->not->toBeNull()
-        ->and((float) $created->weight_kg)->toBe(50.0);
+        ->and((float) $created->weight_kg)->toBe(100.0);
 });
 
 test('an absurd weight_kg is rejected with a clean validation error, not a DB exception', function () {
@@ -294,7 +294,7 @@ test('an absurd weight_kg is rejected with a clean validation error, not a DB ex
         ->set('form.payment_method', 'cod')
         ->set('form.weight_kg', 1_000_000_000_000)
         ->call('submitCreate')
-        ->assertHasErrors(['weight_kg' => 'max']);
+        ->assertHasErrors(['form.weight_kg' => 'max']);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });
@@ -324,7 +324,7 @@ test('a selected company with a 25 kg cap rejects a heavier order', function () 
         ->set('form.shipment_type', 'delivery')
         ->set('form.payment_method', 'cod')
         ->call('submitCreate')
-        ->assertHasErrors(['weight_kg' => 'max']);
+        ->assertHasErrors(['form.weight_kg' => 'max']);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });
@@ -356,13 +356,13 @@ test('a selected company accepts an order at exactly its own cap', function () {
         ->and($created->shipping_provider_id)->toBe($provider->id);
 });
 
-test('a selected company with an 80 kg cap accepts an order above the 50 kg default', function () {
+test('a selected company with a 150 kg cap accepts an order above the 100 kg default', function () {
     [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = weightGeography();
 
-    $provider = weightProvider($store, 80);
+    $provider = weightProvider($store, 150);
 
-    [, $variant] = weightVariant($store, 60);
+    [, $variant] = weightVariant($store, 110);
 
     $volt = weightVolt([$user, $store])
         ->call('addFormItem', $variant->id)
@@ -379,14 +379,14 @@ test('a selected company with an 80 kg cap accepts an order above the 50 kg defa
 
     $created = Order::where('store_id', $store->id)->first();
     expect($created)->not->toBeNull()
-        ->and((float) $created->weight_kg)->toBe(60.0);
+        ->and((float) $created->weight_kg)->toBe(110.0);
 });
 
-test('an order with no company selected keeps the 50 kg default cap', function () {
+test('an order with no company selected keeps the 100 kg default cap', function () {
     [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
     [$state, $city] = weightGeography();
 
-    [, $variant] = weightVariant($store, 50.5);
+    [, $variant] = weightVariant($store, 100.5);
 
     $volt = weightVolt([$user, $store])
         ->call('addFormItem', $variant->id)
@@ -399,7 +399,7 @@ test('an order with no company selected keeps the 50 kg default cap', function (
         ->set('form.shipment_type', 'delivery')
         ->set('form.payment_method', 'cod')
         ->call('submitCreate')
-        ->assertHasErrors(['weight_kg' => 'max']);
+        ->assertHasErrors(['form.weight_kg' => 'max']);
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });

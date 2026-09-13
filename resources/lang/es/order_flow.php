@@ -246,7 +246,15 @@ return [
 
     'office_reset_for_destination' => 'La oficina seleccionada anteriormente no está disponible para el nuevo destino, por lo que la selección se eliminó',
     'shipment_type_reset_for_carrier' => 'El tipo de envío seleccionado no es compatible con esta empresa, por lo que se restableció a entrega',
+    'rider_delivery_only' => 'Un repartidor siempre entrega en la dirección — solo entrega a domicilio y el envío siempre es «entrega»',
     'destination_reset_for_carrier' => 'El destino seleccionado no está cubierto por esta empresa, por lo que se eliminó',
     'no_company_coverage' => 'Aún no hay regiones sincronizadas para esta empresa — actualice las oficinas para verlas',
     'no_home_coverage' => 'Esta empresa no tiene tarifa de entrega a domicilio para este destino',
+
+    'carrier_validation_required_field' => 'El campo :field es obligatorio',
+    'carrier_validation_phone_digits' => 'El número de teléfono debe tener entre 9 y 10 dígitos',
+    'carrier_validation_max_length' => 'El campo :field no debe superar :limit caracteres',
+    'carrier_validation_min_length' => 'La referencia debe tener al menos :limit caracteres',
+    'carrier_validation_wilaya' => 'La wilaya del pedido no es válida para esta empresa (debe estar entre 1 y 58)',
+    'carrier_validation_station_required' => 'Se requiere una oficina de recogida (estación) para enviar el pedido con esta empresa',
 ];

@@ -281,9 +281,9 @@
                     <span class="edz-inline-edit__value truncate">
                         @forelse ($order['items_summary'] ?? [] as $item)
                             @if (!empty($item['name']))
-                                {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last),@endif
+                                {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
                             @else
-                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last),@endif
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
                             @endif
                         @empty
                             <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
@@ -293,9 +293,9 @@
             @else
                 @forelse ($order['items_summary'] ?? [] as $item)
                     @if (!empty($item['name']))
-                        {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last),@endif
+                        {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
                     @else
-                        <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last),@endif
+                        <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
                     @endif
                 @empty
                     <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>

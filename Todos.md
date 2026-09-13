@@ -1540,3 +1540,153 @@ git rm "it" "prepareBindings(\$bindings)"
 - **`wizard-steps.blade.php`:** دائرتا الحالية/القادمة تعرضان الآن `<x-edz.icon :name="$step['icon']" class="h-5 w-5">` بدل الرقم؛ المكتملة تبقي `check-circle` والمقفلة `lock-closed`. أُضيف `aria-label`+`title` (= اسم المرحلة) على الأزرار المفتوحة و`title` على المقفلة (وصولية كاملة في الموبايل بلا ضجيج بصري). **الهندسة ثابتة 1:1** (دائرة `h-9 w-9` + أيقونة `h-5`، والتسميات `hidden sm:inline`) ⇒ صفر إعادة تدفق عند 375/768/1440؛ لا استعلامات/JS جديدة؛ لا مساس بـ `form.blade.php` أو أي صفحة index (بند 8 محفوظ).
 - **اختبار جديد:** «nav renders each step icon glyph with an accessible label in place of the raw number» — وضع تعديل لمنتج متغير (كل الخطوات مفتوحة)؛ لكل خطوة: `aria-label`/`title` = التسمية + حلقة SVG الخاصة بأيقونتها (بادئة `d` مميزة؛ تُثبت عدم السقوط إلى `grid`)، ولا أي `d` لـ grid بأي دائرة، وعدد `<svg` = عدد الخطوات. **ملاحظة Pest 3.8.5:** `toContain(...$needles)` **variadic بلا وسيط message** — أي رسالة ثانية تُعدّ needle إضافيًا وتفشل مضللة؛ لذلك تُستخدم `expect(str_contains(...))->toBeTrue($message)` للرسائل الحاملة للسياق.
 - **التحقق:** **43 ناجحًا (241 تأكيدًا)** في `ProductWizardStepEngineTest` + `ProductSkuBarcodeTest` (صفر انحدار؛ السابق 42/220 +1/…). `php -l` نظيف (وحذف ملف فحص مؤقت `BisectScratchTest.php`) + `view:cache` ناجح (ثم `view:clear`). التحقق اليدوي البصري (375/768/1440) مطلوب من المستخدم.
+
+## Sub-phase A — Order Validation Parity Fix — 2026-09-13
+
+- **Status:** completed
+- **النطاق (بموافقة المستخدم المعتمدة):** تصحيح تكافؤ الفاليديشن فقط بين مسارات الإنشاء/التعديل/التتبع — بلا حقول جديدة، بلا UI، بلا مكوّنات، بلا لمس `Order::DEFAULT_MAX_WEIGHT_KG` (يتبع Sub-phase لاحقة).
+- **الملفات المتأثرة (نطاقات خطوط متحققة):**
+  - `resources/views/livewire/merchant/orders/index.blade.php` — `$submitCreate` (4279+) / `$submitEdit` (4494+):
+    - submitCreate: سقف `discount_value` % (closure percent>100 → `merchant_panel.discount_percent_max`) عند 4314.
+    - submitEdit: `$maxWeightKg = Order::resolveMaxWeightKg(...)` (4519)؛ سقف الخصم % (4543)؛ `phone_secondary` (4552) + `weight_kg` (4553) + `notes` (4554)؛ رسالة `weight_kg.max` (4556)؛ فحص `office_required_for_stopdesk` مطابق تمامًا لـ submitCreate (4573-4576).
+  - `app/Livewire/Concerns/TrackingRiderFormConcern.php` — `submitEdit` (827): إضافة `notes` (864) + `phone_secondary` (865) بنفس قواعد معرّف submitCreate (`nullable|string|max:20|regex:/^0[5-7]\d{8}$/`؛ الوزن كان موجودًا أصلًا عند 859).
+- **وسوم TEMP-PATCH المضافة:** **7** («TEMP-PATCH (Sub-phase A, 2026-09-13)…») — 6 في index.blade.php (4313, 4519, 4536, 4551, 4556, 4573) + 1 في TrackingRiderFormConcern.php (863).
+- **`index.blade.php` عدد الأسطر: 5606 → 5642** (+36، زيادة محدودة ومبرّرة: closure متعدد الأسطر ×2 + قواعد + فحص).
+- **نتيجة الاختبارات (أمر Pest):** `pest tests/Feature/Merchant/OrderWeightAutoCalcTest.php OrderOfficeSelectionTest.php OrderInlineFieldEditTest.php TrackingGridBatchTest.php` → **59 ناجحًا (234 تأكيدًا)** في 83.15s — صفر انحدار، و`OrderWeightAutoCalcTest` ناجح **دون تعديل** (لم تُمسّ الـ 50/100 الافتراضية هنا). `git status`: ملفان مُعدَّلان فقط، **صفر ملفات جديدة**.
+- **مؤجّل إلى مرحلة الـ refactor (وضع علامة في التقرير):** ① توحيد قاعدة سقف الخصم % في trait/concern مشترك بدل التكرار inline في 3 مسارات؛ ② نقل حقل الوزن من المودال إلى الملخص المالي؛ ③ مطابقة سقف الخصم % وفحص المكتب في مسار التعديل الخاص بالـ tracking grid (لم يُلمس خارج نطاق القرار المعتمد)؛ ④ بند التعديلات 2-8 من الخطة (الوزن في الملخص، العروض/سعر المقارنة، القائمة الموحدة بفاصل، /delivery، stopdesk، إعادة تركيب cascade) — لم تبدأ بأيٍّ منها.
+- **تحقق يدوي مطلوب من المستخدم:** رفض خصم %=150 بمسارات الإنشاء/التعديل (10% اضغط بعد بناء الواجهة أمام المتصفح).
+
+## مبادرة المعالج/فهرس المنتجات — المرحلة الفرعية 5 من 5: Export/Import (واجهة فقط + «قريبًا») — 2026-09-13
+
+- **Status:** completed (مبادرة المعالج/فهرس المنتجات مكتملة بمشارفها الخمس).
+- **النطاق (بموافقة المستخدم):** واجهة تصدير/استيراد **تجريبية UI-only** في صفحة فهرس المنتجات `merchant.products.index` — زرا مشغّلين داخل `<x-slot:actions>` + `@include` واحدة، وكل علامات المودال في partial مخصص. **صفر منطق/مسارات/وحدات تحكم** تصدير/استيراد — الأزرار داخل المودال مُعطّلة (`disabled` أصيلًا، `.edz-btn:disabled` يعطي `opacity: .55; pointer-events: none` من `_buttons.scss:26` — لا no-op صامت) مع ملاحظة «قريبًا» ظاهرة (`clock` + `text-sm text-ink-soft`) بمفتاحي `export_coming_soon`/`import_coming_soon`.
+- **الصلاحيات (قرار + مسبب):** زرا المشغّل مقيدان — Export بـ`PRODUCT_VIEW` (تصدير = قراءة بيانات المنتج، وmount الصفحة يـ abort بدونه) وImport بـ`PRODUCT_CREATE` (كتابة/إنشاء، يطابق بوابة «منتج جديد») — كقيمتين closure `$canExport`/`$canImport` في سكربت Volt.
+- **البنية (قاعدة لا تُناقش):** صفر علامات export/import مضمّنة في `index.blade.php` — فقط (أ) زرا المشغّل داخل `<x-slot:actions>` الوجود، (ب) سطر `@include('livewire.merchant.products.index.export-import-modal')` واحد قبل `</div>` الأخيرة؛ كل علامات المودالين في `resources/views/livewire/merchant/products/index/export-import-modal.blade.php` (ملف واحد، المودالان، كلٌّ محمي بـ`@if ($show_export_modal)`/`@if ($show_import_modal)`) — يطابق سابقة المعالج `form.blade.php` + `create-option-modal.blade.php` (`@if`-guard + `preventClose` + `$set` للإغلاق).
+- **سلوك المودال:** `x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg"` — كل مسارات الإغلاق (X في الترويسة/إلغاء) تستدعي `$set('...', false)`؛ لا اعتماد على backdrop/Escape (سينكسر تزامن state). SCSS `_modal.scss` يوفّر بالفعل bottom-sheet بعرض الشاشة (<640px) / كرت ممركز (≥640px، `max-width:60rem` لـ lg) — صفر تغييرات مطلوبة. محددات داخلية خاملة (radio-cards بلا ربط Livewire): export = تنسيق CSV/Excel (CSV `checked`) + نطاق الكل/المفلتر/المحدد (`@disabled(empty($selected))` + `opacity-60` + «المحدد (:count)») عبر `has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50` + `accent-accent-600` (Tailwind 3.4، accent موجود في config)؛ import = dropzone Alpine-only (`x-data="{ dragging: false }"`، `@dragover/dragleave/drop` بصري فقط) + «تصفح الملفات» مُعطّل + «تحميل القالب» مُعطّل.
+- **ترجمة:** مفاتيح جديدة ×20 في `resources/lang/{en,ar,fr,es}/products.php` بإدراج أبجدي (نفس المواضع النسبية) — `coming_soon`+`export_*`(title/desc/format/format_hint/scope/scope_hint/csv/csv_desc/excel/excel_desc/all/filtered/selected/coming_soon)+`import_*`(title/desc/dropzone_hint/browse/choose_file/template/template_hint/coming_soon). es ملف بلا `edit_product` فتُثبَّت الكتلة على `description_label`/`featured`؛ تحقّق آلي للغات الأربع: OK (en/ar/fr 177 مفتاحًا، es 109) — صفر مفاتيح ناقصة.
+- **الاختبار (`tests/Feature/Merchant/ProductIndexExportImportTest.php` — 6 ناجحة، 38 تأكيدًا):** ① مالك يرى زرا Export+Import؛ ② موظف view-only (`syncPermissions([PRODUCT_VIEW])`) يرى Export دون Import/منتج جديد؛ ③ موظف مقصورة صلاحياته على `ORDER_VIEW` فقط → `canStore(PRODUCT_VIEW)` false + `assertForbidden()` على المسار (ملاحظة Spatie: دور staff يملك `products.view` جوهريًا لهذه المرونة، فـ403 الحقيقي عبر العضويات المقصورة حسب Decision #6)؛ ④ المودال export يفتح/يغلق عبر `$set('show_export_modal', …)` + يفحص الترويسة و`'coming soon'` (حساس للحالة) والفئات المتجاوبة `grid grid-cols-1 gap-2 sm:grid-cols-2`/`sm:grid-cols-3` و`accent-accent-600` والزر الأصلي `disabled` و«محدد (0)»؛ ⑤ المودال import يفتح/يغلق + dropzone/تصفح/قالب/زر معطّل؛ ⑥ المودالان غير مُثبّتين (`assertDontSee`) حتى الفتح، والتقليب مستقل. **المرافقة (تشغيلها معًا):** `ProductWizardStepEngineTest` + `ProductSkuBarcodeTest` → **43 ناجحة (241 تأكيدًا)** — صفر انحدار. `view:cache` ناجح (ثم `view:clear`). `php -l` نظيف على index.blade.php + partial + ملف الاختبار + اللغات الأربع.
+- **التجاوب (مستوى الكود/SSR — بلا أدوات E2E):** ① **375px:** سطر الإجراءات `.edz-page-head__actions` هو `flex wrap gap:.5rem` فيُلتفّ الزرّان بسلامة؛ المودال يتحوّل bottom-sheet بشبكتي radio متكدستين `grid-cols-1` وتذييل `flex-wrap`؛ ② **768px:** الكرت الممركز (≥640px) + تنسيق 2 أعمدة `sm:grid-cols-2` + نطاق 3 أعمدة `sm:grid-cols-3`؛ ③ **1440px:** كرت `max-w-60rem` مرتكز + الشبكات 2/3 أعمدة. المتحقَّق آليًا: الفئات المتجاوبة موجودة في HTML المُعاين (الاختباران ④/⑤) + مراجعة `_modal.scss`/`_buttons.scss`. **التحقق البصري اليدوي للمراحل الفرعية 3 و4 (375/768/1440 أمام المتصفح) ما زال غير منفَّذ — مطلوب من المستخدم؛ لا أُوسم بالاكتمال.**
+- **مؤجَّل (مبادرة مستقلة مقترحة):** الخلفية الحقيقية للتصدير/الاستيراد (CSV/Excel، قوالب، حدود، `Jobs`، تدريج) — غير منفَّذة ولم تُلمس أي ملفات `app/Domains/Product/` خارج سابقة المعالج القائمة؛ عمل غير مرتبط قائم (سباق حد الوزن، عروض orders، `OrderWeightAutoCalcTest`، هجرتان فائقتي `2026_09_12_100001_*`/`100002_*`) لم يُلمس.
+
+## مرحلة الإصلاح: إظهار تنبيهات التحقق في مودال الطلب (Order Form Validation Display) — 2026-09-13
+
+- **Status:** مكتمل
+- **الشكوى (الدليل):** في بوب أب إنشاء/تعديل الطلبية لا يُعرض أي تنبيه في أي حقل عند الإرسال — حتى بعد إزالة `required` من الواجهة يبقى الصمت. السبب الجذري: `Validator::make($this->form, …)->validate()` المسطّح يضع سلة الأخطاء بمفاتيح القواعد الخام (`customer_name`, `weight_kg`, …) بينما القوالب تعرض بـ`@error('form.*')` فقط → لا تطابق → صفر رسائل. كذلك `Utils::hasProperty()` (= `property_exists(قبل أول نقطة)`) يُفلتر المفاتيح المسطّحة من memo الجولة بينما `form.*` تُحفظ (الخاصية `form` موجودة). الرجوع إلى مرجعيّة Livewire: سلة الأخطاء تُملأ بمفاتيح أسماء القواعد كما صيغت.
+- **الحل (المسار الأصيل):** استبدال مسارات submit الثلاثة بـ**`$this->validate()` بقواعد `form.*`** — يدخل المسار الأصلي لـ Livewire: رمي `ValidationException` يلتقطه خطاف `SupportValidation::exception` (سلة `form.*` مرفوعة في memo الجولة) ويملأ `testing.validator` في الاختبارات، ووسوم `@error('form.*')` تطابقه. (نموذج catch→`addError` وُجد لاحقًا أنه لا يملأ `testing.validator` وكسر الاختبارات — رُفض).
+- **البيانات/الأسطر:** `index.blade.php` — submitCreate ~4289، submitEdit ~4522؛ `TrackingRiderFormConcern::submitEdit` ~843 (قواعد مطابقة). `addError('stopdesk_point_id', …)` → `addError('form.stopdesk_point_id', …)` في المسارين (index 4354/4599) لرسالة «مكتب مطلوب» تحت حقل المكتب. وسوم TEMP-PATCH جديدة: 3 (واحدة فوق كل كتلة validate).
+- **وسوم @error المضافة:** `form.phone_secondary`, `form.address`, `form.shipment_type`, `form.weight_kg`, `form.items`, `form.notes` في `order-form-modal.blade.php` (+18 سطرًا) + `form.discount_value` تحت محرر الخصم في `order-financial-summary.blade.php` — حتى سقف `%>100` من Sub-phase A يظهر الآن رسالة تحت الحقل.
+- **الاختبارات:** ترقية مفاتيح `assertHasErrors` المسطّحة إلى `form.*` (`OrderWeightAutoCalcTest` ×4: `['form.weight_kg' => 'max']`؛ `OrderOfficeSelectionTest`: `['form.stopdesk_point_id']`) + اختبار تراجع جديد «create-modal field errors resolve under the form.* namespace» يتحقق من `form.customer_name/required`, `form.customer_phone/required`, `form.items/required`, `form.phone_secondary/regex` مع صفر طلبات مخلوقة.
+- **أدلة التشغيل (بمفسِّر PHP 8.3 الصريح):** الباقة الأربع (OrderWeightAutoCalcTest + OrderOfficeSelectionTest + OrderInlineFieldEditTest + TrackingGridBatchTest) = **60 ناجحة (247 تأكيدًا)** 72.67s؛ الإضافيتان (OrderFinancialSummaryTest + OrderQuantityCapTest) = **13 ناجحة (49 تأكيدًا)** 30.55s. الإجمالي **73 ناجحة (296 تأكيدًا)**، صفر انحدار. `view:cache` ناجح (يُثبت سلامة صياغة البلاد) ثم `view:clear`. `git status`: 7 ملفات فقط من عملي (index.blade.php، TrackingRiderFormConcern.php، order-form-modal، order-financial-summary، الاختباران، Todos.md) — باقي الشجرة (منتجات/معالج/تصدير-استيراد…) عمل موازٍ للمستخدم لم ألمسه.
+- **ملاحظة تشغيل:** `vendor\bin\pest` يستدعي PHP 8.2 من PATH ويفشل بفحص المنصة — التشغيل الصحيح دائمًا عبر `C:\laragon\bin\php\php-8.3.28-Win32-vs16-x64\php.exe vendor\bin\pest …`.
+- **مؤجَّل/مطلوب:** تحقق المستخدم البصري (375/768/1440 + ظهور رسائل الحقول تحت كل حقل + سقف %=150) أمام المتصفح.
+
+---
+
+## عنقود تحسينات توليد العرود — المراحل الفرعية 2–6 (بعد إصلاح عرض التنبيهات) — 2026-09-13
+
+اختيار المستخدم: **المراحل الخمس كلها معتمدة** (أداة الأسئلة) — (2) سقف الوزن، (3) الخصم، (4) القائمة الموحدة، (5) أنواع الشحن، (6) stopdesk. الأطر الأربعة المحسّنة أعلاه هذا القسم.
+
+### المرحلة الفرعية 2 ✅ — سقف الوزن الافتراضي 100 كغ
+- `app/Models/Orders/Order.php`: `DEFAULT_MAX_WEIGHT_KG` 50→**100** (تعليق مُحدَّث — السقف الافتراضي يُطبق بلا شركة، والسقف المخصّص من `resolveMaxWeightKg(providerId)` يحل مكانه)؛ `resolveMaxWeightKg` (~99-118) بلا تغيير منطقي.
+- ترجمات `merchant_panel.max_weight_hint` ×4 لغات (ar/en/fr/es): «جرّ 100 كغ».
+- `tests/Feature/Merchant/OrderWeightAutoCalcTest.php` — 4 اختبارات محدَّثة الأسماء والقيم: `25+30 → 50+60 (110 كغ)`, `exactly 50 → exactly 100 (يُحفظ)`, `80→150 / 60→110 (سقف مخصّص يعلو الافتراضي)`, `50.5→100.5 (كسر)`. **13 ناجحة (40 تأكيدًا)**.
+
+### المرحلة الفرعية 3 ✅ — الخصم: placeholder «لا عروض» + اقتراح سعر المقارنة
+- مفاتيح `merchant_panel.no_offers_available` + `merchant_panel.compare_price_savings` ×4 لغات.
+- `partials/order-financial-summary.blade.php`: `$compareSavings` (مخطط من `ProductVariant::compare_price` عبر أصناف `form.items`) — بطاقة الخصم ثلاث حالات: مبلغ/نسبة محددة → `-X`؛ وإلا اقتراح `compare_price_savings` (نص success، يُظهر الادخار إن وُجد `compare_price` أعلى)؛ وإلا `no_offers_available` (placeholder محايد بدل «+0»).
+- `OrderFinancialSummaryTest.php` — اختباران جديدان: «no-offers placeholder» + «savings drawn from comparison prices». **10 ناجحة (52 تأكيدًا)**.
+
+### المرحلة الفرعية 4 ✅ — القائمة الموحدة بفاصل «·»
+- `partials/order-form-modal.blade.php`: قائمة أصناف المودال من أبطاقات منفصلة → كرت واحد `divide-y divide-surface-border` مزوّد بـ`data-order-items-list`.
+- `orders-table-cell.blade.php` (سطر ~282-296): فاصل عمود المنتجات `,` → **`·`** (موضعا البوي عناصر).
+- تأكيدات اختبار الشبكة تحديثًا على الفاصل الجديد.
+
+### المرحلة الفرعية 5 ✅ — أنواع الشحن read-only من قدرات الشركة
+- `index.blade.php`: ملف مشترك `$shipmentTypeOptionsFor(?string $providerId)` (~2380-2412) مبني على `Carrier::capabilityList()` — `supports_delivery` → [delivery] فقط، `supports_return → +return`، والافتراضي [delivery, return].
+- `$formShipmentTypeOptions()` (~2414-2431) يفوض للملف — بلا فحص الناقل المكرر.
+- `$startOrderShipmentTypeEdit` (~3795+): يضبط `editShipmentTypeOptions` من ناقل الطلبية الفعلي (مسار الشبكة/الموبايل يقرآن من الخاصية) — محرر inline **مقصوص** لقدرة شركة الطلبية.
+- `OrderInlineSelectEditTest.php` — +1: «inline shipment-type editor capped to the carrier capabilities» (Carrier supports_delivery فقط → خياران [delivery]). **12 ناجحة (52 تأكيدًا)**.
+
+### المرحلة الفرعية 6 ✅ — stopdesk: بلدية ظاهرة كخطوة حقيقية + تسلسل جغرافي «تحديد لا توقع» + عرض رمز/بلدية + lazy (منقَّح بقرارَي A/B)
+- **البلدية خطوة أولى ظاهرة لكل الأنواع:** أُزيل `x-show="delivery === 'home'" x-cloak` من عمود `form.city_id` في `order-form-modal` + `delivery-edit-modal` — التضييق ولاية → بلدية → مكتب.
+- **تعديل الولاية = تحديد حقيقي:** إغلاق جديد `$changeFormState($id)` (~2581) يضبط الولاية ويُفرّغ `city_id` + `stopdesk_point_id` + `formOffices` ثم `loadCities($id)` — لا «إبقاء إن كان صالحًا» عند تعديل الجغرافيا (قرار A: تفريغ قسري ليعاد الاختيار الفعلي).
+- **تعديل البلدية = يحفظ اختيار المستخدم:** إغلاق جديد `$changeFormCity($id)` (~2591) يضبط البلدية ثم `rebuildFormOffices()` — المكتب الصالح يبقى؛ غير الصالح يُمسح بتوست؛ مكتب مفرد للبلدية يثبّت نفسه (قرار B).
+- **تغيير الشركة/النوع = يحفظ ويوفّق:** `$applyProviderScope` (~3009) → `loadCities(state, resetCity: false)` — البلدية المغطاة تُحفظ عند تبديل النوع/الشركة (home↔stopdesk) والمكتب يُوفَّق تلقائيًا، بينما تعديل الولاية وحده يفرّغ لأنه إعادة تحديد.
+- **لا تثبيت «افتراض» على مستوى الولاية:** أُزيل التثبيت التلقائي عند stopdesk بلا بلدية — مكتب وحيد في الولاية **لا** يُختار دون بلدية؛ التثبيت فقط لبلدية بمكتب واحد.
+- **اشتقاق البلدية من المكتب:** `$onFormOfficePicked` (~3051) يُبقي ملء `city_id` من المكتب عند اختيار يدوي بين عدة مكاتب.
+- **عرض «رمز + بلدية» فقط:** `StopdeskPoint::scopedOfficeOptions` + بانيّ `rebuildFormOffices` — `hint` = اسم البلدية فقط؛ المصدر المشترك (lazy / cascade / inline) متطابق.
+- **مرشدات خطوة-بخطوة:** «اختر شركة → اختر ولاية → اختر بلدية → اختر مكتب» — فرع `select_city_for_desks` أُعيد بين فرعي الولاية والمكتب في المودالين.
+- **OrderOfficeSelectionTest.php — اختبارات S6 منقَّحة/جديدة:** ① create form يُبقي حقل البلدية ويرشد ولاية ثم بلدية، ② تغيير الولاية يُفرّغ البلدية+المكتب، ③ بلدية بمكتب واحد تثبّت تلقائيًا بينما مكتب ولاية وحيد بلا بلدية لا يُخمَّن، ④ اختيار يدوي بين مكتبين يعيد ملء البلدية، ⑤ مودال التعديل السريع يُبقي البلدية وتغيير الولاية يفرّغ الحقول، ⑥ التبديل إلى stopdesk يحفظ البلدية ويثبّت مكتبها الوحيد. **حزمة OrderOfficeSelection: 27/27 (109 تأكيدًا)**.
+
+### أدلة التشغيل (المراحل 2–6)
+- الباقة الخمس المُتأثرة: **70 ناجحة (269 تأكيدًا)** — OfficeSelection 27 (109) + WeightAuto 13 (40) + InlineSelect 12 (52) + Tracking 8 (16) + FinancialSummary 10 (52) — صفر انحدار.
+- `view:cache` ناجح ثم `view:clear`.
+- **مؤجَّل/مطلوب:** تحقق المستخدم البصري 375/768/1440 (حقل البلدية ظاهر لـ stopdesk بعد إعادة تصميم S6، المكتب يظهر «رمز + بلدية» فقط، تثبيت بلدية بمكتب واحد) + سقف %=150.
+
+### الملحق 3: منصة المنتجات — فلاتر أبحاث من مستوىين + تحويل مودالَي التصدير/الاستيراد إلى Alpine نقي + رفع تباين الوضع الفاتح (2026-09-13)
+- **`partials/filter-bar.blade.php` (جديد):** شريط أدوات — بحث دائم الظهور (بحث ×) + زر **Filters** يطلق `edz-filter-open { key: 'root' }` عبر `dropdownPosition()`، مع **شارة عدّاد** تظهر عند تفعيل أي فلتر.
+- **`partials/filter-portal.blade.php` (مُدمج داخل filter-bar):** لوحة متدرّجة من مستوىين (نسخ idiom التتبع/الطلبات): جذر (Brand/Category/Status/Featured/Created) → خيارات؛ زر رجوع لكل قسم؛ عنصر نشط يظهر **علامة ✓** بشارة `bg-accent-surface`؛ قسم الفترة مدخلا flatpickr `created_from`/`created_to` (تلقائي عبر `panel.js`).
+- **`index.blade.php`:** حالة جديد `category_id, is_active, is_featured, created_from, created_to` (استبدال `created_at` الواحد)؛ حذف `show_export_modal`/`show_import_modal`؛ استعلام إضافة مرشّحات `primary_category_id` + `whereDate created_at >=/<=`؛ `$setFilter` (يُصفّر `page`) + `$clearFilters` + `$activeFilterCount` (computed/closures)؛ `$categories` (تصنيفات المتجر مع `full_name`)؛ `wire:target` يضم كل الفلاتر السبعة؛ زرّي التصدير/الاستيراد أصبحا `@click="exportOpen = true"` إلخ.
+- **`export-import-modal.blade.php`:** تحويل كامل إلى **Alpine نقي** — `x-show="exportOpen"/"importOpen"` من نطاق الجذر `x-data="{ exportOpen, importOpen }"`، نسخ Markup `edz-modal` (+`role="dialog"`, Esc+backdrop), قفل تمرير الجسد عبر `x-effect`، بلا أي `$set`. لا تغيير في المكوّن المشترك (~70 مستخدمًا).
+- **تباين وضع فاتح (+درجة واحدة):** subtitle `text-ink-400`→`500`، رأس الجدول/الباركود/التاريخ `text-ink-muted`→`text-ink-soft`.
+- **ترجمات ×4:** `products.all_categories` في ar/en/fr/es (ذات الإسناد كباقي الأقسام).
+- **`ProductIndexExportImportTest.php`:** إعادة كتابة كاملة لتأكيد المودالين **مثبَّتين دائمًا ومخفيين بـ `x-show` + `x-cloak`** بدل `$set` و`assertDontSee-حتى-الفتح` + أزرار الـ Alpine الثنائية. **حزمة 6/6 (38 تأكيدًا)**.
+- **`ProductIndexFilterTest.php` (جديد):** 9 اختبارات — الشارة صفر/عدّاد، brand، category، status، featured، created_from/to (عبر `where id update` لأن `created_at` ليس في fillable)، clearFilters، التسلسل الهرمي `Men > T-Shirts`، wire:target. **9/9 (36 تأكيدًا)**.
+- **تشغيل كامل:** حزمة `ProductIndexExportImportTest`+`ProductIndexFilterTest`+`ProductWizardStepEngineTest`+`ProductSkuBarcodeTest` = **58 ناجحة (316 تأكيدًا)**؛ `view:cache` ناجح ثم `view:clear`؛ `php -l` نظيف على الثلاثة.
+- **مؤجَّل/مطلوب:** تحقق المستخدم البصري (لوحة الفلاتر 375/768/1440 عبر الاعتماد على النمط الراسخ من لوحة التتبع، انسيابية المودال، وضوح الوضع الفاتح) — لا يوجد متصفح مضمّن.
+
+## دفعة صفحة التتبع: فلاتر «Filters» المتدرّجة بأسلوب المنتجات (شركات التوصيل + رجال التوصيل) (2026-09-13) ✅
+- **قاعدة النسخ:** مجموعة الفلتر تُعرض في قائمة Filters **فقط** إذا كان عمودها المقابل غير ظاهر حاليًا في الشبكة (العمود الظاهر يملك فلتر رأسه الخاص في `tracking-table-header`). الاستثناءات: `provider`→`provider` (تبويب الشركات)، `tracking_statuses`→`tracking_status`، `date`→`shipping_date`، `amount`→`total`، `city`→`city`، `rider`→`delivery_rider` (تبويب الرجال)، `assigned_to`→`assigned_to`، `confirmed_by`→`confirmed_by`.
+- **`TrackingGridConcern.php`:** `availableFilterGroups()` (يُحتسب في كل `render` — فلترة ذاكرة على `$visibleColumns`، صفر استعلامات جديدة) + `activeFilterCount()` (عدّاد الشارة على مجموعات المتاحة فقط).
+- **`partials/tracking-filter-bar-portal.blade.php` (جديد):** لوحة متدرّجة من مستويين (نسخ idiom `products/index/partials/filter-bar`): جذر المجموعات المتاحة → أقسام (provider/tracking_statuses/date/amount/city/rider/assigned_to/confirmed_by)؛ زر رجوع لكل قسم؛ عنصر نشط بعلامة ✓؛ مسح الفلاتر؛ ورقة سفلية موبايل + قائمة منسدلة ديسكتوب عبر `dropdownPosition()`. تستمع على حدث `edz-toolbar-filter-open` (عزلًا عن `edz-filter-open` الخاص ببوابة رؤوس الأعمدة).
+- **`partials/tracking-toolbar.blade.php`:** أُزيلت القائمة المسطّحة القديمة و`quick active count` ومنتقيا `assigned_to`/`confirmed_by` المضمّنان؛ زر **Filters** واحد يطلق `edz-toolbar-filter-open { key: 'root', el }` مع شارة العدّاد، مخفي كليًا حين لا تتوفر مجموعات (افتراضيًا كل الأعمدة ظاهرة → الزر مخفي حتى إخفاء عمود). بقية الشريط (بحث/مزامنة/أعمدة/رقائق الفلاتر النشطة) دون تغيير.
+- **`index.blade.php`:** تضمين البوابة بعد `tracking-filter-portal`.
+- **لا ترجمات جديدة:** أُعيد استخدام المفاتيح القائمة. **لا أدوات متصفح مضمّنة** — كل نقاط التحقق اليدوية البصرية مدرجة لاحقًا.
+- **التشغيل:** `php -l` نظيف (PHP 8.3.28) × 4، `view:cache` ناجح، و**`TrackingSearchFilterTest` 28/28 (114 تأكيدًا)**.
+- **فشلان قائمان (مُثبَت أنهما سابقان لهذه الدفعة — أُعيد إنتاجهما بعد `git stash` لملفات الدفعة):** `TrackingGridBatchTest::openEditModal`/`submitEdit` — `Undefined variable $optionDivider` في `components/edz/select.blade.php` (تعديلات غير ملتزمة في `select.blade.php`/`edz-select.js`/`order-form-modal.blade.php`). وكسر تحميل فئات إضافي: `NoestIntegrationAdapter` (عدّاد غير ملتزمين: `CarrierIntegrationContract::validateForCarrier` أُضيف بلا تنفيذ في الـ adapter) — يظهر عند مزج `TrackingTrashWebhookLabelTest`/`NoestIntegrationTest` في نفس التشغيل؛ `TrackingSearchFilterTest` وحده يمر كاملًا.
+- **مؤجَّل/مطلوب:** تحقق المستخدم البصري 375/768/1440 — ظهور/اختفاء زر Filters عند إخفاء الأعمدة، الورقة السفلية الموبايل، زر الرجوع، وعلامة ✓ للقيمة النشطة، ومنتقيا المناداة السفلية بعد نقلهما من الشريط إلى مدخل الفلتر.
+---
+
+## المرحلة 2 (الفرع B): إعادة هيكلة نموذج الطلب (فصل المكونات) (2026-09-13)
+ثبّتت وطبقت 5 تغييرات معزولة على مكوّنات نموذج الطلب مع قيد **صفر نمو صافي في `index.blade.php` (سقف 5,699 سطر)**:
+
+- **2.1 نقل حقل الوزن:** أُزيل حقل الوزن من قسم معلومات الطلب ونُقل إلى شبكة الملخص المالي كخلية قابلة للتعديل (تتبع تلقائي `weight_auto_hint` + أقصى وزن + `@error`).
+- **2.2 خصم من العروض:** Action مخصص جديد `SuggestCompareDiscountAction` يحسب Σ max(0, سعر المقارنة − السعر) × الكمية مقيّدًا بالمجموع الفرعي، مع عرض النسبة المئوية؛ يُستدعى حصريًا في الملخص المالي.
+- **2.3 موحّد منتقي الشريك:** قائمة واحدة مشفّرة (`p:{id}`/`r:{id}`) مع فاصل `__delimiter__`، ووضع الشركة الواحدة (مؤشّر `data-edz-company-single`)؛ استُخرج منطق التبديل إلى trait جديد `OrderDeliveryPartnerConcern`.
+- **2.4 تبسيط نقطة الاستلام:** أُبقي حقل البلدية (لا يُخفى مجددًا — يحفظ عقد S6) مع تبسيط التدفق.
+- **2.5 إعادة تصميم قسم التوصيل:** partial جديد `order-delivery-cascade.blade.php` مشترك بين النموذجين (إنشاء/تحرير) يشمل تبديل النوع وشبكة الولاية/البلدية ومكتب التسليم مع بوابات الحالة.
+- **`index.blade.php`:** أُزيلت 5 closures واستُبدلت بطرق الـ trait (checked @1833/3095/4246/4466، فحص الـ rider @1955، افتراضيات مشفّرة @149/169)؛ الحجم: **5,657 سطرًا (تحت السقف بـ 42)**.
+- **`components/edz/select.blade.php` + `edz-select.js`:** دعم `optionDivider`/`isDivider` (تمثيل، تصفية، تنقّل لوحة المفاتيح، منع النقر).
+- **التدقيق:** `php -l` نظيف؛ `php artisan view:cache` √؛ أخضر كامل: OrderOfficeSelectionTest 27 + OrdersDefaultProviderTest 7 + OrderFinancialSummaryTest 10 + OrderCompletenessTest 22 + OrderWeightAutoCalcTest 13 + OrderInlineSelectEditTest 12 + OrderTrackingTest 8 + دفعة موسّعة (مدينة/عمود/بوابة/مولّد/حقول/عناصر/استعلامات) 56.
+- **ملاحظة:** لم يُشغَّل `npm run build` لتغييرات `edz-select.js` المصدرية (شأن نشر). ملفات تيار العمل الموازي لم تُلمس إطلاقًا.
+
+---
+
+## إرسال الطلبيات إلى شركات التوصيل: تحقق ميداني لكل شركة + إرسال ذرّي (لا إنشاء تتبع قبل ردٍّ سليم) — 2026-09-13 ✅
+**القرارات المعتمدة للمستخدم:** إنشاء الطلبية يبقى محليًا كما هو (مودال التاجر + المتجر) **بلا اتصال بالشركة لحظة الإنشاء**؛ الذرّية عند الإرسال فقط (تأكيد-وإرسال / مباشر / جماعي): لا سجل في `order_trackings` ولا حالة `shipped` قبل ردٍّ سليم من الشركة؛ عند رفض الشركة تبقى الطلبية **`confirmed` لإعادة المحاولة**، والتوست يعرض **رسالة الشركة فقط** (لا تفاصيل حقول).
+
+- **الفرع A — تحقق ميداني لكل شركة:** `CarrierIntegrationContract::validateForCarrier(ShippingProvider, Order): array{validated, errors<field, list<string>>}` + تنفيذه في `NoestIntegrationAdapter` وفق قواعد توثيق NOEST v2.3: وجود `api_token`/`guid`، `client` مطلوب و≤255، `phone`/`phone_2` من 9–10 أرقام (تطبيع `+213`/مسافات/شرطات)، `wilaya_id` رقمي من 1–58، `adresse`/`remarque` ≤255، `station_code` مطلوب عند `stop_desk=1`، `reference` ≥5. الشركات بلا адаптер/جابة الرجل → دائمًا صالحة (بلا فحص).
+- **الفرع B — إعادة ترتيب `OrderShippingGateway::send()`:** completeness → (confirm عند `confirmFirst`) → `validateForCarrier` (يوقف POST) → **`postToCarrier` أولًا** → فقط بعد نجاحه: تُنشأ `order_trackings` وتُنتقل `preparing→shipped` ويُسجَّل حدث `sent_to_carrier`؛ عند الفشل: commit للمرحلة المحلية (تثبيت `confirmed`) مع إرجاع `error` بلا tracking ولا shipped ولا audit. الناقل بلا تكامل يبقى على المسار المحلي (يُشحن محليًا كما كان).
+- **الـ Blade (لا وسم جديد):** `submitConfirmAndSend`/`sendConfirmedOrder`/`confirmBulkSend` — عند `$result['error']`: توست `warning` برسالة الشركة فقط، الطلبية تبقى للحالة القابلة لإعادة المحاولة، والمسار الجماعي يعدّها `skipped` مع سطر رسالة الشركة؛ نجاح التوكيد/الإرسال المباشر يبقى كما هو.
+- **ترجمات ×4** في `order_flow`: `carrier_validation_required_field` / `phone_digits` / `max_length` / `min_length` / `wilaya` / `station_required`.
+- **يُحلّ انكسارًا موثّقًا سابقًا** (سطر 1646 أعلاه): كانت `validateForCarrier` أُضيفت للعقد بلا تنفيذ في الـ adapter — اكتمل التنفيذ الآن فاختفت التصدّعات عند مزج `TrackingTrashWebhookLabelTest`/`NoestIntegrationTest`.
+- **اختبارات جديدة 16/16:** `NoestCarrierValidationTest` 8 (كل قاعدة/حقل) + `SendGatewayCarrierAtomicTest` 5 (نجاح→tracking+shipped؛ رفض→confirmed بلا tracking؛ مباشر-رفض؛ تحقق يوقف POST بلا طلب — `Http::assertNothingSent`؛ محلي بلا تكامل) + `SendCarrierFailureTest` 3 (درج/مباشر/جماعي عبر الـ Volt).
+- **التشغيل (صفر انحدار):** Shipping 43/43 (147 تأكيدًا) + Merchant/Order 79/79 (265) + دفعة تكميلية 46/46 (200) → 168 ناجحة؛ `php -l` نظيف (رئيسي × tersi القطع); `view:cache` ناجح ثم `view:clear`.
+- **مؤجَّل/مطلوب:** تحقق المستخدم البصري 375/768/1440 — لا تغيير وسمي (توست قائم، سلوك فقط)؛ إعادة التحقق اليدوية من رسائل الشركة في الأوضاع الثلاثة بعد أي تعديل مستقبلي.
+---
+
+## Sub-Phase B-2 (2026-09-13) — Order-form UX/perf pass (4 reported issues + office slowness + request reduction)
+
+**Root causes fixed**
+- **Picker "can't select" (race):** partner-picker.blade.php used wire:model.live + wire:change on the same select ⇒ TWO concurrent round-trips that overwrote each other (value setter vs. switchFormPartner). Fixed → **deferred wire:model** so the pick + handler land as ONE atomic request. Affects create/edit + confirm drawer (shared partial).
+- **"Dropdowns don't close":** edz-select.js select() swallowed every click while loading=true (the lazy office/city fetch window) ⇒ panel stayed open / pick ignored. Now only oundtrip && loading blocks, so modal list selects close instantly.
+- **Slow office fetch:** loadFormOfficesLazy synced with the carrier API on EVERY dropdown open (GET /desks + ~170 N+1 DB queries per open). Both lazy paths and loadFormOffices now go **DB-first** via new StopdeskOfficeSync::syncIfNeeded() (only contacts the carrier when the store has NO active points for that scope; the refresh button + scheduled job remain the forced-sync paths). Plus per-sync memoization of stateByDeskCode/esolveCityId.
+- **Field order (create/edit modal):** now Partner → Shipment (carrier-capability-scoped; **rider leg ⇒ fixed "delivery"**) → Payment (COD) → Delivery type → Wilaya → Commune → Office. Extracted shared order-delivery-type-toggle + order-destination-fields partials; new order-form-delivery seeds the form; cascade partial slimmed to a composition for the quick-edit modal.
+- **Discount:** type selector (amount/percent) removed ⇒ always amount, manually editable; create seeds discount_type='amount'; editing a legacy percent order auto-converts to DZD. Inline table discount editing untouched.
+- **Glyph:** أ— → × in order-form-modal items line + duplicate-overlap badge (was re-introduced after a prior fix).
+
+**Verification**
+- **Tests: 165 passed** across the merchant order + shipping suites: OfficeSelection 27, Completeness 22, InlineFieldEdit 16, InlineItemsEdit 18, WeightAutoCalc 13, InlineSelectEdit 12, FinancialSummary 10, ConfirmGate 6, DefaultProvider 7, CityScope 8, Tracking 8, DuplicateDetection 5, QuantityCap 5, ProviderColumn 5, ProductPicker 2, PageQueryCount 1.
+- iew:cache reused after a Plain-DB data seeding conflict; iew:clear cleared the lock; php -l clean on all touched blade/php; **npm run build** succeeded (public/build regenerated).
+- **index.blade.php:** 5,672 physical lines (under the 5,699 Sub-Phase-B ceiling; all new markup lives in partials).
+- **Requests per pick:** partner pick 2→1; office lazy open: (network+N+1) → 0 network / 1 DB read; client _remoteCache cap 12→48.

@@ -75,6 +75,61 @@ class OrderShippingGateway
                 $order = $this->orders->transition($order, 'confirmed', $reason, $changedBy);
             }
 
+            // --- Per-carrier pre-flight + post, BEFORE any 'shipped' state. ---
+            // The local shipment must never claim success (tracking row, shipped
+            // status) unless the carrier accepted the order first. Both a
+            // validation failure and a carrier rejection keep the order at its
+            // current status (confirmed, ready for retry) and commit only what
+            // happened so far (partner leg + optional confirm). Carriers without
+            // a registered integration stay on the local shipment flow.
+            $error = null;
+            $posted = false;
+            $trackingNumber = null;
+
+            if ($order->shippingProvider) {
+                $adapter = $this->poster->resolve($order->shippingProvider);
+
+                if ($adapter) {
+                    $validation = $adapter->validateForCarrier($order->shippingProvider, $order);
+
+                    if (($validation['validated'] ?? false) !== true) {
+                        $error = implode(' · ', collect($validation['errors'] ?? [])->flatten()->all());
+                        Log::info("send blocked for order [{$order->number}]: carrier validation failed ({$error})");
+
+                        DB::commit();
+
+                        return [
+                            'order' => $order->fresh(),
+                            'posted' => false,
+                            'error' => $error,
+                            'tracking_number' => null,
+                            'provider' => $provider ?? $order->shippingProvider,
+                            'rate_note' => $this->resolveRateNote($order->fresh()),
+                        ];
+                    }
+
+                    try {
+                        $tracking = $this->poster->postToCarrier($order);
+                        $trackingNumber = $tracking?->tracking_number;
+                        $posted = true;
+                    } catch (\Exception $e) {
+                        Log::warning("carrier post failed for order [{$order->number}]: ".$e->getMessage());
+                        $error = $e->getMessage();
+
+                        DB::commit();
+
+                        return [
+                            'order' => $order->fresh(),
+                            'posted' => false,
+                            'error' => $error,
+                            'tracking_number' => null,
+                            'provider' => $provider ?? $order->shippingProvider,
+                            'rate_note' => $this->resolveRateNote($order->fresh()),
+                        ];
+                    }
+                }
+            }
+
             foreach (['preparing', 'shipped'] as $target) {
                 if ($order->status?->key === $target) {
                     continue;
@@ -85,21 +140,6 @@ class OrderShippingGateway
                 }
 
                 $order = $this->orders->transition($order, $target, $reason, $changedBy);
-            }
-
-            $error = null;
-            $posted = false;
-            $trackingNumber = null;
-
-            if ($order->shippingProvider) {
-                try {
-                    $tracking = $this->poster->postToCarrier($order);
-                    $trackingNumber = $tracking?->tracking_number;
-                    $posted = true;
-                } catch (\Exception $e) {
-                    Log::warning("carrier post failed for order [{$order->number}]: ".$e->getMessage());
-                    $error = $e->getMessage();
-                }
             }
 
             $this->audit->sentToCarrier(

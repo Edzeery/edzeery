@@ -242,7 +242,15 @@ return [
 
     'office_reset_for_destination' => 'المكتب المحدد سابقًا غير متاح للوجهة الجديدة، فأُزيل الاختيار',
     'shipment_type_reset_for_carrier' => 'نوع الشحنة المحدد غير مدعوم من هذه الشركة، أُعيد ضبطه إلى توصيل',
+    'rider_delivery_only' => 'رجل التوصيل يسلم للعنوان دائمًا — التوصيل منزلي فقط، والشحنة دائمًا «توصيل»',
     'destination_reset_for_carrier' => 'الوجهة المحددة غير متوفرة لدى شركة التوصيل الجديدة، فأُزيلت',
     'no_company_coverage' => 'لم تتم مزامنة مناطق هذه الشركة بعد — حدِّث المكاتب لعرضها',
     'no_home_coverage' => 'لا توجد أسعار توصيل منزلي لهذه الوجهة لدى هذه الشركة',
+
+    'carrier_validation_required_field' => 'الحقل :field مطلوب',
+    'carrier_validation_phone_digits' => 'رقم الهاتف يجب أن يتكون من 9 إلى 10 أرقام',
+    'carrier_validation_max_length' => 'الحقل :field يجب ألا يتجاوز :limit حرفًا',
+    'carrier_validation_min_length' => 'يجب ألا يقل الرقم المرجعي عن :limit أحرف',
+    'carrier_validation_wilaya' => 'ولاية الطلبية غير صالحة لدى شركة التوصيل (يجب أن تكون بين 1 و58)',
+    'carrier_validation_station_required' => 'مكتب الاستلام (نقطة المكتب) مطلوب لإرسال الطلبية بهذه الشركة',
 ];
