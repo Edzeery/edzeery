@@ -4,6 +4,7 @@ use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
+use App\Models\Orders\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use function Livewire\Volt\computed;
@@ -30,6 +31,7 @@ state([
         'credential_values' => [],
         'is_active' => true,
         'is_default' => false,
+        'max_weight_kg' => Order::DEFAULT_MAX_WEIGHT_KG,
     ],
 
     // Connection test
@@ -238,6 +240,7 @@ $openProviderModal = function (?string $providerId = null): void {
         $this->providerForm['name'] = $provider->name;
         $this->providerForm['is_active'] = $provider->is_active;
         $this->providerForm['is_default'] = $provider->is_default;
+        $this->providerForm['max_weight_kg'] = $provider->max_weight_kg;
 
         $credentials = (array) ($provider->credentials ?? []);
         $this->providerForm['credential_values'] = collect($this->providerCarrierOptions())
@@ -256,6 +259,7 @@ $openProviderModal = function (?string $providerId = null): void {
             'credential_values' => [],
             'is_active' => true,
             'is_default' => false,
+            'max_weight_kg' => Order::DEFAULT_MAX_WEIGHT_KG,
         ];
     }
 
@@ -270,6 +274,7 @@ $saveProvider = function (): void {
     $rules = [
         'providerForm.name' => 'required|string|max:255',
         'providerForm.carrier_id' => 'required',
+        'providerForm.max_weight_kg' => 'nullable|numeric|min:0|max:99999.999',
     ];
 
     if ($carrier) {
@@ -291,6 +296,7 @@ $saveProvider = function (): void {
         'credentials' => array_filter($this->providerForm['credential_values'] ?? [], fn ($v) => $v !== '' && $v !== null),
         'is_active' => $this->providerForm['is_active'],
         'is_default' => $this->providerForm['is_default'],
+        'max_weight_kg' => $this->providerForm['max_weight_kg'] ?: Order::DEFAULT_MAX_WEIGHT_KG,
     ];
 
     $storeId = currentStoreId();
@@ -708,6 +714,20 @@ $deleteProvider = function (string $id): void {
                             <input type="checkbox" wire:model="providerForm.is_default" class="edz-checkbox" />
                             <span class="text-sm text-ink">{{ __('merchant_panel.make_default') }}</span>
                         </label>
+                    </div>
+
+                    {{-- Max order weight --}}
+                    <div class="pt-4 border-t border-surface-border">
+                        <label class="edz-label" for="providerMaxWeight">{{ __('merchant_panel.max_weight_kg') }}</label>
+                        <div class="flex items-center gap-2">
+                            <input id="providerMaxWeight" type="number" min="0" step="0.001"
+                                   wire:model="providerForm.max_weight_kg" class="edz-input text-sm w-44" />
+                            <span class="text-xs text-ink-muted">{{ __('merchant_panel.weight_kg_unit') }}</span>
+                        </div>
+                        @error('providerForm.max_weight_kg')
+                            <p class="mt-1 text-xs text-danger">{{ $message }}</p>
+                        @enderror
+                        <p class="mt-1 text-xs text-ink-muted">{{ __('merchant_panel.max_weight_hint') }}</p>
                     </div>
 
                     {{-- Footer --}}

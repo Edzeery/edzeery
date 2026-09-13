@@ -24,6 +24,7 @@ class ShippingProvider extends Model
         'shipment_types_enabled',
         'is_active',
         'is_default',
+        'max_weight_kg',
         'webhook_token',
         'webhook_last_seen_at',
         'flat_rate',
@@ -36,6 +37,7 @@ class ShippingProvider extends Model
         'shipment_types_enabled'  => 'array',
         'is_active'               => 'boolean',
         'is_default'              => 'boolean',
+        'max_weight_kg'           => 'decimal:2',
         'flat_rate'               => 'decimal:2',
         'webhook_last_seen_at'    => 'datetime',
     ];

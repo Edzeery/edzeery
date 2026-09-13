@@ -100,6 +100,17 @@ function weightVariant(Store $store, float $weight, int $stock = 100): array
     return [$product, $variant];
 }
 
+function weightProvider(Store $store, float $cap): ShippingProvider
+{
+    return ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => 'Weight Carrier '.$cap,
+        'credentials' => [],
+        'is_active' => true,
+        'max_weight_kg' => $cap,
+    ]);
+}
+
 function weightVolt(array $userStore)
 {
     [$user, $store] = $userStore;
@@ -209,4 +220,186 @@ test('a created order persists the auto-calculated weight_kg', function () {
     expect($created)->not->toBeNull()
         ->and((float) $created->weight_kg)->toBe(2.75)
         ->and($created->delivery_type)->toBe('home');
+});
+
+test('an order heavier than the 50 kg ceiling is rejected at save with a clean max error', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    // Two legal catalog weights whose sum blows through the 50 kg order ceiling.
+    [, $a] = weightVariant($store, 25);
+    [, $b] = weightVariant($store, 30);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $a->id)
+        ->call('addFormItem', $b->id);
+
+    expect((float) $volt->get('form.weight_kg'))->toBe(55.0);
+
+    $volt->set('form.customer_name', 'Heavy Weight Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate')
+        ->assertHasErrors(['weight_kg' => 'max']);
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('an order of exactly the 50 kg ceiling persists', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    [, $variant] = weightVariant($store, 50);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $variant->id);
+
+    expect((float) $volt->get('form.weight_kg'))->toBe(50.0);
+
+    $volt->set('form.customer_name', 'Exactly 50 Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate');
+
+    $created = Order::where('store_id', $store->id)->first();
+    expect($created)->not->toBeNull()
+        ->and((float) $created->weight_kg)->toBe(50.0);
+});
+
+test('an absurd weight_kg is rejected with a clean validation error, not a DB exception', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    [, $variant] = weightVariant($store, 1.0);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $variant->id)
+        ->set('form.customer_name', 'Absurd Weight Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->set('form.weight_kg', 1_000_000_000_000)
+        ->call('submitCreate')
+        ->assertHasErrors(['weight_kg' => 'max']);
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('a selected company with a 25 kg cap rejects a heavier order', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    $provider = weightProvider($store, 25);
+
+    [, $a] = weightVariant($store, 20);
+    [, $b] = weightVariant($store, 10);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $a->id)
+        ->call('addFormItem', $b->id);
+
+    expect((float) $volt->get('form.weight_kg'))->toBe(30.0);
+
+    $volt->set('form.shipping_provider_id', $provider->id)
+        ->set('form.customer_name', 'Thin Cap Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate')
+        ->assertHasErrors(['weight_kg' => 'max']);
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('a selected company accepts an order at exactly its own cap', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    $provider = weightProvider($store, 25);
+
+    [, $variant] = weightVariant($store, 25);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $variant->id)
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.customer_name', 'At Cap Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate');
+
+    $created = Order::where('store_id', $store->id)->first();
+    expect($created)->not->toBeNull()
+        ->and((float) $created->weight_kg)->toBe(25.0)
+        ->and($created->shipping_provider_id)->toBe($provider->id);
+});
+
+test('a selected company with an 80 kg cap accepts an order above the 50 kg default', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    $provider = weightProvider($store, 80);
+
+    [, $variant] = weightVariant($store, 60);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $variant->id)
+        ->set('form.shipping_provider_id', $provider->id)
+        ->set('form.customer_name', 'High Cap Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate');
+
+    $created = Order::where('store_id', $store->id)->first();
+    expect($created)->not->toBeNull()
+        ->and((float) $created->weight_kg)->toBe(60.0);
+});
+
+test('an order with no company selected keeps the 50 kg default cap', function () {
+    [$user, $store] = weightUser(StoreRoleEnum::OWNER->value);
+    [$state, $city] = weightGeography();
+
+    [, $variant] = weightVariant($store, 50.5);
+
+    $volt = weightVolt([$user, $store])
+        ->call('addFormItem', $variant->id)
+        ->set('form.customer_name', 'No Carrier Customer')
+        ->set('form.customer_phone', '0550987654')
+        ->set('form.address', 'Rue Nationale 12')
+        ->set('form.delivery_type', 'home')
+        ->set('form.state_id', $state->id)
+        ->set('form.city_id', $city->id)
+        ->set('form.shipment_type', 'delivery')
+        ->set('form.payment_method', 'cod')
+        ->call('submitCreate')
+        ->assertHasErrors(['weight_kg' => 'max']);
+
+    expect(Order::where('store_id', $store->id)->count())->toBe(0);
 });

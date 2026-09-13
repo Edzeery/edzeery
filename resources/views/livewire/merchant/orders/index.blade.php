@@ -4040,10 +4040,12 @@ $saveOrderWeight = function (?string $weight = null): void {
 
     $orderId = $this->editingId;
 
+    $limitOrder = Order::where('store_id', currentStoreId())->findOrFail($orderId);
+
     $this->saveEdit([
         'field' => 'order.weight',
         'permission' => StorePermissionEnum::ORDER_MANAGE->value,
-        'rules' => ['value' => ['nullable', 'numeric', 'min:0', 'max:9999']],
+        'rules' => ['value' => ['nullable', 'numeric', 'min:0', 'max:'.Order::resolveMaxWeightKg($limitOrder->shipping_provider_id)]],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => fn(Order $order, $value) => $order->update(['weight_kg' => blank($value) ? 1.00 : $value]),
         'label' => 'order weight',
@@ -4282,6 +4284,8 @@ $submitCreate = function (): void {
 
     $storeId = currentStoreId();
 
+    $maxWeightKg = Order::resolveMaxWeightKg($this->form['shipping_provider_id'] ?? null);
+
     \Illuminate\Support\Facades\Validator::make($this->form, [
         'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
         'customer_name' => 'required|string|max:255',
@@ -4302,8 +4306,10 @@ $submitCreate = function (): void {
         'discount_type' => 'nullable|in:amount,percent',
         'discount_value' => 'nullable|numeric|min:0',
         'discount_reason' => 'nullable|string|max:255',
-        'weight_kg' => 'nullable|numeric|min:0',
+        'weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
         'notes' => 'nullable|string|max:500',
+    ], [
+        'weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
     ])->validate();
 
     // Exclusive carrier partner: a company and a rider can never coexist.

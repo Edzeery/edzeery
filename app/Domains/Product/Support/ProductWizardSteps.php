@@ -50,7 +50,7 @@ final class ProductWizardSteps
             self::STEP_PRICING => [
                 'id' => self::STEP_PRICING,
                 'label' => __('products.step_pricing'),
-                'icon' => 'currency-dollar',
+                'icon' => 'banknotes',
                 'partial' => 'livewire.merchant.products.form.step-pricing',
             ],
             self::STEP_OPTIONS => [
@@ -62,7 +62,7 @@ final class ProductWizardSteps
             self::STEP_INVENTORY => [
                 'id' => self::STEP_INVENTORY,
                 'label' => __('products.step_inventory'),
-                'icon' => 'archive-box',
+                'icon' => 'cube',
                 'partial' => 'livewire.merchant.products.form.step-inventory',
             ],
             self::STEP_REVIEW => [

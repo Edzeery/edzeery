@@ -147,6 +147,9 @@
                             <label class="edz-label">{{ __('merchant_panel.weight_kg') }}</label>
                             <input type="number" wire:model="form.weight_kg" step="0.01" class="edz-input text-sm">
                             <p class="text-xs text-ink-muted mt-1">{{ __('order_flow.weight_auto_hint') }}</p>
+                            <p class="text-xs mt-1 text-warning-600">
+                                {{ __('merchant_panel.weight_max_limit', ['max' => \App\Models\Orders\Order::resolveMaxWeightKg((string) ($this->form['shipping_provider_id'] ?? ''))]) }}
+                            </p>
                         </div>
                     </div>
 

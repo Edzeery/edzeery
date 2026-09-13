@@ -838,6 +838,8 @@ trait TrackingRiderFormConcern
             return;
         }
 
+        $maxWeightKg = Order::resolveMaxWeightKg($this->form['shipping_provider_id'] ?? null);
+
         \Illuminate\Support\Facades\Validator::make($this->form, [
             'customer_phone' => 'required|string|max:20|regex:/^0[5-7]\d{8}$/',
             'customer_name' => 'required|string|max:255',
@@ -854,9 +856,12 @@ trait TrackingRiderFormConcern
             'discount_type' => 'nullable|in:amount,percent',
             'discount_value' => 'nullable|numeric|min:0',
             'discount_reason' => 'nullable|string|max:255',
+            'weight_kg' => 'nullable|numeric|min:0|max:'.$maxWeightKg,
             'shipping_provider_id' => 'nullable|string|exists:shipping_providers,id',
             'delivery_rider_id' => 'nullable|string|exists:delivery_riders,id',
             'stopdesk_point_id' => 'nullable|string|exists:stopdesk_points,id',
+        ], [
+            'weight_kg.max' => __('merchant_panel.weight_max_limit', ['max' => $maxWeightKg]),
         ])->validate();
 
         // Exclusive carrier partner: a company and a rider can never coexist.

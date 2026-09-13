@@ -84,6 +84,40 @@ test('variable product wizard renders all six tabs in canonical order', function
     }
 });
 
+test('nav renders each step icon glyph with an accessible label in place of the raw number', function () {
+    [$user, $store] = skuUser();
+
+    [$product] = makeVariableProduct($store, 'wizard-step-icons');
+
+    // Edit mode pre-unlocks every step, so each circle renders its own glyph.
+    $nav = wizardNav(Volt::test('merchant.products.form', ['product' => $product])->html());
+
+    $glyphPrefixes = [
+        'information-circle' => 'M11.25 11.25l.041-.02',
+        'image' => 'm2.25 15.75 5.159-5.159',
+        'banknotes' => 'M2.25 18.75a60.07 60.07',
+        'adjustments' => 'M6 13.5V3.75',
+        'cube' => 'm21 7.5-9-5.25L3 7.5m18 0-9 5.25',
+        'check-circle' => 'M9 12.75 11.25 15 15 9.75',
+    ];
+
+    foreach (ProductWizardSteps::all() as $step) {
+        $label = str_replace('&', '&amp;', $step['label']);
+
+        expect($nav)->toContain('aria-label="' . $label . '"')
+            ->and($nav)->toContain('title="' . $label . '">');
+
+        $glyph = $glyphPrefixes[$step['icon']] ?? null;
+
+        expect($glyph)->not->toBeNull("Icon \"{$step['icon']}\" is not covered by this test");
+        expect(str_contains($nav, (string) $glyph))->toBeTrue("Step {$step['id']} renders the \"{$step['icon']}\" glyph, not the grid fallback");
+    }
+
+    // Every circle is a real icon from the sprite — none silently fell back to grid.
+    expect(substr_count($nav, 'M3.75 6A2.25 2.25'))->toBe(0)
+        ->and(substr_count($nav, '<svg'))->toBe(count(ProductWizardSteps::all()));
+});
+
 test('a locked step cannot be navigated to at fresh mount', function () {
     [$user, $store] = skuUser();
 

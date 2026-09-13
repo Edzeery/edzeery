@@ -92,6 +92,31 @@ class Order extends Model
     const DELIVERY_HOME    = 'home';
     const DELIVERY_STOPDESK = 'stopdesk';
 
+    // Fallback ceiling for an order's total weight (kg) when no shipping
+    // company is involved. Each shipping company carries its own cap
+    // (shipping_providers.max_weight_kg); this default kicks in for the
+    // rider-leg / no-carrier case.
+    const DEFAULT_MAX_WEIGHT_KG = 50;
+
+    /**
+     * Resolve the weight ceiling (kg) that applies to an order, from the
+     * shipping company selected on the order form (store-scoped, NULL-safe).
+     */
+    public static function resolveMaxWeightKg(?string $shippingProviderId = null): float
+    {
+        if ($shippingProviderId) {
+            $cap = ShippingProvider::where('store_id', currentStoreId())
+                ->whereKey($shippingProviderId)
+                ->value('max_weight_kg');
+
+            if ($cap !== null) {
+                return (float) $cap;
+            }
+        }
+
+        return static::DEFAULT_MAX_WEIGHT_KG;
+    }
+
     /* =========================
      | Relationships
      ========================= */
