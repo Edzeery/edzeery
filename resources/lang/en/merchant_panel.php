@@ -459,6 +459,10 @@ return [
     'select_state_first' => 'Select a state first',
     'select_provider_first' => 'Select a shipping provider first',
 
+    // ----- Order form (Sub-phase C) -----
+    'partner_empty_state' => 'No shipping company or rider configured yet.',
+    'partner_empty_cta' => 'Set up delivery',
+
     // ----- Delivery Management -----
     'delivery_settings' => 'Delivery Settings',
     'delivery_settings_desc' => 'Connect delivery carriers, set office/home delivery pricing, and manage pickup points',

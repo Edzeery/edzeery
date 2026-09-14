@@ -457,6 +457,10 @@ return [
     'select_state_first' => 'Selecciona primero un estado',
     'select_provider_first' => 'Selecciona primero un transportista',
 
+    // ----- Order form (Sub-phase C) -----
+    'partner_empty_state' => 'Aún no se ha configurado ninguna empresa de reparto ni repartidor.',
+    'partner_empty_cta' => 'Configurar envíos',
+
     // ----- Delivery Management -----
     'delivery_settings' => 'Configuración de entrega',
     'delivery_settings_desc' => 'Conectar transportistas, definir precios de entrega oficina/domicilio y gestionar puntos de recogida',

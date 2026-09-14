@@ -747,7 +747,7 @@ $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
 // Single source of truth for the row eager-loads (shared by loadOrders and
 // refreshSingleOrder). Extended column-by-column as inline editing grows.
 $orderEagerLoads = function (): array {
-    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider', 'shippingProvider'];
+    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider', 'shippingProvider', 'deliveryRider'];
     if (in_array('confirmed_by', $this->visibleColumns, true)) {
         $with[] = 'confirmedByHistory';
         $with[] = 'confirmedByHistory.status';

@@ -80,6 +80,12 @@ export default function edzSelect(config) {
 
         init() {
             this._readRemoteConfig();
+            // The server-rendered `value` attribute (when the caller passes
+            // `value=`) is the authoritative initial seed. It must survive
+            // _bindServerValue's first read: that read reflects the Livewire
+            // reactive mirror which is still stale during the morph that
+            // inserts this fresh element, so a null/previous value there must
+            // NOT wipe a seed we already hold.
             this.selected = this.$refs.hiddenInput?.value || null;
             this._bindServerValue();
 
@@ -124,7 +130,26 @@ export default function edzSelect(config) {
                 }
             };
 
-            read();
+            // Seed from the reactive mirror ONLY when there is no server-baked
+            // `value` attribute to trust. When the attribute exists it is the
+            // freshest render of the model, so reading the mirror here would
+            // clobber a correct preselect with a stale (usually empty) value
+            // captured mid-morph; the $watch below still corrects any genuine
+            // later change.
+            const seed = () => {
+                let v;
+                try {
+                    v = this.$wire.get(this.modelName);
+                } catch (e) {
+                    return;
+                }
+                if ((v === null || v === undefined || v === '') && this.selected !== null) {
+                    return;
+                }
+                this.selected = v === null || v === undefined || v === '' ? null : String(v);
+            };
+
+            seed();
             try {
                 this.$wire.$watch(this.modelName, read);
             } catch (e) {}

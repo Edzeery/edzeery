@@ -459,6 +459,10 @@ return [
     'select_state_first' => 'اختر الولاية أولاً',
     'select_provider_first' => 'اختر شركة الشحن أولاً',
 
+    // ----- Order form (Sub-phase C) -----
+    'partner_empty_state' => 'لا توجد شركة توصيل أو درّاج مكوّنة بعد.',
+    'partner_empty_cta' => 'إعداد خدمة التوصيل',
+
     // ----- Delivery Management -----
     'delivery_settings' => 'إعدادات التوصيل',
     'delivery_settings_desc' => 'ربط شركات التوصيل وتحديد أسعار التوصيل للمكتب والمنزل وإدارة مكاتب الاستلام',

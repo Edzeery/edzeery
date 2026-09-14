@@ -263,4 +263,5 @@ return [
     'carrier_validation_min_length' => 'The reference must be at least :limit characters',
     'carrier_validation_wilaya' => 'The order wilaya is invalid for this carrier (must be 1-58)',
     'carrier_validation_station_required' => 'A stopdesk office (station) is required to send this order with this carrier',
+    'carrier_validation_station_wilaya_mismatch' => 'The order wilaya does not match the wilaya of the selected stopdesk office (station)',
 ];

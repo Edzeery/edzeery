@@ -257,4 +257,5 @@ return [
     'carrier_validation_min_length' => 'La referencia debe tener al menos :limit caracteres',
     'carrier_validation_wilaya' => 'La wilaya del pedido no es válida para esta empresa (debe estar entre 1 y 58)',
     'carrier_validation_station_required' => 'Se requiere una oficina de recogida (estación) para enviar el pedido con esta empresa',
+    'carrier_validation_station_wilaya_mismatch' => 'La wilaya del pedido no coincide con la wilaya de la oficina (estación) seleccionada',
 ];

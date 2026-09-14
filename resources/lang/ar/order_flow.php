@@ -253,4 +253,5 @@ return [
     'carrier_validation_min_length' => 'يجب ألا يقل الرقم المرجعي عن :limit أحرف',
     'carrier_validation_wilaya' => 'ولاية الطلبية غير صالحة لدى شركة التوصيل (يجب أن تكون بين 1 و58)',
     'carrier_validation_station_required' => 'مكتب الاستلام (نقطة المكتب) مطلوب لإرسال الطلبية بهذه الشركة',
+    'carrier_validation_station_wilaya_mismatch' => 'ولاية الطلبية لا تطابق ولاية مكتب الاستلام (المحطة) المختار',
 ];

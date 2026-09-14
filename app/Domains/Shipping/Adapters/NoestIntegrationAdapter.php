@@ -121,6 +121,10 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             if (blank($order->stopdeskPoint?->external_code)) {
                 $errors['station_code'][] = __('order_flow.carrier_validation_station_required');
             }
+            $pointStateCode = $order->stopdeskPoint?->state?->state_code;
+            if ($stateCode !== null && $pointStateCode && (string) (int) $pointStateCode !== $stateCode) {
+                $errors['station_code'][] = __('order_flow.carrier_validation_station_wilaya_mismatch');
+            }
             $address = trim((string) ($order->stopdeskPoint?->name ?? ''));
         } else {
             $address = trim((string) ($order->address ?? ''));
@@ -181,6 +185,25 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         $stateCode = $order->state?->state_code ? (string) (int) $order->state->state_code : null;
         $commune = $order->city?->name;
 
+        $isStopdesk = $order->delivery_type === Order::DELIVERY_STOPDESK;
+        $stationCode = $isStopdesk ? (string) ($order->stopdeskPoint?->external_code ?? '') : '';
+
+        // Stop Desk orders are routed by the station, so wilaya_id and commune
+        // must describe the station itself (the office picker resolves them on
+        // the desk at sync time), never the order's own state/city. Otherwise
+        // NOEST rejects with "Le code de wilaya est different de code de
+        // station" or "Aucune commune liee a la station choisie".
+        if ($isStopdesk && $stationCode !== '') {
+            $officeStateCode = $order->stopdeskPoint?->state?->state_code;
+            if (! empty($officeStateCode)) {
+                $stateCode = (string) (int) $officeStateCode;
+            }
+            $officeCommune = $order->stopdeskPoint?->city?->name;
+            if (! empty($officeCommune)) {
+                $commune = $officeCommune;
+            }
+        }
+
         $payload = [
             'user_guid' => $guid,
             'reference' => (string) $order->number,
@@ -197,10 +220,8 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             'produit' => $this->productSummary($order),
             'type_id' => $this->typeId($order),
             'poids' => (float) ($order->weight_kg ?? 0.5),
-            'stop_desk' => $order->delivery_type === Order::DELIVERY_STOPDESK ? 1 : 0,
-            'station_code' => $order->delivery_type === Order::DELIVERY_STOPDESK
-                ? (string) ($order->stopdeskPoint?->external_code ?? '')
-                : '',
+            'stop_desk' => $isStopdesk ? 1 : 0,
+            'station_code' => $stationCode,
             'can_open' => 1,
             // NOEST optional financial-recovery flag: 0 = no recover/refund leg
             // (our COD orders collect the full montant on delivery), 1 = collect
@@ -613,8 +634,26 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
                 return [];
             }
 
-            // NOEST returns desks either keyed by code or as a plain list.
-            return array_values(array_filter($data, 'is_array'));
+            // NOEST returns desks either keyed by code or as a plain list. The
+            // map key carries the station code (e.g. "01A") while every entry
+            // embeds the canonical code ("1A"); fall back to the key only when
+            // an entry is missing its inner code, so a single-station wilaya
+            // like Adrar is never dropped because of the padding mismatch.
+            $desks = [];
+
+            foreach ($data as $key => $desk) {
+                if (! is_array($desk)) {
+                    continue;
+                }
+
+                if ((string) ($desk['code'] ?? '') === '') {
+                    $desk['code'] = is_string($key) ? trim($key) : '';
+                }
+
+                $desks[] = $desk;
+            }
+
+            return $desks;
         });
     }
 

@@ -2,13 +2,17 @@
     'label' => '',
     'side' => 'top',
     'maxWidth' => '288px',
+    'block' => false,
 ])
 
 @if ($label === '')
     {{ $slot }}
 @else
     <div
-        {{ $attributes->class('edz-tooltip') }}
+        {{ $attributes->class([
+            'edz-tooltip',
+            'edz-tooltip--block' => $block,
+        ]) }}
         style="--edz-tooltip-max-w: {{ $maxWidth }};"
         x-data="edzTooltip(@js($side))"
         @mouseenter="enter()"
@@ -18,7 +22,7 @@
         @click.capture="hide()"
         @scroll.window.passive="hide()"
     >
-        <span x-ref="trigger" class="edz-tooltip__trigger">
+        <span x-ref="trigger" class="edz-tooltip__trigger {{ $block ? 'edz-tooltip__trigger--block' : '' }}">
             {{ $slot }}
         </span>
 

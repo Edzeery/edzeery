@@ -137,6 +137,10 @@ trait TrackingGridConcern
             if ($membership && \App\Support\StoreOrderPermissions::isRestrictedMembership($membership)) {
                 $query->where('assigned_to_membership_id', $membership->id);
             }
+        } else {
+            // The carrier tab lists only orders handed to a shipping company —
+            // orders sent to a delivery rider belong to the rider tab alone.
+            $query->whereNotNull('shipping_provider_id');
         }
 
         if (filled($f['assigned_to'] ?? null)) {

@@ -154,12 +154,23 @@
         @endif
     </div>
 
-    {{-- Discount (read) --}}
+    {{-- Discount — editable fixed amount, in-cell (value + optional reason) --}}
     <div data-financial-discount class="bg-surface rounded-lg p-3 min-w-0">
         <span class="block text-xs text-ink-muted">{{ __('merchant_panel.discount') }}</span>
-        <span class="block text-base font-semibold tabular-nums mt-1 {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
-            {{ $discount > 0 ? '-' . currency($discount) : '—' }}
-        </span>
+        <div class="flex items-center gap-2 mt-1 min-w-0">
+            <input type="number" wire:model="form.discount_value" min="0" step="10"
+                class="edz-input text-xs py-1 w-24 shrink-0" placeholder="DZD">
+            <span class="text-base font-semibold tabular-nums {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
+                {{ $discount > 0 ? '-' . currency($discount) : '—' }}
+            </span>
+        </div>
+        @if (($form['discount_value'] ?? null) !== null && (string) $form['discount_value'] !== '')
+            <input type="text" wire:model="form.discount_reason"
+                class="edz-input text-xs py-1 w-full mt-2" placeholder="{{ __('merchant_panel.discount_reason') }}">
+        @endif
+        @error('form.discount_value')
+            <span class="block text-danger-500 text-xs mt-1">{{ $message }}</span>
+        @enderror
         @if ($discount > 0)
             <span class="block text-xs text-ink-muted mt-1">&nbsp;</span>
         @elseif ($compareSavings > 0)
@@ -182,23 +193,3 @@
     </div>
 </div>
 
-{{-- Discount editor (amount only, manually editable) --}}
-<div class="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-surface-border">
-    <div class="flex flex-wrap items-center gap-2">
-        <span class="text-sm text-ink-muted whitespace-nowrap">{{ __('merchant_panel.fixed_amount') }}</span>
-        <input type="number" wire:model="form.discount_value" min="0" step="10"
-            class="edz-input text-xs py-1 w-28" placeholder="DZD">
-        @if (($form['discount_value'] ?? null) !== null && (string) $form['discount_value'] !== '')
-            <input type="text" wire:model="form.discount_reason"
-                class="edz-input text-xs py-1 flex-1 max-w-xs min-w-[11rem]"
-                placeholder="{{ __('merchant_panel.discount_reason') }}">
-        @endif
-    </div>
-    <span
-        class="text-sm font-medium tabular-nums {{ $discount > 0 ? 'text-danger-500' : 'text-ink-muted' }}">
-        {{ $discount > 0 ? '-' . currency($discount) : '—' }}
-    </span>
-</div>
-@error('form.discount_value')
-    <span class="block text-danger-500 text-xs mt-1">{{ $message }}</span>
-@enderror

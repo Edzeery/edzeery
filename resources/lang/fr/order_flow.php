@@ -257,4 +257,5 @@ return [
     'carrier_validation_min_length' => 'La référence doit contenir au moins :limit caractères',
     'carrier_validation_wilaya' => "La wilaya de la commande est invalide pour ce transporteur (doit être entre 1 et 58)",
     'carrier_validation_station_required' => 'Un bureau de réception (station) est requis pour envoyer la commande avec ce transporteur',
+    'carrier_validation_station_wilaya_mismatch' => 'La wilaya de la commande ne correspond pas à la wilaya du bureau (station) sélectionné',
 ];

@@ -147,18 +147,22 @@ test('the confirmation drawer keeps the order existing carrier when set', functi
         ->assertSet('confirmProviderId', $carrier->id);
 });
 
-test('a store with a single shipping company hides the selector and auto-selects the company', function () {
+test('a store with a single shipping company still shows the always-visible picker, pre-selected', function () {
     [$user, $store] = dpfUser();
     $solo = dpfProvider($store, 'Solo Carrier');
 
     dpfVolt([$user, $store])
         ->call('openCreateModal')
         ->assertSet('form.shipping_provider_id', $solo->id)
-        ->assertSeeHtml('data-edz-company-single')
-        ->assertDontSeeHtml('edz-company-select');
+        ->assertSeeHtml('edz-company-select')
+        ->assertSeeHtml('edz-select__trigger')
+        ->assertSeeHtml('switchFormPartner(')
+        ->assertSeeHtml('&amp;quot;label&amp;quot;:&amp;quot;Solo Carrier&amp;quot;')
+        ->assertDontSeeHtml('data-edz-company-single')
+        ->assertDontSeeHtml('<x-edz.select');
 });
 
-test('a store with a single shipping company keeps it when editing an order without a carrier', function () {
+test('a store with a single shipping company keeps the picker pre-selected when editing an order without a carrier', function () {
     [$user, $store] = dpfUser();
     $solo = dpfProvider($store, 'Solo Carrier');
     $order = dpfOrder($store, '0550600003');
@@ -166,5 +170,32 @@ test('a store with a single shipping company keeps it when editing an order with
     dpfVolt([$user, $store])
         ->call('openEditModal', $order->id)
         ->assertSet('form.shipping_provider_id', $solo->id)
-        ->assertSeeHtml('data-edz-company-single');
+        ->assertSeeHtml('edz-company-select')
+        ->assertSeeHtml('edz-select__trigger')
+        ->assertSeeHtml('switchFormPartner(')
+        ->assertSeeHtml('&amp;quot;label&amp;quot;:&amp;quot;Solo Carrier&amp;quot;')
+        ->assertDontSeeHtml('<x-edz.select');
+});
+
+test('a store with companies and riders shows the picker as companies → delimiter → riders', function () {
+    [$user, $store] = dpfUser();
+    $alpha = dpfProvider($store, 'Alpha');
+    dpfProvider($store, 'Beta');
+    \App\Domains\Shipping\Models\DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider One',
+        'phone' => '0550000001',
+        'vehicle_type' => 'motorcycle',
+        'is_active' => true,
+    ]);
+
+    dpfVolt([$user, $store])
+        ->call('openCreateModal')
+        ->assertSet('form.shipping_provider_id', $alpha->id)
+        ->assertSeeHtml('edz-select__trigger')
+        ->assertSeeHtml('switchFormPartner(')
+        ->assertSeeHtml('&amp;quot;label&amp;quot;:&amp;quot;Alpha&amp;quot;')
+        ->assertSeeHtml('&amp;quot;value&amp;quot;:&amp;quot;__delimiter__&amp;quot;')
+        ->assertSeeHtml('&amp;quot;label&amp;quot;:&amp;quot;Rider One&amp;quot;')
+        ->assertDontSeeHtml('<x-edz.select');
 });

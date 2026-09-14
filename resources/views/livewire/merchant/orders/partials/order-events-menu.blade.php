@@ -2,11 +2,13 @@
 @if ($canViewEvents)
     <div class="relative shrink-0" x-data="orderEventsMenu($el)" @click.away="close()" data-order-id="{{ $orderId }}"
         data-can-view="{{ $canViewEvents ? '1' : '0' }}">
-        <button @click="toggle()" x-ref="evTrigger" type="button"
-            class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 {{ ($touch ?? false) ? 'min-h-11 min-w-11' : '' }}"
-            title="{{ __('order_flow.order_timeline') }}" :aria-expanded="open.toString()" aria-haspopup="dialog">
-            <x-edz.icon name="clock" class="w-4 h-4 shrink-0" />
-        </button>
+        <x-edz.tooltip label="{{ __('order_flow.order_timeline') }}">
+            <button @click="toggle()" x-ref="evTrigger" type="button"
+                class="edz-btn edz-btn--ghost edz-btn--xs shrink-0 {{ ($touch ?? false) ? 'min-h-11 min-w-11' : '' }}"
+                aria-label="{{ __('order_flow.order_timeline') }}" :aria-expanded="open.toString()" aria-haspopup="dialog">
+                <x-edz.icon name="clock" class="w-4 h-4 shrink-0" />
+            </button>
+        </x-edz.tooltip>
 
         <x-edz.mobile-bottom-sheet :title="__('order_flow.order_timeline')" icon="clock" close-expr="close()"
             sm-width="sm:w-80" sm-max-height="sm:max-h-[340px]" sm-pad="sm:p-2 sm:pb-2" sm-z=""

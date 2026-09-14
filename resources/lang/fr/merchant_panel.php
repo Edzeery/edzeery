@@ -457,6 +457,10 @@ return [
     'select_state_first' => 'Sélectionnez d\'abord un état',
     'select_provider_first' => 'Sélectionnez d\'abord un transporteur',
 
+    // ----- Order form (Sub-phase C) -----
+    'partner_empty_state' => 'Aucune société de livraison ni coursier n\'est configuré pour le moment.',
+    'partner_empty_cta' => 'Configurer la livraison',
+
     // ----- Delivery Management -----
     'delivery_settings' => 'Paramètres de livraison',
     'delivery_settings_desc' => 'Connecter les transporteurs, définir les tarifs de livraison bureau/domicile et gérer les points de retrait',

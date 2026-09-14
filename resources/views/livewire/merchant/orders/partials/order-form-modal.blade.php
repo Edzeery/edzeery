@@ -1,9 +1,9 @@
 ﻿<div x-data="orderProductPicker()">
     @if ($showCreateModal || $showEditModal)
-        <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class="  edz-scroll"
+        <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class=" edz-scroll"
             wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">
             <form wire:submit="{{ $showEditModal ? 'submitEdit' : 'submitCreate' }}">
-                <div class="p-6 space-y-5">
+                <div class="p-4 md:p-6 space-y-4 md:space-y-5">
                     {{-- Header --}}
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-ink">
@@ -17,43 +17,85 @@
                         </div>
                     </div>
 
-                    {{-- Customer & Address — 4-col grid (1 @375, 2 @768, 4 @1440) --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-4 gap-4">
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
-                            <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
-                            @error('form.customer_name')
+                    {{-- Section 1 — Customer Info (fields 1 @375, 2 @768, 3 @1440) + notes --}}
+                    <section data-form-section="customer"
+                        class="rounded-xl border border-surface-border bg-surface p-4 md:p-5">
+                        <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                            <x-edz.icon name="user" class="w-4 h-4" />
+                            {{ __('merchant_panel.customer') }}
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-3 gap-4">
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.name') }} *</label>
+                                <input type="text" wire:model="form.customer_name" class="edz-input text-sm" required>
+                                @error('form.customer_name')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.phone') }} *</label>
+                                <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm" required>
+                                @error('form.customer_phone')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
+                                <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
+                                @error('form.phone_secondary')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+                        {{-- Notes live with the customer (not below the summary) --}}
+                        <div class="mt-4 border-t border-surface-border pt-4">
+                            <label class="edz-label">{{ __('merchant_panel.notes') }}</label>
+                            <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
+                            @error('form.notes')
                                 <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
                             @enderror
                         </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.phone') }} *</label>
-                            <input type="tel" wire:model="form.customer_phone" class="edz-input text-sm" required>
-                            @error('form.customer_phone')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.phone_secondary') }}</label>
-                            <input type="tel" wire:model="form.phone_secondary" class="edz-input text-sm">
-                            @error('form.phone_secondary')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div>
-                            <label class="edz-label">{{ __('merchant_panel.address') }}</label>
-                            <input type="text" wire:model="form.address" class="edz-input text-sm">
-                            @error('form.address')
-                                <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                            @enderror
-                        </div>
+                    </section>
+
+                    {{-- Shared `delivery` Alpine scope: the office row (Address section) and the
+                         type toggle (Shipping Partner section) both read/write the same mirror. --}}
+                    <div x-data="{ delivery: $wire.form.delivery_type }"
+                        x-init="$watch('delivery', v => $wire.set('form.delivery_type', v))"
+                        x-effect="delivery = $wire.form.delivery_type"
+                        class="space-y-4 md:space-y-5">
+
+                        {{-- Section 2 — Shipping Partner (shipment → payment → company → delivery type) --}}
+                        <section data-form-section="partner"
+                            class="rounded-xl border border-surface-border bg-surface p-4 md:p-5">
+                            <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                <x-edz.icon name="truck" class="w-4 h-4" />
+                                {{ __('merchant_panel.shipping_partner') }}
+                            </h4>
+                            @include('livewire.merchant.orders.partials.order-form-delivery')
+                        </section>
+
+                        {{-- Section 3 — Address (street + state/city/office; office follows the delivery type) --}}
+                        <section data-form-section="address"
+                            class="rounded-xl border border-surface-border bg-surface p-4 md:p-5">
+                            <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                <x-edz.icon name="map-pin" class="w-4 h-4" />
+                                {{ __('merchant_panel.address') }}
+                            </h4>
+                            <div>
+                                <label class="edz-label">{{ __('merchant_panel.address') }}</label>
+                                <input type="text" wire:model="form.address" class="edz-input text-sm">
+                                @error('form.address')
+                                    <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            {{-- State → commune → office (office row shows for a stopdesk lane with a company) --}}
+                            @include('livewire.merchant.orders.partials.order-destination-fields')
+                        </section>
                     </div>
 
-                    {{-- Delivery — partner → shipment → payment → type → wilaya → city → office --}}
-                    @include('livewire.merchant.orders.partials.order-form-delivery')
-
                     {{-- Products --}}
-                    <div>
+                    <section data-form-section="products"
+                        class="rounded-xl border border-surface-border bg-surface p-4 md:p-5">
                         <label class="edz-label">{{ __('merchant_panel.products') }}</label>
 
                         {{-- Trigger to open product picker modal --}}
@@ -76,7 +118,7 @@
                         {{-- Items list --}}
                         @if (!empty($form['items']))
                             <div data-order-items-list
-                                class="mt-3 rounded-xl border border-surface-border divide-y divide-surface-border bg-surface-secondary overflow-y-auto max-h-[calc(80vh-475px)] edz-scroll">
+                                class="mt-3 rounded-xl border border-surface-border divide-y divide-surface-border bg-surface-secondary overflow-y-auto max-h-72 edz-scroll">
                                 @foreach ($form['items'] as $idx => $item)
                                     <div
                                         class="flex items-center gap-3 p-3">
@@ -150,14 +192,6 @@
                                                 placeholder="{{ __('merchant_panel.price') }}">
                                         </div>
 
-                                        {{-- Line total --}}
-                                        <div class="text-right shrink-0 w-24">
-                                            <div class="text-sm font-bold text-ink tabular-nums">
-                                                {{ currency($item['price'] * $item['quantity']) }}</div>
-                                            <div class="text-xs text-ink-muted">{{ $item['quantity'] }} ×
-                                                {{ currency($item['price']) }}</div>
-                                        </div>
-
                                         {{-- Delete --}}
                                         <button type="button" wire:click="removeFormItem({{ $idx }})"
                                             class="text-danger-400 hover:text-danger-600 shrink-0 p-1 rounded hover:bg-danger-surface transition-colors">
@@ -167,7 +201,7 @@
                                 @endforeach
                             </div>
                         @endif
-                    </div>
+                    </section>
 
                     {{-- Duplicate-detection warning (P28 extended) --}}
                     @if (!empty($formDuplicateWarnings))
@@ -204,20 +238,17 @@
 
                     {{-- Order Summary — Shared financial grid (single source for create & edit) --}}
                     @if (!empty($form['items']))
-                        @include('livewire.merchant.orders.partials.order-financial-summary')
+                        <div class="rounded-xl border border-surface-border bg-surface p-4 md:p-5">
+                            <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                <x-edz.icon name="banknotes" class="w-4 h-4" />
+                                {{ __('merchant_panel.order_summary') }}
+                            </h4>
+                            @include('livewire.merchant.orders.partials.order-financial-summary')
+                        </div>
                     @endif
 
-                    {{-- Notes --}}
-                    <div>
-                        <label class="edz-label">{{ __('merchant_panel.notes') }}</label>
-                        <textarea wire:model="form.notes" rows="2" class="edz-input text-sm"></textarea>
-                        @error('form.notes')
-                            <span class="text-danger-500 text-xs mt-1">{{ $message }}</span>
-                        @enderror
-                    </div>
-
                     {{-- Submit --}}
-                    <div class="flex justify-end gap-2 pt-2 border-t border-surface-border">
+                    <div class="flex justify-end gap-2 pt-4 border-t border-surface-border">
                         <button type="button" class="edz-btn edz-btn--ghost"
                             wire:click="{{ $showEditModal ? 'set(\'showEditModal\', false)' : 'set(\'showCreateModal\', false)' }}">
                             {{ __('buttons.cancel') }}

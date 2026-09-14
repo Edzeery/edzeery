@@ -63,16 +63,19 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display max-w-[110px]"
-                    wire:click="startOrderNameEdit('{{ $orderId }}')"
-                    title="{{ $order['customer']['name'] ?? '-' }}">
-                    <span
-                        class="edz-inline-edit__value">{{ \Illuminate\Support\Str::limit($order['customer']['name'] ?? '-', 30) }}</span>
-                </button>
+                <x-edz.tooltip label="{{ $order['customer']['name'] ?? '-' }}">
+                    <button type="button" class="edz-inline-edit__display max-w-[110px]"
+                        wire:click="startOrderNameEdit('{{ $orderId }}')"
+                        aria-label="{{ $order['customer']['name'] ?? '-' }}">
+                        <span
+                            class="edz-inline-edit__value">{{ \Illuminate\Support\Str::limit($order['customer']['name'] ?? '-', 30) }}</span>
+                    </button>
+                </x-edz.tooltip>
             @else
-                <div class="text-ink font-medium text-xs max-w-[120px] truncate"
-                    title="{{ $order['customer']['name'] ?? '-' }}">
+                <x-edz.tooltip label="{{ $order['customer']['name'] ?? '-' }}">
+                <div class="text-ink font-medium text-xs max-w-[120px] truncate">
                     {{ $order['customer']['name'] ?? '-' }}</div>
+            </x-edz.tooltip>
             @endif
             @php
                 $dupTone = match ($order['dup_level'] ?? null) {
@@ -91,24 +94,29 @@
             @endphp
             @if (!$this->showTrash && ($order['status_key'] ?? null) !== 'duplicate' && $dupTone)
                 <div class="flex items-center gap-1.5 min-w-0 mt-1">
+                    <x-edz.tooltip label="{{ __('order_flow.duplicate_warnings_title') }}">
                     <button type="button" wire:click="openDuplicateScan('{{ $orderId }}')"
-                        title="{{ __('order_flow.duplicate_warnings_title') }}"
+                        aria-label="{{ __('order_flow.duplicate_warnings_title') }}"
                         class="edz-badge edz-badge--{{ $dupTone }} edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
                         <x-edz.icon name="copy" class="w-3 h-3" />
                         {{ $dupLabel }}@if (($order['dup_level'] ?? null) !== 'repeat')
                             ×{{ min($dupCount, 9) }}{{ $dupCount > 9 ? '+' : '' }}
                         @endif
                     </button>
+                </x-edz.tooltip>
                 </div>
             @endif
             @if (!$this->showTrash && !empty($order['missing']) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <div class="flex items-center gap-1.5 min-w-0 mt-1">
-                    <button type="button" wire:click="startMissingFieldEdit('{{ $orderId }}')"
-                        title="{{ __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $order['missing'])]) }}"
-                        class="edz-badge edz-badge--info edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
-                        <x-edz.icon name="exclamation-triangle" class="w-3 h-3" />
-                        ×{{ min(count($order['missing']), 9) }}{{ count($order['missing']) > 9 ? '+' : '' }}
-                    </button>
+                    <x-edz.tooltip
+                        label="{{ __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $order['missing'])]) }}">
+                        <button type="button" wire:click="startMissingFieldEdit('{{ $orderId }}')"
+                            aria-label="{{ __('order_flow.bulk_send_reason_missing', ['fields' => implode('، ', $order['missing'])]) }}"
+                            class="edz-badge edz-badge--info edz-badge--sm shrink-0 cursor-pointer transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40">
+                            <x-edz.icon name="exclamation-triangle" class="w-3 h-3" />
+                            ×{{ min(count($order['missing']), 9) }}{{ count($order['missing']) > 9 ? '+' : '' }}
+                        </button>
+                    </x-edz.tooltip>
                 </div>
             @endif
         </td>
@@ -158,20 +166,19 @@
 
     @case('verification')
         <td class="px-4 py-3">
-            <span class="inline-flex items-center gap-1 text-ink-muted text-xs"
-                title="{{ __('merchant_panel.verification_hint') }}">
+            <x-edz.tooltip label="{{ __('merchant_panel.verification_hint') }}">
+            <span class="inline-flex items-center gap-1 text-ink-muted text-xs" role="img"
+                aria-label="{{ __('merchant_panel.verification_hint') }}">
                 <x-edz.icon name="shield-check" class="w-3.5 h-3.5" />
                 —
             </span>
+        </x-edz.tooltip>
         </td>
         @break
 
     @case('notes')
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]"
-            @if ($this->editingField !== 'order.notes' || $this->editingId !== $orderId)
-                title="{{ $order['notes'] ?? '' }}"
-            @endif>
-            @if ($this->editingField === 'order.notes' && $this->editingId === $orderId)
+<td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]">
+        @if ($this->editingField === 'order.notes' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="notes-inline-{{ $orderId }}">
                     <textarea wire:model="editingValue" wire:keydown.enter="saveOrderNotes"
                         rows="2" placeholder="{{ __('merchant_panel.notes') }}"
@@ -189,16 +196,19 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display text-left"
-                    wire:click="startOrderNotesEdit('{{ $orderId }}')"
-                    title="{{ $order['notes'] ?? '' }}">
-                    <span
-                        class="edz-inline-edit__value break-words">{{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 40) : '—' }}</span>
-                </button>
+                <x-edz.tooltip label="{{ $order['notes'] ?? '' }}">
+                    <button type="button" class="edz-inline-edit__display text-left"
+                        wire:click="startOrderNotesEdit('{{ $orderId }}')">
+                        <span
+                            class="edz-inline-edit__value break-words">{{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 40) : '—' }}</span>
+                    </button>
+                </x-edz.tooltip>
             @else
-                <span class="truncate block" title="{{ $order['notes'] ?? '' }}">
-                    {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
-                </span>
+                <x-edz.tooltip label="{{ $order['notes'] ?? '' }}" block>
+                    <span class="truncate block">
+                        {{ $order['notes'] ? \Illuminate\Support\Str::limit($order['notes'], 30) : '-' }}
+                    </span>
+                </x-edz.tooltip>
             @endif
         </td>
         @break
@@ -209,8 +219,10 @@
                 ->map(fn($v, $k) => "{$k}: {$v}")
                 ->implode(', ');
         @endphp
-        <td class="px-4 py-3 text-xs text-ink-muted min-w-[110px] truncate" title="{{ $metaEntries }}">
-            {{ $metaEntries ?: '-' }}
+        <td class="px-4 py-3 text-xs text-ink-muted min-w-[110px] truncate">
+            <x-edz.tooltip label="{{ $metaEntries }}" block>
+                <span class="block">{{ $metaEntries ?: '-' }}</span>
+            </x-edz.tooltip>
         </td>
         @break
 
@@ -218,10 +230,11 @@
         <td class="px-4 py-3 text-ink-muted text-xs">
             @if ($this->editingField === 'order.wilaya' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="wilaya-inline-{{ $orderId }}">
-                    <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
-                        title="{{ __('order_flow.order_original_wilaya') }}">
-                        {{ __('order_flow.order_original_wilaya') }}: {{ $order['state']['name'] ?? '—' }}
-                    </p>
+                    <x-edz.tooltip label="{{ __('order_flow.order_original_wilaya') }}" class="mb-1" block>
+                        <p class="text-[10px] text-ink-muted/60 truncate">
+                            {{ __('order_flow.order_original_wilaya') }}: {{ $order['state']['name'] ?? '—' }}
+                        </p>
+                    </x-edz.tooltip>
                     <x-edz.select wire:model="editingValue"
                         :options="$this->allStates" option-value="id"
                         option-label="name" option-code="state_code"
@@ -272,13 +285,33 @@
         @break
 
     @case('products')
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-            title="{{ collect($order['items_summary'] ?? [])->map(fn($i) => $i['name'] . ' ×' . $i['qty'])->implode(', ') }}">
+        @php
+            $itemsSummaryTitle = collect($order['items_summary'] ?? [])
+                ->map(fn($i) => $i['name'] . ' ×' . $i['qty'])
+                ->implode(', ');
+        @endphp
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display w-full text-start truncate"
-                    wire:click="openItemsModal('products', '{{ $orderId }}')"
-                    title="{{ __('merchant_panel.edit_items') }}">
-                    <span class="edz-inline-edit__value truncate">
+                <x-edz.tooltip label="{{ $itemsSummaryTitle }}" block>
+                    <button type="button" class="edz-inline-edit__display w-full text-start truncate"
+                        wire:click="openItemsModal('products', '{{ $orderId }}')"
+                        aria-label="{{ __('merchant_panel.edit_items') }}">
+                        <span class="edz-inline-edit__value truncate">
+                            @forelse ($order['items_summary'] ?? [] as $item)
+                                @if (!empty($item['name']))
+                                    {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
+                                @else
+                                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
+                                @endif
+                            @empty
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                            @endforelse
+                        </span>
+                    </button>
+                </x-edz.tooltip>
+            @else
+                <x-edz.tooltip label="{{ $itemsSummaryTitle }}" block>
+                    <span class="block truncate">
                         @forelse ($order['items_summary'] ?? [] as $item)
                             @if (!empty($item['name']))
                                 {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
@@ -289,17 +322,7 @@
                             <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
                         @endforelse
                     </span>
-                </button>
-            @else
-                @forelse ($order['items_summary'] ?? [] as $item)
-                    @if (!empty($item['name']))
-                        {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
-                    @else
-                        <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
-                    @endif
-                @empty
-                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
-                @endforelse
+                </x-edz.tooltip>
             @endif
         </td>
         @break
@@ -307,17 +330,19 @@
     @case('quantity')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums text-center max-w-[150px]">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display w-full text-center"
-                    wire:click="openItemsModal('quantity', '{{ $orderId }}')"
-                    title="{{ __('merchant_panel.edit_items') }}">
-                    <span class="edz-inline-edit__value">
-                        @forelse ($order['items_summary'] ?? [] as $item)
-                            {{ $item['qty'] }}@if (!$loop->last)·@endif
-                        @empty
-                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_quantity') }}</span>
-                        @endforelse
-                    </span>
-                </button>
+                <x-edz.tooltip label="{{ __('merchant_panel.edit_items') }}" block>
+                    <button type="button" class="edz-inline-edit__display w-full text-center"
+                        wire:click="openItemsModal('quantity', '{{ $orderId }}')"
+                        aria-label="{{ __('merchant_panel.edit_items') }}">
+                        <span class="edz-inline-edit__value">
+                            @forelse ($order['items_summary'] ?? [] as $item)
+                                {{ $item['qty'] }}@if (!$loop->last)·@endif
+                            @empty
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_quantity') }}</span>
+                            @endforelse
+                        </span>
+                    </button>
+                </x-edz.tooltip>
             @else
                 @forelse ($order['items_summary'] ?? [] as $item)
                     <div>{{ $item['qty'] }}</div>
@@ -331,21 +356,23 @@
     @case('price')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums max-w-[200px]">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->itemsPriceEditable())
-                <button type="button" class="edz-inline-edit__display w-full text-start"
-                    wire:click="openItemsModal('price', '{{ $orderId }}')"
-                    title="{{ __('merchant_panel.edit_items') }}">
-                    <span class="edz-inline-edit__value">
-                        @forelse ($order['items_summary'] ?? [] as $item)
-                            @if ((float) ($item['price'] ?? 0) > 0)
-                                {{ currency($item['price']) }}@if (!$loop->last)·@endif
-                            @else
-                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
-                            @endif
-                        @empty
-                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
-                        @endforelse
-                    </span>
-                </button>
+                <x-edz.tooltip label="{{ __('merchant_panel.edit_items') }}" block>
+                    <button type="button" class="edz-inline-edit__display w-full text-start"
+                        wire:click="openItemsModal('price', '{{ $orderId }}')"
+                        aria-label="{{ __('merchant_panel.edit_items') }}">
+                        <span class="edz-inline-edit__value">
+                            @forelse ($order['items_summary'] ?? [] as $item)
+                                @if ((float) ($item['price'] ?? 0) > 0)
+                                    {{ currency($item['price']) }}@if (!$loop->last)·@endif
+                                @else
+                                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
+                                @endif
+                            @empty
+                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
+                            @endforelse
+                        </span>
+                    </button>
+                </x-edz.tooltip>
             @else
                 @forelse ($order['items_summary'] ?? [] as $item)
                     @if ((float) ($item['price'] ?? 0) > 0)
@@ -398,17 +425,25 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    @click="$wire.startOrderDiscountEdit('{{ $orderId }}')"
-                    title="@if (($order['discount_type'] ?? '') === 'percent'){{ $order['discount_value'] ?? '' }}%@elseif (($order['discount_type'] ?? '') === 'amount'){{ currency($order['discount_value'] ?? 0) }}@endif">
-                    <span class="edz-inline-edit__value">
-                        @if ((float) ($order['discount_amount'] ?? 0) > 0)
-                            −{{ currency($order['discount_amount']) }}
-                        @else
-                            —
-                        @endif
-                    </span>
-                </button>
+                @php
+                    $discountTitle = match ($order['discount_type'] ?? null) {
+                        'percent' => ($order['discount_value'] ?? '') . '%',
+                        'amount'  => currency($order['discount_value'] ?? 0),
+                        default   => '',
+                    };
+                @endphp
+                <x-edz.tooltip label="{{ $discountTitle }}">
+                    <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
+                        @click="$wire.startOrderDiscountEdit('{{ $orderId }}')">
+                        <span class="edz-inline-edit__value">
+                            @if ((float) ($order['discount_amount'] ?? 0) > 0)
+                                −{{ currency($order['discount_amount']) }}
+                            @else
+                                —
+                            @endif
+                        </span>
+                    </button>
+                </x-edz.tooltip>
             @else
                 @if ((float) ($order['discount_amount'] ?? 0) > 0)
                     −{{ currency($order['discount_amount']) }}
@@ -497,10 +532,11 @@
         <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.city' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="city-inline-{{ $orderId }}">
-                    <p class="text-[10px] text-ink-muted/60 mb-1 truncate"
-                        title="{{ __('order_flow.order_original_city') }}">
-                        {{ __('order_flow.order_original_city') }}: {{ $order['city']['name'] ?? '—' }}
-                    </p>
+                    <x-edz.tooltip label="{{ __('order_flow.order_original_city') }}" class="mb-1" block>
+                        <p class="text-[10px] text-ink-muted/60 truncate">
+                            {{ __('order_flow.order_original_city') }}: {{ $order['city']['name'] ?? '—' }}
+                        </p>
+                    </x-edz.tooltip>
                     <x-edz.select wire:model="editingValue"
                         :options="$this->editCityOptions" option-value="id"
                         option-label="name"
@@ -545,10 +581,7 @@
         @break
 
     @case('address')
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate"
-            @if ($this->editingField !== 'order.address' || $this->editingId !== $orderId)
-                title="{{ $order['address'] ?? '' }}"
-            @endif>
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate">
             @if ($this->editingField === 'order.address' && $this->editingId === $orderId)
                 <div class="edz-inline-edit__edit" wire:key="address-inline-{{ $orderId }}">
                     <input type="text" wire:model="editingValue" wire:keydown.enter="saveOrderAddress"
@@ -567,14 +600,17 @@
                     @endif
                 </div>
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                <x-edz.tooltip label="{{ $order['address'] ?? '' }}">
                 <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    wire:click="startOrderAddressEdit('{{ $orderId }}')"
-                    title="{{ $order['address'] ?? '' }}">
+                    wire:click="startOrderAddressEdit('{{ $orderId }}')">
                     <span
                         class="edz-inline-edit__value">{{ $order['address'] ? \Illuminate\Support\Str::limit($order['address'], 40) : '—' }}</span>
                 </button>
+            </x-edz.tooltip>
             @else
-                {{ $order['address'] ? \Illuminate\Support\Str::limit($order['address'], 40) : '-' }}
+                <x-edz.tooltip label="{{ $order['address'] ?? '' }}" block>
+                    <span class="block truncate">{{ $order['address'] ? \Illuminate\Support\Str::limit($order['address'], 40) : '-' }}</span>
+                </x-edz.tooltip>
             @endif
         </td>
         @break
@@ -624,31 +660,17 @@
     @case('shipping_provider')
         <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
-                <div class="edz-inline-edit__edit" wire:key="provider-inline-{{ $orderId }}">
-                    <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" option-hint="hint" size="sm" search
-                        placeholder="{{ __('merchant_panel.shipping_provider') }}" />
-                    <div class="edz-inline-edit__actions">
-                        <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
-                            wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading">
-                            <span>{{ __('buttons.save') }}</span>
-                        </button>
-                        <button type="button" class="edz-inline-edit__cancel"
-                            @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
-                    </div>
-                    @if ($this->editingError)
-                        <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
-                    @endif
-                </div>
+                @include('livewire.merchant.orders.partials.inline-carrier-select', ['wireKeyPrefix' => 'provider-inline'])
             @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (! empty($order['shipping_provider']['name']))
                             {{ $order['shipping_provider']['name'] }}
-                        @elseif (! empty($order['deliveryRider']['name']))
+                        @elseif (! empty($order['delivery_rider']['name']))
                             <x-edz.badge tone="accent" sm>
                                 <x-edz.icon name="user" class="w-3 h-3" />
-                                {{ $order['deliveryRider']['name'] }}
+                                {{ $order['delivery_rider']['name'] }}
                             </x-edz.badge>
                         @elseif ($requiredHint)
                             <span class="text-warning font-medium">{{ $requiredHint }}</span>
@@ -660,10 +682,10 @@
             @else
                 @if (! empty($order['shipping_provider']['name']))
                     {{ $order['shipping_provider']['name'] }}
-                @elseif (! empty($order['deliveryRider']['name']))
+                @elseif (! empty($order['delivery_rider']['name']))
                     <x-edz.badge tone="accent" sm>
                         <x-edz.icon name="user" class="w-3 h-3" />
-                        {{ $order['deliveryRider']['name'] }}
+                        {{ $order['delivery_rider']['name'] }}
                     </x-edz.badge>
                 @elseif ($requiredHint)
                     <span class="text-warning font-medium">{{ $requiredHint }}</span>
@@ -724,9 +746,10 @@
     @case('send_from_carrier_warehouse')
         <td class="px-4 py-3">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
+                <x-edz.tooltip label="{{ __('merchant_panel.send_from_carrier_warehouse') }}">
                 <button type="button" wire:click="toggleSendFromWarehouse('{{ $orderId }}')"
                     wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="toggleSendFromWarehouse"
-                    title="{{ __('merchant_panel.send_from_carrier_warehouse') }}"
+                    aria-label="{{ __('merchant_panel.send_from_carrier_warehouse') }}"
                     class="inline-flex items-center cursor-pointer transition hover:opacity-80">
                     @if ($order['send_from_carrier_warehouse'] ?? false)
                         <x-edz.badge tone="success" sm>
@@ -738,6 +761,7 @@
                         </x-edz.badge>
                     @endif
                 </button>
+                </x-edz.tooltip>
             @else
                 @if ($order['send_from_carrier_warehouse'] ?? false)
                     <x-edz.badge tone="success" sm>
@@ -782,11 +806,13 @@
                             <x-edz.icon name="chevron-down" class="w-3.5 h-3.5 text-ink-muted" />
                             <span>{{ __('merchant_panel.status') }}</span>
                         </p>
-                        <button @click="open = false" type="button"
-                            class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                            title="{{ __('general.close') }}">
-                            <x-edz.icon name="x-mark" class="w-4 h-4" />
-                        </button>
+                        <x-edz.tooltip label="{{ __('general.close') }}">
+                            <button @click="open = false" type="button"
+                                class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                                aria-label="{{ __('general.close') }}">
+                                <x-edz.icon name="x-mark" class="w-4 h-4" />
+                            </button>
+                        </x-edz.tooltip>
                     </div>
                     @foreach ($this->allStatuses as $s)
                         @php

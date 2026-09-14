@@ -1690,3 +1690,183 @@ git rm "it" "prepareBindings(\$bindings)"
 - iew:cache reused after a Plain-DB data seeding conflict; iew:clear cleared the lock; php -l clean on all touched blade/php; **npm run build** succeeded (public/build regenerated).
 - **index.blade.php:** 5,672 physical lines (under the 5,699 Sub-Phase-B ceiling; all new markup lives in partials).
 - **Requests per pick:** partner pick 2→1; office lazy open: (network+N+1) → 0 network / 1 DB read; client _remoteCache cap 12→48.
+
+---
+
+## Sub-Phase C (2026-09-13) — Order-form sectioned layout + product-row simplification + partner-picker diagnosis
+
+**Diagnosis report (Section 1, reported before any fix)**
+- Complaint: "partner picker doesn't appear" for the Demo Store.
+- Root cause: **DATA, not a code bug.** Dev DB has 4 active providers + 3 active riders globally. Per store: "Default Merchant Store" = 1 provider / 0 riders → `singleCompanyMode` static box (auto-selected, asserted by OrdersDefaultProviderTest); **"Demo Store" = 0 providers / 0 riders → empty `<x-edz.select>` renders as a dead, silent control (the reported case)**; "Edzeery Demo Store" = 3/3 → works (proven by OfficeSelection 27 + CityScope 8 + DefaultProvider 7). Code path verified: `mount()` fills `allProviders` (index.blade.php:505) + `riderOptions` (:520); include chain passes via `$this` (no dropped prop); Alpine boot-order race class already defended (alpine:init registration in panel.js + MutationObserver resync in edz-select.js — the genuine race was fixed in Sub-Phase B).
+- Resolution: empty-state message + CTA gated on `! $hasProviders && ! $hasRiders` → `route('merchant.delivery', currentStore())` (wire:navigate).
+
+**Changes**
+- `partner-picker.blade.php` (79): new `@elseif (! $hasProviders && ! $hasRiders)` branch — dashed surface box + `partner_empty_state` + CTA with arrow icon. singleCompanyMode + unified-select paths untouched.
+- `merchant_panel.php` (ar/en/fr/es): new keys `partner_empty_state` + `partner_empty_cta` after `select_provider_first`.
+- `order-form-modal.blade.php` (252): three sections using the existing section-header pattern (`text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-3`) + icons user/map-pin/truck; uniform `pt-4 border-t border-surface-border` separators on sections 2–3; Customer grid 1/2/3 cols @375/768/1440; **product-row line-total block removed** (price input + qty stepper kept; totals still compute in order-financial-summary).
+- `order-form-delivery.blade.php` (34): redundant `shipping_partner` label removed; destination-fields → office-field composition in the Shipping Partner section.
+- `order-destination-fields.blade.php` (36): `$withOffice` param (default true) — delivery quick-edit cascade renders identically.
+- `order-office-field.blade.php` (40, NEW): office row extracted from destination-fields (select + refresh btn + hints + error).
+
+**Verification**
+- Greps: `data-form-section` × 3; `quantity'\] \* \$item\['price` → 0 matches in order-form-modal; partial line counts 252/34/36/79/40/204 (all ≤ 300); **index.blade.php 5,672 before = after (zero changes)**.
+- `php -l` clean ×4 lang files; `artisan view:cache` OK (whole tree compiles, run before tests) then `view:clear`.
+- **Tests: 168 passed** across 17 merchant order suites: OfficeSelection 27 · DefaultProvider 7 · FinancialSummary 10 · CityScope 8 · Completeness 22 · InlineSelectEdit 12 · InlineFieldEdit 16 · QuantityCap 5 · InlineEdit 5 · InlineItemsEdit 18 · WeightAutoCalc 13 · ProductPicker 2 · DuplicateDetection 5 · ConfirmGate 6 · PageQueryCount 1 · MobileCardParity 5 · StopdeskSyncUi 6.
+- Responsive (375/768/1440): Customer grid 1→2→3 cols (`grid-cols-1 md:grid-cols-2 min-[1440px]:grid-cols-3`); Address + Shipping Partner single-col at all widths with shipment/payment pair stacked at sm+ (`sm:grid-cols-2`); office row keeps `flex-1` select + refresh inline once a stopdesk lane with a company is chosen; product row hides the price input below sm (pre-existing) — freed width flows to the name `flex-1`; edz-select panels are fixed z-70 overlays (unaffected by section gaps). No browser tooling installed (playwright/puppeteer absent) → documented at class level.
+- **Deferred:** real-browser pass at 375/768/1440 + screen-zoom audit still owed (no tooling available this run — documented class-level behavior instead).
+
+---
+
+## Sub-Phase C follow-up (2026-09-13) — User review fixes: field order, office into Address, notes grouped with customer, professional >768px
+
+**Reported issues → resolution**
+- "Shipping company selection not visible in add/edit popup": the company picker had no label and sat first in a cramped section. Now labeled `delivery_company` and placed in the professional order below shipment/payment with clear spacing.
+- "Delivery-type toggle wrongly placed / glued to shipment & payment selects": the home/office toggle is now the LAST control of the Shipping Partner card, separated after the company picker.
+- **Correct order implemented (create/edit form):** Shipment type → Payment method → Delivery company/rider → Delivery type (home/office) → then Address section: State → Commune → **Office (shows only for a stopdesk lane with a company)**.
+- Notes field removed from below the Order Summary and grouped with the customer info (name/phone/secondary phone + notes inside one card).
+- Order Summary content unchanged (subtotal · total weight · delivery cost · editable fixed-amount discount · total) and now framed by an `order_summary` card header.
+
+**Changes**
+- `order-form-delivery.blade.php` (27): reordered to shipment+payment grid → labeled company picker → type toggle; office include removed from this partial; no longer owns the `delivery` Alpine scope (hoisted to the modal).
+- `order-form-modal.blade.php` (268): card-based sections (`rounded-xl border border-surface-border bg-surface p-4 md:p-5`) for Customer / Shipping Partner / Address / Products / Summary; section order Customer → Shipping Partner → Address (in the shared `x-data` delivery wrapper spanning the two), then Products, warnings, Summary, submit; Customer card gains notes; Address includes `order-destination-fields` with default `withOffice` (office after state/city); items list `max-h-72` (was a fixed `80vh-475px` calc); responsive rhythm `p-4 md:p-6` + `space-y-4 md:space-y-5`.
+- `order-destination-fields.blade.php` (36): docblock updated; placement remains shared with the quick-edit cascade.
+- Untouched: `index.blade.php` (5,672), `order-delivery-cascade.blade.php` (quick-edit flow keeps its own order), `order-financial-summary.blade.php` (grid classes/markers preserved — tests assert `md:grid-cols-2` + `min-[1440px]:grid-cols-5`), `partner-picker.blade.php`, `order-office-field.blade.php`.
+
+**Verification**
+- `artisan view:cache` clean (whole tree compiles) then `view:clear`; `delivery_company` key present in ar/en/fr/es.
+- **Tests: 182 passed** across 18 suites re-run after the redesign: OfficeSelection 27 · DefaultProvider 7 · FinancialSummary 10 · Completeness 22 · DuplicateDetection 5 · CityScope 8 · QuantityCap 5 · WeightAutoCalc 13 · InlineItemsEdit 18 · InlineSelectEdit 12 · InlineFieldEdit 16 · InlineEdit 5 · ConfirmGate 6 · PageQueryCount 1 · ProductPicker 2 · MobileCardParity 5 · StopdeskSyncUi 6 · RequiredColumnsHint 14.
+- **index.blade.php 5,672 before = after (zero changes)**; partial line counts 268/27/36/40/79 all ≤ 300.
+- **Deferred (same as Sub-Phase C):** real-browser screenshot pass 375/768/1440 — no playwright/puppeteer installed; documented at class level.
+
+---
+
+## Sub-Phase C follow-up (2) (2026-09-13) — User-approved: always-visible company picker + discount editor inside its summary cell
+
+**Context (user approval after detailed diagnosis, no execution before approval)**
+- The user reported the company picker "still doesn't appear" and the discount "wasn't done" — and clarified (point 3) that the data IS fetched ("لا يظهر فرونت فقط", a frontend-only issue). Deep diagnosis (DB query + code trace) proved:
+  - Store data (dev DB): "Default Merchant Store" = 1 provider/0 riders → `singleCompanyMode` static box (no control); "Demo Store" = 0/0 → empty-state box; "Edzeery Demo Store" = 3/3 → real select. → The user's store had exactly ONE company + 0 riders, so the picker genuinely never rendered a selector — by design (old branch), not a bug. The `edz-select` dropdown itself was verified sound (fixed z-70 overlay, repositioned on scroll; modal stacking 60→1→70; no persistent transform → nothing clips it).
+  - Discount: the editable fixed-amount editor ALREADY existed (order-financial-summary.blade.php:185-201) since Sub-Phase B and the redesign froze that file — hence "nothing happened". It was also invisible without products (`@if (!empty($form['items']))` gate) and sat under the grid as a thin row.
+
+**Approved changes**
+- `partner-picker.blade.php` (72): removed the `singleCompanyMode` static box branch (`data-edz-company-single`) → the picker is now **always a real select** whenever ≥1 partner exists (companies → `__delimiter__` "رجال التوصيل" → riders; sole company auto-selected but visible, `edz-company-select` class kept). Empty-state box retained ONLY for 0/0 stores (a zero-option select is a dead control). Docblock updated.
+- `order-financial-summary.blade.php` (195): the discount editor moved **into the discount cell** (`data-financial-discount`): `discount` label → `wire:model="form.discount_value"` number input (min 0 / step 10) + readout (`-currency` / `—`) → optional `discount_reason` input (when value set) → `@error`, then the existing hint line (`compare_price_savings` / `no_offers_available`). Old below-grid `fixed_amount` editor row + trailing `@error` removed. All grid markers (`data-financial-grid…total`), `md:grid-cols-2`, `min-[1440px]:grid-cols-5` untouched.
+- `OrdersDefaultProviderTest.php`: the two single-company tests now assert `edz-company-select` + company name visible (`assertSee('Solo Carrier')`) and `assertDontSeeHtml('data-edz-company-single')` (create + edit flows).
+
+**Verification**
+- `artisan view:cache` clean (whole tree compiles) then `view:clear` (Windows quirk).
+- **Tests: full `tests/Feature/Merchant` run — 485 passed (1992 assertions)** across all suites; targeted suites green first (OrdersDefaultProviderTest 7 + OrderFinancialSummaryTest 10).
+- **index.blade.php 5,672 before = after (zero changes)**; partial line counts 72/195 ≤ 300; `data-edz-company-single` gone from all views (only historical Todos.md mention + negative test assertion remain); `fixed_amount` key still used by `orders-table-cell.blade.php` (inline discount type dropdown).
+**Sub-Phase C follow-up (3) - REAL root cause found & fixed (the picker never rendered!)**
+- User: "la yazal la yazhar select ikhtiyar sharikat al-tawsil... ���� fahs jayyidan 3an almushkil". Deep dumps (Volt::test()->html() written to temp files) revealed the ACTUAL cause: the company <x-edz.select> tag in partner-picker.blade.php was NOT being compiled by Blade at all - it stayed as a literal un-expanded <x-edz.select ... /> tag in the final HTML (browsers render it as an invisible custom element). Root cause: the tag had an @if/@endif DIRECTIVE INSIDE its attributes (@if (! \) :disabled="\" @endif), which breaks Blade anonymous-component compilation. THIS is why the "Delivery company" label rendered with nothing below it, matching the user's complaint across all rounds (single- AND multi-company stores). All prior markup assertions (edz-company-select, ssertSee('Solo Carrier')) were false positives: they matched the literal tag's attributes, not an expanded control.
+- Fix (partner-picker.blade.php): hoisted the condition into a computed var in the @php block (@php \ = ! \ && (bool) (\->loadingOffices ?? false); @endphp) and pass :disabled="\". Compiled view now shows AnonymousComponent::resolve(['view' => 'components.edz.select', ...]). Whole codebase audited (regex: directive strictly inside an open component tag before the closing >): ZERO other occurrences.
+- Harden Tests (OrdersDefaultProviderTest.php): solo create/edit now assert the EXPANDED control (edz-select__trigger, switchFormPartner(, data-options label marker &amp;quot;label&amp;quot;:&amp;quot;Solo Carrier&amp;quot;) and ssertDontSeeHtml('<x-edz.select'); NEW test: companies?delimiter?riders (asserts __delimiter__ value + rider label in data-options).
+- Verification: view:cache clean ? view:clear ? full tests/Feature/Merchant = **486 passed (2005 assertions)**. index.blade.php untouched (5672). Temporary dump test + html dumps deleted.
+
+---
+
+## Round 3 (2026-09-13) - Inline carrier edit list in the orders table: rider preselection + company/rider divider
+
+**Context (user report)**
+- In the orders table's inline carrier edit list: (a) the delivery rider is NOT shown as selected even when the order has it; (b) shipping companies and delivery riders should be visually separated (group divider). User clarified both refer to the inline edit list in the table (not the filter, not drawer/modals, not post-save refresh).
+
+**Root cause (proven with temp tests + HTML dumps)**
+- Server side was correct: startOrderProviderEdit sets editingValue = rider id + editingValueKind='rider'; rider option present with matching value in desktop AND mobile data-options. The defect was client-side: select.blade.php's hidden input rendered WITHOUT a server-side value attribute (`<input type="hidden" x-model="selected" x-ref="hiddenInput" wire:model="editingValue">`), so Alpine preselection relied on the racy `$wire.$watch` hydration path, and the value-attribute MutationObserver in edz-select.js (applyValue reads getAttribute('value')) was a dead path for wire:model selects (the attribute never existed in server HTML).
+
+**Changes** (all partial/component-side; index.blade.php = zero changes, still 5,672 lines)
+- select.blade.php: added `'value' => null` prop; hidden input now renders `@if ($value !== null && $value !== '') value="{{ $value }}" @endif` (backward compatible - no output change when prop not passed).
+- NEW resources/views/livewire/merchant/orders/partials/inline-carrier-select.blade.php: shared inline carrier select = providers ($this->allProviders) -> delimiter `__delimiter__` (label merchant_panel.partner_rider, is_divider:true, only when riders exist) -> riders ($this->riderOptions); passes optionDivider="is_divider", value="{{ (string) ($this->editingValue ?? '') }}", option-hint, size="sm", search; retains save/cancel/editingError block.
+- orders-table-cell.blade.php: desktop inline carrier block -> @include(...inline-carrier-select) with wireKeyPrefix 'provider-inline'.
+- orders-mobile-fields.blade.php: mobile block -> same include with 'provider-mobile' (mobile now also shows editingError - intentional consistency).
+- OrderShippingProviderColumnTest.php: +2 tests ("inline carrier edit preselects a rider and groups riders behind a divider"; "inline carrier edit keeps a single undivided list for a company-only store") + DeliveryRider import.
+
+**Verification**
+- Temp __TmpRiderSelectTest.php iterated to pass (whitespace-tolerant raw expect()->toContain() assertions - assertSee escapes the needle) then DELETED; rider_select.html dump deleted.
+- Rendered dump confirmed: hidden input value = rider id on desktop & mobile (e.g. 01m2edgayf8hhndjg5r290w5ee); data-options = Alpha (isDivider:false) -> divider "Rider" (isDivider:true) -> Rider One.
+- Targeted suites green (36 tests): OrderShippingProviderColumnTest (7), OrderInlineSelectEditTest, OrderMobileCardParityTest, OrdersDefaultProviderTest, InlineEditInfrastructureTest.
+- **Full tests/Feature/Merchant = 488 passed (2019 assertions).** index.blade.php untouched (5,672). Compiled-view cleanup required restoring storage/framework/views/.gitignore (delete-then-pest workaround for Windows rename lock; do NOT view:cache->view:clear first).
+
+**Notes / possible follow-up**
+- Only the two carrier inline selects pass `value`; other inline selects (delivery type, city, stopdesk, agent) still lack the server-side value attribute = same latent hydration race; hardening can be extended if ever reported.
+
+---
+
+## Round 4 (2026-09-13) - Rider still NOT shown as selected in the shipping-company column (display fix + elawer load + defensive JS seed)
+
+**Context (user report, after Round 3)**
+- The delivery rider now appears in the inline edit choice list AND gets preselecced correctly, but in the closed (read) column display the orders table still does NOT show the rider as selected — it keeps showing the required hint "Please select delivery company" (and the rider name is absent from the desktop cell and the mobile card).
+
+**Root cause (proven with a permanent test + HTML dump) — two independent defects**
+1. `$order['deliveryRider']['name']` was read by the display templates, BUT `Order::toArray()` snake_cases relation keys via `Model::relationsToArray()` (`vendor/laravel/framework/src/Illuminate/Database/Eloquent/Concerns/HasAttributes.php:403`): a loaded `deliveryRider` relation becomes `$arr['delivery_rider']`, never `$arr['deliveryRider']`. So the rider branch `@elseif (! empty($order['deliveryRider']['name']))` never fired and the cell fell through to the hint. (`shipping_provider` reads were already correct because relation `shippingProvider` → snake `shipping_provider` matches the blade key.)
+2. Additionally `deliveryRider` was NOT in `$orderEagerLoads()` (`index.blade.php:750`) — `decorateOrder()`'s `$order->toArray()` had no rider data at all (also absent key). So genuinely two bugs stacked: relation not eager-loaded, AND wrong camelCase key in the templates.
+
+**Changes**
+- `index.blade.php`: added `'deliveryRider'` to the `$orderEagerLoads()` `$with` array (line ~750) — first-ever change to this file.
+- `orders-table-cell.blade.php` + `orders-mobile-fields.blade.php`: `$order['deliveryRider']['name']` → `$order['delivery_rider']['name']` (4 occurrences each) — matches what `toArray()` actually produces.
+- `edz-select.js`: defensive hardening — `_bindServerValue` now uses a conservative `seed()` that only mirrors the Livewire value when no server-baked `value` attribute exists (protects Alpine preseed on re-render). Not the root cause (Livewire reads mergeNewSnapshot BEFORE the morph, ~`livewire.esm.js:8658`), but keeps client-side hydration safe.
+- `OrderShippingProviderColumnTest.php`: +1 permanent test "the provider column renders the assigned rider instead of the empty hint" (creates delivery rider, sets `delivery_rider_id`, asserts html contains the rider name and not the hint).
+
+**Verification**
+- New test failed BEFORE the template-key fix (dump showed "Please select delivery company") and passes after.
+- **Full tests/Feature/Merchant = 489 passed (2021 assertions).** Temp harness files deleted (`storage/harness/`, `__TmpHarnessDumpTest.php`); `storage/framework/views/.gitignore` restored after the delete-then-pest cleanup.
+
+**Notes / possible follow-up**
+- Any other template reading a camelCase relation key off the serialized row will silently miss too; audit rule: after `toArray()`, relations are ALWAYS snake_cased. If the browser-harness (puppeteer-core + `php -S` + Alpine CDN) is ever wanted for the client-side preselect proof, the harness design is documented in the Round 4 working notes.
+
+---
+
+## Round 5 (2026-09-14) — Carrier tab shows only shipping-company orders + NOEST stopdesk payload made station-consistent
+
+**Context (user report, in Arabic)**
+1. "في تاب شركة الشحن يجب اظهار الطلبيات المرسلة لشركات الشحن فقط وليس التي ترسل لرجل التوصيل ايضا" — the shipping-company tracking tab must list ONLY orders handed to a shipping company, never orders handed to a delivery rider.
+2. Commentary on NOEST stopdesk sending: review the NOEST docs vs our payload and make it consistent; a stopdesk order currently cannot be sent because of the office-selection method — the payload must carry only `station_code` + matching destination; a wilaya may have ONE office (Adrar key `"01A"` → inner `code: "1A"`) or MANY (Alger `"16A"`…`"16K"`).
+
+**Diagnosis**
+- **Carrier tab:** the trash branch already filters carrier → `whereNotNull('shipping_provider_id')` (`TrackingGridConcern` trash block), but the LIVE carrier branch had NO filter at all — the default tab showed every active shipment, including rider-only orders. Production already enforces rider/provider mutual exclusivity (`TrackingDrawerConcern::saveOrder` refuses both and nulls the counterpart; `assignRider` refuses when a provider exists), so a rider-sent order always has `shipping_provider_id = NULL` → adding the provider filter exactly removes those.
+- **NOEST stopdesk:** `createOrder` sent `wilaya_id` from the ORDER's state and `commune` from the ORDER's city, while `station_code` described the SELECTED station. When they disagreed, NOEST rejected with `Le code de wilaya est different de code de station` / `Aucune commune liee a la station choisie` (docs v2.3). The reference userscript builds stopdesk payloads from the station's own wilaya + commune. `desks()` also dropped the response's map keys (`"01A"`) and relied purely on inner `code` → a single-station wilaya (Adrar) could be dropped if inner code were ever absent.
+
+**Changes**
+- `app/Livewire/Concerns/TrackingGridConcern.php` (live branch, ~140): carrier else → `$query->whereNotNull('shipping_provider_id')` (mirrors the trash-carrier filter; rider branch untouched). Stats (`baseTrackingQuery(true)`) inherit it automatically.
+- `app/Domains/Shipping/Adapters/NoestIntegrationAdapter.php`:
+  - `createOrder`: `$isStopdesk` + `$stationCode` computed up front; for stopdesk orders with a station, `wilaya_id` and `commune` are now derived from the station itself (`stopdeskPoint->state->state_code` / `stopdeskPoint->city->name`) with the order's own values as fallback — payload is always station-consistent, and `station_code`/`stop_desk` reuse these derived values.
+  - `desks()`: keeps the entry's inner `code`, falling back to the map key (e.g. `"01A"`) only when the inner code is missing — the Adrar single-station padding case can never drop a desk.
+  - `validateForCarrier`: new pre-flight error when a stopdesk order's wilaya disagrees with its station's wilaya (`carrier_validation_station_wilaya_mismatch`) — caught before any network call.
+- `resources/lang/{ar,fr,en,es}/order_flow.php`: new key `carrier_validation_station_wilaya_mismatch`.
+
+**Verification**
+- `php -l` clean on all 6 modified files; `artisan view:cache` fresh (`view:clear` after).
+- **NoestIntegrationTest 9 passed (39 assertions)**; **TrackingSearchFilterTest 28 passed (114 assertions)** — every carrier/rider fixture seeds `shipping_provider_id`, so no test encodes the buggy behavior; pagination test (25 provider+rider fixtures) still counts 25 on the carrier tab.
+- **TrackingTrashWebhookLabelTest 14 + TrackingGridBatchTest 10 = 24 passed (105 assertions)** — the previously-failing `openEditModal`/`submitEdit` now PASS (the user's in-progress `optionDivider` select work has landed); zero regression.
+- **Notes:** a dual-flag order (both provider and rider, only possible via direct DB writes since the app enforces exclusivity) now appears in the carrier tab only if it has `shipping_provider_id`; the rider tab remains `whereNotNull('delivery_rider_id')`. Real-world impact: rider-sent orders (`shipping_provider_id = NULL`) no longer leak into the company tab in either the live list or the trash.
+
+---
+
+## Tooltip batch — Phase 1 (2026-09-14) — Merchant orders table: replace native `title=` with `x-edz.tooltip`
+
+**Scope** (approved: "نفذ" for Phase 1 = orders table only): icon-button tooltips in the orders table + meaningful truncated-cell tooltips. Excluded deliberately: page headers (`layout :title`), `mobile-bottom-sheet` headers, `data-confirm-title` (SweetAlert), and **touch-only surfaces** — `orders/index.blade.php` mobile cards + `orders-mobile-fields.blade.php` are `sm:hidden`/touch-first, and the tooltip is hover-only (`(hover:hover) and (pointer:fine)` media gate), so wrapping them adds Alpine cost with zero touch value. Their native `title=` stay. Toolbar/close buttons in `filter-portal`/`bulk-actions-bar`/`table-settings-modal`/`orders-items-edit-modals` (delete_item) remain `title=` (mobile sheets / outside table-cell scope).
+
+**Component change (no JS touched)**
+- `components/edz/tooltip.blade.php`: new `block` prop → adds `edz-tooltip--block` + `edz-tooltip__trigger--block`.
+- `css/components/_tooltip.scss`: `.edz-tooltip--block, .edz-tooltip--block .edz-tooltip__trigger { display:block; width:100% }` — for `w-full`/truncated cells (products, quantity/price, notes, address, non-managed branches) so buttons don't collapse to content width. Long labels (items summary, address, notes) live in the bubble; `aria-label` supplies the accessible name instead of `title`.
+
+**Conversion evidence (grep, source files unchanged except these)**
+- `orders-table-actions-column.blade.php`: `title=` ~8 → **0**; `x-edz.tooltip` opens **8** (details/confirm/send/cancel/edit/reassign/restore/delete, compact layout only). List layout passes `label="<?= $layout==='compact' ? … : '' ?>"` → inner `label=""` renders the slot bare (no wrapper, no title) → no behavior change.
+- `order-events-menu.blade.php`: `title="Order timeline"` → **0** (1 virtual `:title=` on mobile-bottom-sheet remains by design); `x-edz.tooltip` **1** + `aria-label`.
+- `orders-table-cell.blade.php`: `title=` ~20 → **0**; `x-edz.tooltip` opens **19** — customer name (2 branches), duplicate/missing badges (×2 partial wrappers), verification span, notes cell (cell `title` removed, both branches wrapped, block on static branch), meta cell, wilaya/city hints (block + `mb-1` wrapper), products cell (cell `title` removed; `$itemsSummaryTitle` via matched comma list; block both branches), quantity/price (block + `aria-label` edit_items), discount button (`$discountTitle` percent→%, amount→currency, else ''), address cell (cell `title` removed; correct `@endif` restored), warehouse toggle (icon-only → tooltip + `aria-label`), status-list close button.
+- Total Phase-1 tooltips added: **28** (8 + 1 + 19).
+
+**New test: `tests/Feature/Merchant/OrderTooltipTest.php` (5 tests, helper prefix `otl*` to avoid collisions with `otOrder` in OrderTrackingTest / `ospOrder` in OrderShippingProviderColumnTest)**
+- 4 via raw `view()` (compact + list actions columns); products-block coverage goes through `Volt::test('merchant.orders.index')` with `visibleColumns=['products']` (asserts `edz-tooltip--block`, `aria-label` edit_items, and rendered summary text `Default ×2` — the variant name, since the fixture sets `product_variant_id` without `product_id`, so `$i->product?->name ?? variant->name` resolves to "Default").
+
+**Verification**
+- `php artisan view:cache` OK (all ~5,672-line index + partials compile).
+- **OrderTooltipTest 5 passed (18 assertions)** — one flaky Windows-view-compile `rename Access denied` first run, green on clean re-run (no `view:clear`/delete needed second time).
+- **Full `tests/Feature/Merchant` + Unit sweep: 737 passed, 2 failed (2811 assertions) — both failures are NOT from this batch:**
+  - `BladeInteractivityPolicyTest` (Unit): fails at HEAD too (offender `merchant/tracking/partials/tracking-tabs.blade.php` conflicts with the @js/@class-never-in-JS-attributes rule) — verified by full stash to clean HEAD, still failing → pre-existing, untouched.
+  - `TrackingStatusHistoryPopupTest`: caused by the **Round-5 uncommitted** `TrackingGridConcern` live-carrier filter `whereNotNull('shipping_provider_id')` (its fixture seeds no provider, so the order drops off the carrier tab) — isolated by stashing only that file → 3/3 pass; restoring it reverts to 1 fail. A Round-5 regression the batch missed because it validated only its own suites; needs a follow-up fix (seed `shipping_provider_id` in `tphOrder` or adapt assertion).
+- **Follow-ups queued:** real-browser responsive pass 375/768/1440 (especially new `block` cells + long summary bubbles) — browser tooling still not installed (documented class-level); fix `TrackingStatusHistoryPopupTest`; then Phase 2 (products/variants/stock) → Phase 3 (delivery providers + announced-rates) → Phase 4 (`components/status.blade.php` optional `tooltip` prop).
+
+## Tooltip batch — Phase 1 follow-up (2026-09-14) — both pre-existing suite failures fixed; full suite green
+
+- **BladeInteractivityPolicyTest (Unit):** offender `merchant/tracking/partials/tracking-tabs.blade.php` used `@js($this->trackingTab)` inside `x-data` (Blade interpolation in a JS-bearing Alpine attribute). Fixed per the policy itself: server value now goes via `data-edz-active-tab="{{ $this->trackingTab }}"` on the wrapper and is read with `$el.dataset.edzActiveTab` inside `restoreTab()`. `persistTab` unchanged.
+- **TrackingStatusHistoryPopupTest:** the Round-5 `TrackingGridConcern` live-carrier filter (`whereNotNull('shipping_provider_id')`) filters the **orders table**, so the fixture needed a shipping provider on the ORDER itself, not only the tracking row. `tphOrder` now seeds a `ShippingProvider` ('Tph Carrier') and sets both `order->shipping_provider_id` and `order_tracking->shipping_provider_id`.
+- **Full suite: 739 passed (2812 assertions) green** — was 737 passed / 2 failed. `OrderTooltipTest` 5 + tracking popup 3 + policy 2 = 10 all pass in isolation too.

@@ -16,6 +16,7 @@
     'icon' => null,
     'class' => '',
     'name' => null,
+    'value' => null,
     'lazy' => false,
     'source' => null,
     'scope' => null,
@@ -108,6 +109,7 @@
     })" x-init="init()">
 
     <input type="hidden" @if ($name) name="{{ $name }}" @endif
+        @if ($value !== null && $value !== '') value="{{ $value }}" @endif
         x-model="selected" x-ref="hiddenInput" {{ $attributes->whereStartsWith('wire:model') }}>
 
     <button type="button" x-ref="trigger" class="edz-select__trigger"

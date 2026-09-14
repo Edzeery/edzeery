@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Customer;
@@ -50,6 +51,15 @@ function tphUser(): array
 
 function tphOrder(Store $store, StoreMembership $membership): Order
 {
+    $provider = ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => 'Tph Carrier',
+        'code' => 'TPH',
+        'is_active' => true,
+        'credentials' => [],
+        'shipment_types_enabled' => ['delivery'],
+    ]);
+
     $customer = Customer::create([
         'store_id' => $store->id,
         'name' => 'Tph Customer',
@@ -66,6 +76,7 @@ function tphOrder(Store $store, StoreMembership $membership): Order
         'store_id' => $store->id,
         'customer_id' => $customer->id,
         'status_id' => $status->id,
+        'shipping_provider_id' => $provider->id,
         'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
         'total_amount' => 400,
         'shipping_cost' => 0,
@@ -104,7 +115,7 @@ function tphOrder(Store $store, StoreMembership $membership): Order
     $tracking = OrderTracking::create([
         'store_id' => $store->id,
         'order_id' => $order->id,
-        'shipping_provider_id' => null,
+        'shipping_provider_id' => $provider->id,
         'tracking_number' => 'TPHTRK'.uniqid(),
         'tracking_status' => OrderTrackingStatus::IN_TRANSIT->value,
         'shipped_at' => now()->subDays(2),

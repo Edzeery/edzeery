@@ -2853,7 +2853,7 @@
           user_guid: Config.GUID, reference, client, phone,
           adresse: commune || stationCode,
           wilaya_id: Number(wilayaId), commune: commune || '',
-          montant, produit, type_id: 1, poids: 0.5, stop_desk: 1, // [v10.2 QUALITY] TODO: read stop_desk from UI toggle
+          montant, produit, type_id: 1, poids: "الوزن", stop_desk: 1, // [v10.2 QUALITY] TODO: read stop_desk from UI toggle
           station_code: stationCode, can_open: canOpen, remboursement: remb,
         };
         if (phone2) payload.phone_2  = phone2;

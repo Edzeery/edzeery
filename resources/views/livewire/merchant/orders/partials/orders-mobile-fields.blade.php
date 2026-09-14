@@ -52,26 +52,17 @@
     {{-- shipping_provider --}}
     @if (in_array('shipping_provider', $this->visibleColumns))
         @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
-            <div class="edz-inline-edit__edit" wire:key="provider-mobile-{{ $orderId }}">
-                <x-edz.select wire:model="editingValue" :options="$this->editProviderOptions" option-hint="hint" size="sm" search
-                    placeholder="{{ __('merchant_panel.shipping_provider') }}" />
-                <div class="edz-inline-edit__actions">
-                    <button type="button" class="edz-inline-edit__save" wire:click="saveOrderProvider"
-                        wire:loading.attr="disabled"><span>{{ __('buttons.save') }}</span></button>
-                    <button type="button" class="edz-inline-edit__cancel"
-                        @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
-                </div>
-            </div>
+            @include('livewire.merchant.orders.partials.inline-carrier-select', ['wireKeyPrefix' => 'provider-mobile'])
         @elseif ($canManage)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
                 <x-edz.icon name="truck" class="w-3 h-3 shrink-0 text-ink-muted" />
                 @if (!empty($order['shipping_provider']['name']))
                     <span class="edz-inline-edit__value">{{ $order['shipping_provider']['name'] }}</span>
-                @elseif (!empty($order['deliveryRider']['name']))
+                @elseif (!empty($order['delivery_rider']['name']))
                     <x-edz.badge tone="accent" sm>
                         <x-edz.icon name="user" class="w-3 h-3" />
-                        {{ $order['deliveryRider']['name'] }}
+                        {{ $order['delivery_rider']['name'] }}
                     </x-edz.badge>
                 @else
                     <span class="text-warning font-medium">{{ $spHint }}</span>
@@ -81,10 +72,10 @@
             <span class="inline-flex items-center gap-1">
                 <x-edz.icon name="truck" class="w-3 h-3 shrink-0 text-ink-muted" />
                 @if (!empty($order['shipping_provider']['name'])) {{ $order['shipping_provider']['name'] }}
-                @elseif (!empty($order['deliveryRider']['name']))
+                @elseif (!empty($order['delivery_rider']['name']))
                     <x-edz.badge tone="accent" sm>
                         <x-edz.icon name="user" class="w-3 h-3" />
-                        {{ $order['deliveryRider']['name'] }}
+                        {{ $order['delivery_rider']['name'] }}
                     </x-edz.badge>
                 @else <span class="text-warning font-medium">{{ $spHint }}</span> @endif
             </span>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Customer;
@@ -207,4 +208,87 @@ test('the provider column renders the assigned provider name instead of a hint',
     Volt::test('merchant.orders.index')
         ->set('visibleColumns', ['shipping_provider'])
         ->assertSee('Osp Alpha Carrier');
+});
+
+test('the provider column renders the assigned rider instead of the empty hint', function () {
+    [$user, $store, $membership] = ospUser(StoreRoleEnum::OWNER->value);
+    ospProvider($store, 'Unused Carrier');
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider One',
+        'phone' => '0552000001',
+        'vehicle_type' => 'motorcycle',
+        'is_active' => true,
+    ]);
+
+    $order = ospOrder($store, 'pending');
+    $order->update(['delivery_rider_id' => $rider->id, 'shipping_provider_id' => null]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $html = Volt::test('merchant.orders.index')
+        ->set('visibleColumns', ['shipping_provider'])
+        ->html();
+
+    expect($html)
+        ->toContain('Rider One')
+        ->not->toContain(__('order_flow.please_select_shipping_provider'));
+});
+
+test('inline carrier edit preselects a rider and groups riders behind a divider', function () {
+    [$user, $store, $membership] = ospUser(StoreRoleEnum::OWNER->value);
+    ospProvider($store, 'Alpha Carrier');
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider One',
+        'phone' => '0552000001',
+        'vehicle_type' => 'motorcycle',
+        'is_active' => true,
+    ]);
+
+    $order = ospOrder($store, 'pending');
+    $order->update(['delivery_rider_id' => $rider->id, 'shipping_provider_id' => null]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $volt = Volt::test('merchant.orders.index')
+        ->set('visibleColumns', ['shipping_provider'])
+        ->call('startOrderProviderEdit', $order->id)
+        ->assertSet('editingField', 'order.shipping_provider')
+        ->assertSet('editingValueKind', 'rider')
+        ->assertSet('editingValue', (string) $rider->id);
+
+    $html = $volt->html();
+
+    // The hidden input carries the server value server-side so Alpine can
+    // pre-select the rider at init, instead of losing the label to a hydration
+    // race between the wire:model round-trip and x-data setup.
+    expect($html)->toContain('value="' . $rider->id . '"')
+        ->and($html)->toContain('x-ref="hiddenInput" wire:model="editingValue"')
+        // Companies and riders are visually separated by a divider header.
+        ->and($html)->toContain('&amp;quot;value&amp;quot;:&amp;quot;__delimiter__&amp;quot;')
+        ->and($html)->toContain('&amp;quot;isDivider&amp;quot;:true')
+        ->and($html)->toContain('&amp;quot;label&amp;quot;:&amp;quot;Rider One&amp;quot;')
+        ->and($html)->not->toContain('<x-edz.select');
+});
+
+test('inline carrier edit keeps a single undivided list for a company-only store', function () {
+    [$user, $store, $membership] = ospUser(StoreRoleEnum::OWNER->value);
+    $provider = ospProvider($store, 'Solo Carrier');
+    $order = ospOrder($store, 'pending', ['shipping_provider_id' => $provider->id]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $volt = Volt::test('merchant.orders.index')
+        ->set('visibleColumns', ['shipping_provider'])
+        ->call('startOrderProviderEdit', $order->id)
+        ->assertSet('editingValueKind', 'provider')
+        ->assertSet('editingValue', (string) $provider->id);
+
+    expect($volt->html())
+        ->toContain('value="' . $provider->id . '"')
+        ->toContain('&amp;quot;label&amp;quot;:&amp;quot;Solo Carrier&amp;quot;')
+        ->not->toContain('__delimiter__');
 });

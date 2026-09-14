@@ -7,13 +7,14 @@
     is showing it swaps to "Back" so the merchant returns to the active list. --}}
 <div
     class="mb-4 flex flex-wrap items-center gap-2"
+    data-edz-active-tab="{{ $this->trackingTab }}"
     x-data="{
         persistTab(name) {
             localStorage.setItem('edz-tracking-active-tab', name);
         },
         restoreTab() {
             const saved = localStorage.getItem('edz-tracking-active-tab');
-            if (saved && saved !== @js($this->trackingTab)) {
+            if (saved && saved !== $el.dataset.edzActiveTab) {
                 $wire.set('trackingTab', saved);
             }
         },
