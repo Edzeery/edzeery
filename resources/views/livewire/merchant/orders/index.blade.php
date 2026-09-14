@@ -49,6 +49,8 @@ state([
         'shipment_type' => null,
         'stopdesk_point' => null,
         'send_from_carrier_warehouse' => null,
+        'refund_request' => null,
+        'can_open' => null,
         'confirmed_by' => null,
     ],
     'orders' => [],
@@ -69,6 +71,10 @@ state([
     'formCoverageHint' => '',
     'allStopdeskPoints' => [],
     'allProviders' => [],
+
+    // Which order-feature columns (refund_request / send_from_carrier_warehouse /
+    // can_open) any active carrier of the store offers (API ∧ structure).
+    'storeActiveFeatures' => [],
 
     // Active delivery riders of the store (carrier partner pickers / drawer).
     'riderOptions' => [],
@@ -135,6 +141,9 @@ state([
         'stopdesk_point_id' => '',
         'shipment_type' => 'delivery',
         'payment_method' => 'cod',
+        'refund_request' => false,
+        'can_open' => false,
+        'send_from_carrier_warehouse' => false,
         'discount_type' => null,
         'discount_value' => null,
         'discount_reason' => '',
@@ -497,12 +506,31 @@ mount(function (): void {
 
     $this->allStates = State::active()->orderedByCode()->get(['id','state_code','name'])->toArray();
 
-    // Shipping providers for filter dropdown.
-    $this->allProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
+    // Shipping providers for filter dropdown. Each row carries its carrier's
+    // capability list plus the merchant opt-in flags so the create/edit form
+    // and shipment-type pickers resolve features in-memory (no per-render
+    // provider queries).
+    $featureService = app(\App\Domains\Shipping\Services\CarrierFeatureService::class);
+
+    $providerRows = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
         ->where('is_active', true)
+        ->with('carrier')
         ->orderBy('name')
-        ->get(['id', 'name'])
+        ->get(['id', 'name', 'carrier_id', 'refund_request_enabled', 'can_open_enabled', 'send_from_carrier_warehouse_enabled']);
+
+    $this->allProviders = $providerRows
+        ->map(fn($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'caps' => $p->carrier?->capabilityList(),
+            'features' => $featureService->featuresForProvider($p),
+        ])
+        ->values()
         ->toArray();
+
+    // Store-wide gate for the grid columns/filters: a feature is present when
+    // ANY active carrier of the store offers it (API ∧ structure).
+    $this->storeActiveFeatures = $featureService->storeActiveFeatures($providerRows);
 
     // 31.3 — static option sets shared by the inline searchable selects.
     $this->editProviderOptions = collect($this->allProviders)
@@ -561,7 +589,20 @@ $orderColumns = function (): array {
         \App\Enums\Store\StoreRoleEnum::MANAGER->value,
     ];
 
-    return [
+    $storeFeatures = $this->storeActiveFeatures ?? [];
+
+    // Delivery-feature columns (refund_request / send_from_carrier_warehouse /
+    // can_open) are only part of the registry while ANY active carrier of the
+    // store offers the lane (API ∧ structure). Without a supporting carrier the
+    // column disappears from defaults, the column picker, filters and details —
+    // a dead feature column must never render.
+    $featureGate = fn (string $key): bool => ! in_array(
+        $key,
+        \App\Domains\Shipping\Services\CarrierFeatureService::ORDER_FEATURES,
+        true,
+    ) || ! empty($storeFeatures[$key]);
+
+    return array_values(array_filter([
         // identity
         ['key' => 'number', 'label_key' => 'number', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
         ['key' => 'source', 'label_key' => 'source', 'group' => 'identity', 'default' => false, 'required' => false, 'editable' => false],
@@ -589,6 +630,8 @@ $orderColumns = function (): array {
         ['key' => 'shipping_provider', 'label_key' => 'shipping_provider', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
         ['key' => 'stopdesk_point', 'label_key' => 'stopdesk_point', 'group' => 'geography', 'default' => true, 'required' => true, 'editable' => true],
         ['key' => 'send_from_carrier_warehouse', 'label_key' => 'send_from_carrier_warehouse', 'group' => 'geography', 'default' => false, 'required' => false, 'editable' => true],
+        ['key' => 'refund_request', 'label_key' => 'refund_request', 'group' => 'geography', 'default' => false, 'required' => false, 'editable' => true],
+        ['key' => 'can_open', 'label_key' => 'can_open', 'group' => 'geography', 'default' => false, 'required' => false, 'editable' => true],
 
         // workflow
         ['key' => 'status', 'label_key' => 'status', 'group' => 'workflow', 'default' => true, 'required' => true, 'editable' => true],
@@ -596,7 +639,7 @@ $orderColumns = function (): array {
         ['key' => 'created_at', 'label_key' => 'date', 'group' => 'workflow', 'default' => false, 'required' => false, 'editable' => false],
         ['key' => 'confirmation_attempts', 'label_key' => 'attempts', 'group' => 'workflow', 'default' => true, 'required' => false, 'editable' => false, 'roles' => $sensitiveRoles],
         ['key' => 'last_contact', 'label_key' => 'last_contact', 'group' => 'workflow', 'default' => true, 'required' => false, 'editable' => false, 'roles' => $sensitiveRoles],
-    ];
+    ], fn (array $column): bool => $featureGate($column['key'])));
 };
 
 // Memoized registry lookup + role gate (used by prefs, header, cells and settings modal).
@@ -828,6 +871,12 @@ $loadOrders = function (): void {
     if ($f['send_from_carrier_warehouse'] !== null) {
         $query->where('send_from_carrier_warehouse', (bool) $f['send_from_carrier_warehouse']);
     }
+    if ($f['refund_request'] !== null) {
+        $query->where('refund_request', (bool) $f['refund_request']);
+    }
+    if ($f['can_open'] !== null) {
+        $query->where('can_open', (bool) $f['can_open']);
+    }
     if (!empty($f['confirmed_by'])) {
         $query->whereHas('confirmedByHistory.changedBy', fn($q) => $q->where('id', $f['confirmed_by']));
     }
@@ -1051,6 +1100,8 @@ $setFilter = function (string $key, $value): void {
         $value = is_array($value) ? array_map('intval', $value) : [];
     } elseif (in_array($key, ['source', 'delivery_type', 'shipment_type'], true)) {
         $value = (string) $value;
+    } elseif (in_array($key, ['send_from_carrier_warehouse', 'refund_request', 'can_open'], true)) {
+        $value = $value === null ? null : (bool) $value;
     }
 
     $this->filters[$key] = $value;
@@ -1082,11 +1133,98 @@ $clearFilters = function (): void {
         'shipment_type' => null,
         'stopdesk_point' => null,
         'send_from_carrier_warehouse' => null,
+        'refund_request' => null,
+        'can_open' => null,
         'confirmed_by' => null,
     ];
     $this->page = 1;
     $this->selectedOrders = [];
     $this->loadOrders();
+};
+
+// Filter groups offered by the toolbar "Filters" drill-down portal. A group is
+// available ONLY when its backing column is NOT currently visible in the table
+// (a visible column already exposes the same filter via its header icon), plus
+// the always-available confirmed_by (the column has no presence in the grid).
+$availableFilterGroups = function (): array {
+    $map = [
+        'number' => 'number',
+        'customer' => 'customer',
+        'phone' => 'phone',
+        'address' => 'address',
+        'notes' => 'notes',
+        'products' => 'products',
+        'wilaya' => 'wilaya',
+        'city' => 'city',
+        'delivery_type' => 'delivery_type',
+        'shipping_provider' => 'shipping_provider',
+        'stopdesk_point' => 'stopdesk_point',
+        'shipment_type' => 'shipment_type',
+        'source' => 'source',
+        'status' => 'status',
+        'assigned_to' => 'assigned_agent',
+        'amount' => 'total',
+        'weight' => 'weight',
+        'date' => 'created_at',
+        'send_from_carrier_warehouse' => 'send_from_carrier_warehouse',
+        'refund_request' => 'refund_request',
+        'can_open' => 'can_open',
+    ];
+
+    $available = [];
+
+    foreach ($map as $group => $column) {
+        if (! in_array($column, $this->visibleColumns, true)) {
+            $available[] = $group;
+        }
+    }
+
+    return array_merge($available, ['confirmed_by']);
+};
+
+// Counts active filters among the available drill-down groups only — the badge
+// on the Filters trigger mirrors what the portal can actually clear.
+$activeFilterCount = function (): int {
+    $count = 0;
+
+    foreach ($this->availableFilterGroups() as $group) {
+        switch ($group) {
+            case 'status':
+                if (count($this->filters['status'] ?? []) > 0) {
+                    $count++;
+                }
+                break;
+            case 'amount':
+                if (filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null)) {
+                    $count++;
+                }
+                break;
+            case 'weight':
+                if (filled($this->filters['weight_min'] ?? null) || filled($this->filters['weight_max'] ?? null)) {
+                    $count++;
+                }
+                break;
+            case 'date':
+                if (filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null)) {
+                    $count++;
+                }
+                break;
+            case 'products':
+                if (filled($this->filters['product_id'] ?? null) || filled($this->filters['product'] ?? '')) {
+                    $count++;
+                }
+                break;
+            default:
+                // Strict null check: booleans (send_from_carrier_warehouse /
+                // refund_request / can_open) can legitimately be `false`
+                // and must still count toward the badge.
+                if (! is_null($this->filters[$group] ?? null) && $this->filters[$group] !== '') {
+                    $count++;
+                }
+        }
+    }
+
+    return $count;
 };
 
 // --- Bulk selection ---
@@ -2407,18 +2545,14 @@ $shipmentTypeOptionsFor = function (?string $providerId): array {
         return $defaultOptions;
     }
 
-    $provider = \App\Domains\Shipping\Models\ShippingProvider::query()
-        ->where('store_id', currentStoreId())
-        ->with('carrier')
-        ->find($providerId);
+    // Resolve from the in-memory provider rows loaded at mount (no per-render
+    // query); a provider absent from the active list behaves like a legacy one.
+    $row = collect($this->allProviders)->firstWhere('id', $providerId);
+    $caps = $row['caps'] ?? null;
 
-    $carrier = $provider?->carrier;
-
-    if (! $carrier) {
+    if (! $caps) {
         return $defaultOptions;
     }
-
-    $caps = $carrier->capabilityList();
 
     $enabled = array_filter([
         'delivery' => $caps['delivery'] ?? false,
@@ -2455,6 +2589,29 @@ $formShipmentTypeOptions = function (): array {
     }
 
     return $options;
+};
+
+// Create/Edit form: whether the currently chosen partner (carrier provider or
+// rider) makes طلب تعويض أموال (refund_request), الإرسال من المخزن
+// (send_from_carrier_warehouse) and Can-open (can_open) available.
+// A provider enables each lane only when BOTH the platform declared the carrier
+// capability AND its documented API supports it AND the merchant toggled it on
+// for that provider; riders never do. Resolved from the in-memory rows loaded
+// at mount (CarrierFeatureService) — no per-render provider queries.
+$formPartnerCapabilities = function (): array {
+    $none = array_fill_keys(\App\Domains\Shipping\Services\CarrierFeatureService::ORDER_FEATURES, false);
+
+    if (filled($this->form['delivery_rider_id'] ?? null) || blank($this->form['shipping_provider_id'] ?? null)) {
+        return $none;
+    }
+
+    $row = collect($this->allProviders)->firstWhere('id', (string) $this->form['shipping_provider_id']);
+
+    if (! $row) {
+        return $none;
+    }
+
+    return array_merge($none, $row['features']);
 };
 
 // ——— City cascade ———
@@ -2979,7 +3136,7 @@ $releaseStaleDestination = function (): void {
     // Commune no longer covered by any office (stopdesk) or home price (home)
     // of the selected carrier in that wilaya. The scoped city list is computed
     // on demand (shared with the lazy modal payload) rather than read from the
-    // filter-owned allCities collection.
+    // filter-owned allCities list.
     $cityId = (string) ($this->form['city_id'] ?? '');
     if (! $cleared && $cityId !== '' && (string) ($this->form['state_id'] ?? '') !== '') {
         $scopedCities = $this->cityOptionsFor(
@@ -4196,6 +4353,56 @@ $toggleSendFromWarehouse = function (string $orderId): void {
     $this->refreshSingleOrder($orderId);
 };
 
+$toggleRefundRequest = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $next = ! (bool) $order->refund_request;
+    $order->update(['refund_request' => $next]);
+
+    activity(config('activitylog.default_log_name', 'default'))
+        ->event('order_refund_request_updated')
+        ->withProperties(['value' => $next, 'record_id' => $order->id])
+        ->by(auth()->user())
+        ->on($order)
+        ->log('Applied order refund_request flag');
+
+    $this->refreshSingleOrder($orderId);
+};
+
+$toggleCanOpen = function (string $orderId): void {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+        return;
+    }
+
+    $order = Order::where('store_id', currentStoreId())->find($orderId);
+
+    if (!$order) {
+        return;
+    }
+
+    $next = ! (bool) $order->can_open;
+    $order->update(['can_open' => $next]);
+
+    activity(config('activitylog.default_log_name', 'default'))
+        ->event('order_can_open_updated')
+        ->withProperties(['value' => $next, 'record_id' => $order->id])
+        ->by(auth()->user())
+        ->on($order)
+        ->log('Applied order open authorization flag');
+
+    $this->refreshSingleOrder($orderId);
+};
+
 // Clicking the missing-fields row badge jumps straight to the first missing
 // field that has an inline editor (customer/address/carrier/geo). "items" has
 // no inline editor yet (Phase 31.5) so it opens the full edit modal instead.
@@ -4407,6 +4614,9 @@ $submitCreate = function (): void {
             'delivery_type' => $this->form['delivery_type'],
             'shipment_type' => $this->form['shipment_type'],
             'payment_method' => $this->form['payment_method'],
+            'refund_request' => (bool) ($this->form['refund_request'] ?? false),
+            'can_open' => (bool) ($this->form['can_open'] ?? false),
+            'send_from_carrier_warehouse' => (bool) ($this->form['send_from_carrier_warehouse'] ?? false),
             'discount_type' => $this->form['discount_type'],
             'discount_value' => $this->form['discount_value'] ?: null,
             'discount_reason' => $this->form['discount_reason'] ?: null,
@@ -4457,6 +4667,9 @@ $openEditModal = function (string $orderId): void {
         'delivery_type' => $order->delivery_type,
         'shipment_type' => $order->shipment_type ?? 'delivery',
         'payment_method' => $order->payment_method,
+        'refund_request' => (bool) ($order->refund_request ?? false),
+        'can_open' => (bool) ($order->can_open ?? false),
+        'send_from_carrier_warehouse' => (bool) ($order->send_from_carrier_warehouse ?? false),
         'discount_type' => $order->discount_type,
         'discount_value' => $order->discount_value,
         'discount_reason' => $order->discount_reason ?? '',
@@ -4633,6 +4846,9 @@ $submitEdit = function (): void {
         'delivery_type' => $this->form['delivery_type'],
         'shipment_type' => $this->form['shipment_type'],
         'payment_method' => $this->form['payment_method'],
+        'refund_request' => (bool) ($this->form['refund_request'] ?? false),
+        'can_open' => (bool) ($this->form['can_open'] ?? false),
+        'send_from_carrier_warehouse' => (bool) ($this->form['send_from_carrier_warehouse'] ?? false),
         'discount_type' => $this->form['discount_type'],
         'discount_value' => $this->form['discount_value'] ?: null,
         'discount_reason' => $this->form['discount_reason'] ?: null,
@@ -4795,102 +5011,24 @@ $submitEdit = function (): void {
                     <span>{{ __('merchant_panel.columns') }}</span>
                 </button>
 
-            {{-- Quick Filters (grouped popup) --}}
-            @php
-                $quickActiveCount = collect(['source', 'delivery_type', 'shipping_provider'])
-                    ->filter(fn ($k) => filled($this->filters[$k] ?? null))
-                    ->count();
-            @endphp
-            <x-edz.dropdown align="right" width="340px"
-                trigger-class="edz-btn edz-btn--ghost edz-btn--sm {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}">
-                <x-slot name="trigger">
+            {{-- Filters — one trigger; the drill-down portal only lists groups whose column
+                 is hidden (visible columns are filtered via their header filter icons). --}}
+            @if (! empty($this->availableFilterGroups()))
+                <button type="button" data-filter-btn
+                    @click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: $event.currentTarget })"
+                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}">
                     <x-edz.icon name="funnel"
-                        class="w-4 h-4 {{ $quickActiveCount > 0 ? 'text-accent-600' : '' }}" />
+                        class="w-4 h-4 {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}" />
                     <span>{{ __('merchant_panel.filters') }}</span>
-                    @if ($quickActiveCount > 0)
+                    @if ($this->activeFilterCount() > 0)
                         <span
                             class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
-                            {{ $quickActiveCount }}
+                            {{ $this->activeFilterCount() }}
                         </span>
                     @endif
                     <x-edz.icon name="chevron-down" class="w-3 h-3" />
-                </x-slot>
-
-                <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
-                <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
-                    <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
-                        <x-edz.icon name="funnel" class="w-3.5 h-3.5 text-ink-muted" />
-                        <span>{{ __('merchant_panel.filters') }}</span>
-                    </p>
-                    <button @click="close()" type="button"
-                        class="-m-1 p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-tertiary"
-                        title="{{ __('general.close') }}">
-                        <x-edz.icon name="x-mark" class="w-4 h-4" />
-                    </button>
-                </div>
-
-                <div class="edz-dropdown__section">
-                    <p class="edz-dropdown__section-title">{{ __('merchant_panel.source') }}</p>
-                    <button type="button" wire:click="setFilter('source', null)" @click="close()"
-                        aria-pressed="{{ empty($this->filters['source']) ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ empty($this->filters['source']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        {{ __('general.all') }}
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['source']) ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                    <button type="button" wire:click="setFilter('source', 'store')" @click="close()"
-                        aria-pressed="{{ ($this->filters['source'] ?? null) === 'store' ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ ($this->filters['source'] ?? null) === 'store' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>{{ __('merchant_panel.store') }}</span>
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['source'] ?? null) === 'store' ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                    <button type="button" wire:click="setFilter('source', 'manual')" @click="close()"
-                        aria-pressed="{{ ($this->filters['source'] ?? null) === 'manual' ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ ($this->filters['source'] ?? null) === 'manual' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>{{ __('merchant.delivery_man') }}</span>
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['source'] ?? null) === 'manual' ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                </div>
-
-                <div class="edz-dropdown__section">
-                    <p class="edz-dropdown__section-title">{{ __('storefront.delivery_type') }}</p>
-                    <button type="button" wire:click="setFilter('delivery_type', null)" @click="close()"
-                        aria-pressed="{{ empty($this->filters['delivery_type']) ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ empty($this->filters['delivery_type']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        {{ __('general.all') }}
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['delivery_type']) ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                    <button type="button" wire:click="setFilter('delivery_type', 'home')" @click="close()"
-                        aria-pressed="{{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>{{ __('storefront.home_delivery') }}</span>
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['delivery_type'] ?? null) === 'home' ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                    <button type="button" wire:click="setFilter('delivery_type', 'stopdesk')" @click="close()"
-                        aria-pressed="{{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span>{{ __('storefront.stop_desk') }}</span>
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['delivery_type'] ?? null) === 'stopdesk' ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                </div>
-
-                <div class="edz-dropdown__section">
-                    <p class="edz-dropdown__section-title">{{ __('order_flow.filter_provider') }}</p>
-                    <button type="button" wire:click="setFilter('shipping_provider', null)" @click="close()"
-                        aria-pressed="{{ empty($this->filters['shipping_provider']) ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ empty($this->filters['shipping_provider']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        {{ __('general.all') }}
-                        <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['shipping_provider']) ? 'opacity-100' : 'opacity-0' }}" />
-                    </button>
-                    @foreach ($this->allProviders as $pr)
-                        <button type="button" wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')" @click="close()"
-                            aria-pressed="{{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'true' : 'false' }}"
-                            class="edz-dropdown__item justify-between {{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                            <span>{{ $pr['name'] }}</span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 {{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'opacity-100' : 'opacity-0' }}" />
-                        </button>
-                    @endforeach
-                </div>
-            </x-edz.dropdown>
+                </button>
+            @endif
 
             {{-- Trash Toggle --}}
             <button wire:click="toggleTrash"
@@ -5037,6 +5175,24 @@ $submitEdit = function (): void {
                     <span class="font-semibold opacity-75">{{ __('merchant_panel.send_from_carrier_warehouse') }}:</span>
                     <span>{{ $this->filters['send_from_carrier_warehouse'] ? __('buttons.yes') : __('buttons.no') }}</span>
                     <button wire:click="setFilter('send_from_carrier_warehouse', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if ($this->filters['refund_request'] !== null)
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.refund_request') }}:</span>
+                    <span>{{ $this->filters['refund_request'] ? __('buttons.yes') : __('buttons.no') }}</span>
+                    <button wire:click="setFilter('refund_request', null)" wire:loading.attr="disabled"
+                        class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+                </span>
+            @endif
+            @if ($this->filters['can_open'] !== null)
+                <span
+                    class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                    <span class="font-semibold opacity-75">{{ __('merchant_panel.can_open') }}:</span>
+                    <span>{{ $this->filters['can_open'] ? __('buttons.yes') : __('buttons.no') }}</span>
+                    <button wire:click="setFilter('can_open', null)" wire:loading.attr="disabled"
                         class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                 </span>
             @endif
@@ -5662,4 +5818,6 @@ $submitEdit = function (): void {
     @include('livewire.merchant.orders.partials.order-events-modal')
 
     @include('livewire.merchant.orders.partials.filter-portal')
+
+    @include('livewire.merchant.orders.partials.orders-filter-bar-portal')
 </div>
