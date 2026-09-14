@@ -286,41 +286,28 @@
 
     @case('products')
         @php
-            $itemsSummaryTitle = collect($order['items_summary'] ?? [])
-                ->map(fn($i) => $i['name'] . ' ×' . $i['qty'])
-                ->implode(', ');
+            $itemGroups = $order['item_groups'] ?? [];
+            $itemsSummaryTitle = collect($itemGroups)
+                ->map(fn ($g) => collect($g['chips'] ?? [])
+                    ->map(fn ($c) => (trim((string) ($c['label'] ?? '')) !== '' ? $c['label'] : $g['product_name']) . ' ×' . (int) ($c['qty'] ?? 1))
+                    ->implode(', '))
+                ->implode('; ');
         @endphp
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate">
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]">
             @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                 <x-edz.tooltip label="{{ $itemsSummaryTitle }}" block>
-                    <button type="button" class="edz-inline-edit__display w-full text-start truncate"
+                    <button type="button" class="edz-inline-edit__display w-full text-start"
                         wire:click="openItemsModal('products', '{{ $orderId }}')"
                         aria-label="{{ __('merchant_panel.edit_items') }}">
-                        <span class="edz-inline-edit__value truncate">
-                            @forelse ($order['items_summary'] ?? [] as $item)
-                                @if (!empty($item['name']))
-                                    {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
-                                @else
-                                    <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
-                                @endif
-                            @empty
-                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
-                            @endforelse
+                        <span class="edz-inline-edit__value">
+                            <x-edz.order-item-chips :groups="$itemGroups" />
                         </span>
                     </button>
                 </x-edz.tooltip>
             @else
                 <x-edz.tooltip label="{{ $itemsSummaryTitle }}" block>
-                    <span class="block truncate">
-                        @forelse ($order['items_summary'] ?? [] as $item)
-                            @if (!empty($item['name']))
-                                {{ $item['name'] }} ×{{ $item['qty'] }}@if (!$loop->last)·@endif
-                            @else
-                                <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>@if (!$loop->last)·@endif
-                            @endif
-                        @empty
-                            <span class="text-ink-muted">{{ __('merchant_panel.please_select_product') }}</span>
-                        @endforelse
+                    <span class="block">
+                        <x-edz.order-item-chips :groups="$itemGroups" />
                     </span>
                 </x-edz.tooltip>
             @endif

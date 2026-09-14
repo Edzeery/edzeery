@@ -383,6 +383,8 @@ trait TrackingDrawerConcern
                 'state',
                 'city',
                 'items.product',
+                'items.variant',
+                'items.variant.optionValues.option',
                 'shippingProvider.carrier',
                 'deliveryRider',
                 'latestTracking',
@@ -436,10 +438,8 @@ trait TrackingDrawerConcern
             'rider' => $order->deliveryRider?->name,
             'stopdesk' => $order->stopdeskPoint?->name,
             'total' => currency($order->total_amount),
-            'items' => $order->items
-                ->map(fn ($i) => trim((string) ($i->product?->name ?? '')).($i->quantity > 1 ? " ×{$i->quantity}" : ''))
-                ->filter()
-                ->implode(' + '),
+            'items' => app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
+                ->toDetailedLines($order->items),
             'barcode' => $tracking?->tracking_number ?? $order->number,
         ];
     }

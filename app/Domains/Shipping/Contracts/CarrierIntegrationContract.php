@@ -14,6 +14,12 @@ use App\Models\Orders\Order;
  * Some carriers expose offices through a public API directly (NOEST),
  * others need a dedicated script/adaptor — implement this contract once per
  * carrier code and register it in config('delivery.carrier_integrations').
+ *
+ * 🔗 For formatting an order's line items into a carrier text field, use
+ * \App\Domains\Orders\Support\OrderItemsFormatter::toCompactString() — never
+ * hand-format order lines in an adapter. The formatter is carrier-agnostic and
+ * the single source of truth for every product/variant/qty summary across the
+ * merchant panel, printed label and carrier payloads.
  */
 interface CarrierIntegrationContract
 {

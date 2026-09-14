@@ -81,17 +81,21 @@
                             <div
                                 class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                 @if (!in_array('products', $this->visibleColumns))
-                                    @forelse ($detailsOrder['items_summary'] ?? [] as $item)
-                                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                                            <span class="min-w-0 flex-1 truncate text-ink">{{ $item['name'] }}
-                                                <span class="text-ink-muted">×{{ $item['qty'] }}</span></span>
-                                            <span
-                                                class="font-medium text-ink shrink-0">{{ currency($item['price'] * $item['qty']) }}</span>
-                                        </div>
-                                    @empty
-                                        <div class="px-3 py-2 text-ink-muted text-xs">
-                                            {{ __('merchant_panel.no_orders_found') }}</div>
-                                    @endforelse
+@forelse ($detailsOrder['item_groups'] ?? [] as $group)
+                                    @php
+                                        $groupSubtotal = collect($group['chips'] ?? [])
+                                            ->sum(fn ($c) => (float) ($c['price'] ?? 0) * (int) ($c['qty'] ?? 1));
+                                    @endphp
+                                    <div class="flex items-center justify-between gap-3 px-3 py-2">
+                                        <span class="min-w-0 flex-1 text-ink">
+                                            <x-edz.order-item-chips :groups="[$group]" />
+                                        </span>
+                                        <span class="font-medium text-ink shrink-0 tabular-nums">{{ currency($groupSubtotal) }}</span>
+                                    </div>
+                                @empty
+                                    <div class="px-3 py-2 text-ink-muted text-xs">
+                                        {{ __('merchant_panel.no_orders_found') }}</div>
+                                @endforelse
                                 @endif
                                 @if (!in_array('total', $this->visibleColumns))
                                     <div

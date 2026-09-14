@@ -325,6 +325,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('loadOrders'))->execute(...$arguments);
     }
 
+    public function buildItemSummary(\App\Models\Orders\Order $order): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('buildItemSummary'))->execute(...$arguments);
+    }
+
+    public function buildItemGroups(\App\Models\Orders\Order $order): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('buildItemGroups'))->execute(...$arguments);
+    }
+
     public function decorateOrder(\App\Models\Orders\Order $order, \App\Domains\Order\Services\OrderService $service, array $duplicateCounts, array $priorCarrierCounts, array $carrierKeys, ?\App\Models\Stores\Team\StoreMembership $membership): array
     {
         $arguments = [static::$__context, $this, func_get_args()];

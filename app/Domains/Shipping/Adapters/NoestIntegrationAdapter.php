@@ -2,6 +2,7 @@
 
 namespace App\Domains\Shipping\Adapters;
 
+use App\Domains\Orders\Support\OrderItemsFormatter;
 use App\Domains\Shipping\Contracts\CarrierIntegrationContract;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Models\Locations\City;
@@ -695,15 +696,15 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
 
     protected function productSummary(Order $order): string
     {
-        $lines = $order->items->map(fn ($item) => trim((string) $item->product?->name).($item->quantity > 1 ? " x{$item->quantity}" : ''));
+        $order->loadMissing([
+            'items.product',
+            'items.variant',
+            'items.variant.optionValues.option',
+        ]);
 
-        $summary = $lines->filter()->implode(' + ');
+        $summary = app(OrderItemsFormatter::class)->toCompactString($order->items);
 
-        if ($summary === '' && $order->items->isNotEmpty()) {
-            $summary = $order->items->count().' items';
-        }
-
-        return mb_substr($summary, 0, 120) ?: '—';
+        return $summary !== '' ? $summary : '—';
     }
 
     protected static function normalizeCommuneText(string $value): string

@@ -1870,3 +1870,37 @@ git rm "it" "prepareBindings(\$bindings)"
 - **BladeInteractivityPolicyTest (Unit):** offender `merchant/tracking/partials/tracking-tabs.blade.php` used `@js($this->trackingTab)` inside `x-data` (Blade interpolation in a JS-bearing Alpine attribute). Fixed per the policy itself: server value now goes via `data-edz-active-tab="{{ $this->trackingTab }}"` on the wrapper and is read with `$el.dataset.edzActiveTab` inside `restoreTab()`. `persistTab` unchanged.
 - **TrackingStatusHistoryPopupTest:** the Round-5 `TrackingGridConcern` live-carrier filter (`whereNotNull('shipping_provider_id')`) filters the **orders table**, so the fixture needed a shipping provider on the ORDER itself, not only the tracking row. `tphOrder` now seeds a `ShippingProvider` ('Tph Carrier') and sets both `order->shipping_provider_id` and `order_tracking->shipping_provider_id`.
 - **Full suite: 739 passed (2812 assertions) green** — was 737 passed / 2 failed. `OrderTooltipTest` 5 + tracking popup 3 + policy 2 = 10 all pass in isolation too.
+
+
+---
+
+## منسّق عناصر الطلب الموحّد (Unified Order Items Formatter) — 2026-09-14 ✅
+
+**الهدف:** مصدر واحد لتجميع أسطر الطلب حسب المنتج (مع تسميات خيارات المتغيّر + SKU) يُستخدم في كل مواضع العرض، بدل تكرار منطق التجميع عبر الكومبوننتات.
+
+**ما تَمّ:**
+- **`app/Domains/Orders/Support/OrderItemsGrouper.php`** (115 سطرًا) — يجمّع الأسطر حسب `product_id` أو المتغيّر مع الحفاظ على ترتيب الظهور، ويدمج كميات المتغيّرات المتطابقة (`keyBy`/`first`/`update`) وينتج `variant_id`, `option_label` (قيم الخيارات مفصولة بـ ` / ` مثل «Medium / Beige»)، `sku`.
+- **`app/Domains/Orders/Support/OrderItemsFormatter.php`** (225 سطرًا) — أربعة عوارض من مصدر واحد:
+  - `toCompactString()` — «الاسم ×الكمية» بفواصل + فاصل سطر عند 4+ عناصر، وسقوط عدد الأسطر عند كل الأسماء فارغة (`$items->count()` = عدد الأسطر الخام لا مجموع الكميات).
+  - `toDetailedLines()` — مجموع الكميات فوق «تسمية الخيار × الكمية» لكل سطر.
+  - `toTableGroups()` — مجموعات `{product_id, product_name, chips}` وشظايا `{variant_id, label, sku, qty, price}` (يُضاف `variant_id` ليعيد فكّ التسطيح في نموذج التعديل).
+  - `toFlatItems()` — أسطر مسطّحة `{variant_id|product_id|name|sku|price|qty}` تُحافظ على استقرار تحوّر حقول نموذج التعديل (المفتاح = `variant_id`).
+
+**مواضع الربط الخمسة:**
+- `NoestIntegrationAdapter::productSummary()` → `toCompactString()` مع `loadMissing('items.variant.optionValues.option')` (كان منطق مقصوصًا يحذف التفرّعات بلا خيارات).
+- `TrackingDrawerConcern::openLabel()` → `labelData['items']` = `toDetailedLines()` (قائمة أسطر نصية) + eager-load `items.variant.optionValues.option`.
+- `orders/index.blade.php`: مُغلَقَتَا `$buildItemSummary`/`$buildItemGroups` قبل `$decorateOrder` (سطرا 914/920)؛ `decorateOrder` يبني `items_summary` مسطّحًا عبر `$order->items->pipe(fn($items) => app(OrderItemsFormatter::class)->toFlatItems($items))->toArray()` (سطر 975 — يُبقي بحث الاستقبال `items_summary'] = $order->items` = 1) و`item_groups` عبر `$buildItemGroups($order)` (سطر 976) + `use ($buildItemGroups)`؛ `openOrderDetails` يستخدم المغلقَين معًا (`use ($buildItemSummary, $buildItemGroups)`) للمسارين (رواة with وhydrate عند ~1727/1728) — بلا تكرار منطق.
+- `orders-table-cell.blade.php` (`@case('products')`) — يقرأ `item_groups` (مع سقوط مسطّح إلى `items_summary`) ويبني `$itemsSummaryTitle` ويرسم `<x-edz.order-item-chips>` في فرعي التعديل وغير التعديل داخل `x-edz.tooltip` (مع تصميم `block`) وبلا `title=` أصلي.
+- `order-details-modal.blade.php` — يطوف `item_groups` ويحسب `$groupSubtotal` (مجموع price×qty لكل مجموعة) ويصنع شريحة `<x-edz.order-item-chips :groups="[$group]" />` + المجموع الفرعي.
+
+**المكوّن الجديد:** `components/edz/order-item-chips.blade.php` — اسم المنتج + «تسمية الخيار ×الكمية` لكل تفرّع» وشارات SKU الموحّدة والعنوان، بمفاتيح `variant`/`sku` الموجودة ×4 لغات.
+
+**الإصلاحات الجانبية:** إزالة الـ `@if` الزائدة عن اللازم في خلية العميل، و`eading` تسميات المتغيّرات من المصدر الموحّد بدل خريطة `optionValueId => name` المتناثرة.
+
+**التوثيق:** سطر في `CarrierIntegrationContract` يحيل الباحثين إلى `productSummary()` الجديد (بلا أسلوب واجهة جديد).
+
+**أدلة القبول (تحقّق آلي):** `php -l` نظيف على كل الملفات المغيَّرة + `php artisan view:cache` (FRESH-CACHE-OK) + عدّاد `Blade::render` يعيد 1 للبحث `items_summary'] = $order->items` ومصغًّا 5 للمغلقات و2 لاستخدام `item_groups|order-item-chips` في الـ partials.
+
+**الاختبارات:** ملف جديد `tests/Feature/Merchant/OrderItemsFormatterTest.php` — **16 ناجح (العدّادات والتجميع عبر طلبَين، تفرّعات متعددة، خياران «/», أسطر فارغة، وسقوط `/\d+ items/`)**: كلها خضراء. قيود قاعدة البيانات الموثّقة في الاختبار: `order_items.product_variant_id` NOT NULL (لا أسطر بلا تفرّع)، `product_variants.sku` NOT NULL، `order_items` فريد `(order_id, product_variant_id)`، هواتف العملاء فريدة، و`ProductOption`/`ProductOptionValue` يتطلبان `store_id`.
+
+**السويت كاملة:** **739 ناجح (2812 assertions)** — صفر انحدار عن «Tooltip Phase 1 follow-up». `view:clear`+`view:cache` سليمان.

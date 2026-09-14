@@ -122,10 +122,11 @@
                     </div>
 
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($this->labelData['items'])): ?>
-                        <p class="break-words border-t border-dashed border-line-200 pt-2 text-xs leading-snug text-ink-muted">
-                            <?php echo e($this->labelData['items']); ?>
-
-                        </p>
+                        <div class="break-words border-t border-dashed border-line-200 pt-2 text-xs leading-snug text-ink-muted whitespace-pre-line">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->labelData['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $line): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <p class="mb-0.5 last:mb-0"><?php echo e($line); ?></p>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     <div class="flex items-center justify-between border-t-2 border-dashed border-ink pt-2">

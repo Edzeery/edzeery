@@ -71,9 +71,11 @@
                     </div>
 
                     @if (! empty($this->labelData['items']))
-                        <p class="break-words border-t border-dashed border-line-200 pt-2 text-xs leading-snug text-ink-muted">
-                            {{ $this->labelData['items'] }}
-                        </p>
+                        <div class="break-words border-t border-dashed border-line-200 pt-2 text-xs leading-snug text-ink-muted whitespace-pre-line">
+                            @foreach ($this->labelData['items'] as $line)
+                                <p class="mb-0.5 last:mb-0">{{ $line }}</p>
+                            @endforeach
+                        </div>
                     @endif
 
                     <div class="flex items-center justify-between border-t-2 border-dashed border-ink pt-2">

@@ -604,11 +604,14 @@
 
     <?php case ('products'): ?>
         <?php
-            $itemsSummaryTitle = collect($order['items_summary'] ?? [])
-                ->map(fn($i) => $i['name'] . ' ×' . $i['qty'])
-                ->implode(', ');
+            $itemGroups = $order['item_groups'] ?? [];
+            $itemsSummaryTitle = collect($itemGroups)
+                ->map(fn ($g) => collect($g['chips'] ?? [])
+                    ->map(fn ($c) => (trim((string) ($c['label'] ?? '')) !== '' ? $c['label'] : $g['product_name']) . ' ×' . (int) ($c['qty'] ?? 1))
+                    ->implode(', '))
+                ->implode('; ');
         ?>
-        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px] truncate">
+        <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]">
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                 <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536 = $attributes; } ?>
@@ -620,19 +623,30 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['label' => ''.e($itemsSummaryTitle).'','block' => true]); ?>
-                    <button type="button" class="edz-inline-edit__display w-full text-start truncate"
+                    <button type="button" class="edz-inline-edit__display w-full text-start"
                         wire:click="openItemsModal('products', '<?php echo e($orderId); ?>')"
                         aria-label="<?php echo e(__('merchant_panel.edit_items')); ?>">
-                        <span class="edz-inline-edit__value truncate">
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $order['items_summary'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($item['name'])): ?>
-                                    <?php echo e($item['name']); ?> ×<?php echo e($item['qty']); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$loop->last): ?>·<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <?php else: ?>
-                                    <span class="text-ink-muted"><?php echo e(__('merchant_panel.please_select_product')); ?></span><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$loop->last): ?>·<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                <span class="text-ink-muted"><?php echo e(__('merchant_panel.please_select_product')); ?></span>
-                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        <span class="edz-inline-edit__value">
+                            <?php if (isset($component)) { $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.order-item-chips','data' => ['groups' => $itemGroups]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.order-item-chips'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['groups' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($itemGroups)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $attributes = $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $component = $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
                         </span>
                     </button>
                  <?php echo $__env->renderComponent(); ?>
@@ -656,16 +670,27 @@
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['label' => ''.e($itemsSummaryTitle).'','block' => true]); ?>
-                    <span class="block truncate">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $order['items_summary'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($item['name'])): ?>
-                                <?php echo e($item['name']); ?> ×<?php echo e($item['qty']); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$loop->last): ?>·<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <?php else: ?>
-                                <span class="text-ink-muted"><?php echo e(__('merchant_panel.please_select_product')); ?></span><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$loop->last): ?>·<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                            <span class="text-ink-muted"><?php echo e(__('merchant_panel.please_select_product')); ?></span>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <span class="block">
+                        <?php if (isset($component)) { $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.order-item-chips','data' => ['groups' => $itemGroups]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.order-item-chips'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['groups' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($itemGroups)]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $attributes = $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $component = $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
                     </span>
                  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>

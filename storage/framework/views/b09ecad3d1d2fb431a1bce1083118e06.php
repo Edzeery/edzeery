@@ -151,18 +151,40 @@
                             <div
                                 class="rounded-xl border border-surface-border divide-y divide-surface-border overflow-hidden bg-surface-tertiary/30 text-sm">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!in_array('products', $this->visibleColumns)): ?>
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $detailsOrder['items_summary'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                                        <div class="flex items-center justify-between gap-3 px-3 py-2">
-                                            <span class="min-w-0 flex-1 truncate text-ink"><?php echo e($item['name']); ?>
-
-                                                <span class="text-ink-muted">×<?php echo e($item['qty']); ?></span></span>
-                                            <span
-                                                class="font-medium text-ink shrink-0"><?php echo e(currency($item['price'] * $item['qty'])); ?></span>
-                                        </div>
-                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                                        <div class="px-3 py-2 text-ink-muted text-xs">
-                                            <?php echo e(__('merchant_panel.no_orders_found')); ?></div>
-                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+<?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $detailsOrder['item_groups'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $group): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                    <?php
+                                        $groupSubtotal = collect($group['chips'] ?? [])
+                                            ->sum(fn ($c) => (float) ($c['price'] ?? 0) * (int) ($c['qty'] ?? 1));
+                                    ?>
+                                    <div class="flex items-center justify-between gap-3 px-3 py-2">
+                                        <span class="min-w-0 flex-1 text-ink">
+                                            <?php if (isset($component)) { $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.order-item-chips','data' => ['groups' => [$group]]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.order-item-chips'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['groups' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute([$group])]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $attributes = $__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__attributesOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30)): ?>
+<?php $component = $__componentOriginal34e0ad3c647795b5d2822ee6e5082a30; ?>
+<?php unset($__componentOriginal34e0ad3c647795b5d2822ee6e5082a30); ?>
+<?php endif; ?>
+                                        </span>
+                                        <span class="font-medium text-ink shrink-0 tabular-nums"><?php echo e(currency($groupSubtotal)); ?></span>
+                                    </div>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                    <div class="px-3 py-2 text-ink-muted text-xs">
+                                        <?php echo e(__('merchant_panel.no_orders_found')); ?></div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!in_array('total', $this->visibleColumns)): ?>
                                     <div

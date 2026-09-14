@@ -747,7 +747,7 @@ $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
 // Single source of truth for the row eager-loads (shared by loadOrders and
 // refreshSingleOrder). Extended column-by-column as inline editing grows.
 $orderEagerLoads = function (): array {
-    $with = ['customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider', 'shippingProvider', 'deliveryRider'];
+    $with = ['customer', 'status', 'items.product', 'items.variant', 'items.variant.optionValues.option', 'assignedMembership.user', 'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider', 'shippingProvider', 'deliveryRider'];
     if (in_array('confirmed_by', $this->visibleColumns, true)) {
         $with[] = 'confirmedByHistory';
         $with[] = 'confirmedByHistory.status';
@@ -909,7 +909,21 @@ $this->orders = $paginated->toArray();
     $this->orders['filtered_total'] = $paginated->total();
 };
 
-$decorateOrder = function (Order $order, OrderService $service, array $duplicateCounts, array $priorCarrierCounts, array $carrierKeys, ?StoreMembership $membership): array {
+// Single source of truth for order-items display: flat per-line (edit-form / qty / price)
+// and grouped chips (products column / details modal). Both derive from the formatter.
+$buildItemSummary = function (Order $order): array {
+    return app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
+        ->toFlatItems($order->items)
+        ->toArray();
+};
+
+$buildItemGroups = function (Order $order): array {
+    return app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
+        ->toTableGroups($order->items)
+        ->toArray();
+};
+
+$decorateOrder = function (Order $order, OrderService $service, array $duplicateCounts, array $priorCarrierCounts, array $carrierKeys, ?StoreMembership $membership) use ($buildItemGroups): array {
     $arr = $order->toArray();
     // Status key is resolved through the statuses relation (orders.status_id FK);
     // blades must read this explicit key instead of nesting $arr['status']['key'].
@@ -958,18 +972,8 @@ $decorateOrder = function (Order $order, OrderService $service, array $duplicate
     $arr['transitions'] = $service->availableTransitions($order);
     $arr['can_confirm'] = in_array('confirmed', $arr['transitions'], true);
     $arr['confirm_via_drawer'] = in_array($statusKey, ['pending', 'on_hold'], true);
-    $arr['items_summary'] = $order->items
-        ->map(
-            fn($i) => [
-                'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
-                'qty' => $i->quantity,
-                'price' => $i->price,
-                'variant_id' => $i->product_variant_id,
-                'product_id' => $i->product_id,
-                'sku' => $i->variant?->sku,
-            ],
-        )
-        ->toArray();
+    $arr['items_summary'] = $order->items->pipe(fn ($items) => app(\App\Domains\Orders\Support\OrderItemsFormatter::class)->toFlatItems($items))->toArray();
+    $arr['item_groups'] = $buildItemGroups($order);
 
     // 31.1 — the "total" column always shows price×qty + shipping − discount
     // (created orders still store the raw item subtotal; edits persist the
@@ -1690,7 +1694,7 @@ $clearProductFilter = function (): void {
 };
 
 // ——— Detail Modal ———
-$openOrderDetails = function (string $orderId): void {
+$openOrderDetails = function (string $orderId) use ($buildItemSummary, $buildItemGroups): void {
     $this->detailsOrderId = $orderId;
 
     // A duplicate-scan row opens the details drawer; drop the scan popup so
@@ -1699,7 +1703,7 @@ $openOrderDetails = function (string $orderId): void {
 
     $order = Order::where('store_id', currentStoreId())
         ->with([
-            'customer', 'status', 'items.product', 'items.variant', 'assignedMembership.user',
+            'customer', 'status', 'items.product', 'items.variant', 'items.variant.optionValues.option', 'assignedMembership.user',
             'createdByMembership.user', 'state', 'city', 'latestTracking.shippingProvider',
             'confirmedByHistory.status', 'confirmedByHistory.changedBy.user', 'stopdeskPoint.city',
         ])
@@ -1720,15 +1724,8 @@ $openOrderDetails = function (string $orderId): void {
 
         $arr = $order->toArray();
         $arr['transitions'] = $service->availableTransitions($order);
-        $arr['items_summary'] = $order->items
-            ->map(
-                fn($i) => [
-                    'name' => $i->product?->name ?? ($i->variant?->name ?? '—'),
-                    'qty' => $i->quantity,
-                    'price' => $i->price,
-                ],
-            )
-            ->toArray();
+        $arr['items_summary'] = $buildItemSummary($order);
+        $arr['item_groups'] = $buildItemGroups($order);
         $arr['tracking'] = $order->latestTracking
             ? [
                 'tracking_number' => $order->latestTracking->tracking_number,
