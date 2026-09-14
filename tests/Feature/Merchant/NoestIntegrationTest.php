@@ -412,3 +412,89 @@ test('full sync without a state filter assigns the wilaya and commune from the d
         ->and($point->state_id)->toBe($state16->id)
         ->and($point->city_id)->toBe($city16->id);
 });
+
+test('the NOEST adapter declares its documented capabilities and hides can_open', function () {
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $capabilities = app(NoestIntegrationAdapter::class)->capabilities();
+
+    expect($capabilities)->toBe([
+        'refund_request' => true,
+        'send_from_carrier_warehouse' => true,
+        'can_open' => false,
+    ]);
+});
+
+test('the noest carrier structure matches its adapter capabilities and gates can_open off', function () {
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $carrier = Carrier::where('code', 'noest')->first();
+
+    expect($carrier->supports_refund_request)->toBeTrue()
+        ->and($carrier->supports_send_from_carrier_warehouse)->toBeTrue()
+        ->and($carrier->supports_can_open)->toBeFalse();
+
+    $features = app(\App\Domains\Shipping\Services\CarrierFeatureService::class)
+        ->featuresForCarrier($carrier);
+
+    expect($features['refund_request'])->toBeTrue()
+        ->and($features['send_from_carrier_warehouse'])->toBeTrue()
+        ->and($features['can_open'])->toBeFalse();
+});
+
+test('createOrder maps refund_request and the carrier-warehouse lane, and never sends can_open', function () {
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $order = noestOrder($store, $provider, [
+        'delivery_type' => 'home',
+        'refund_request' => true,
+        'send_from_carrier_warehouse' => true,
+        'can_open' => true,
+    ]);
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            'success' => true,
+            'tracking' => 'NO20260003',
+        ]),
+    ]);
+
+    app(CarrierOrderPostService::class)->postToCarrier($order->fresh());
+
+    Http::assertSent(function (Request $r) use ($order) {
+        expect($r->url())->toContain('/create/order')
+            ->and($r['remboursement'])->toBe(1)
+            ->and($r['stock'])->toBe(1)
+            ->and($r['quantite'])->toBe('1') // matches the flat produit row
+            ->and($order->items->count())->toBe(1)
+            ->and(isset($r['can_open']))->toBeFalse();
+
+        return true;
+    });
+});
+
+test('createOrder clears the warehouse lane when the order does not request it', function () {
+    $store = noestStore();
+    $provider = noestProvider($store);
+
+    $order = noestOrder($store, $provider, [
+        'delivery_type' => 'home',
+        'send_from_carrier_warehouse' => false,
+    ]);
+
+    Http::fake([
+        'app.noest-dz.com/*' => Http::response([
+            'success' => true,
+            'tracking' => 'NO20260004',
+        ]),
+    ]);
+
+    app(CarrierOrderPostService::class)->postToCarrier($order->fresh());
+
+    Http::assertSent(fn (Request $r) => $r['stock'] === 0
+        && ! isset($r['quantite'])
+        && ! isset($r['can_open']));
+});

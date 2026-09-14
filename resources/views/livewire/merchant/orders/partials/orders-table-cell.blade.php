@@ -763,6 +763,72 @@
         </td>
         @break
 
+    @case('refund_request')
+        <td class="px-4 py-3">
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
+                <x-edz.tooltip block label="{{ __('merchant_panel.refund_request_tooltip', ['definition' => __('merchant_panel.refund_request_definition')]) }}">
+                <button type="button" wire:click="toggleRefundRequest('{{ $orderId }}')"
+                    wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="toggleRefundRequest"
+                    aria-label="{{ __('merchant_panel.refund_request') }}"
+                    class="inline-flex items-center cursor-pointer transition hover:opacity-80">
+                    @if ($order['refund_request'] ?? false)
+                        <x-edz.badge tone="success" sm>
+                            <x-edz.icon name="check" class="w-3 h-3" />
+                        </x-edz.badge>
+                    @else
+                        <x-edz.badge tone="neutral" sm>
+                            <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        </x-edz.badge>
+                    @endif
+                </button>
+                </x-edz.tooltip>
+            @else
+                @if ($order['refund_request'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                    </x-edz.badge>
+                @endif
+            @endif
+        </td>
+        @break
+
+    @case('can_open')
+        <td class="px-4 py-3">
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
+                <x-edz.tooltip label="{{ __('merchant_panel.can_open') }}">
+                <button type="button" wire:click="toggleCanOpen('{{ $orderId }}')"
+                    wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="toggleCanOpen"
+                    aria-label="{{ __('merchant_panel.can_open') }}"
+                    class="inline-flex items-center cursor-pointer transition hover:opacity-80">
+                    @if ($order['can_open'] ?? false)
+                        <x-edz.badge tone="success" sm>
+                            <x-edz.icon name="check" class="w-3 h-3" />
+                        </x-edz.badge>
+                    @else
+                        <x-edz.badge tone="neutral" sm>
+                            <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        </x-edz.badge>
+                    @endif
+                </button>
+                </x-edz.tooltip>
+            @else
+                @if ($order['can_open'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                    </x-edz.badge>
+                @endif
+            @endif
+        </td>
+        @break
+
     @case('status')
         <td class="px-4 py-3 min-w-[145px] ">
             <div class="relative" @click.away="open = false">

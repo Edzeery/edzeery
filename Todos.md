@@ -1904,3 +1904,30 @@ git rm "it" "prepareBindings(\$bindings)"
 **الاختبارات:** ملف جديد `tests/Feature/Merchant/OrderItemsFormatterTest.php` — **16 ناجح (العدّادات والتجميع عبر طلبَين، تفرّعات متعددة، خياران «/», أسطر فارغة، وسقوط `/\d+ items/`)**: كلها خضراء. قيود قاعدة البيانات الموثّقة في الاختبار: `order_items.product_variant_id` NOT NULL (لا أسطر بلا تفرّع)، `product_variants.sku` NOT NULL، `order_items` فريد `(order_id, product_variant_id)`، هواتف العملاء فريدة، و`ProductOption`/`ProductOptionValue` يتطلبان `store_id`.
 
 **السويت كاملة:** **739 ناجح (2812 assertions)** — صفر انحدار عن «Tooltip Phase 1 follow-up». `view:clear`+`view:cache` سليمان.
+
+---
+
+## بوابة فلاتر الأعمدة المخفية + تولتيب أيقوني (فلاتر من مستويين) — 2026-09-15 ✅
+
+**الطلب:** إخفاء أعمدة الحمل (send_from_carrier_warehouse / refund-request / can_open / confirmed_by…) ليس إخفاءً لفلاترها؛ تبقى الفلاتر المختارة متاحة من بعد فتحها في **طبقة ثانية**.
+
+- **زر واحد في شريط الأدوات** (`@click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: ... })"`) يفتح `orders-filter-bar-portal` المضمَّن بعد `filter-portal`؛ مجموعات الفلترة تُعرض فيه **فقط** عند إخفاء عمودها (+ `confirmed_by` الدائم) — فلا تكرار مزدوج مع `filter-portal` (الخاص بعمودها).
+- طبقة الجذر `toggleStatusFilter(key)` + `availableFilterGroups` تفتح المجموعة الفرعية المناسبة، ويُركَّز input الفلاتر النصية (`x-ref` + `$nextTick focus`)؛ القيم تمر عبر `setFilter` واحد (قوائم/boolean/مدى نص/نص).
+- **خلايا عمودَي العلم** أصبحت tooltips أيقونية (`x-edz.tooltip` بوزن block) بدل `title=` الأصلي — تبديل اختياري للعمود (switch) أو نقر مباشر للبدل (toggle).
+- `activeFilterCount` بعدّ صارم (`! is_null(...) && !== ''`) — قيم `false` (الاختيارات boolean) تُحتسب في الشارة.
+- أيقونة `calendar` أُضيفت إلى `components/edz/icon.blade.php`؛ flatpickr auto-init على `.flatpickr-input` موجود أصلًا في panel.js؛ `dropdownPosition()` من drop-down-position.
+- `order-form-delivery.blade.php` حارس `method_exists($this,'formPartnerCapabilities')` (صفحة التتبع تعيد استخدام المودال) → `['refund_request'=>false,'can_open'=>false]`.
+
+**الأدلة:** `TrackingGridBatchTest` 10/10 بعد الحارس؛ مجموعات طلبيات معنية (OrderInlineEdit/OrderIndexPreferences/OrdersPageQueryCount/OrderTooltip/TrackingColumn/ShippingProviderColumn/MobileCardParity) + DeliverySettings + OrdersDefaultProvider كلها خضراء.
+
+## إعادة تسمية: «طلب تعويض أموال» (refund_request) + can_open — 2026-09-15 ✅
+
+**قرار المستخدم (يلغي تسمية `is_collection` السابقة):** الحقل ليس «تحصيل» بل **طلب تعويض أموال** (AR) / Refund request (EN) / remboursement (FR) — والمفتاح يعكس request/remboursement. التولتيب (نص المستخدم حرفيًا): FR «Si vous choisissez une demande de remboursement, vous ne pouvez pas envoyer une commande physique.» / AR «إذا اخترت طلب استرداد المبلغ، فلا يمكنك إرسال طلبية مادية.» / EN «If you choose to request a refund, you cannot send a physical order.»؛ `open_authorization` → **`can_open`** مؤقتًا حتى تُعرف مفاتيح كل شركة توصيل.
+
+- **Migration `2026_09_15_000001_rename_refund_request_and_can_open_columns` (نُفّذت، مع down):** orders `is_collection→refund_request` / `authorized_to_open→can_open`؛ shipping_providers `collection_enabled→refund_request_enabled` / `open_authorization_enabled→can_open_enabled`؛ carriers `supports_collection→supports_refund_request` / `supports_open_authorization→supports_can_open`. (القديمة `2026_09_14_000001_add_*` تنشئ الأسماء القديمة ثم هذه تعيد التسمية — تسلسل قياسي.)
+- **النماذج/الخدمات:** `Order` (fillable/casts)، `Carrier` (fillable + `capabilityList()` تُخرج الآن `refund_request`/`can_open` + docblock)، `ShippingProvider` (fillable/casts)، `OrderService::createManual`، `OrderDeliveryPartnerConcern::switchFormPartner` (يعيد ضبط `form.refund_request`/`form.can_open`).
+- **Filament:** `CarrierForm` (labels) + `CarriersTable` (IconColumns).
+- **ترجمات ×4:** `refund_request*` = طلب تعويض أموال/Refund request/Demande de remboursement/Solicitud de reembolso + توالتيب المستخدم + `can_open*` = السماح بالفتح/Can open/Peut ouvrir/Puede abrir.
+- **Blade:** كل مراجع `is_collection`/`authorized_to_open`/`open_authorization`/`collection`/`toggleCollectionFlag`/`toggleOpenAuthorization` صُحّح المصطلحان في index والـ partials (جدول/رأس/موبايل/تفاصيل/نموذج/بوابتا الفلاتر/صفحة شركات التوصيل). **grep شامل: صفر بقايا** في `app/` و`resources/` (عدا migrations المقصودة).
+
+**أدلة القبول:** استهداف **101 ناجح (428 assertions)** عبر 10 ملفات + **السويت كاملة 755 ناجح (2868 assertions)** — صفر فشل؛ `view:clear` قبل التشغيل.

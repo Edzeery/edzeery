@@ -19,6 +19,8 @@
         'delivery_type' => 'delivery_type',
         'stopdesk_point' => 'stopdesk_point',
         'send_from_carrier_warehouse' => 'send_from_carrier_warehouse',
+        'refund_request' => 'refund_request',
+        'can_open' => 'can_open',
     ];
 
     $headerCol = $this->orderColumn($colKey);

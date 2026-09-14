@@ -591,4 +591,46 @@
                 </button>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('refund_request', $this->visibleColumns)): ?>
+            <div x-show="open === 'refund_request'" x-cloak>
+                <button @click="$wire.setFilter('refund_request', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['refund_request'] === null ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('general.all')); ?>
+
+                </button>
+                <button @click="$wire.setFilter('refund_request', true)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['refund_request'] === true ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('buttons.yes')); ?>
+
+                </button>
+                <button @click="$wire.setFilter('refund_request', false)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['refund_request'] === false ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('buttons.no')); ?>
+
+                </button>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('can_open', $this->visibleColumns)): ?>
+            <div x-show="open === 'can_open'" x-cloak>
+                <button @click="$wire.setFilter('can_open', null)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['can_open'] === null ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('general.all')); ?>
+
+                </button>
+                <button @click="$wire.setFilter('can_open', true)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['can_open'] === true ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('buttons.yes')); ?>
+
+                </button>
+                <button @click="$wire.setFilter('can_open', false)"
+                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e($this->filters['can_open'] === false ? 'bg-surface-secondary font-medium' : ''); ?>">
+                    <?php echo e(__('buttons.no')); ?>
+
+                </button>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div><?php /**PATH C:\laragon\www\edzeery\resources\views/livewire/merchant/orders/partials/filter-portal.blade.php ENDPATH**/ ?>

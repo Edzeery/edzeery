@@ -282,6 +282,80 @@
         @endif
     @endif
 
+    {{-- refund request (tap-to-toggle pill, no edit mode) --}}
+    @if (in_array('refund_request', $this->visibleColumns))
+        @if ($canManage && ! $this->showTrash)
+            <button type="button" wire:click="toggleRefundRequest('{{ $orderId }}')"
+                wire:loading.attr="disabled" wire:loading.class="opacity-60 pointer-events-none"
+                wire:target="toggleRefundRequest"
+                title="{{ __('merchant_panel.refund_request') }}"
+                class="inline-flex items-center gap-2 min-h-11 w-full text-left cursor-pointer transition hover:opacity-80">
+                @if ($order['refund_request'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                        {{ __('merchant_panel.refund_request') }}
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        {{ __('merchant_panel.refund_request') }}
+                    </x-edz.badge>
+                @endif
+            </button>
+        @else
+            <span class="inline-flex items-center gap-1">
+                @if ($order['refund_request'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                        {{ __('merchant_panel.refund_request') }}
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        {{ __('merchant_panel.refund_request') }}
+                    </x-edz.badge>
+                @endif
+            </span>
+        @endif
+    @endif
+
+    {{-- authorization to open (tap-to-toggle pill, no edit mode) --}}
+    @if (in_array('can_open', $this->visibleColumns))
+        @if ($canManage && ! $this->showTrash)
+            <button type="button" wire:click="toggleCanOpen('{{ $orderId }}')"
+                wire:loading.attr="disabled" wire:loading.class="opacity-60 pointer-events-none"
+                wire:target="toggleCanOpen"
+                title="{{ __('merchant_panel.can_open') }}"
+                class="inline-flex items-center gap-2 min-h-11 w-full text-left cursor-pointer transition hover:opacity-80">
+                @if ($order['can_open'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                        {{ __('merchant_panel.can_open') }}
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        {{ __('merchant_panel.can_open') }}
+                    </x-edz.badge>
+                @endif
+            </button>
+        @else
+            <span class="inline-flex items-center gap-1">
+                @if ($order['can_open'] ?? false)
+                    <x-edz.badge tone="success" sm>
+                        <x-edz.icon name="check" class="w-3 h-3" />
+                        {{ __('merchant_panel.can_open') }}
+                    </x-edz.badge>
+                @else
+                    <x-edz.badge tone="neutral" sm>
+                        <x-edz.icon name="x-mark" class="w-3 h-3" />
+                        {{ __('merchant_panel.can_open') }}
+                    </x-edz.badge>
+                @endif
+            </span>
+        @endif
+    @endif
+
     {{-- meta (read-only key: value list) --}}
     @if (in_array('meta', $this->visibleColumns))
         @php

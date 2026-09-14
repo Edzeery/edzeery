@@ -178,6 +178,40 @@
                                         </dd>
                                     </div>
                                 @endif
+                                @if (!in_array('refund_request', $this->visibleColumns))
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                        <dt class="text-ink-muted shrink-0">
+                                            {{ __('merchant_panel.refund_request') }}</dt>
+                                        <dd class="text-ink text-end">
+                                            @if ($detailsOrder['refund_request'] ?? false)
+                                                <x-edz.badge tone="success" sm>
+                                                    <x-edz.icon name="check" class="w-3 h-3" />
+                                                </x-edz.badge>
+                                            @else
+                                                <x-edz.badge tone="neutral" sm>
+                                                    <x-edz.icon name="x-mark" class="w-3 h-3" />
+                                                </x-edz.badge>
+                                            @endif
+                                        </dd>
+                                    </div>
+                                @endif
+                                @if (!in_array('can_open', $this->visibleColumns))
+                                    <div class="flex items-start justify-between gap-3 px-3 py-2">
+                                        <dt class="text-ink-muted shrink-0">
+                                            {{ __('merchant_panel.can_open') }}</dt>
+                                        <dd class="text-ink text-end">
+                                            @if ($detailsOrder['can_open'] ?? false)
+                                                <x-edz.badge tone="success" sm>
+                                                    <x-edz.icon name="check" class="w-3 h-3" />
+                                                </x-edz.badge>
+                                            @else
+                                                <x-edz.badge tone="neutral" sm>
+                                                    <x-edz.icon name="x-mark" class="w-3 h-3" />
+                                                </x-edz.badge>
+                                            @endif
+                                        </dd>
+                                    </div>
+                                @endif
                             </dl>
                         </section>
                     @endif

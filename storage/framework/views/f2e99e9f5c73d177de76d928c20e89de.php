@@ -59,6 +59,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $allProviders;
 
+    public $storeActiveFeatures;
+
     public $riderOptions;
 
     public $editCityOptions;
@@ -379,6 +381,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('clearFilters'))->execute(...$arguments);
+    }
+
+    public function availableFilterGroups(): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('availableFilterGroups'))->execute(...$arguments);
+    }
+
+    public function activeFilterCount(): int
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('activeFilterCount'))->execute(...$arguments);
     }
 
     public function toggleSelectAll(): void
@@ -780,6 +796,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('formShipmentTypeOptions'))->execute(...$arguments);
     }
 
+    public function formPartnerCapabilities(): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('formPartnerCapabilities'))->execute(...$arguments);
+    }
+
     public function cityOptionsFor(string $stateId, string $type, string $providerId): array
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -1135,6 +1158,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('toggleSendFromWarehouse'))->execute(...$arguments);
+    }
+
+    public function toggleRefundRequest(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleRefundRequest'))->execute(...$arguments);
+    }
+
+    public function toggleCanOpen(string $orderId): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('toggleCanOpen'))->execute(...$arguments);
     }
 
     public function startMissingFieldEdit(string $orderId): void
