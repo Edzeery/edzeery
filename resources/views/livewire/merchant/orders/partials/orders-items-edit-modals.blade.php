@@ -33,6 +33,9 @@
                                         {{ __('merchant_panel.please_select_product') }}
                                     </div>
                                 @endif
+                                @if (!empty($item['option_label']))
+                                    <div class="text-xs text-ink-muted truncate">{{ $item['option_label'] }}</div>
+                                @endif
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr">{{ $item['sku'] ?? '' }}</div>
                             </div>
                             <div class="text-end shrink-0">
@@ -100,6 +103,9 @@
                         <div class="flex items-center gap-3 px-3 py-2.5">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium text-ink truncate">{{ $item['name'] ?? '—' }}</div>
+                                @if (!empty($item['option_label']))
+                                    <div class="text-xs text-ink-muted truncate">{{ $item['option_label'] }}</div>
+                                @endif
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr">{{ $item['sku'] ?? '' }}</div>
                             </div>
                             <div class="flex items-center rounded-lg border border-surface-border overflow-hidden shrink-0">
@@ -152,6 +158,9 @@
                         <div class="flex items-center gap-3 px-3 py-2.5">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium text-ink truncate">{{ $item['name'] ?? '—' }}</div>
+                                @if (!empty($item['option_label']))
+                                    <div class="text-xs text-ink-muted truncate">{{ $item['option_label'] }}</div>
+                                @endif
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr">{{ $item['sku'] ?? '' }}</div>
                             </div>
                             <input type="number" value="{{ $item['price'] ?? 0 }}"

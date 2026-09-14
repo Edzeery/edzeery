@@ -55,6 +55,9 @@
 
                                     </div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($item['option_label'])): ?>
+                                    <div class="text-xs text-ink-muted truncate"><?php echo e($item['option_label']); ?></div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr"><?php echo e($item['sku'] ?? ''); ?></div>
                             </div>
                             <div class="text-end shrink-0">
@@ -236,6 +239,9 @@
                         <div class="flex items-center gap-3 px-3 py-2.5">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium text-ink truncate"><?php echo e($item['name'] ?? '—'); ?></div>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($item['option_label'])): ?>
+                                    <div class="text-xs text-ink-muted truncate"><?php echo e($item['option_label']); ?></div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr"><?php echo e($item['sku'] ?? ''); ?></div>
                             </div>
                             <div class="flex items-center rounded-lg border border-surface-border overflow-hidden shrink-0">
@@ -326,6 +332,9 @@
                         <div class="flex items-center gap-3 px-3 py-2.5">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm font-medium text-ink truncate"><?php echo e($item['name'] ?? '—'); ?></div>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($item['option_label'])): ?>
+                                    <div class="text-xs text-ink-muted truncate"><?php echo e($item['option_label']); ?></div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <div class="text-[11px] text-ink-muted truncate" dir="ltr"><?php echo e($item['sku'] ?? ''); ?></div>
                             </div>
                             <input type="number" value="<?php echo e($item['price'] ?? 0); ?>"

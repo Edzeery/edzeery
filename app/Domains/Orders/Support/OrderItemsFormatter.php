@@ -138,6 +138,7 @@ final class OrderItemsFormatter
                 'variant_id' => $v['variant_id'],
                 'product_id' => $g['product_id'],
                 'name' => $g['product_name'],
+                'option_label' => $v['option_label'],
                 'sku' => $v['sku'],
                 'price' => $v['price'],
                 'qty' => $v['qty'],
