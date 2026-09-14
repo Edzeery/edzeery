@@ -75,6 +75,18 @@
                     </dl>
                 </section>
 
+                {{-- Products --}}
+                <section class="mt-5">
+                    <h4
+                        class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
+                        <x-edz.icon name="shopping-bag" class="w-4 h-4" />
+                        {{ __('merchant_panel.products') }}
+                    </h4>
+                    <div class="rounded-xl border border-surface-border bg-surface-tertiary/30 p-3">
+                        <x-edz.order-item-chips :groups="$this->drawerTracking['item_groups'] ?? []" />
+                    </div>
+                </section>
+
                 {{-- Shipment summary --}}
                 <section class="mt-5">
                     <h4

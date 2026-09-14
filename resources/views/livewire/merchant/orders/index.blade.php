@@ -323,18 +323,14 @@ $openItemsModal = function (string $kind, string $orderId): void {
     $order = collect($this->orders['data'] ?? [])->firstWhere('id', $orderId);
 
     $this->form['items'] = collect($order['items_summary'] ?? [])
-        ->map(fn ($i) => [
+        ->map(fn ($i) => array_merge($i, [
             'product_variant_id' => $i['variant_id'] ?? null,
-            'product_id' => $i['product_id'] ?? null,
-            'name' => $i['name'] ?? '',
-            'sku' => $i['sku'] ?? '',
-            'price' => (float) ($i['price'] ?? 0),
             'quantity' => max(1, (int) ($i['qty'] ?? 1)),
             'stock' => 0,
             'cap' => null,
             'preorder' => false,
             'image_url' => asset('img/icons/noimg.png'),
-        ])
+        ]))
         ->values()
         ->toArray();
 

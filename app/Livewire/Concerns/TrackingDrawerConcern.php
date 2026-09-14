@@ -40,7 +40,17 @@ trait TrackingDrawerConcern
         abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
 
         $order = Order::where('store_id', currentStoreId())
-            ->with(['customer', 'status', 'shippingProvider.carrier', 'deliveryRider', 'city', 'state'])
+            ->with([
+                'customer',
+                'status',
+                'shippingProvider.carrier',
+                'deliveryRider',
+                'city',
+                'state',
+                'items.product',
+                'items.variant',
+                'items.variant.optionValues.option',
+            ])
             ->find($orderId);
 
         if (! $order) {
@@ -58,6 +68,9 @@ trait TrackingDrawerConcern
             'customer' => $order->customer?->name ?? '—',
             'phone' => $order->customer?->phone ?? '—',
             'total' => currency($order->total_amount),
+            'item_groups' => app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
+                ->toTableGroups($order->items)
+                ->toArray(),
             'city' => $order->city?->name ?? '—',
             'state' => $order->state?->name ?? '—',
             'address' => $order->address,
