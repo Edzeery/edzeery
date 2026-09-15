@@ -43,15 +43,6 @@ class CarriersTable
                 IconColumn::make('supports_pickup')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('supports_refund_request')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('supports_can_open')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                IconColumn::make('supports_send_from_carrier_warehouse')
-                    ->boolean()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('supports_free_shipping_mode')
                     ->boolean()
                     ->toggleable(isToggledHiddenByDefault: true),

@@ -1,8 +1,9 @@
-{{-- Carrier note composer (P33.2) — own dedicated section, rendered between Quick actions and Tracking history. --}}
+{{-- Carrier note composer (P33.2 → Phase 7) — lives inside the tracking-status popup.
+    Reads $this->statusHistoryMeta (tracking_id / carrier_supports_api_notes). --}}
 @if (
     canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
-    && !empty($this->drawerTracking['tracking_id'])
-    && ($this->drawerTracking['carrier_supports_api_notes'] ?? false)
+    && !empty($this->statusHistoryMeta['tracking_id'])
+    && ($this->statusHistoryMeta['carrier_supports_api_notes'] ?? false)
 )
     <section class="mt-5">
         <h4 class="text-xs font-semibold text-ink-muted uppercase tracking-wide flex items-center gap-1.5 mb-2">
@@ -24,7 +25,7 @@
                     @enderror
                 </p>
                 <button type="button"
-                    wire:click="sendCarrierNote('{{ $this->drawerTracking['tracking_id'] }}')"
+                    wire:click="sendCarrierNote('{{ $this->statusHistoryMeta['tracking_id'] }}')"
                     :disabled="noteCount === 0"
                     wire:loading.attr="disabled" wire:loading.class="opacity-50 pointer-events-none"
                     wire:target="sendCarrierNote"

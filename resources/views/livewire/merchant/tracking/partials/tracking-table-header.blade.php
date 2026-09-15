@@ -3,9 +3,11 @@
 
 @php
     $headerFilterKeys = [
+        'state' => 'state',
         'city' => 'city',
         'total' => 'amount',
         'tracking_status' => 'status',
+        'products' => 'products',
         'provider' => 'provider',
         'delivery_rider' => 'rider',
         'shipping_date' => 'date',
@@ -28,6 +30,8 @@
         $headerFilterActive = filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null);
     } elseif ($headerFilterKey === 'status') {
         $headerFilterActive = count($this->filters['tracking_statuses'] ?? []) > 0;
+    } elseif ($headerFilterKey === 'products') {
+        $headerFilterActive = count($this->filters['products'] ?? []) > 0;
     } elseif ($headerFilterKey === 'date') {
         $headerFilterActive = filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null);
     } elseif ($headerFilterKey) {

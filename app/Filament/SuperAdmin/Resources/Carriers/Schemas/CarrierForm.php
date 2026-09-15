@@ -34,6 +34,12 @@ class CarrierForm
                     ->directory('img/carriers/logos')
                     ->visibility('public')
                     ->maxFiles(1),
+                TextInput::make('public_tracking_url_template')
+                    ->label('Public tracking URL template')
+                    ->helperText('Placeholder {tracking_number} is replaced with the encoded tracking number, e.g. https://track.example.com/?no={tracking_number}')
+                    ->maxLength(500)
+                    ->nullable()
+                    ->columnSpanFull(),
                 Repeater::make('credential_fields')
                     ->label('Credential fields shown to merchants')
                     ->schema([
@@ -60,9 +66,6 @@ class CarrierForm
                         Toggle::make('supports_delivery')->label('Delivery'),
                         Toggle::make('supports_exchange')->label('Exchange'),
                         Toggle::make('supports_pickup')->label('Pickup'),
-                        Toggle::make('supports_refund_request')->label('Refund request (طلب تعويض أموال)'),
-                        Toggle::make('supports_send_from_carrier_warehouse')->label('Send from carrier warehouse'),
-                        Toggle::make('supports_can_open')->label('Can open (السماح بالفتح)'),
                         Toggle::make('supports_free_shipping_mode')->label('Free shipping mode'),
                         Toggle::make('supports_express_economic')->label('Express / Economic'),
                         Toggle::make('supports_api_notes')->label('API notes'),

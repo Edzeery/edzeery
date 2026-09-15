@@ -203,9 +203,13 @@ test('confirmBulkValidate persists errors for rejected shipments', function () {
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Http::fake([
-        'noest.test/*' => Http::sequence()
-            ->push(['success' => true])
-            ->push(['success' => false, 'message' => 'Stock insuffisant']),
+        // The chunked /valid/orders flow batches trackings in a single call and
+        // maps rejections per-tracking.
+        'noest.test/*' => Http::response([
+            'success' => true,
+            'passed' => ['NOEST-OK' => true],
+            'failed' => ['NOEST-BAD' => 'Stock insuffisant'],
+        ]),
     ]);
 
     Volt::test('merchant.orders.index')

@@ -139,13 +139,14 @@ test('the grid defaults to the user column order with state required and provide
         'customer',
         'state',
         'city',
+        'products',
         'total',
         'tracking_status',
+        'notes',
         'provider',
+        'shipping_date',
         'assigned_to',
         'confirmed_by',
-        'notes',
-        'shipping_date',
         'actions',
     ]);
 });

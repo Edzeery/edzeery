@@ -29,17 +29,6 @@ interface CarrierIntegrationContract
     public function carrierCode(): string;
 
     /**
-     * Features this carrier's documented API actually accepts. This is the
-     * "available in the API" gate: order features (refund_request,
-     * send_from_carrier_warehouse, can_open) must never be shown to merchants
-     * when the adapter does not declare them, regardless of the admin's
-     * structure flags. Declared from the carrier's reference docs, not guesses.
-     *
-     * @return array{refund_request: bool, send_from_carrier_warehouse: bool, can_open: bool}
-     */
-    public function capabilities(): array;
-
-    /**
      * Offices (desks/stations/agences) available for a wilaya/commune.
      *
      * Adapters are free to filter server-side; the sync service reconciles

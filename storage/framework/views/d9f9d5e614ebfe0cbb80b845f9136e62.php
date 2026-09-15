@@ -493,15 +493,7 @@
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 
-                <?php echo $__env->make('livewire.merchant.tracking.partials.carrier-note-composer', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-
-                
                 <?php echo $__env->make('livewire.merchant.tracking.partials.dispatch-validate', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-
-                
-                <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-history-timeline', [
-                    'histories' => $this->drawerStatusHistories,
-                ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
                 
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canViewDrawerEvents && !empty($this->drawerEvents)): ?>

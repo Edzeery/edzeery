@@ -85,6 +85,14 @@ class OrderAuditService
         ], $actor);
     }
 
+    public function carrierValidated(Order $order, ?StoreMembership $actor = null): OrderEvent
+    {
+        return $this->log($order, 'carrier_validated', __('order_flow.event_carrier_validated'), [
+            'provider' => $order->shippingProvider?->name,
+            'tracking_number' => $order->latestTracking?->tracking_number,
+        ], $actor);
+    }
+
     public function tracking(Order $order, string $statusKey, ?string $trackingNumber = null, ?StoreMembership $actor = null): OrderEvent
     {
         return $this->log($order, 'tracking', __(

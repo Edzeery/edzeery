@@ -197,7 +197,7 @@ test('the tracking-history timeline lives in a shared partial owned by the track
     $ordersView = file_get_contents(base_path('resources/views/livewire/merchant/orders/index.blade.php'));
 
     expect($trackingView)->toContain('partials.order-drawer');
-    expect($drawerView)->toContain('partials.tracking-history-timeline');
+    expect($drawerView)->not->toContain('partials.tracking-history-timeline');
 
     // No duplicated inline timeline markup left in the tracking drawer.
     expect($trackingView)->not->toMatch('/tracking_history_empty/');

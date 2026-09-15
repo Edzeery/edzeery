@@ -217,6 +217,86 @@ function registerEdzPanel() {
     // --- Reusable product select (searchable, up to N products, frontend search) ---
     Alpine.data("productSelect", productSelect);
 
+    // --- Searchable list for filter portals (tracking + orders): option items
+    //     are rendered server-side via data-items="@[json]" and searched entirely
+    //     client-side. No global JS cache — items always reflect the latest
+    //     server state on each Livewire render.
+    Alpine.data("edzSearchableList", () => ({
+        query: "",
+        items: [],
+        active: [],
+        _onPortalOpen: null,
+
+        init() {
+            this.parseItems();
+            this.parseActive();
+
+            this._onPortalOpen = () =>
+                this.$nextTick(() => {
+                    this.parseItems();
+                    this.parseActive();
+                });
+            document.addEventListener("edz-filter-open", this._onPortalOpen);
+            document.addEventListener("edz-toolbar-filter-open", this._onPortalOpen);
+        },
+
+        destroy() {
+            if (this._onPortalOpen) {
+                document.removeEventListener("edz-filter-open", this._onPortalOpen);
+                document.removeEventListener("edz-toolbar-filter-open", this._onPortalOpen);
+            }
+        },
+
+        parseItems() {
+            try {
+                this.items = JSON.parse(this.$el.dataset.items || "[]");
+            } catch {
+                this.items = [];
+            }
+        },
+
+        parseActive() {
+            try {
+                this.active = JSON.parse(this.$el.dataset.active || "[]")
+                    .map(String)
+                    .filter(Boolean);
+            } catch {
+                this.active = [];
+            }
+        },
+
+        get filtered() {
+            const q = this.query.trim().toLowerCase();
+            if (!q) return this.items;
+            return this.items.filter((it) =>
+                String(it.name || it.label || "").toLowerCase().includes(q),
+            );
+        },
+
+        isActive(id) {
+            return this.active.includes(String(id));
+        },
+
+        toggleActive(id) {
+            const key = String(id);
+            if (this.active.includes(key)) {
+                this.active = this.active.filter((x) => x !== key);
+            } else {
+                this.active.push(key);
+            }
+        },
+
+        activeCls(id) {
+            return this.isActive(id)
+                ? "bg-accent-surface text-accent-fg font-semibold"
+                : "";
+        },
+
+        checkCls(id) {
+            return this.isActive(id) ? "opacity-100" : "opacity-0";
+        },
+    }));
+
     // --- edzDirty Alpine component ---
     Alpine.data("edzDirty", () => ({
         dirty: false,

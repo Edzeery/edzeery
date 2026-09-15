@@ -365,6 +365,57 @@ class OrderShippingGateway
     }
 
     /**
+     * Persist a successful carrier handover (dispatch validation): stamps
+     * order_trackings.carrier_validated_at (+ by), clears any stuck error,
+     * records the OrderTrackingHistory row and audits the OrderEvent. No HTTP —
+     * shared by the single-order validate() and the bulk /valid/orders flow.
+     * Idempotent: already-validated trackings short-circuit.
+     */
+    public function markValidated(Order $order, ?StoreMembership $changedBy = null): void
+    {
+        $tracking = app(OrderTrackingService::class)->currentTracking($order);
+
+        if (! $tracking?->tracking_number || $tracking->isCarrierValidated()) {
+            return;
+        }
+
+        $tracking->update([
+            'carrier_validated_at' => now(),
+            'carrier_validated_by_membership_id' => $changedBy?->id,
+            'carrier_validation_error' => null,
+        ]);
+
+        OrderTrackingHistory::create([
+            'store_id' => $order->store_id,
+            'order_id' => $order->id,
+            'order_tracking_id' => $tracking->id,
+            'status' => 'carrier_validated',
+            'changed_by_membership_id' => $changedBy?->id,
+            'payload' => ['carrier_validate' => true],
+        ]);
+
+        $this->audit->carrierValidated($order, $changedBy);
+
+        Log::info("carrier validate ok for order [{$order->number}] (tracking {$tracking->tracking_number})");
+    }
+
+    /** Persist a rejected / failed carrier handover attempt on the tracking row. */
+    public function recordValidationFailure(Order $order, string $message): void
+    {
+        $tracking = app(OrderTrackingService::class)->currentTracking($order);
+
+        if (! $tracking?->tracking_number) {
+            return;
+        }
+
+        $tracking->update(['carrier_validation_error' => $message]);
+
+        Log::warning(
+            "carrier validate failed for order [{$order->number}] (tracking {$tracking->tracking_number}): {$message}"
+        );
+    }
+
+    /**
      * Validate a shipped order at the carrier (dispatch handover, Phase 36).
      * Sets order_trackings.carrier_validated_at (+ by) on success, or
      * carrier_validation_error on failure. Idempotent: already-validated
@@ -410,28 +461,9 @@ class OrderShippingGateway
             $message = (string) ($result['message'] ?? '');
 
             if ($ok) {
-                $tracking->update([
-                    'carrier_validated_at' => now(),
-                    'carrier_validated_by_membership_id' => $changedBy?->id,
-                    'carrier_validation_error' => null,
-                ]);
-
-                OrderTrackingHistory::create([
-                    'store_id' => $order->store_id,
-                    'order_id' => $order->id,
-                    'order_tracking_id' => $tracking->id,
-                    'status' => 'carrier_validated',
-                    'changed_by_membership_id' => $changedBy?->id,
-                    'payload' => ['carrier_validate' => true],
-                ]);
-
-                Log::info("carrier validate ok for order [{$order->number}] (tracking {$tracking->tracking_number})");
+                $this->markValidated($order, $changedBy);
             } else {
-                $tracking->update(['carrier_validation_error' => $message]);
-
-                Log::warning(
-                    "carrier validate failed for order [{$order->number}] (tracking {$tracking->tracking_number}): {$message}"
-                );
+                $this->recordValidationFailure($order, $message);
             }
 
             DB::commit();

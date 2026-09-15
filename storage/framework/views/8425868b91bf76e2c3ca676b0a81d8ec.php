@@ -15,9 +15,9 @@
                max-h-[75vh] overflow-y-auto edz-scroll
                sm:inset-x-auto sm:bottom-auto sm:z-50 sm:w-auto sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg"
         :class="{
-            'sm:max-h-64': open === 'status' || open === 'provider' || open === 'rider' || open === 'city' || open === 'assigned' || open === 'confirmed',
-            'sm:w-52': open === 'status' || open === 'date',
-            'sm:w-48': open === 'provider' || open === 'rider' || open === 'city' || open === 'amount' || open === 'assigned' || open === 'confirmed'
+            'sm:max-h-64': open === 'status' || open === 'provider' || open === 'rider' || open === 'city' || open === 'assigned' || open === 'confirmed' || open === 'products' || open === 'state',
+            'sm:w-52': open === 'status' || open === 'date' || open === 'products',
+            'sm:w-48': open === 'provider' || open === 'rider' || open === 'city' || open === 'amount' || open === 'assigned' || open === 'confirmed' || open === 'state'
         }">
         <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
         <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
@@ -130,6 +130,69 @@
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('products', $this->visibleColumns) && ! empty($this->allProducts)): ?>
+            <div x-show="open === 'products'" x-cloak class="edz-dropdown__section">
+                <p class="edz-dropdown__section-title"><?php echo e(__('merchant_panel.products')); ?></p>
+                <button @click="$wire.setFilter('products', []); close()"
+                    class="edz-dropdown__item justify-between <?php echo e(empty($this->filters['products']) ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
+                    <?php echo e(__('general.all')); ?>
+
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(empty($this->filters['products']) ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(empty($this->filters['products']) ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                </button>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allProducts, 15, 512) ?>" data-active="<?php echo json_encode($this->filters['products'] ?? [], 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.toggleProductFilter(item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="truncate" x-text="item.name"></span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5','x-bind:class' => 'checkCls(item.id)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('provider', $this->visibleColumns) && ! empty($this->allProviders)): ?>
             <div x-show="open === 'provider'" x-cloak class="edz-dropdown__section">
                 <p class="edz-dropdown__section-title"><?php echo e(__('order_flow.tracking_provider')); ?></p>
@@ -158,21 +221,24 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allProviders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click.prevent="$wire.setFilter('provider', '<?php echo e($pr['id']); ?>'); close()"
-                        aria-pressed="<?php echo e(($this->filters['provider'] ?? null) === $pr['id'] ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(($this->filters['provider'] ?? null) === $pr['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="truncate"><?php echo e($pr['name']); ?></span>
-                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allProviders, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['provider'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('provider', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="truncate" x-text="item.name"></span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(($this->filters['provider'] ?? null) === $pr['id'] ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(($this->filters['provider'] ?? null) === $pr['id'] ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5','x-bind:class' => 'checkCls(item.id)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -183,16 +249,14 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    </button>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </button>
+                    </template>
+                </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->trackingTab === 'rider' && in_array('delivery_rider', $this->visibleColumns) && ! empty($this->allRiders)): ?>
-            <?php
-                $riderCounts = collect($this->riderRiders)->keyBy('id');
-            ?>
             <div x-show="open === 'rider'" x-cloak class="edz-dropdown__section">
                 <p class="edz-dropdown__section-title"><?php echo e(__('order_flow.rider_tab_title')); ?></p>
                 <button @click="$wire.setFilter('rider', null); close()"
@@ -220,13 +284,15 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allRiders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $rRider): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <?php $riderTotal = (int) ($riderCounts->get($rRider['id'])['total'] ?? 0); ?>
-                    <button @click="close()" wire:click="setFilter('rider', '<?php echo e($rRider['id']); ?>')"
-                        aria-pressed="<?php echo e(($this->filters['rider'] ?? null) === $rRider['id'] ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(($this->filters['rider'] ?? null) === $rRider['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="inline-flex items-center gap-1 truncate">
-                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->searchableRiders, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['rider'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('rider', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="inline-flex items-center gap-1 truncate">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-3 h-3 shrink-0 text-ink-muted']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -246,21 +312,19 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                            <span class="truncate"><?php echo e($rRider['name']); ?></span>
-                        </span>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($riderTotal > 0): ?>
-                            <span class="text-[10px] tabular-nums text-ink-muted"><?php echo e($riderTotal); ?></span>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                <span class="truncate" x-text="item.name"></span>
+                            </span>
+                            <span class="text-[10px] tabular-nums text-ink-muted" x-text="item.total > 0 ? item.total : ''"></span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['rider'] ?? null) === $rRider['id'] ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['rider'] ?? null) === $rRider['id'] ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','x-bind:class' => 'checkCls(item.id)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -271,8 +335,9 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    </button>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </button>
+                    </template>
+                </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -305,12 +370,15 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allMembers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $mem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click="close()" wire:click="setFilter('assigned_to', '<?php echo e($mem['id']); ?>')"
-                        aria-pressed="<?php echo e(($this->filters['assigned_to'] ?? null) === $mem['id'] ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(($this->filters['assigned_to'] ?? null) === $mem['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="inline-flex items-center gap-1 truncate">
-                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allMembers, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['assigned_to'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('assigned_to', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="inline-flex items-center gap-1 truncate">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-3 h-3 shrink-0 text-ink-muted']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -330,18 +398,18 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                            <span class="truncate"><?php echo e($mem['name']); ?></span>
-                        </span>
-                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                <span class="truncate" x-text="item.name"></span>
+                            </span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['assigned_to'] ?? null) === $mem['id'] ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['assigned_to'] ?? null) === $mem['id'] ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','x-bind:class' => 'checkCls(item.id)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -352,8 +420,9 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    </button>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </button>
+                    </template>
+                </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -386,12 +455,15 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allMembers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $mem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click="close()" wire:click="setFilter('confirmed_by', '<?php echo e($mem['id']); ?>')"
-                        aria-pressed="<?php echo e(($this->filters['confirmed_by'] ?? null) === $mem['id'] ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(($this->filters['confirmed_by'] ?? null) === $mem['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="inline-flex items-center gap-1 truncate">
-                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allMembers, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['confirmed_by'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('confirmed_by', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="inline-flex items-center gap-1 truncate">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'user','class' => 'w-3 h-3 shrink-0 text-ink-muted']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -411,18 +483,18 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                            <span class="truncate"><?php echo e($mem['name']); ?></span>
-                        </span>
-                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                                <span class="truncate" x-text="item.name"></span>
+                            </span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['confirmed_by'] ?? null) === $mem['id'] ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0 '.e(($this->filters['confirmed_by'] ?? null) === $mem['id'] ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 shrink-0','x-bind:class' => 'checkCls(item.id)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -433,8 +505,72 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    </button>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('state', $this->visibleColumns) && ! empty($this->allStates)): ?>
+            <div x-show="open === 'state'" x-cloak class="edz-dropdown__section">
+                <p class="edz-dropdown__section-title"><?php echo e(__('merchant_panel.state')); ?></p>
+                <button @click="$wire.setFilter('state', null); close()"
+                    class="edz-dropdown__item justify-between <?php echo e(empty($this->filters['state']) ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
+                    <?php echo e(__('general.all')); ?>
+
+                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(empty($this->filters['state']) ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(empty($this->filters['state']) ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                </button>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allStates, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['state'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('state', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="truncate" x-text="item.name"></span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5','x-bind:class' => 'checkCls(item.id)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                        </button>
+                    </template>
+                </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -467,21 +603,24 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allCities; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ct): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click="close()" wire:click="setFilter('city', '<?php echo e($ct['id']); ?>')"
-                        aria-pressed="<?php echo e(($this->filters['city'] ?? null) === $ct['id'] ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(($this->filters['city'] ?? null) === $ct['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="truncate"><?php echo e($ct['name']); ?></span>
-                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <div x-data="edzSearchableList()" data-items="<?php echo json_encode($this->allCities, 15, 512) ?>" data-active="<?php echo json_encode(array_filter([$this->filters['city'] ?? null]), 15, 512) ?>">
+                    <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('city', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="edz-dropdown__item justify-between"
+                            :class="activeCls(item.id)">
+                            <span class="truncate" x-text="item.name"></span>
+                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(($this->filters['city'] ?? null) === $ct['id'] ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5','xBind:class' => 'checkCls(item.id)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(($this->filters['city'] ?? null) === $ct['id'] ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5','x-bind:class' => 'checkCls(item.id)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -492,8 +631,9 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    </button>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </button>
+                    </template>
+                </div>
             </div>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 

@@ -28,13 +28,6 @@ trait OrderDeliveryPartnerConcern
             return;
         }
 
-        // A partner switch re-evaluates the carrier lanes: the refund request,
-        // the can-open flag and the warehouse-shipment lane never survive a leg
-        // change (the new partner may not offer them — the UI re-shows the toggles).
-        $this->form['refund_request'] = false;
-        $this->form['can_open'] = false;
-        $this->form['send_from_carrier_warehouse'] = false;
-
         $kind = str_starts_with($encodedValue, 'r:') ? 'rider' : 'provider';
         $id = (string) substr($encodedValue, 2);
         $this->formPartnerType = $encodedValue;

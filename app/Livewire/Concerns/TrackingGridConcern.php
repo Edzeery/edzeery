@@ -36,12 +36,13 @@ trait TrackingGridConcern
                 'customer',
                 'status',
                 'latestTracking.shippingProvider',
-                'shippingProvider',
+                'shippingProvider.carrier',
                 'deliveryRider',
                 'city',
                 'state',
                 'assignedMembership.user',
                 'confirmedByHistory.changedBy.user',
+                'items.product:id,name',
             ]);
 
             // Deleted orders can no longer be filtered by an active workflow scope,
@@ -76,12 +77,13 @@ trait TrackingGridConcern
                 'customer',
                 'status',
                 'latestTracking.shippingProvider',
-                'shippingProvider',
+                'shippingProvider.carrier',
                 'deliveryRider',
                 'city',
                 'state',
                 'assignedMembership.user',
                 'confirmedByHistory.changedBy.user',
+                'items.product:id,name',
             ]);
         }
 
@@ -123,6 +125,14 @@ trait TrackingGridConcern
 
         if (filled($f['city'] ?? null)) {
             $query->where('city_id', $f['city']);
+        }
+
+        if (filled($f['state'] ?? null)) {
+            $query->where('state_id', $f['state']);
+        }
+
+        if (! empty($f['products'])) {
+            $query->whereHas('items', fn ($q) => $q->whereIn('product_id', $f['products']));
         }
 
         if ($this->trackingTab === 'rider') {
@@ -174,6 +184,7 @@ trait TrackingGridConcern
         if ($this->showTrash) {
             $this->stats = ['active' => 0, 'delivered_today' => 0, 'returned_today' => 0];
             $this->riderRiders = [];
+            $this->searchableRiders = [];
             $this->riderStatsActiveCount = 0;
             $this->riderStatsActiveShipments = 0;
             $this->riderStatsCodDueToday = 0;
@@ -196,6 +207,7 @@ trait TrackingGridConcern
         ];
 
         $this->riderRiders = [];
+        $this->searchableRiders = [];
         $this->riderStatsActiveCount = 0;
         $this->riderStatsActiveShipments = 0;
         $this->riderStatsCodDueToday = 0;
@@ -219,22 +231,36 @@ trait TrackingGridConcern
             ->get()
             ->keyBy('delivery_rider_id');
 
-        if ($grouped->isEmpty()) {
-            return;
+        if (! $grouped->isEmpty()) {
+            $this->riderRiders = app(DeliveryRiderService::class)->listForStore(currentStoreId())
+                ->filter(fn (DeliveryRider $rider) => $grouped->has($rider->id))
+                ->map(function (DeliveryRider $rider) use ($grouped) {
+                    return [
+                        'id' => $rider->id,
+                        'name' => $rider->name,
+                        'phone' => $rider->phone,
+                        'vehicle_label' => $rider->vehicle_label,
+                        'is_active' => (bool) $rider->is_active,
+                        'total' => (int) ($grouped->get($rider->id)?->total_count ?? 0),
+                    ];
+                })
+                ->values()
+                ->all();
         }
 
-        $this->riderRiders = app(DeliveryRiderService::class)->listForStore(currentStoreId())
-            ->filter(fn (DeliveryRider $rider) => $grouped->has($rider->id))
-            ->map(function (DeliveryRider $rider) use ($grouped) {
-                return [
-                    'id' => $rider->id,
-                    'name' => $rider->name,
-                    'phone' => $rider->phone,
-                    'vehicle_label' => $rider->vehicle_label,
-                    'is_active' => (bool) $rider->is_active,
-                    'total' => (int) ($grouped->get($rider->id)?->total_count ?? 0),
-                ];
-            })
+        // searchableRiders = ALL configured riders (not just those with
+        // shipments) merged with their current filter totals — powers the
+        // rider header-dropdown search list. @json stays single-line.
+        $riderTotals = collect($this->riderRiders)->keyBy('id');
+        $this->searchableRiders = app(DeliveryRiderService::class)->listForStore(currentStoreId())
+            ->map(fn (DeliveryRider $r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'phone' => $r->phone,
+                'vehicle_label' => $r->vehicle_label,
+                'is_active' => (bool) $r->is_active,
+                'total' => (int) ($riderTotals->get($r->id)['total'] ?? 0),
+            ])
             ->values()
             ->all();
     }
@@ -273,9 +299,20 @@ trait TrackingGridConcern
                     'customer' => $order->customer?->name ?? '—',
                     'phone' => $order->customer?->phone ?? $order->phone ?? '—',
                     'total' => currency($order->total_amount),
+                    'products' => $order->items
+                        ->map(fn ($i) => [
+                            'name' => trim((string) ($i->product?->name ?? '—')),
+                            'qty' => max(1, (int) $i->quantity),
+                        ])
+                        ->filter(fn ($p) => $p['name'] !== '' && $p['name'] !== '—')
+                        ->groupBy('name')
+                        ->map(fn ($rows) => ['name' => $rows->first()['name'], 'qty' => (int) $rows->sum('qty')])
+                        ->values()
+                        ->all(),
                     'city' => $order->city?->name ?? '—',
                     'state' => $order->state?->name ?? '—',
                     'provider' => $order->shippingProvider?->name ?? '—',
+                    'provider_logo' => $order->shippingProvider?->carrier?->logo,
                     'delivery_rider' => $order->deliveryRider?->name ?? '—',
                     'tracking_number' => $tracking?->tracking_number,
                     'tracking_id' => $tracking?->id,
@@ -306,121 +343,6 @@ trait TrackingGridConcern
 
     public function refresh(): void
     {
-        $this->loadShipments();
-    }
-
-    public function clearFilters(): void
-    {
-        $this->search = '';
-        $this->filters = [
-            'provider' => null,
-            'tracking_statuses' => [],
-            'date_from' => null,
-            'date_to' => null,
-            'amount_min' => null,
-            'amount_max' => null,
-            'city' => null,
-            'rider' => null,
-            'assigned_to' => null,
-            'confirmed_by' => null,
-        ];
-        $this->page = 1;
-        $this->loadShipments();
-    }
-
-    // Filter groups available to the toolbar "Filters" drill-down portal. A group
-    // is offered ONLY when its underlying column is NOT currently visible in the
-    // grid — a visible column already exposes the same filter via its header icon.
-    public function availableFilterGroups(): array
-    {
-        $map = [
-            'provider' => ['column' => 'provider', 'tab' => 'carrier'],
-            'tracking_statuses' => ['column' => 'tracking_status'],
-            'date' => ['column' => 'shipping_date'],
-            'amount' => ['column' => 'total'],
-            'city' => ['column' => 'city'],
-            'rider' => ['column' => 'delivery_rider', 'tab' => 'rider'],
-            'assigned_to' => ['column' => 'assigned_to'],
-            'confirmed_by' => ['column' => 'confirmed_by'],
-        ];
-
-        $available = [];
-
-        foreach ($map as $group => $cfg) {
-            if (! empty($cfg['tab']) && $this->trackingTab !== $cfg['tab']) {
-                continue;
-            }
-            if (! in_array($cfg['column'], $this->visibleColumns, true)) {
-                $available[] = $group;
-            }
-        }
-
-        return $available;
-    }
-
-    // Counts active filters among the *available* drill-down groups only — the
-    // badge on the Filters trigger mirrors what the menu can actually clear.
-    public function activeFilterCount(): int
-    {
-        $count = 0;
-
-        foreach ($this->availableFilterGroups() as $group) {
-            switch ($group) {
-                case 'tracking_statuses':
-                    if (count($this->filters['tracking_statuses'] ?? []) > 0) {
-                        $count++;
-                    }
-                    break;
-                case 'date':
-                    if (filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null)) {
-                        $count++;
-                    }
-                    break;
-                case 'amount':
-                    if (filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null)) {
-                        $count++;
-                    }
-                    break;
-                default:
-                    if (filled($this->filters[$group] ?? null)) {
-                        $count++;
-                    }
-            }
-        }
-
-        return $count;
-    }
-
-    public function setFilter(string $key, $value): void
-    {
-        if ($key === 'rider' && $value !== null) {
-            $rider = app(DeliveryRiderService::class)->findForStore($value, currentStoreId());
-
-            if (! $rider) {
-                return;
-            }
-        }
-
-        if (in_array($key, ['assigned_to', 'confirmed_by'], true) && $value !== null) {
-            $member = collect($this->allMembers)->firstWhere('id', $value);
-
-            if (! $member) {
-                return;
-            }
-        }
-
-        $this->filters[$key] = $value;
-        $this->page = 1;
-        $this->loadShipments();
-    }
-
-    public function toggleTrackingStatus(string $value): void
-    {
-        $current = $this->filters['tracking_statuses'] ?? [];
-        $this->filters['tracking_statuses'] = in_array($value, $current, true)
-            ? array_values(array_diff($current, [$value]))
-            : array_merge($current, [$value]);
-        $this->page = 1;
         $this->loadShipments();
     }
 

@@ -3,17 +3,14 @@
 use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\ShippingProvider;
-use App\Domains\Shipping\Services\CarrierFeatureService;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
-use App\Models\Store\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use function Livewire\Volt\computed;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
-
 
 layout('components.layouts.store');
 
@@ -34,9 +31,6 @@ state([
         'credential_values' => [],
         'is_active' => true,
         'is_default' => false,
-        'refund_request_enabled' => false,
-        'can_open_enabled' => false,
-        'send_from_carrier_warehouse_enabled' => false,
         'max_weight_kg' => Order::DEFAULT_MAX_WEIGHT_KG,
     ],
 
@@ -107,8 +101,6 @@ $carrierOption = function (Carrier $c): array {
         'code' => $c->code,
         'logo' => $c->logo,
         'credential_fields' => $c->credentialFieldList(),
-        'capabilities' => $c->capabilityList(),
-        'api_capabilities' => app(\App\Domains\Shipping\Services\CarrierFeatureService::class)->apiCapabilities($c),
     ];
 };
 
@@ -172,9 +164,6 @@ $selectProviderPlatform = function (string $platformId): void {
     $this->providerForm['carrier_id'] = '';
     $this->providerForm['name'] = '';
     $this->providerForm['credential_values'] = [];
-    $this->providerForm['refund_request_enabled'] = false;
-    $this->providerForm['can_open_enabled'] = false;
-    $this->providerForm['send_from_carrier_warehouse_enabled'] = false;
     $this->connectionTestResult = null;
 
     // A company whose catalogue has a single branch needs no branch picker:
@@ -189,9 +178,6 @@ $selectProviderPlatform = function (string $platformId): void {
 $selectProviderCarrier = function (string $carrierId): void {
     $this->providerForm['carrier_id'] = $carrierId;
     $this->providerForm['credential_values'] = [];
-    $this->providerForm['refund_request_enabled'] = false;
-    $this->providerForm['can_open_enabled'] = false;
-    $this->providerForm['send_from_carrier_warehouse_enabled'] = false;
     $this->connectionTestResult = null;
 
     $carrier = collect($this->providerCarrierOptions())->firstWhere('id', $carrierId);
@@ -254,9 +240,6 @@ $openProviderModal = function (?string $providerId = null): void {
         $this->providerForm['name'] = $provider->name;
         $this->providerForm['is_active'] = $provider->is_active;
         $this->providerForm['is_default'] = $provider->is_default;
-        $this->providerForm['refund_request_enabled'] = (bool) ($provider->refund_request_enabled ?? false);
-        $this->providerForm['can_open_enabled'] = (bool) ($provider->can_open_enabled ?? false);
-        $this->providerForm['send_from_carrier_warehouse_enabled'] = (bool) ($provider->send_from_carrier_warehouse_enabled ?? false);
         $this->providerForm['max_weight_kg'] = $provider->max_weight_kg;
 
         $credentials = (array) ($provider->credentials ?? []);
@@ -276,9 +259,6 @@ $openProviderModal = function (?string $providerId = null): void {
             'credential_values' => [],
             'is_active' => true,
             'is_default' => false,
-            'refund_request_enabled' => false,
-            'can_open_enabled' => false,
-            'send_from_carrier_warehouse_enabled' => false,
             'max_weight_kg' => Order::DEFAULT_MAX_WEIGHT_KG,
         ];
     }
@@ -316,9 +296,6 @@ $saveProvider = function (): void {
         'credentials' => array_filter($this->providerForm['credential_values'] ?? [], fn ($v) => $v !== '' && $v !== null),
         'is_active' => $this->providerForm['is_active'],
         'is_default' => $this->providerForm['is_default'],
-        'refund_request_enabled' => (bool) ($this->providerForm['refund_request_enabled'] ?? false),
-        'can_open_enabled' => (bool) ($this->providerForm['can_open_enabled'] ?? false),
-        'send_from_carrier_warehouse_enabled' => (bool) ($this->providerForm['send_from_carrier_warehouse_enabled'] ?? false),
         'max_weight_kg' => $this->providerForm['max_weight_kg'] ?: Order::DEFAULT_MAX_WEIGHT_KG,
     ];
 
@@ -728,15 +705,6 @@ $deleteProvider = function (string $id): void {
                     @endif
 
                     {{-- Options --}}
-                    @php
-                        $caps = $carrier['capabilities'] ?? [];
-                        $apiCaps = $carrier['api_capabilities'] ?? [];
-                        // An opt-in is offered only when the carrier structure
-                        // AND its integration adapter both declare the feature.
-                        $carrierSupportsRefundRequest = ! empty($caps['refund_request']) && ! empty($apiCaps['refund_request']);
-                        $carrierSupportsCanOpen = ! empty($caps['can_open']) && ! empty($apiCaps['can_open']);
-                        $carrierSupportsWarehouse = ! empty($caps['send_from_carrier_warehouse']) && ! empty($apiCaps['send_from_carrier_warehouse']);
-                    @endphp
                     <div class="flex flex-wrap items-center gap-6">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" wire:model="providerForm.is_active" class="edz-checkbox" />
@@ -746,24 +714,6 @@ $deleteProvider = function (string $id): void {
                             <input type="checkbox" wire:model="providerForm.is_default" class="edz-checkbox" />
                             <span class="text-sm text-ink">{{ __('merchant_panel.make_default') }}</span>
                         </label>
-                        @if ($carrierSupportsRefundRequest)
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" wire:model="providerForm.refund_request_enabled" class="edz-checkbox" />
-                                <span class="text-sm text-ink">{{ __('merchant_panel.refund_request') }}</span>
-                            </label>
-                        @endif
-                        @if ($carrierSupportsCanOpen)
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" wire:model="providerForm.can_open_enabled" class="edz-checkbox" />
-                                <span class="text-sm text-ink">{{ __('merchant_panel.can_open') }}</span>
-                            </label>
-                        @endif
-                        @if ($carrierSupportsWarehouse)
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" wire:model="providerForm.send_from_carrier_warehouse_enabled" class="edz-checkbox" />
-                                <span class="text-sm text-ink">{{ __('merchant_panel.send_from_carrier_warehouse') }}</span>
-                            </label>
-                        @endif
                     </div>
 
                     {{-- Max order weight --}}

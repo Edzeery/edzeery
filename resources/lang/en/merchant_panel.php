@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'delete' => 'Delete',
     'account' => 'Account',
     'active' => 'Active',
     'algerian_dinar' => 'Algerian Dinar',
@@ -294,14 +295,6 @@ return [
     'tracking_status' => 'Tracking status',
     'stopdesk_point' => 'Desk',
     'send_from_carrier_warehouse' => 'Ship from Carrier Warehouse',
-    'send_from_carrier_warehouse_definition' => 'Request the carrier to ship the order from its own warehouse stock instead of the store.',
-    'send_from_carrier_warehouse_tooltip' => 'Ship from carrier warehouse: :definition',
-    'refund_request' => 'Refund request',
-    'refund_request_definition' => 'If you choose to request a refund, you cannot send a physical order.',
-    'refund_request_tooltip' => 'Refund request: :definition',
-    'can_open' => 'Can open',
-    'can_open_definition' => 'Prior merchant authorization for the carrier to open the package and inspect the contents before delivery.',
-    'can_open_tooltip' => 'Can open: :definition',
     'meta' => 'Meta',
     'confirmed_by' => 'Confirmed By',
     'assigned_agent' => 'Handler',

@@ -616,12 +616,13 @@ test('column preferences persist per view_key and reorder via the settings modal
             'customer',
             'city',
             'state',
+            'products',
             'total',
             'tracking_status',
             'provider',
+            'shipping_date',
             'assigned_to',
             'confirmed_by',
-            'shipping_date',
             'actions',
         ]);
 
@@ -791,4 +792,209 @@ test('an unrestricted owner still sees every rider shipment on the rider tab', f
         ->set('trackingTab', 'rider')
         ->assertSet('shipments', fn ($rows) => count($rows) === 2)
         ->assertSet('riderStatsActiveShipments', 2);
+});
+
+// ——— Filter portal data presence + hasActiveFilters + availableFilterGroups tests ———
+
+function tsfCreateProducts(Store $store): array
+{
+    $p1 = \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'Alpha Widget',
+        'slug' => 'alpha-widget-'.uniqid(),
+        'sku' => 'AW-'.uniqid(),
+        'price' => 500,
+    ]);
+    $p2 = \App\Models\Products\Product::create([
+        'store_id' => $store->id,
+        'name' => 'Beta Widget',
+        'slug' => 'beta-widget-'.uniqid(),
+        'sku' => 'BW-'.uniqid(),
+        'price' => 300,
+    ]);
+
+    return [$p1, $p2];
+}
+
+function tsfAttachProduct(Order $order, $product): void
+{
+    $storeId = $order->store_id;
+    $variant = \App\Models\Products\ProductVariant::where('store_id', $storeId)
+        ->where('product_id', $product->id)
+        ->first();
+
+    if (! $variant) {
+        $variant = \App\Models\Products\ProductVariant::create([
+            'store_id' => $storeId,
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'sku' => $product->sku . '-v1',
+            'price' => $product->price,
+            'stock' => 100,
+            'is_active' => true,
+        ]);
+    }
+
+    $exists = \App\Models\Orders\OrderItem::where('store_id', $storeId)
+        ->where('order_id', $order->id)
+        ->where('product_variant_id', $variant->id)
+        ->exists();
+
+    if ($exists) {
+        return;
+    }
+
+    \App\Models\Orders\OrderItem::create([
+        'store_id' => $storeId,
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'product_variant_id' => $variant->id,
+        'price' => $product->price,
+        'quantity' => 1,
+        'subtotal' => $product->price,
+    ]);
+}
+
+test('availableFilterGroups always includes products and amount', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Groups Co');
+    tsfOrder($store, $provider, 'TRK-GRP-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $html = Volt::test('merchant.tracking.index')->html();
+
+    expect($html)->toContain('products')
+        ->and($html)->toContain('amount')
+        ->and($html)->toContain('state')
+        ->and($html)->toContain('tracking_statuses')
+        ->and($html)->toContain('city')
+        ->and($html)->toContain('assigned_to')
+        ->and($html)->toContain('confirmed_by');
+});
+
+test('activeFilterCount includes products and amount', function () {
+    [$user, $store, $membership] = tsfOwner();
+    [$p1, $p2] = tsfCreateProducts($store);
+    $provider = tsfProvider($store, 'Count Co');
+    $order = tsfOrder($store, $provider, 'TRK-CNT-1', OrderTrackingStatus::SHIPPED->value);
+    tsfAttachProduct($order, $p1);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $volt = Volt::test('merchant.tracking.index');
+    expect($volt->instance()->activeFilterCount())->toBe(0);
+
+    $volt->call('toggleProductFilter', (string) $p1->id);
+    expect($volt->instance()->activeFilterCount())->toBe(1);
+
+    $volt->call('toggleProductFilter', (string) $p1->id); // remove
+    expect($volt->instance()->activeFilterCount())->toBe(0);
+
+    $volt->call('setFilter', 'amount_min', 500);
+    expect($volt->instance()->activeFilterCount())->toBe(1);
+
+    $volt->call('setFilter', 'amount_min', null);
+    expect($volt->instance()->activeFilterCount())->toBe(0);
+
+    $volt->call('toggleTrackingStatus', OrderTrackingStatus::IN_TRANSIT->value);
+    expect($volt->instance()->activeFilterCount())->toBe(1);
+});
+
+test('filter portals contain all states, providers, cities, members and products', function () {
+    [$user, $store, $membership] = tsfOwner();
+    tsfOtherMember($store); // non-owner member feeds allMembers
+    $provider = tsfProvider($store, 'Portal Provider');
+    [$p1, $p2] = tsfCreateProducts($store);
+
+    $country = \App\Models\Locations\Country::create(['name' => 'Portal Land', 'code' => 'PL', 'is_active' => true]);
+    $state = \App\Models\Locations\State::create([
+        'country_id' => $country->id,
+        'state_code' => '16',
+        'name' => 'Portal State',
+        'is_active' => true,
+        'is_cod_available' => true,
+    ]);
+    $city = \App\Models\Locations\City::create([
+        'state_id' => $state->id,
+        'name' => 'Portal City',
+        'post_code' => '16000',
+        'is_active' => true,
+    ]);
+
+    $order = tsfOrder($store, $provider, 'TRK-PRT-1', OrderTrackingStatus::IN_TRANSIT->value);
+    $order->update(['state_id' => $state->id, 'city_id' => $city->id]);
+    tsfAttachProduct($order, $p1);
+    tsfAttachProduct($order, $p2);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $component = Volt::test('merchant.tracking.index');
+
+    // Server-side data arrays must be populated.
+    expect($component->get('allProviders'))->not->toBeEmpty()
+        ->and($component->get('allStates'))->not->toBeEmpty()
+        ->and($component->get('allMembers'))->not->toBeEmpty()
+        ->and($component->get('allProducts'))->not->toBeEmpty()
+        ->and($component->get('allCities'))->not->toBeEmpty();
+
+    // Rendered HTML must contain the names for Alpine x-text to display.
+    $html = $component->html();
+
+    expect($html)->toContain('Portal Provider')
+        ->and($html)->toContain('Portal State')
+        ->and($html)->toContain('Portal City')
+        ->and($html)->toContain('Alpha Widget')
+        ->and($html)->toContain('Beta Widget');
+});
+
+test('products filter narrows the grid to orders containing those products', function () {
+    [$user, $store, $membership] = tsfOwner();
+    [$p1, $p2] = tsfCreateProducts($store);
+    $provider = tsfProvider($store, 'Prod Co');
+
+    $o1 = tsfOrder($store, $provider, 'TRK-PF-1', OrderTrackingStatus::IN_TRANSIT->value);
+    tsfAttachProduct($o1, $p1);
+    $o2 = tsfOrder($store, $provider, 'TRK-PF-2', OrderTrackingStatus::SHIPPED->value);
+    tsfAttachProduct($o2, $p2);
+    $o3 = tsfOrder($store, $provider, 'TRK-PF-3', OrderTrackingStatus::IN_TRANSIT->value);
+    tsfAttachProduct($o3, $p1);
+    tsfAttachProduct($o3, $p2);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->assertSet('filteredTotal', 3)
+        ->call('toggleProductFilter', (string) $p1->id)
+        ->assertSet('filters.products', [(string) $p1->id])
+        ->assertSet('filteredTotal', 2)
+        ->assertSet('shipments', fn ($rows) => collect($rows)->pluck('number')->contains($o1->number)
+            && collect($rows)->pluck('number')->contains($o3->number)
+            && collect($rows)->pluck('number')->doesntContain($o2->number))
+        ->call('toggleProductFilter', (string) $p2->id)
+        ->assertSet('filters.products', [(string) $p1->id, (string) $p2->id])
+        ->assertSet('filteredTotal', 3)
+        ->assertSet('shipments', fn ($rows) => collect($rows)->pluck('number')->contains($o1->number)
+            && collect($rows)->pluck('number')->contains($o2->number)
+            && collect($rows)->pluck('number')->contains($o3->number))
+        ->call('toggleProductFilter', (string) $p1->id) // keep only p2
+        ->assertSet('filters.products', [(string) $p2->id])
+        ->assertSet('filteredTotal', 2)
+        ->assertSet('shipments', fn ($rows) => collect($rows)->pluck('number')->contains($o2->number)
+            && collect($rows)->pluck('number')->contains($o3->number)
+            && collect($rows)->pluck('number')->doesntContain($o1->number));
+});
+
+test('the toolbar filter portal includes products in its root groups', function () {
+    [$user, $store, $membership] = tsfOwner();
+    $provider = tsfProvider($store, 'Toolbar Co');
+    tsfOrder($store, $provider, 'TRK-TB-1', OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $html = Volt::test('merchant.tracking.index')->html();
+
+    // The toolbar portal renders group labels via $groupLabels; 'products'
+    // must appear as a navigable sub-menu.
+    expect($html)->toContain("open === 'products'");
 });

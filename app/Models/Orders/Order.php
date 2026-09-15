@@ -73,8 +73,6 @@ class Order extends Model
         'last_contact_at',
         'weight_kg',
         'shipment_type',
-        'refund_request',
-        'can_open',
         'meta',
         'send_from_carrier_warehouse',
     ];
@@ -89,8 +87,6 @@ class Order extends Model
         'confirmation_attempts' => 'integer',
         'meta' => 'array',
         'send_from_carrier_warehouse' => 'boolean',
-        'refund_request' => 'boolean',
-        'can_open' => 'boolean',
     ];
 
     const DELIVERY_HOME    = 'home';

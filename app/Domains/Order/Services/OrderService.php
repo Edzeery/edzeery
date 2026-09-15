@@ -194,8 +194,6 @@ public function availableTransitions(Order $order): array
                 'phone_secondary' => $data['phone_secondary'] ?? null,
                 'weight_kg' => ($data['weight_kg'] ?? null) ?: 1.00,
                 'shipment_type' => $data['shipment_type'] ?? 'delivery',
-                'refund_request' => (bool) ($data['refund_request'] ?? false),
-                'can_open' => (bool) ($data['can_open'] ?? false),
                 'discount_type' => $data['discount_type'] ?? null,
                 'discount_value' => $data['discount_value'] ?? null,
                 'discount_reason' => $data['discount_reason'] ?? null,

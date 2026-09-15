@@ -21,27 +21,28 @@ trait TrackingColumnConcern
             ['key' => 'customer', 'label_key' => 'customer', 'required' => true],
             ['key' => 'state', 'label_key' => 'state', 'required' => true],
             ['key' => 'city', 'label_key' => 'city'],
+            ['key' => 'products', 'label_key' => 'products', 'required' => true],
             ['key' => 'total', 'label_key' => 'total', 'required' => true],
             ['key' => 'tracking_status', 'label_key' => 'tracking_status', 'required' => true],
-            ['key' => 'assigned_to', 'label_key' => 'assigned_agent'],
-            ['key' => 'confirmed_by', 'label_key' => 'confirmed_by'],
             ['key' => 'notes', 'label_key' => 'notes'],
             ['key' => 'shipping_date', 'label_key' => 'date'],
+            ['key' => 'assigned_to', 'label_key' => 'assigned_agent'],
+            ['key' => 'confirmed_by', 'label_key' => 'confirmed_by'],
             ['key' => 'actions', 'label_key' => 'actions', 'required' => true],
         ];
 
         if ($this->trackingTab === 'rider') {
             return array_merge(
-                array_slice($base, 0, 7),
+                array_slice($base, 0, 9),
                 [['key' => 'delivery_rider', 'label_key' => 'rider_name', 'required' => true]],
-                array_slice($base, 7),
+                array_slice($base, 9),
             );
         }
 
         return array_merge(
-            array_slice($base, 0, 7),
+            array_slice($base, 0, 9),
             [['key' => 'provider', 'label_key' => 'shipping_provider', 'required' => true]],
-            array_slice($base, 7),
+            array_slice($base, 9),
         );
     }
 
@@ -49,8 +50,8 @@ trait TrackingColumnConcern
     {
         return array_values(array_intersect(
             $this->trackingTab === 'rider'
-                ? ['number', 'tracking_number', 'customer', 'state', 'city', 'total', 'tracking_status', 'delivery_rider', 'assigned_to', 'confirmed_by', 'notes', 'shipping_date', 'actions']
-                : ['number', 'tracking_number', 'customer', 'state', 'city', 'total', 'tracking_status', 'provider', 'assigned_to', 'confirmed_by', 'notes', 'shipping_date', 'actions'],
+                ? ['number', 'tracking_number', 'customer', 'state', 'city', 'products', 'total', 'tracking_status', 'notes', 'delivery_rider', 'shipping_date', 'assigned_to', 'confirmed_by', 'actions']
+                : ['number', 'tracking_number', 'customer', 'state', 'city', 'products', 'total', 'tracking_status', 'notes', 'provider', 'shipping_date', 'assigned_to', 'confirmed_by', 'actions'],
             collect($this->trackingColumns())->pluck('key')->all(),
         ));
     }
@@ -72,7 +73,7 @@ trait TrackingColumnConcern
         $validKeys = collect($this->trackingColumns())->pluck('key')->all();
         $required = collect($this->trackingColumns())->where('required', true)->pluck('key')->all();
         $defaults = $this->trackingDefaultOrder();
-        $prefsVersion = 2;
+        $prefsVersion = 3;
 
         $membership = $this->getMembership();
         if (! $membership) {
@@ -146,7 +147,7 @@ trait TrackingColumnConcern
             [
                 'visible_columns' => $ordered,
                 'table_style' => $this->tableStyle,
-                'prefs_version' => 2,
+                'prefs_version' => 3,
             ],
         );
     }

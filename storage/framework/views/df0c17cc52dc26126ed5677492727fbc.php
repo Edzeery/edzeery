@@ -108,6 +108,9 @@ use Livewire\Volt\Component;
     <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-filter-bar-portal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     
+    <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-date-portal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+    
     <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-table-settings-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     
@@ -125,6 +128,9 @@ use Livewire\Volt\Component;
     
     <?php echo $__env->make('livewire.merchant.orders.partials.order-form-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php echo $__env->make('livewire.merchant.orders.partials.orders-product-picker', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+
+    
+    <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-bulk-validate', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <script>
         if (! window.__edzTrackingOpenLabel) {

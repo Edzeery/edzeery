@@ -135,11 +135,11 @@ trait TrackingDrawerConcern
         $this->canViewDrawerEvents = false;
     }
 
-    // ——— Tracking-status popup (P29.4) — opened from the tracking-status column/card. --—
+    // ——— Tracking-status popup (P29.4, stepper Phase 7) — opened from the tracking-status column/card. --—
     public function openStatusHistory(string $orderId): void
     {
         $order = Order::where('store_id', currentStoreId())
-            ->with('latestTracking.shippingProvider')
+            ->with('latestTracking.shippingProvider.carrier')
             ->find($orderId);
 
         if (! $order?->latestTracking) {
@@ -164,6 +164,12 @@ trait TrackingDrawerConcern
         $this->statusHistoryMeta = [
             'number' => $order->number,
             'tracking_number' => $tracking->tracking_number,
+            'tracking_id' => $tracking->id,
+            'tracking_status' => $tracking->tracking_status,
+            'carrier_supports_api_notes' => (bool) ($tracking->shippingProvider?->carrier?->capabilityList()['api_notes'] ?? false),
+            'public_tracking_url' => $tracking->tracking_number
+                ? $tracking->shippingProvider?->carrier?->publicTrackingUrl((string) $tracking->tracking_number)
+                : null,
         ];
     }
 
@@ -323,6 +329,11 @@ trait TrackingDrawerConcern
                 $this->noteDraft = '';
 
                 $this->loadDrawerHistories($tracking->id);
+
+                // The composer now lives in the status popup — keep its timeline in sync.
+                if (filled($this->statusHistoryFor) && (string) $this->statusHistoryFor === (string) $tracking->order_id) {
+                    $this->statusHistory = $this->drawerStatusHistories;
+                }
 
                 $this->dispatch('swal:toast', ['icon' => 'success', 'title' => ($result['message'] ?? __('order_flow.note_sent'))]);
             } else {

@@ -3,7 +3,6 @@
 namespace App\Domains\Shipping\Adapters;
 
 use App\Domains\Orders\Support\OrderItemsFormatter;
-use App\Domains\Orders\Support\OrderItemsGrouper;
 use App\Domains\Shipping\Contracts\CarrierIntegrationContract;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Models\Locations\City;
@@ -33,21 +32,6 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
     public function carrierCode(): string
     {
         return 'noest';
-    }
-
-    /**
-     * Declared NOEST v2.3 API capabilities (docs/توثيق_واجهة_برمجة_تطبيقات_NOEST_v2.3.md).
-     * - refund_request           → `remboursement` (0/1) documented, must be enabled on the account.
-     * - send_from_carrier_warehouse → `stock` (0/1) + `quantite` documented (linked to warehouse stock).
-     * - can_open                  → NOT documented anywhere in the v2.3 reference: hidden and never sent.
-     */
-    public function capabilities(): array
-    {
-        return [
-            'refund_request' => true,
-            'send_from_carrier_warehouse' => true,
-            'can_open' => false,
-        ];
     }
 
     public function offices(ShippingProvider $provider, ?State $state = null, ?City $city = null): array
@@ -239,18 +223,12 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
             'poids' => (float) ($order->weight_kg ?? 0.5),
             'stop_desk' => $isStopdesk ? 1 : 0,
             'station_code' => $stationCode,
-            // Warehouse-shipment leg (docs v2.3): stock=1 requires the
-            // comma-separated quantite list matched against produit.
-            'stock' => $order->send_from_carrier_warehouse ? 1 : 0,
-            // Financial recovery flag (remboursement, docs v2.3): mirrors
-            // the merchant-facing refund_request toggle. 0 = collect the full
-            // COD amount from the customer, 1 = trigger the recovery/refund leg.
-            'remboursement' => $order->refund_request ? 1 : 0,
+            'can_open' => 1,
+            // NOEST optional financial-recovery flag: 0 = no recover/refund leg
+            // (our COD orders collect the full montant on delivery), 1 = collect
+            // from or refund the customer. Kept 0 — COD only, documented gap.
+            'remboursement' => 0,
         ];
-
-        if ($order->send_from_carrier_warehouse) {
-            $payload['quantite'] = $this->warehouseQuantities($order);
-        }
 
         if (! empty($order->phone_secondary)) {
             $payload['phone_2'] = (string) $order->phone_secondary;
@@ -727,32 +705,6 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         $summary = app(OrderItemsFormatter::class)->toCompactString($order->items);
 
         return $summary !== '' ? $summary : '—';
-    }
-
-    /**
-     * Comma-separated quantities, one per product/variant line in the same
-     * order the producir summary lists them. NOEST requires `quantite` when
-     * `stock=1` (docs v2.3: الكميات مفصولة بفاصلة — إلزامي إذا كانت stock=1).
-     * Empty orders fall back to a "1" per line so the carrier never receives a
-     * stock-linked order with an empty quantities list.
-     */
-    protected function warehouseQuantities(Order $order): string
-    {
-        $order->loadMissing([
-            'items.product',
-            'items.variant',
-        ]);
-
-        $groups = app(OrderItemsGrouper::class)->group($order->items);
-
-        $quantities = [];
-        foreach ($groups as $group) {
-            foreach ($group['variants'] as $variant) {
-                $quantities[] = (string) max(1, (int) $variant['qty']);
-            }
-        }
-
-        return $quantities !== [] ? implode(',', $quantities) : '1';
     }
 
     protected static function normalizeCommuneText(string $value): string

@@ -147,11 +147,63 @@
 <?php endif; ?>
 
             
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($this->availableFilterGroups())): ?>
-                <button type="button" data-filter-btn
-                    @click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: $event.currentTarget })"
-                    class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->activeFilterCount() > 0 ? 'text-accent-600' : ''); ?>">
+            <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.tooltip','data' => ['label' => ''.e(__('order_flow.filter_date')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.tooltip'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['label' => ''.e(__('order_flow.filter_date')).'']); ?>
+                <button type="button" data-date-filter-btn
+                    @click.stop="$dispatch('edz-date-filter-open', { el: $event.currentTarget })"
+                    class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e(filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null) ? 'text-accent-600' : ''); ?>">
                     <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'calendar','class' => 'w-4 h-4 '.e(filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null) ? 'text-accent-600' : '').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'calendar','class' => 'w-4 h-4 '.e(filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null) ? 'text-accent-600' : '').'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                    <span class="hidden lg:inline"><?php echo e(__('order_flow.filter_date')); ?></span>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null)): ?>
+                        <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
+                            <?php echo e(filled($this->filters['date_from'] ?? null) && filled($this->filters['date_to'] ?? null) ? '2' : '1'); ?>
+
+                        </span>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </button>
+             <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginaldc6b8a3f696fa5e7823376deba19f536)): ?>
+<?php $attributes = $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536; ?>
+<?php unset($__attributesOriginaldc6b8a3f696fa5e7823376deba19f536); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginaldc6b8a3f696fa5e7823376deba19f536)): ?>
+<?php $component = $__componentOriginaldc6b8a3f696fa5e7823376deba19f536; ?>
+<?php unset($__componentOriginaldc6b8a3f696fa5e7823376deba19f536); ?>
+<?php endif; ?>
+
+            
+            <button type="button" data-filter-btn
+                @click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: $event.currentTarget })"
+                class="edz-btn edz-btn--ghost edz-btn--sm <?php echo e($this->activeFilterCount() > 0 ? 'text-accent-600' : ''); ?>">
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'funnel','class' => 'w-4 h-4 '.e($this->activeFilterCount() > 0 ? 'text-accent-600' : '').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -171,15 +223,15 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                    <span><?php echo e(__('merchant_panel.filters')); ?></span>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->activeFilterCount() > 0): ?>
-                        <span
-                            class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
-                            <?php echo e($this->activeFilterCount()); ?>
+                <span><?php echo e(__('merchant_panel.filters')); ?></span>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->activeFilterCount() > 0): ?>
+                    <span
+                        class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
+                        <?php echo e($this->activeFilterCount()); ?>
 
-                        </span>
-                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                    </span>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'chevron-down','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -199,8 +251,7 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                </button>
-            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            </button>
 
             
             <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
@@ -257,12 +308,77 @@
         || count($this->filters['tracking_statuses'] ?? []) > 0
         || filled($this->filters['date_from'] ?? null)
         || filled($this->filters['date_to'] ?? null)
+        || filled($this->filters['state'] ?? null)
+        || filled($this->filters['city'] ?? null)
         || filled($this->filters['assigned_to'] ?? null)
         || filled($this->filters['confirmed_by'] ?? null)
-        || filled($this->filters['rider'] ?? null);
+        || filled($this->filters['rider'] ?? null)
+        || count($this->filters['products'] ?? []) > 0
+        || filled($this->filters['amount_min'] ?? null)
+        || filled($this->filters['amount_max'] ?? null);
 ?>
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hasActiveFilters): ?>
     <div class="mb-3 flex flex-wrap items-center gap-2">
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['state'])): ?>
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75"><?php echo e(__('merchant_panel.state')); ?>:</span>
+                <span
+                    class="max-w-[12rem] truncate"><?php echo e(collect($this->allStates)->firstWhere('id', $this->filters['state'])['name'] ?? $this->filters['state']); ?></span>
+                <button wire:click="setFilter('state', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?></button>
+            </span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['city'])): ?>
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75"><?php echo e(__('merchant_panel.city')); ?>:</span>
+                <span
+                    class="max-w-[12rem] truncate"><?php echo e(collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? $this->filters['city']); ?></span>
+                <button wire:click="setFilter('city', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?></button>
+            </span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['provider'])): ?>
             <span
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
@@ -327,8 +443,8 @@
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                 <span class="font-semibold opacity-75"><?php echo e(__('merchant_panel.date')); ?>:</span>
                 <span><?php echo e($this->filters['date_from'] ?? '...'); ?> — <?php echo e($this->filters['date_to'] ?? '...'); ?></span>
-                <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
-                    wire:loading.attr="disabled" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                <button wire:click="clearDateFilter" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -386,6 +502,64 @@
                 <span class="font-semibold opacity-75"><?php echo e(__('merchant_panel.confirmed_by')); ?>:</span>
                 <span class="max-w-[12rem] truncate"><?php echo e(collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['name'] ?? $this->filters['confirmed_by']); ?></span>
                 <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?></button>
+            </span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($this->filters['products'] ?? []) > 0): ?>
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75"><?php echo e(__('merchant_panel.products')); ?>:</span>
+                <span class="max-w-[16rem] truncate"><?php echo e(collect($this->allProducts)->filter(fn ($p) => in_array($p['id'], $this->filters['products'] ?? []))->pluck('name')->join(', ')); ?></span>
+                <button wire:click="setFilter('products', [])" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'x-mark','class' => 'w-3 h-3']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?></button>
+            </span>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null)): ?>
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75"><?php echo e(__('order_flow.filter_amount')); ?>:</span>
+                <span><?php echo e($this->filters['amount_min'] ?? '...'); ?> — <?php echo e($this->filters['amount_max'] ?? '...'); ?></span>
+                <button wire:click="$set('filters.amount_min', null); $set('filters.amount_max', null); $wire.loadShipments()" wire:loading.attr="disabled"
                     class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'x-mark','class' => 'w-3 h-3']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

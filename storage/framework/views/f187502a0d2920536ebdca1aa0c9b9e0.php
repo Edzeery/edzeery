@@ -23,6 +23,10 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use App\Livewire\Concerns\TrackingTrashConcern;
 
+    use App\Livewire\Concerns\TrackingFilterConcern;
+
+    use App\Livewire\Concerns\TrackingBulkValidateConcern;
+
     public $filters;
 
     public $search;
@@ -42,6 +46,10 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     public $allMembers;
 
     public $allStates;
+
+    public $allProducts;
+
+    public $searchableRiders;
 
     public $stats;
 
@@ -70,6 +78,16 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
     public $shipmentNotes;
 
     public $shipmentNotesMeta;
+
+    public $showBulkValidateModal;
+
+    public $bulkValidateAnalysis;
+
+    public $bulkValidateReadyCount;
+
+    public $bulkValidateSkipCount;
+
+    public $bulkValidateBusy;
 
     public $trackingTab;
 

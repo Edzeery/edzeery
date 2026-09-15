@@ -19,6 +19,8 @@ uses([
     \App\Livewire\Concerns\TrackingDrawerConcern::class,
     \App\Livewire\Concerns\TrackingRiderFormConcern::class,
     \App\Livewire\Concerns\TrackingTrashConcern::class,
+    \App\Livewire\Concerns\TrackingFilterConcern::class,
+    \App\Livewire\Concerns\TrackingBulkValidateConcern::class,
 ]);
 
 state([
@@ -27,9 +29,11 @@ state([
         'tracking_statuses' => [],
         'date_from' => null,
         'date_to' => null,
-        'amount_min' => null,
-        'amount_max' => null,
-        'city' => null,
+'amount_min' => null,
+            'amount_max' => null,
+            'city' => null,
+            'state' => null,
+            'products' => [],
         'rider' => null,
         'assigned_to' => null,
         'confirmed_by' => null,
@@ -43,6 +47,12 @@ state([
     'allCities' => [],
     'allMembers' => [],
     'allStates' => [],
+    'allProducts' => [],
+
+    // Rider filter/search list — all configured riders merged with the
+    // per-rider shipment totals of the current filter scope. Built server-side
+    // (see TrackingGridConcern::loadTrackingStats) so @json stays single-line.
+    'searchableRiders' => [],
     'stats' => ['active' => 0, 'delivered_today' => 0, 'returned_today' => 0],
 
     // Drawer
@@ -65,6 +75,14 @@ state([
     'shipmentNotesFor' => null,
     'shipmentNotes' => [],
     'shipmentNotesMeta' => null,
+
+    // Bulk dispatch-validation (Phase 8) — carrier-tab FAB analysis + chunked
+    // /valid/orders handover. The analysis covers the current page's shipments.
+    'showBulkValidateModal' => false,
+    'bulkValidateAnalysis' => [],
+    'bulkValidateReadyCount' => 0,
+    'bulkValidateSkipCount' => 0,
+    'bulkValidateBusy' => false,
 
     // Phase A — active tab: 'carrier' (shipping companies) | 'rider' (delivery rider)
     'trackingTab' => 'carrier',
@@ -164,6 +182,10 @@ updated([
         $this->page = 1;
         $this->loadShipments();
     },
+    'filters.state' => function (): void {
+        $this->page = 1;
+        $this->loadShipments();
+    },
     'filters.rider' => function (): void {
         $this->page = 1;
         $this->loadShipments();
@@ -209,8 +231,13 @@ mount(function (): void {
         Order::where('store_id', $storeId)->whereNotNull('city_id')->distinct()->pluck('city_id'),
     )->orderBy('name')->get()->toArray();
 
+    // Active team members power the assigned_to/confirmed_by filter lists. The
+    // store owner is excluded — the owner is not an assignable/confirming agent.
+    $ownerUserId = \App\Models\Stores\Store::where('id', $storeId)->value('user_id');
+
     $this->allMembers = \App\Models\Stores\Team\StoreMembership::where('store_id', $storeId)
         ->where('is_active', true)
+        ->when($ownerUserId, fn ($q) => $q->where('user_id', '!=', $ownerUserId))
         ->with('user')
         ->get()
         ->map(fn ($membership) => [
@@ -224,6 +251,18 @@ mount(function (): void {
     $this->allStates = \App\Models\Locations\State::whereIn(
         'id',
         Order::where('store_id', $storeId)->whereNotNull('state_id')->distinct()->pluck('state_id'),
+    )->orderBy('name')->get(['id', 'name'])->toArray();
+
+    // Distinct products sold across this store's orders (active + trashed): the
+    // multi-select source for the always-visible products header filter.
+    $this->allProducts = \App\Models\Products\Product::whereIn(
+        'id',
+        \App\Models\Orders\Order::withTrashed()
+            ->where('orders.store_id', $storeId)
+            ->join('order_items', 'order_items.order_id', '=', 'orders.id')
+            ->whereNotNull('order_items.product_id')
+            ->distinct()
+            ->pluck('order_items.product_id'),
     )->orderBy('name')->get(['id', 'name'])->toArray();
 
     $this->loadRiderOptions();
@@ -279,6 +318,9 @@ mount(function (): void {
     {{-- Toolbar drill-down filter portal (products-style) — opened by the Filters trigger. --}}
     @include('livewire.merchant.tracking.partials.tracking-filter-bar-portal')
 
+    {{-- Date-range portal — opened by the toolbar calendar trigger. --}}
+    @include('livewire.merchant.tracking.partials.tracking-date-portal')
+
     {{-- Table settings modal (columns / style) --}}
     @include('livewire.merchant.tracking.partials.tracking-table-settings-modal')
 
@@ -297,6 +339,9 @@ mount(function (): void {
     {{-- Order edit modal + shared product picker (ported from the orders page) --}}
     @include('livewire.merchant.orders.partials.order-form-modal')
     @include('livewire.merchant.orders.partials.orders-product-picker')
+
+    {{-- Bulk dispatch-validation FAB + modal (carrier tab, Phase 8) --}}
+    @include('livewire.merchant.tracking.partials.tracking-bulk-validate')
 
     <script>
         if (! window.__edzTrackingOpenLabel) {

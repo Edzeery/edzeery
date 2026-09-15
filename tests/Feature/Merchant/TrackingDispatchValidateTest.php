@@ -215,7 +215,7 @@ test('the handover section is replaced by a badge once the shipment is validated
     Volt::test('merchant.tracking.index')
         ->call('openDrawer', $order->id)
         ->assertSee(__('order_flow.shipment_validated_badge'))
-        ->assertDontSee(__('order_flow.validate_scan_label'));
+        ->assertDontSeeHtml('wireScanMethod="validateShipmentFromBarcode"');
 });
 
 test('validateShipment is refused without the order.dispatch_validate permission', function () {

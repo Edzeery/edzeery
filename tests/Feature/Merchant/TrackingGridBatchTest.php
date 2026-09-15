@@ -52,6 +52,27 @@ function tgbOwner(): array
     return [$user, $store, $membership];
 }
 
+/**
+ * A secondary user + membership that is NOT the store owner. Used for the
+ * assigned_to/confirmed_by filters, because the owner is excluded from the
+ * assignable/confirming lists (allMembers).
+ */
+function tgbManager(Store $store, string $name = null): array
+{
+    $manager = roleUser('manager');
+    $manager->update(['name' => $name ?? 'Manager Person']);
+
+    $membership = StoreMembership::create([
+        'store_id' => $store->id,
+        'user_id' => $manager->id,
+        'invited_by' => $store->user_id,
+        'is_active' => true,
+        'role' => StoreRoleEnum::MANAGER->value,
+    ]);
+
+    return [$manager, $membership];
+}
+
 function tgbStatus(string $key): Status
 {
     return Status::system()->forType('order')->where('key', $key)->firstOrFail();
@@ -133,49 +154,55 @@ function tgbVolt(array $ctx): object
 }
 
 test('the assigned-to filter narrows the grid to that membership', function () {
-    [$user, $store, $membership] = tgbOwner();
+    [$user, $store, $ownerMembership] = tgbOwner();
+    [, $managerMembership] = tgbManager($store, 'Assign Agent');
     $provider = tgbProvider($store, 'Assign Co');
     $assigned = tgbOrder($store, $provider, 'TRK-AS-1', 'shipped');
-    $assigned->update(['assigned_to_membership_id' => $membership->id]);
+    $assigned->update(['assigned_to_membership_id' => $managerMembership->id]);
     $plain = tgbOrder($store, $provider, 'TRK-AS-2', 'shipped');
 
     $volt = tgbVolt([$user, $store]);
-    $volt->assertSet('allMembers', fn ($rows) => collect($rows)->contains('id', (string) $membership->id));
 
-    $volt->call('setFilter', 'assigned_to', $membership->id)
-        ->assertSet('filters.assigned_to', $membership->id)
+    // The owner is not an assignable agent: excluded from allMembers, while
+    // the manager (the assignee used below) is present.
+    $volt->assertSet('allMembers', fn ($rows) => collect($rows)->contains('id', (string) $managerMembership->id)
+        && collect($rows)->doesntContain('id', (string) $ownerMembership->id));
+
+    $volt->call('setFilter', 'assigned_to', $managerMembership->id)
+        ->assertSet('filters.assigned_to', $managerMembership->id)
         ->assertSet('shipments', fn ($rows) => count($rows) === 1
             && collect($rows)->pluck('number')->contains($assigned->number)
             && collect($rows)->pluck('number')->doesntContain($plain->number));
 
     // Row map exposes the display name for the assigned_to column.
-    $volt->assertSet('shipments.0.assigned_to', $user->name);
+    $volt->assertSet('shipments.0.assigned_to', 'Assign Agent');
 
     $volt->call('setFilter', 'assigned_to', null)
         ->assertSet('shipments', fn ($rows) => count($rows) === 2);
 });
 
 test('the confirmed-by filter narrows the grid to the confirming membership', function () {
-    [$user, $store, $membership] = tgbOwner();
+    [$user, $store] = tgbOwner();
+    [, $managerMembership] = tgbManager($store, 'Confirm Agent');
     $provider = tgbProvider($store, 'Confirm Co');
     $handled = tgbOrder($store, $provider, 'TRK-CF-1', 'shipped');
 
     OrderStatusHistory::create([
         'order_id' => $handled->id,
         'status_id' => tgbStatus('confirmed')->id,
-        'changed_by_membership_id' => $membership->id,
+        'changed_by_membership_id' => $managerMembership->id,
     ]);
 
     $plain = tgbOrder($store, $provider, 'TRK-CF-2', 'shipped');
 
     $volt = tgbVolt([$user, $store]);
-    $volt->call('setFilter', 'confirmed_by', $membership->id)
-        ->assertSet('filters.confirmed_by', $membership->id)
+    $volt->call('setFilter', 'confirmed_by', $managerMembership->id)
+        ->assertSet('filters.confirmed_by', $managerMembership->id)
         ->assertSet('shipments', fn ($rows) => count($rows) === 1
             && collect($rows)->pluck('number')->contains($handled->number)
             && collect($rows)->pluck('number')->doesntContain($plain->number));
 
-    $volt->assertSet('shipments.0.confirmed_by', $user->name);
+    $volt->assertSet('shipments.0.confirmed_by', 'Confirm Agent');
 
     $volt->call('setFilter', 'confirmed_by', null)
         ->assertSet('shipments', fn ($rows) => count($rows) === 2);

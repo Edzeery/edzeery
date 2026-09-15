@@ -1,6 +1,6 @@
 {{-- Toolbar (Phase B) — unified search + single "Filters" drill-down trigger + active-filter chips,
-    mirroring the products filter-bar. Only filter groups whose column is NOT visible in the grid
-    are surfaced in the drill-down portal (availableFilterGroups); visible columns keep their header icons. --}}
+    mirroring the products filter-bar. The drill-down portal lists every filter group; visible
+    columns additionally expose the same filters via their header icons. --}}
 <div class="edz-card edz-card--padded mb-4">
     <div class="flex flex-wrap items-center gap-3">
         {{-- Unified search --}}
@@ -36,24 +36,39 @@
                 </button>
             </x-edz.tooltip>
 
-            {{-- Filters — one trigger; the drill-down portal only lists groups whose column
-                is hidden (visible columns are filtered via their header filter icons). --}}
-            @if (! empty($this->availableFilterGroups()))
-                <button type="button" data-filter-btn
-                    @click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: $event.currentTarget })"
-                    class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}">
-                    <x-edz.icon name="funnel"
-                        class="w-4 h-4 {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}" />
-                    <span>{{ __('merchant_panel.filters') }}</span>
-                    @if ($this->activeFilterCount() > 0)
-                        <span
-                            class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
-                            {{ $this->activeFilterCount() }}
+            {{-- Date range — a first-class toolbar trigger with its own portal --}}
+            <x-edz.tooltip label="{{ __('order_flow.filter_date') }}">
+                <button type="button" data-date-filter-btn
+                    @click.stop="$dispatch('edz-date-filter-open', { el: $event.currentTarget })"
+                    class="edz-btn edz-btn--ghost edz-btn--sm {{ filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null) ? 'text-accent-600' : '' }}">
+                    <x-edz.icon name="calendar"
+                        class="w-4 h-4 {{ filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null) ? 'text-accent-600' : '' }}" />
+                    <span class="hidden lg:inline">{{ __('order_flow.filter_date') }}</span>
+                    @if (filled($this->filters['date_from'] ?? null) || filled($this->filters['date_to'] ?? null))
+                        <span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
+                            {{ filled($this->filters['date_from'] ?? null) && filled($this->filters['date_to'] ?? null) ? '2' : '1' }}
                         </span>
                     @endif
-                    <x-edz.icon name="chevron-down" class="w-3 h-3" />
                 </button>
-            @endif
+            </x-edz.tooltip>
+
+            {{-- Filters — one trigger; the drill-down portal lists every filter
+                group regardless of column visibility (visible columns additionally
+                keep their header filter icons). --}}
+            <button type="button" data-filter-btn
+                @click.stop="$dispatch('edz-toolbar-filter-open', { key: 'root', el: $event.currentTarget })"
+                class="edz-btn edz-btn--ghost edz-btn--sm {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}">
+                <x-edz.icon name="funnel"
+                    class="w-4 h-4 {{ $this->activeFilterCount() > 0 ? 'text-accent-600' : '' }}" />
+                <span>{{ __('merchant_panel.filters') }}</span>
+                @if ($this->activeFilterCount() > 0)
+                    <span
+                        class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-accent-600 text-white leading-none">
+                        {{ $this->activeFilterCount() }}
+                    </span>
+                @endif
+                <x-edz.icon name="chevron-down" class="w-3 h-3" />
+            </button>
 
             {{-- Column settings (advanced grid) --}}
             <x-edz.tooltip label="{{ __('merchant_panel.table_settings') }}">
@@ -73,12 +88,39 @@
         || count($this->filters['tracking_statuses'] ?? []) > 0
         || filled($this->filters['date_from'] ?? null)
         || filled($this->filters['date_to'] ?? null)
+        || filled($this->filters['state'] ?? null)
+        || filled($this->filters['city'] ?? null)
         || filled($this->filters['assigned_to'] ?? null)
         || filled($this->filters['confirmed_by'] ?? null)
-        || filled($this->filters['rider'] ?? null);
+        || filled($this->filters['rider'] ?? null)
+        || count($this->filters['products'] ?? []) > 0
+        || filled($this->filters['amount_min'] ?? null)
+        || filled($this->filters['amount_max'] ?? null);
 @endphp
 @if ($hasActiveFilters)
     <div class="mb-3 flex flex-wrap items-center gap-2">
+        @if (filled($this->filters['state']))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('merchant_panel.state') }}:</span>
+                <span
+                    class="max-w-[12rem] truncate">{{ collect($this->allStates)->firstWhere('id', $this->filters['state'])['name'] ?? $this->filters['state'] }}</span>
+                <button wire:click="setFilter('state', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
+        @if (filled($this->filters['city']))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('merchant_panel.city') }}:</span>
+                <span
+                    class="max-w-[12rem] truncate">{{ collect($this->allCities)->firstWhere('id', $this->filters['city'])['name'] ?? $this->filters['city'] }}</span>
+                <button wire:click="setFilter('city', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
         @if (filled($this->filters['provider']))
             <span
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
@@ -105,9 +147,8 @@
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                 <span class="font-semibold opacity-75">{{ __('merchant_panel.date') }}:</span>
                 <span>{{ $this->filters['date_from'] ?? '...' }} — {{ $this->filters['date_to'] ?? '...' }}</span>
-                <button @click="$wire.setFilter('date_from', null); $wire.setFilter('date_to', null)"
-                    wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"
-                        class="w-3 h-3" /></button>
+                <button wire:click="clearDateFilter" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
             </span>
         @endif
 
@@ -127,6 +168,26 @@
                 <span class="font-semibold opacity-75">{{ __('merchant_panel.confirmed_by') }}:</span>
                 <span class="max-w-[12rem] truncate">{{ collect($this->allMembers)->firstWhere('id', $this->filters['confirmed_by'])['name'] ?? $this->filters['confirmed_by'] }}</span>
                 <button wire:click="setFilter('confirmed_by', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
+        @if (count($this->filters['products'] ?? []) > 0)
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('merchant_panel.products') }}:</span>
+                <span class="max-w-[16rem] truncate">{{ collect($this->allProducts)->filter(fn ($p) => in_array($p['id'], $this->filters['products'] ?? []))->pluck('name')->join(', ') }}</span>
+                <button wire:click="setFilter('products', [])" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
+        @if (filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('order_flow.filter_amount') }}:</span>
+                <span>{{ $this->filters['amount_min'] ?? '...' }} — {{ $this->filters['amount_max'] ?? '...' }}</span>
+                <button wire:click="$set('filters.amount_min', null); $set('filters.amount_max', null); $wire.loadShipments()" wire:loading.attr="disabled"
                     class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
             </span>
         @endif

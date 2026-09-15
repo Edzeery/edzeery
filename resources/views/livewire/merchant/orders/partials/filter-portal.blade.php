@@ -45,17 +45,21 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['wilaya'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
                 </button>
-                @foreach ($this->allStates as $st)
-                    <button
-                        @click="$wire.setFilter('wilaya', '{{ $st['id'] }}'); $wire.loadFilterCities('{{ $st['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['wilaya'] == $st['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $st['name'] }}">
-                        <span class="inline-flex items-center gap-1.5">
-                            <span class="edz-code-badge">{{ $st['state_code'] ?? '' }}</span>
-                            {{ $st['name'] }}
-                        </span>
-                    </button>
-                @endforeach
+                <div x-data="edzSearchableList()" data-items="@json($this->allStates)" data-active="@json(array_filter([$this->filters['wilaya'] ?? null]))">
+                    <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button
+                            @click="$wire.setFilter('wilaya', item.id); $wire.loadFilterCities(item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                            :class="activeCls(item.id)">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="edz-code-badge" x-text="item.state_code || ''"></span>
+                                <span x-text="item.name"></span>
+                            </span>
+                        </button>
+                    </template>
+                </div>
             </div>
         @endif
 
@@ -101,19 +105,22 @@
         {{-- Status --}}
         @if (in_array('status', $this->visibleColumns))
             <div x-show="open === 'status'" x-cloak>
-                @foreach ($this->allStatuses as $s)
-                    <label
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs"
-                        data-name="{{ $s['label'] }}">
-                        <input type="checkbox" value="{{ $s['id'] }}"
-                            wire:click="toggleStatusFilter('{{ $s['id'] }}')"
-                            {{ in_array($s['id'], $this->filters['status'] ?? []) ? 'checked' : '' }}
-                            class="rounded border-gray-300">
-                        <span class="w-2 h-2 rounded-full shrink-0"
-                            style="background: {{ match ($s['color'] ?? 'gray') {'success' => '#22c55e','info' => '#3b82f6','warning' => '#f59e0b','danger' => '#ef4444',default => '#6b7280'} }}"></span>
-                        {{ \Edzeery\MyStatusKit\Facades\Status::for('order', $s['key'] ?? 'default')->label() }}
-                    </label>
-                @endforeach
+                <div x-data="edzSearchableList()"
+                    data-items="@json($this->searchableStatuses)"
+                    data-active="@json($this->filters['status'] ?? [])">
+                    <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <label
+                            class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-surface-secondary cursor-pointer text-xs">
+                            <input type="checkbox" :checked="isActive(item.id)"
+                                @click="$wire.toggleStatusFilter(item.id); toggleActive(item.id)"
+                                class="rounded border-gray-300">
+                            <span class="w-2 h-2 rounded-full shrink-0"
+                                :style="`background: ${item.color === 'success' ? '#22c55e' : item.color === 'info' ? '#3b82f6' : item.color === 'warning' ? '#f59e0b' : item.color === 'danger' ? '#ef4444' : '#6b7280'}`"></span>
+                            <span x-text="item.name"></span>
+                        </label>
+                    </template>
+                </div>
             </div>
         @endif
 
@@ -124,13 +131,19 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['assigned_to'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
                 </button>
-                @foreach ($this->allMembers as $m)
-                    <button @click="$wire.setFilter('assigned_to', '{{ $m['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['assigned_to'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $m['user']['name'] }}">
-                        {{ $m['user']['name'] }}
-                    </button>
-                @endforeach
+                <div x-data="edzSearchableList()"
+                    data-items="@json($this->searchableMembers)"
+                    data-active="@json(array_filter([$this->filters['assigned_to'] ?? null]))">
+                    <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('assigned_to', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                            :class="activeCls(item.id)">
+                            <span x-text="item.name"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
         @endif
 
@@ -213,14 +226,18 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipping_provider'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
                 </button>
-                @foreach ($this->allProviders as $pr)
-                    <button
-                        @click="$wire.setFilter('shipping_provider', '{{ $pr['id'] }}'); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints('{{ $pr['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['shipping_provider'] == $pr['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $pr['name'] }}">
-                        {{ $pr['name'] }}
-                    </button>
-                @endforeach
+                <div x-data="edzSearchableList()" data-items="@json($this->allProviders)" data-active="@json(array_filter([$this->filters['shipping_provider'] ?? null]))">
+                    <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button
+                            @click="$wire.setFilter('shipping_provider', item.id); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints(item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                            :class="activeCls(item.id)">
+                            <span x-text="item.name"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
         @endif
 
@@ -235,13 +252,17 @@
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['stopdesk_point'] ? 'bg-surface-secondary font-medium' : '' }}">
                         —
                     </button>
-                    @foreach ($this->allStopdeskPoints as $dp)
-                        <button @click="$wire.setFilter('stopdesk_point', '{{ $dp['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['stopdesk_point'] == $dp['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                            data-name="{{ $dp['name'] }}">
-                            {{ $dp['name'] }}
-                        </button>
-                    @endforeach
+                    <div x-data="edzSearchableList()" data-items="@json($this->allStopdeskPoints)" data-active="@json(array_filter([$this->filters['stopdesk_point'] ?? null]))">
+                        <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button @click="$wire.setFilter('stopdesk_point', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                                :class="activeCls(item.id)">
+                                <span x-text="item.name"></span>
+                            </button>
+                        </template>
+                    </div>
                 @endif
             </div>
         @endif
@@ -257,13 +278,17 @@
                         class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['city'] ? 'bg-surface-secondary font-medium' : '' }}">
                         —
                     </button>
-                    @foreach ($this->allCities as $ct)
-                        <button @click="$wire.setFilter('city', '{{ $ct['id'] }}')"
-                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['city'] == $ct['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                            data-name="{{ $ct['name'] }}">
-                            {{ $ct['name'] }}
-                        </button>
-                    @endforeach
+                    <div x-data="edzSearchableList()" data-items="@json($this->allCities)" data-active="@json(array_filter([$this->filters['city'] ?? null]))">
+                        <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button @click="$wire.setFilter('city', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                                :class="activeCls(item.id)">
+                                <span x-text="item.name"></span>
+                            </button>
+                        </template>
+                    </div>
                 @endif
             </div>
         @endif
@@ -275,13 +300,19 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['confirmed_by'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
                 </button>
-                @foreach ($this->allMembers as $m)
-                    <button @click="$wire.setFilter('confirmed_by', '{{ $m['id'] }}')"
-                        class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['confirmed_by'] == $m['id'] ? 'bg-surface-secondary font-medium' : '' }}"
-                        data-name="{{ $m['user']['name'] }}">
-                        {{ $m['user']['name'] }}
-                    </button>
-                @endforeach
+                <div x-data="edzSearchableList()"
+                    data-items="@json($this->searchableMembers)"
+                    data-active="@json(array_filter([$this->filters['confirmed_by'] ?? null]))">
+                    <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
+                    <template x-for="item in filtered" :key="item.id">
+                        <button @click="$wire.setFilter('confirmed_by', item.id); close()"
+                            :aria-pressed="isActive(item.id)"
+                            class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
+                            :class="activeCls(item.id)">
+                            <span x-text="item.name"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
         @endif
 
@@ -364,42 +395,6 @@
                 </button>
                 <button @click="$wire.setFilter('send_from_carrier_warehouse', false)"
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['send_from_carrier_warehouse'] === false ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.no') }}
-                </button>
-            </div>
-        @endif
-
-        {{-- Collection (tri-state) --}}
-        @if (in_array('refund_request', $this->visibleColumns))
-            <div x-show="open === 'refund_request'" x-cloak>
-                <button @click="$wire.setFilter('refund_request', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['refund_request'] === null ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('general.all') }}
-                </button>
-                <button @click="$wire.setFilter('refund_request', true)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['refund_request'] === true ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.yes') }}
-                </button>
-                <button @click="$wire.setFilter('refund_request', false)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['refund_request'] === false ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.no') }}
-                </button>
-            </div>
-        @endif
-
-        {{-- Authorization to open (tri-state) --}}
-        @if (in_array('can_open', $this->visibleColumns))
-            <div x-show="open === 'can_open'" x-cloak>
-                <button @click="$wire.setFilter('can_open', null)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['can_open'] === null ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('general.all') }}
-                </button>
-                <button @click="$wire.setFilter('can_open', true)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['can_open'] === true ? 'bg-surface-secondary font-medium' : '' }}">
-                    {{ __('buttons.yes') }}
-                </button>
-                <button @click="$wire.setFilter('can_open', false)"
-                    class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ $this->filters['can_open'] === false ? 'bg-surface-secondary font-medium' : '' }}">
                     {{ __('buttons.no') }}
                 </button>
             </div>
