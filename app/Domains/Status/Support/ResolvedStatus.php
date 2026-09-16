@@ -49,7 +49,7 @@ final class ResolvedStatus
         $variant = $model->color ?: 'gray';
         $style = self::styleFor($variant);
         $isSystem = (bool) $model->is_system && empty($model->store_id);
-        $label = $isSystem ? self::systemLabel($model) : $model->label;
+        $label = ($isSystem || $model->label === '') ? self::systemLabel($model) : $model->label;
 
         return new self(
             domain: $model->type,
@@ -76,7 +76,11 @@ final class ResolvedStatus
         $key = "status-kit::statuses.{$model->type}.{$model->key}";
         $translated = __($key);
 
-        return $translated === $key ? $model->label : $translated;
+        if ($translated !== $key && $translated !== '') {
+            return $translated;
+        }
+
+        return $model->label !== '' ? $model->label : Str::headline($model->key);
     }
 
     public static function fallback(string $domain, string $key): self

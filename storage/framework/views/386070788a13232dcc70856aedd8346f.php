@@ -571,11 +571,11 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <div x-data="edzSearchableList()" data-items='<?php echo json_encode($this->allProviders, 15, 512) ?>' data-active='<?php echo json_encode(array_filter([$this->filters['shipping_provider'] ?? null]), 15, 512) ?>'>
+                <div x-data="edzSearchableList()" data-items='<?php echo json_encode($this->allCarrierFilters, 15, 512) ?>' data-active='<?php echo json_encode(array_filter([$this->filters['shipping_provider'] ?? null]), 15, 512) ?>'>
                     <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
                     <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
                         <template x-for="item in filtered" :key="item.id">
-                            <button type="button" @click="$wire.setFilter('shipping_provider', item.id); close()"
+                            <button type="button" @click="$wire.setFilter('shipping_provider', item.id, item.kind); close()"
                                 :aria-pressed="isActive(item.id)"
                                 class="edz-dropdown__item justify-between"
                                 :class="activeCls(item.id)">

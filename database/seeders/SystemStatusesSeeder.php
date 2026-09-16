@@ -456,13 +456,24 @@ class SystemStatusesSeeder extends Seeder
 
             [
                 'type' => 'tracking',
+                'key' => 'on_hold',
+                'label' => 'On Hold',
+                'color' => 'warning',
+                'is_system' => true,
+                'affects_inventory' => false,
+                'movement_type' => null,
+                'sort_order' => 4,
+            ],
+
+            [
+                'type' => 'tracking',
                 'key' => 'delivered',
                 'label' => 'Delivered',
                 'color' => 'success',
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 4,
+                'sort_order' => 5,
             ],
 
             [
@@ -473,7 +484,7 @@ class SystemStatusesSeeder extends Seeder
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 5,
+                'sort_order' => 6,
             ],
 
             [
@@ -484,7 +495,7 @@ class SystemStatusesSeeder extends Seeder
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 6,
+                'sort_order' => 7,
             ],
 
             [
@@ -495,7 +506,18 @@ class SystemStatusesSeeder extends Seeder
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 7,
+                'sort_order' => 8,
+            ],
+
+            [
+                'type' => 'tracking',
+                'key' => 'cancelled',
+                'label' => 'Cancelled',
+                'color' => 'danger',
+                'is_system' => true,
+                'affects_inventory' => false,
+                'movement_type' => null,
+                'sort_order' => 9,
             ],
 
             [
@@ -506,7 +528,7 @@ class SystemStatusesSeeder extends Seeder
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 8,
+                'sort_order' => 10,
             ],
 
             [
@@ -517,7 +539,7 @@ class SystemStatusesSeeder extends Seeder
                 'is_system' => true,
                 'affects_inventory' => false,
                 'movement_type' => null,
-                'sort_order' => 9,
+                'sort_order' => 11,
             ],
         ];
 

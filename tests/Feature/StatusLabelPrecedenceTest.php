@@ -76,7 +76,9 @@ it('allows a store-scoped row to override the kit translation', function () {
 it('seeds tracking, inventory and inventory-movement defaults', function () {
     $this->seed(SystemStatusesSeeder::class);
 
-    expect(Status::where('type', 'tracking')->count())->toBe(9)
+    expect(Status::where('type', 'tracking')->count())->toBe(11)
+        ->and(Status::where('type', 'tracking')->where('key', 'on_hold')->exists())->toBeTrue()
+        ->and(Status::where('type', 'tracking')->where('key', 'cancelled')->exists())->toBeTrue()
         ->and(Status::where('type', 'inventory')->count())->toBe(3)
         ->and(Status::where('type', 'inventorymovementtype')->count())->toBe(8)
         ->and(Status::where('type', 'inventorymovementtype')->where('key', 'loss')->where('color', 'danger')->exists())->toBeTrue()

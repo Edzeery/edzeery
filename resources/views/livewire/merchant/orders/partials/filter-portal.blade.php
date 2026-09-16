@@ -233,12 +233,12 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary {{ !$this->filters['shipping_provider'] ? 'bg-surface-secondary font-medium' : '' }}">
                     —
                 </button>
-                <div x-data="edzSearchableList()" data-items='@json($this->allProviders)' data-active='@json(array_filter([$this->filters['shipping_provider'] ?? null]))'>
+                <div x-data="edzSearchableList()" data-items='@json($this->allCarrierFilters)' data-active='@json(array_filter([$this->filters['shipping_provider'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
                     <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
                         <template x-for="item in filtered" :key="item.id">
                             <button
-                                @click="$wire.setFilter('shipping_provider', item.id); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints(item.id); close()"
+                                @click="$wire.setFilter('shipping_provider', item.id, item.kind); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints(item.id); close()"
                                 :aria-pressed="isActive(item.id)"
                                 class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
                                 :class="activeCls(item.id)">
@@ -253,7 +253,7 @@
         {{-- Stopdesk Point (cascades from shipping_provider) --}}
         @if (in_array('stopdesk_point', $this->visibleColumns))
             <div x-show="open === 'stopdesk_point'" x-cloak>
-                @if (!filled($this->filters['shipping_provider']))
+                @if (!filled($this->filters['shipping_provider']) || ($this->filters['shipping_provider_kind'] ?? null) === 'rider')
                     <div class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">
                         {{ __('merchant_panel.select_provider_first') }}</div>
                 @else

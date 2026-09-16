@@ -42,7 +42,8 @@ if ($store) {
     );
     $withData['storeOpen'] = request()->routeIs(
         'merchant.store-settings',
-        'merchant.storefront-settings'
+        'merchant.storefront-settings',
+        'merchant.customization.*',
     );
     $withData['productCount'] = Product::query()->where('store_id', currentStoreId())->count();
     $withData['canViewProducts'] = canStore(StorePermissionEnum::PRODUCT_VIEW->value);
@@ -59,6 +60,7 @@ if ($store) {
     $withData['canViewOrderSettings'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewStoreSettings'] = canStore(StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value);
     $withData['canViewStorefront'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
+    $withData['canViewCustomization'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewDelivery'] = canStore(StorePermissionEnum::DELIVERY_PRICING_MANAGE->value)
         || canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewRiders'] = canStore(StorePermissionEnum::DELIVERY_RIDERS_VIEW->value);
@@ -355,7 +357,7 @@ with($withData);
             </div>
         @endif
 
-        @if ($canViewStoreSettings || $canViewStorefront)
+        @if ($canViewStoreSettings || $canViewStorefront || $canViewCustomization)
             <div class="edz-sidebar__group">
                 <button type="button"
                         @click="openGroups.store = !openGroups.store"
@@ -389,6 +391,14 @@ with($withData);
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.storefront-settings')) edz-sidebar__sub-link--active @endif">
                             <x-edz.icon name="storefront" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                             <span class="edz-sidebar__label">{{ __('merchant_panel.storefront') }}</span>
+                        </a>
+                    @endif
+
+                    @if ($canViewCustomization)
+                        <a href="{{ route('merchant.customization.statuses', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.customization.*')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="adjustments" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.statuses') }}</span>
                         </a>
                     @endif
                 </div>

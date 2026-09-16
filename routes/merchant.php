@@ -31,7 +31,6 @@ Route::prefix('merchant/account')
     ->name('account.')
     ->group(function () {
 
-
         Volt::route('/profile', 'account.profile')->name('profile');
         Volt::route('/stores', 'merchant.stores.index')->name('stores');
         Volt::route('/billing', 'account.billing')->name('billing');
@@ -63,12 +62,11 @@ Route::prefix('merchant')
         ResolveStoreFromRoute::class,
         EnsureStoreResolved::class,
         EnsureStoreMembership::class,
-        EnsureHasStoreRole::class . ':owner,admin,manager,staff',
+        EnsureHasStoreRole::class.':owner,admin,manager,staff',
         EnsureStoreIsActive::class,
     ])
     ->name('merchant.')
     ->group(function (): void {
-
 
         Route::get('/{store:slug}', function () {
             return redirect()->route('merchant.dashboard', ['store' => request()->route('store')]);
@@ -106,6 +104,9 @@ Route::prefix('merchant')
 
         Volt::route('/{store:slug}/storefront-settings', 'merchant.storefront-settings')->name('storefront-settings');
         Volt::route('/{store:slug}/settings', 'merchant.store-settings')->name('store-settings');
+
+        // Customization — statuses overview (single route, internal tabs).
+        Volt::route('/{store:slug}/customization/statuses', 'merchant.customization.statuses')->name('customization.statuses');
 
         // Finance / Debts
         Volt::route('/{store:slug}/debts', 'merchant.debts.index')->name('debts.index');

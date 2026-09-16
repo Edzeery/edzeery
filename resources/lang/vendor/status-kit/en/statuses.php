@@ -363,10 +363,12 @@ return [
         'shipped' => 'Shipped',
         'in_transit' => 'In Transit',
         'out_for_delivery' => 'Out for Delivery',
+        'on_hold' => 'On Hold',
         'delivered' => 'Delivered',
         'returned' => 'Returned',
         'returning' => 'Returning',
         'failed_attempt' => 'Failed Delivery Attempt',
+        'cancelled' => 'Cancelled',
         'lost' => 'Lost',
         'damaged' => 'Damaged',
     ]

@@ -39,6 +39,7 @@ state([
         'date_to' => null,
         'delivery_type' => null,
         'shipping_provider' => null,
+        'shipping_provider_kind' => null,
         'product_id' => null,
         'product' => '',
         'source' => null,
@@ -69,6 +70,7 @@ state([
     'formCoverageHint' => '',
     'allStopdeskPoints' => [],
     'allProviders' => [],
+    'allCarrierFilters' => [],
 
     // Searchable (fetch-once + client-side query) copies for the filter dropdowns.
     'searchableStatuses' => [],
@@ -549,6 +551,14 @@ mount(function (): void {
         ->values()
         ->all();
 
+    $this->allCarrierFilters = collect([
+        ...collect($this->allProviders)->map(fn ($p) => ['id' => (string) $p['id'], 'name' => $p['name'], 'kind' => 'provider']),
+        ...collect($this->riderOptions)->map(fn ($r) => ['id' => $r['value'], 'name' => $r['label'], 'kind' => 'rider']),
+    ])
+        ->sortBy(fn ($o) => mb_strtolower($o['name']))
+        ->values()
+        ->all();
+
     $this->editProviderOptions = array_merge(
         $this->editProviderOptions,
         $this->riderOptions,
@@ -830,7 +840,11 @@ $loadOrders = function (): void {
         $query->where('delivery_type', $f['delivery_type']);
     }
     if (!empty($f['shipping_provider'])) {
-        $query->where('shipping_provider_id', $f['shipping_provider']);
+        if (($f['shipping_provider_kind'] ?? null) === 'rider') {
+            $query->where('delivery_rider_id', $f['shipping_provider']);
+        } else {
+            $query->where('shipping_provider_id', $f['shipping_provider']);
+        }
     }
     if (!empty($f['address'])) {
         $query->where('address', 'like', "%{$f['address']}%");
@@ -1063,7 +1077,7 @@ $setPerPage = function (int $perPage): void {
     $this->loadOrders();
 };
 
-$setFilter = function (string $key, $value): void {
+$setFilter = function (string $key, $value, ?string $kind = null): void {
     $floatFilters = ['amount_min', 'amount_max', 'weight_min', 'weight_max'];
     $arrFilters = ['status'];
 
@@ -1082,6 +1096,14 @@ $setFilter = function (string $key, $value): void {
         $this->allCities = $value
             ? City::where('state_id', $value)->orderBy('name')->get()->toArray()
             : [];
+    }
+
+    if ($key === 'shipping_provider') {
+        $this->filters['shipping_provider_kind'] = $kind;
+        if ($kind === 'rider') {
+            $this->filters['stopdesk_point'] = null;
+            $this->allStopdeskPoints = [];
+        }
     }
 
     $this->filters[$key] = $value;
@@ -1104,6 +1126,7 @@ $clearFilters = function (): void {
         'date_to' => null,
         'delivery_type' => null,
         'shipping_provider' => null,
+        'shipping_provider_kind' => null,
         'product_id' => null,
         'product' => '',
         'source' => null,
@@ -1595,7 +1618,9 @@ $loadFilterCities = function (string $stateId): void {
 
 // --- Stopdesk points loader for filter (cascades from shipping_provider) ---
 $loadFilterStopdeskPoints = function (?string $providerId): void {
-    $this->allStopdeskPoints = $providerId ? \App\Domains\Shipping\Models\StopdeskPoint::where('shipping_provider_id', $providerId)->orderBy('name')->get()->toArray() : [];
+    $this->allStopdeskPoints = $providerId && ($this->filters['shipping_provider_kind'] ?? null) !== 'rider'
+        ? \App\Domains\Shipping\Models\StopdeskPoint::where('shipping_provider_id', $providerId)->orderBy('name')->get()->toArray()
+        : [];
 };
 
 $toggleStatusFilter = function (string $statusId): void {
@@ -4957,8 +4982,8 @@ $submitEdit = function (): void {
                         {{ __('general.all') }}
                         <x-edz.icon name="check" class="w-3.5 h-3.5 {{ empty($this->filters['shipping_provider']) ? 'opacity-100' : 'opacity-0' }}" />
                     </button>
-                    @foreach ($this->allProviders as $pr)
-                        <button type="button" wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}')" @click="close()"
+                    @foreach ($this->allCarrierFilters as $pr)
+                        <button type="button" wire:click="setFilter('shipping_provider', '{{ $pr['id'] }}', '{{ $pr['kind'] }}')" @click="close()"
                             aria-pressed="{{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'true' : 'false' }}"
                             class="edz-dropdown__item justify-between {{ ($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
                             <span>{{ $pr['name'] }}</span>
@@ -5041,7 +5066,7 @@ $submitEdit = function (): void {
                 <span
                     class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     <span class="font-semibold opacity-75">{{ __('order_flow.filter_provider') }}:</span>
-                    <span>{{ collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? $this->filters['shipping_provider'] }}</span>
+                    <span>{{ collect($this->allCarrierFilters)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? $this->filters['shipping_provider'] }}</span>
                     <button
                         @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
                         wire:loading.attr="disabled" class="hover:text-accent-900"><x-edz.icon name="x-mark"

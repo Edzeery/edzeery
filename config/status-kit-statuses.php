@@ -1832,6 +1832,14 @@ return array (
       'hex' => '#2563eb',
       'icon' => 'out_for_delivery',
     ),
+    'on_hold' => 
+    array (
+      'variant' => 'warning',
+      'light' => 'text-warning-700 bg-warning-100',
+      'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
+      'hex' => '#facc15',
+      'icon' => 'on_hold',
+    ),
     'delivered' => 
     array (
       'variant' => 'success',
@@ -1863,6 +1871,14 @@ return array (
       'dark' => 'dark:text-warning-300 dark:bg-warning-900/40',
       'hex' => '#facc15',
       'icon' => 'failed_attempt',
+    ),
+    'cancelled' => 
+    array (
+      'variant' => 'danger',
+      'light' => 'text-danger-700 bg-danger-100',
+      'dark' => 'dark:text-danger-300 dark:bg-danger-900/40',
+      'hex' => '#dc2626',
+      'icon' => 'cancelled',
     ),
     'lost' => 
     array (

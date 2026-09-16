@@ -2183,3 +2183,198 @@ git rm "it" "prepareBindings(\$bindings)"
 **التحقق:** `view:clear`+`view:cache` ناجح؛ `OrderCityScopeProviderTest` **8/8 (13 شهادة)**؛ إثبات بالداتا أن الفلتر بالـ UID يحسب 9/10 صحيحة والقديم 13/11 خاطئة.
 
 **ملاحظة:** بقية `(int)` في الملف مشروعة (كميات/ترقيم صفحات/عدّادات). كسجود `loadFilterCities`/`loadFilterStopdeskPoints` (استُغني عنهما برأس العمود) تُركتا دون حذف — بند تنظيف محتمل.
+
+---
+
+## دمج رجال التوصيل في فلتر "شركة التوصيل" (orders) — 2026-09-16 (7)
+
+**الطلب:** في رأس عمود شركة التوصيل تظهر رجال التوصيل مع شركات التوصيل، وليس الشركات فقط.
+
+**الإصلاح (`orders/index.blade.php` + البوابتان):**
+- ملكية جديدة `allCarrierFilters`: قائمة موحّدة (شركات `kind=provider` + أجراء `kind=rider`) للفلاتر فقط — `allProviders` بقيت شركات فقط حتى لا تتأثر المحرّرات المضمنة/مقطاعة الشريك (inline-carrier-select, partner-picker, editProviderOptions).
+- `$setFilter` تقبل بارامتر ثالث `$kind` وتخزّن `filters['shipping_provider_kind']`؛ عند اختيار راجل تصفّر `stopdesk_point` و`allStopdeskPoints` (الراجل توصيل منزلي بلا نقاط).
+- الاستعلام: `kind=rider` → `where('delivery_rider_id', …)` وإلا `where('shipping_provider_id', …)`.
+- `loadFilterStopdeskPoints`: لا استعلام عندما يكون الفلتر راجلًا (توفير + تناسق).
+- البوابتان (رأس العمود + شريط الأدوات) والقائمة القديمة في أسفل الرأس: `data-items='@json($this->allCarrierFilters)'` + تمرير `item.kind` في النقرة.
+- الشريط (active chip) يقرأ الاسم من `allCarrierFilters` (يعمل مع الراجل والشركة).
+- قسم stopdesk في بوابة رأس العمود: عند اختيار راجل يعرض "اختر المزوّد أولًا" بدل قائمة فارغة.
+
+**التحقق:** `view:cache` نظيف؛ إثبات بالداتا: `where('delivery_rider_id', UID-راجل)` يعطي 1/1 طلبات والـ `where('shipping_provider_id', UID-مزوّد)` يعطي 10؛ `OrderCityScopeProviderTest` **8/8 (13 شهادة)**.
+
+---
+
+## عنقود تخصيص الحالات وحالات تتبع شركات التوصيل — خطة مرقّمة (2026-09-16)
+
+> **الحالة: تخطيط فقط — لا تنفيذ قبل موافقة صريحة على كل مرحلة على حدة.**
+> **الترتيب المقرر:** 1 ← 2 ← 3 ← 4 ← 5 ← 6. كل مرحلة خطة مستقلة بذاتها (لا دمج)؛
+> تُنفَّذ بعد موافقة المستخدم، وتُعلَّم ✅ في Todos.md فور اكتمالها مع أدلة التحقق.
+> **قيود إلزامية على كل مرحلة:** استجابة 375/768/1440؛ مراجعة الوثائق (PROJECT_PLAN.md، MerchantPanelAudit.md، errorsTodo.md، Todos.md، OrdersrefactorplanFixed.md، DESIGN_SYSTEM.md) قبل التنفيذ؛ فحص الكود الحي لا الافتراض؛ هوية Apple Design (توكنز `--edz-*`/`ink-*`/`surface-*` فقط)؛ الأداء (بلا استعلامات/إعادة رسم زائدة)؛ عدم حشر كل شيء في صفحة index الرئيسية.
+
+### المرحلة 1 — بنية «التخصيص»: الشريط الجانبي + التوجيه + صفحة الحالات (إطار + تابات) ✅
+
+**الهدف:** منفذ جديد في «إعدادات المتجر» باسم **التخصيص**، مع صفحة حالات بتابات (تأكيد / تتبع الشركة / تتبع الراجل) بإطارها أولًا ثم تُملأ بالمراحل التالية.
+
+**الأدلة المثبتة:**
+- التوجيه: مجموعة Layer-3 في `routes/merchant.php:59-115` (`prefix merchant` + `{store:slug}` + السلسلة الوسطية: `ResolveStoreFromRoute/EnsureStoreResolved/EnsureStoreMembership/EnsureHasStoreRole: 'owner,admin,manager,staff'/EnsureStoreIsActive`). كل صفحات التاجر Volt عبر `Volt::route(...)` (orders 94، tracking 95، order-settings 99، storefront 107، settings 108).
+- السايد بار: مجموعة «إعدادات المتجر» في `store-sidebar.blade.php:358-396` (المجموعة الفرعية `edz-sub-store`)؛ حالة التوسّع `storeOpen` في الأسطر 43-46؛ بوابة الصلاحيات `withData[...]` في 58-64.
+- قالب الصفحات: Volt المضمّن `layout('components.layouts.store')` (يُغلّف `x-layouts.panel` + sidebar=store) + `<x-edz.page-header>` + `edz-card edz-card--padded` + تابات بصقفة `$tab` (نمط `order-settings.blade.php:436-449`) أو تعليمة Alpine-pills (نمط `store-settings.blade.php:141-204`).
+
+**التعديلات المقترحة (بالملفات):**
+1. `routes/merchant.php` (بعد سطر 99):
+   ```php
+   Volt::route('/{store:slug}/customization/statuses', 'merchant.customization.statuses')
+       ->name('customization.statuses');
+   ```
+   **قرار مفتوح (اختيار المستخدم):** المسار المقترح `…/customization/statuses` مع «حالات التأكيد» أول تاب داخليًا (أنظف)، أو المسارات العميقة القابلة للاشتراك `…/customization/statuses/confirmation` (تلبيةً لطلب المستخدم حرفيًا).
+2. `store-sidebar.blade.php`:
+   - سطر ~62: `$withData['canViewCustomization'] = canStore(StorePermissionEnum::STORE_UPDATE->value);`
+   - الأسطر 43-46: إضافة `'merchant.customization.*'` إلى قائمة `storeOpen` (توسّع تلقائي عند الدخول).
+   - بعد سطر 393 (رابط storefront): رابط فرعي «الحالات» بشرط `@if ($canViewCustomization)` وأيقونة `adjustments` (نسخ نمط 387-393) → `route('merchant.customization.statuses', $store)` + تفعيل `goods()` عند `merchant.customization.*`.
+   - سطر 358: الجارد الافتتاحي → `@if ($canViewStoreSettings || $canViewStorefront || $canViewCustomization)`.
+3. صفحة جديدة `resources/views/livewire/merchant/customization/statuses.blade.php` (Volt مضمّن):
+   - `layout('components.layouts.store')` + mount: `abort_unless(canStore(STORE_UPDATE->value), 403)`.
+   - `state('tab' => 'confirmation')` + `<x-edz.page-header>` (title/description) + تابات `$tab` بقاع الـ pills:
+     - `confirmation` (حالات التأكيد) — تُملأ بالمرحلة 2.
+     - `carrier_tracking` (حالات تتبع شركة التوصيل) — تُملأ بالمرحلة 3.
+     - `rider_tracking` (تخصيص حالات تتبع الراجل) — تُملأ بالمرحلة 4.
+   - كل تاب داخل `edz-card edz-card--padded` بحالة فارغة مؤقتة (`empty state` بقالب `x-edz.icon` + نص).
+
+**الترجمة ×4** (`resources/lang/{ar,en,fr,es}/merchant_panel.php` + `order_flow.php`): `customization`، `statuses`، `tab_confirmation`، `tab_carrier_tracking`، `tab_rider_tracking` + العنوان/الوصف/حالة الفراغ.
+
+**التصميم/الأداء:** توكنز `--edz-*` فقط (قاعدة TailAdmin + DESIGN_SYSTEM قسم 59-65)؛ لا استعلامات إضافية في هذه المرحلة (إطار فارغ)؛ فحص 375/768/1440 (بطاقات/درج للشاشات الصغيرة).
+
+**التحقق:** `php -l` على الملف الجديد + `view:cache` ناجح + فتح الرابط بعضو STORE_UPDATE وعضو بدونه (403) + توسّع مجموعة «إعدادات المتجر» تلقائيًا + تسمية الرابط.
+
+**الاعتماديات:** أساس المراحل 2/3/4.
+
+**✅ منجز (2026-09-16).** **قرار المستخدم:** مسار واحد `customization/statuses` (أنظف) بدل المسارات العميقة. **ما نُفّذ:**
+- `routes/merchant.php` (إعدادات المتجر): `Volt::route('/{store:slug}/customization/statuses', 'merchant.customization.statuses')->name('customization.statuses')`.
+- `store-sidebar.blade.php`: `canViewCustomization = STORE_UPDATE` (سطر ~63)؛ `storeOpen` + `merchant.customization.*` (توسّع تلقائي)؛ رابط «الحالات» بأيقونة `adjustments` بعد storefront (شرط `@if ($canViewCustomization)` + تفعيل عند `merchant.customization.*`)؛ الجارد الافتتاحي + `$canViewCustomization`.
+- `livewire/merchant/customization/statuses.blade.php` (جديد): `layout('components.layouts.store')` + mount `abort_unless(canStore(STORE_UPDATE->value), 403)` + `$tab` (confirmation/carrier_tracking/rider_tracking) بنمط أسطر order-settings 436-449 + 3 تابات داخل `edz-card edz-card--padded` بحالات فارغة.
+- الترجمات ×4 (`merchant_panel.php`): `customization`، `customization_desc`، `statuses`، `tab_confirmation`، `tab_carrier_tracking`، `tab_rider_tracking`، `customization_empty`.
+**التحقق:** php -l نظيف (صفحة+ترجمات ×4) + `route:list` يُظهر المسار + **`StatusCustomizationPageTest`** (اختبار Feature جديد، نمط MerchantDeepLinkTest): owner 200 (تابات ×3 + رابط سايد بار `Statuses` + `edz-sidebar__sub-link--active` + `store: true` + نص الحالة الفارغة) + staff 403 — 2 ناجح (12 تأكيدًا) + السلسلة الكاملة **781 (3066) نظيفة** + Pint (3 ملفات، 3 إصلاحات).
+
+### المرحلة 2 — حالات التأكيد: عرض + تخصيص لكل متجر + تاب الترتيب ✅
+
+**الهدف:** تاب «حالات التأكيد» (بذرة Confirmation Pipeline الفعلية — **10 حالات** مُبذورة: pending, confirmed, no_answer_1/2/3, postponed, wrong_number, out_of_stock, duplicate, on_hold، sort 1..10؛ **`draft` غير مبذور** للـ order — اعتُمد الكود الحي) قابلة للعرض والتخصيص لكل متجر (تسمية/لون) و«ترتيب حالات التأكيد» سطرًا سطر (↑/↓ ⇒ `sort_order`).
+
+**الأدلة المثبتة:**
+- جدول `statuses` يدعم `store_id` nullable + unique `(store_scope_id, type, key)` + `store_scope_id` افتراضية؛ النموذج fillable يشمل store_id/type/key/label/color/is_system/affects_inventory/movement_type/icon/display_mode/sort_order (`app/Models/Status.php:15-27`).
+- `StatusResolver::resolve()` يفضّل صف المتجر ثم صف النظام ثم kit (`app/Domains/Status/StatusResolver.php:21-44`) → **آلية الـ override جاهزة**.
+- **لا يوجد أي كاتب لصفوف متجر اليوم** (لا `Status::create` في app/؛ رسالة CRUD حصرًا Filament SuperAdmin) — هذه المرحلة أول كاتب.
+- سيدر النظام: `SystemStatusesSeeder` order block (أسطر 19-289) بتعليق Confirmation Pipeline (0-10).
+
+**التعديلات المقترحة:**
+1. قراءة القائمة: `Status::where('type','order')->where(fn $q => $q->whereNull('store_id')->orWhere('store_id',$storeId))->orderBy('sort_order')` مفلترة بمفاتيح قبل الإرسال (11).
+2. **قاعدة الـ override:** عند أي تعديل/ترتيب لحالة نظامية → `updateOrCreate` صف متجر بنفس `(store_id, type='order', key)` يحمل القيم المعدّلة (يتوجّه الـ Resolver إليه تلقائيًا؛ لا نلمس صف النظام).
+3. نقاط التحرير: تسمية (نص)، لون (من `general` kit)، تفعيل/تعطيل، وأسهم ترتيب ↑/↓ مع مؤشر موضع (sort_order).
+4. تاب «الترتيب»: قائمة بترتيب `sort_order` + أزرار ↑/↓ (wire:click مباشر — بلا سحب لتبسيط الأداء).
+5. خدمة صغيرة `app/Services/Stores/StoreStatusService.php` لضبط قواعد الـ override والكتابة (تُستخدم في المرحلتين 2 و4).
+
+**الترجمة:** تسميات النظام تُترجم عبر status-kit (`systemLabel()` يعيد اشتقاقها) — لا دوم نصوص إنجليزية للصفوف النظامية؛ المخصصات لها `label` نصي في صف المتجر (أياً كانت لغته كما أدخلها التاجر).
+
+**التحقق:** `StoreStatusCustomizationTest` (**10 ناجح / 32 تأكيدًا**): القائمة المُبذورة بالترتيب، إنشاء override عبر Save، الـ Resolver يفضّل صف المتجر، كحل الـ label الفارغ → ترجمة kit، عزل المتجر، التحرك أعلى/أسفل + إعادة التسلسل، حدود no-op، رفض المفاتيح/الألوان غير الصالحة، الحفظ عبر المكوّن (تسمية+لون معًا — **fix: `writeOverride` كانت تمحو label بالتحديث اللاحق**)، الترتيب عبر المكوّن. `StatusCustomizationPageTest` (م1) حُدِّث التأكيد لنمط المرحلة 2 الفعلي. **الجولة الكاملة: 791 ناجح (3100 تأكيدًا)** + `view:cache` نظيف + Pint. **ملاحظة أمان:** انتقالات الطلبيات تستخدم دائمًا `Status::system()` (OrderService/Observer) → الـ override يؤثر على العرض فقط، لا على `affects_inventory`/`movement_type`.
+
+**الاعتماديات:** المرحلة 1. يدعم مباشرة فلتر الطلبيات بالمرحلة 6 (نفس القائمة الـ 10 عبر `StoreOrderPhases`).
+
+### المرحلة 3 — حالات تتبع شركات التوصيل (API): جمع + مفاتيح ترجمة + بذر في `statuses` ✅
+
+**الهدف:** قاموس موحّد لحالات كل شركة توصيل (`raw → key داخلي`) + مفاتيح ترجمة ×4 + بذرها في `statuses` (`type='tracking'`) بحيث لا تصلنا حالة بلا label داخل نظامنا.
+
+**الأدلة المثبتة (من فحص التكامل):**
+- التكامل الوحيد المُفعّل: **NOEST** — Webhook `DeliveryWebhookController` (accepted payload shapes: OrderInfo+activity/events/Flat) + Poll `SyncNoestTrackingJob`؛ كلاهما يتقاطعان في `NoestTrackingSyncService::apply()`. القيم RAW نحو 40+ `event_key` في `NoestTrackingMapper::MAP` + مطابقة نصية `eventTextToStatus` + `terminalKeys`؛ غير المحدد → fallback `IN_TRANSIT` (apply سطر 88-110).
+- **Ecotrack** / **Yalidine**: وثائق في الريبو فقط (11 نشاطًا + 19 حالة / 30 سلسلة `last_status`).
+- **ZR Express v2 / Anderson**: أسطر كتالوج فقط (`CarrierCatalogSeeder:40-49`)، **بلا توثيق** → إبقاؤها fallback مؤقتًا أو مصدر خارجي.
+- الحالات الداخلية `type='tracking'` الحالية (9): shipped, in_transit, out_for_delivery, delivered, returned, returning, failed_attempt, lost, damaged (`SystemStatusesSeeder:466-521`)؛ ≥ `OrderTrackingStatus` (9 حالات، labels عبر status-kit ×4 لغات).
+- `order_trackings` يحفظ `carrier_status/carrier_label/tracking_status/carrier_raw` + history عبر `order_tracking_histories`.
+
+**التعديلات المقترحة:**
+1. `app/Domains/Shipping/Support/CarrierStatusDictionary.php` (جديد): جدول لكل شركة `raw_status → internal_key` (قيم NOEST حرفيًا من MAP الوثائق، Ecotrack/Yalidine من وثائقهما) + `internal_key → label_key`.
+2. `SystemStatusesSeeder` (قسم tracking): إضافة مفاتيح جديدة تنشأ من القاموس (لم تكن معرفة) ومواءمة label عبر مخفاتيح الترجمة بدل النص الإنجليزي (توحيد مع `systemLabel()`).
+3. ترجمة ×4: مفاتيح كل قيمة مُصطادة في status-kit/lang + `order_flow.php`.
+4. `NoestTrackingSyncService`/`NoestTrackingMapper`: استبدال fallback `IN_TRANSIT` بالقاموس (كل قيمة واردة لها key دائمة) + الإبقاء على `carrier_raw` للعرض الأصلي.
+5. تاب `carrier_tracking` في صفحة الحالات (من م1): جدول `raw ⇦ القيمة المُطبَّقة ⇦ التسمية المترجمة` للشركة المختارة (قراءة من القاموس + statuses).
+
+**التحقق:** تحديث/إضافة اختبارات `NoestTrackingSyncService*`: كل قيمة من القاموس → key محدد (لا fallback)؛ `view:cache`؛ جولة التتبع المرجعية صفر انحدار.
+
+**الاعتماديات:** المرحلة 1. مرتبط بالمرحلة 5: إن ظهرت مفاتيح تتجاوز الخمسة الثابتة في الخط الزمني (shipped/in_transit/out_for_delivery/delivered/returned) نمدّد الخط الزمني/الـ stepper هناك.
+
+**✅ منجز (2026-09-16).** **نطاق التنفيذ وكل قراراته المعتمدة كما وُثّقت خلال الجلسة:**
+- **`app/Domains/Shipping/Support/CarrierStatusDictionary.php` (جديد):** قاموس موحّد `raw → OrderTrackingStatus` لكل شركة — **NOEST** (أحداث MAP الحالية + مفاتيح الوثيقة الجديدة: `colis_suspendu`/`colis_pickup_transmit_to_partner`/`echange_valide`/`echange_valid_by_hub`/`verssement_admin_cust`/`validation_reception_cash_by_partener` + الملغاة `*_canceled` + `ask_to_delete_*`)؛ **Ecotrack** (11 activity + 19 status حرفيًا — `annule`→cancelled، `all` مستبعد كفلتر)؛ **Yalidine** (36 history statuses حرفيًا بفرنسيتها، `Bloqué`/`En alerte`→on_hold، `Colis abandonné`→lost، `Annulé`→cancelled).
+  - API: `carriers()`, `carrierOptions()` (أسماء موطَّنة ×4), `statusFor(carrier, raw)`, `list(carrier)`, `keysFor(carrier, status)`. **تُستبعد الأحداث الإدارية/المالية** (`edited_informations`, `edit_price`, `edit_wilaya`, `extra_fee`) → null (تُبقي الحالة السابقة؛ يطابق اختبار unmapped القائم).
+- **`OrderTrackingStatus` توسّع 9 → 11:** `ON_HOLD = 'on_hold'` (open) و`CANCELLED = 'cancelled'` (terminal) — labels ×4 (en/ar/fr/es) + إدخالا **`config/status-kit-statuses.php`** في مجموعة `tracking` بأيقونتين مسجلتين (`on_hold`, `cancelled`) + تحديث `fromCarrier` (hold/blocked/suspended → ON_HOLD؛ cancel/annul → CANCELLED؛ abandoned → LOST).
+- **`SystemStatusesSeeder` (قسم tracking):** الصفان الجديدان `on_hold` (sort 4) و`cancelled` (sort 9)، بإعادة تسلسل delivered→5 .. failed_attempt→8 .. damaged→11.
+- **`NoestTrackingMapper`**: أُفرغ من `MAP` ويتفرّد للقاموس (`toStatus`/`terminalKeys` عبر `CarrierStatusDictionary`) مع الإبقاء على `eventTextToStatus`. **`NoestTrackingSyncService::apply()`**: حُذف fallback `IN_TRANSIT` — الحدث غير المعيّن (حتى على صف فارغ) يبقى بلا حالة ولا History مع تحديث `last_synced_at` فقط + `eventDate` للـ delivered/returned تتحد الفرعي من `terminalKeys` + status value.
+- **تاب `carrier_tracking` في صفحة الحالات:** `x-edz.select` بشركة (noest/ecotrack/yalidine، `wire:model="carrier"`) + جدول `raw (mono) ⇦ القيمة المُطبَّقة (badge/classes) ⇦ التسمية المترجمة` عبر `StatusResolver::resolve('tracking', key, storeId)` (row جديد `$carrierRows`). مفاتيح `merchant_panel` ×4 الجديدة: `carrier_tracking_select/hint/raw/applied/label` + `carrier_noest/ecotrack/yalidine` (الفرنسية: Libellé/Statut brut/…).
+**التحقق:** `CarrierStatusDictionaryTest` (جديد — 7 اختبارات: الشركات الـ 3 + NOEST + on_hold/cancelled + Events إدارية null + Ecotrack + Yalidine + lists/keysFor) + `OrderTrackingStatusTest` (11 حالة + تصنيفات + matcher + labels ×2 + icons) + `NoestTrackingSyncServiceTest` (اختبار fallback المُستبدل: صف فارغ بلا حالة بلا History + اختبار dict جديد `colis_suspendu`→on_hold و`ask_to_delete_by_admin`→cancelled) + `StatusCustomizationPageTest` (جديد: Livewire tab test — `setTab('carrier_tracking')` + تبديل `carrier` إلى `yalidine`) + `StatusLabelPrecedenceTest` (9→11 + on_hold/cancelled). **الجولة الكاملة: 800 ناجح (3222 تأكيدًا)** (`php -l` نظيف ×5 + Pint 10 ملفات + `view:cache` ناجح). **ملاحظة قرار:** تركت تسميات صفوف البذرة على نمط التسمية الإنجليزية الرائج لبقية صفوف السيدر (override `label=''` كي تُترجم من status-kit) — لا تغيير على `systemLabel()` في هذه المرحلة.
+
+### المرحلة 4 — حالات تتبع راجل التوصيل: تخصيص + تاب الترتيب ⬜
+
+**الهدف:** تاب «تخصيص حالات تتبع الراجل» (إضافة/تعديل تسمية/لون/تفعيل) + «ترتيب حالات تتبع الراجل» (↑/↓ ⇒ sort_order) — حالاتنا المحلية لا تُستقبل من أي API.
+
+**الأدلة المثبتة:** حالة الراجل محلية بالكامل — `OrderTrackingService::startShipment` يبذر `tracking_status='shipped'` و`mark*()` يكتب delivered/returned/in_transit... (`app/Domains/.../OrderTrackingService.php:17-44, 86-152`)؛ رقم تتبع محلي `HM-…/SD-…` (`generateRiderTrackingNumber:52-61`)؛ لا `shipping_provider_id` على مسار الراجل.
+
+**التعديلات المقترحة:**
+1. في صفحة الحالات (م1) تاب `rider_tracking`: نفس نمط المرحلة 2 بنطاق `type='tracking'` للراجل، مع إمكانية إضافة حالات جديدة يحددها المتجر (صفوف متجر بـ store_scope_id).
+2. تاب «الترتيب» للراجل: نفس آلية ↑/↓ عبر `StoreStatusService`؛ لا يتداخل مع صفوف الشركة (فلتر بنطاق الراجل).
+3. ربط التشغيل: حالات الراجل المخصصة تظهر في قائمة/stepper/إحصاءات الراجل فقط من خلال قراءة `OrderTracking::tracking_status` ذكية (status-kit + صفوف المتجر) — **بلا تعديل على `mark*`** (حالات التبديل الأساسية تبقى enum).
+
+**التحقق:** إضافة حالة راجل مخصصة لمتجر → تظهر في قائمة/ترتيب/stepper الراجل فقط ولا تسرّب للشركة؛ Feature test + `view:cache`.
+
+**الاعتماديات:** المراحل 1 و2 (نفس آلية override).
+
+### المرحلة 5 — بوب أب التتبع: تابان فرعيان «تتبع الطلبية» / «ملاحظات شركة التوصيل» ⬜
+
+**الهدف:** داخل `tracking-history-popup` مبدّل تبويب فرعي:
+- «تتبع الطلبية»: الخط الزمني (stepper) + سجل `statusHistory`.
+- «ملاحظات شركة التوصيل»: قائمة ملاحظات + كاتب ملاحظة.
+يعمل تلقائيًا على كلا القسمين (كوم्प أي/راجل) — الشركة عبر API notes، الراجل عبر آلية ملاحظات محلية جديدة.
+
+**الأدلة المثبتة:**
+- البوب أب الحالي يكدّس stepper + رابط التتبع + composer + timeline عموديًا (`tracking-history-popup.blade.php:26-42`) بلا تابات.
+- الحالة: `statusHistoryFor/statusHistory/statusHistoryMeta` + `shipmentNotes*` + `noteDraft/sendingNote` (index.blade.php:68-80) والطرق `openStatusHistory/openShipmentNotes/sendCarrierNote` (`TrackingDrawerConcern.php:139-348`). البوب أب مشترك على البطينين (index.blade.php:348).
+- ملاحظات الراجل **لا وجود لها اليوم**: composer محجوب بـ `carrier_supports_api_notes` (false للراجل؛ `carrier-note-composer.blade.php:3-7`) و`sendCarrierNote` يحرس بـ supports_api_notes + non-null tracking_number (`TrackingDrawerConcern.php:279-301`). خلية الملاحظات في الجدول عمودًا `—` للراجل (`tracking-row-cell.blade.php:42-56`).
+- مفاتيح الترجمة الحالية: `carrier_note_section/carrier_note_status/carrier_notes/no_carrier_notes` (`order_flow.php:144-151`)؛ لا يوجد مفتاح حرفي «تتبع الطلبية»/«ملاحظات شركة التوصيل» — جديدة.
+
+**التعديلات المقترحة:**
+1. `tracking-history-popup.blade.php`: حالة `statusSubTab` ('tracking'|'notes') بتباين فئات pills (نمط `tracking-tabs.blade.php:24-37`) بلا توجيه/حفظ localStorage.
+   - تاب tracking: stepper + `tracking-history-timeline` (كالحالي).
+   - تاب notes: قائمة `statusHistory` المُفلترة بـ `carrier_note` (صفر استعلام إضافي) + composer.
+2. ملاحظات الراجل (آلية جديدة): السماح بكتابة `carrier_note` محليًا لصفوف الراجل — تحديث الـ gate في `carrier-note-composer` (شركة → supports_api_notes؛ راجل → يُسمح محليًا) + `sendCarrierNote` يكتب صف حالة مباشرةً عند عدم وجود provider-API (لا استدعاء adapter). خلية الجدول للملاحظات تظهر للراجل.
+3. الترجمة ×4: `tracking_popup_tab_tracking`، `tracking_popup_tab_notes` (+ أسماء هامشية إن لزم).
+
+**التحقق:** تبديل التابين بلا استعلام إضافي (نفس الصفائف)؛ بعد إرسال ملاحظة في أي تاب يتحدّث سجل `statusHistory` وسلوك الراجل بلا API؛ `view:cache`؛ جولة التتبع المرجعية صفر انحدار.
+
+**الاعتماديات:** المرحلة 3 (أي مفاتيح تتبع جديدة توسّع القائمة/الخط الزمني).
+
+### المرحلة 6 — المتفق عليه سابقًا: فلتر حالات الطلبيات (قبل الإرسال) + فصل أدوار STAFF + بوابة التتبع ⬜
+
+**الهدف (قرارات المستخدم المسبقة):** فلتر حالة الطلبيات يعرض حالات التأكيد فقط (عام لكل الأدوار؛ `preparing` = بعد الإرسال)؛ فصل أدوار STAFF (مؤكِّد/متتبِّع) مع إبقاء STAFF القديم للتوافق؛ بوابة التتبع `ORDER_VIEW || CRM_ORDER_TRACKING`؛ المنح المخصص لكل موظف يبقى عبر `store_membership_permissions`.
+
+**الأدلة المثبتة:**
+- `searchableStatuses` يُبنى من كل `type='order'` (`orders/index.blade.php:504-513`) ويزوّد البوابتين (`filter-portal:112`, `orders-filter-bar-portal:363`).
+- قائمة تغيير الحالة داخل الصف مقيدة سلفًا بـ `$transitions` (`orders-table-cell:811` عبر `StoreOrderPermissions::forStatus` عند 1732) — لا تُمَسّ.
+- `StoreRoles::permissions()`: STAFF الحالي يجمع التأكيد والتتبع (`StoreRoles.php:99-123`)؛ `CRM_ORDER_TRACKING` غير مستخدم كبوابة UI (يظهر فقط في StoreRoles و`dashboard.blade.php:16`).
+- السايد بار يُظهر التتبع بنفس علم الطلبيات (`store-sidebar.blade.php:58/260-267`)؛ بوابة صفحة التتبع `ORDER_VIEW` (`tracking/index.blade.php:222`).
+- `StoreRoleEnum` (owner/admin/manager/staff) + واجهة الفريق تعرض قوائم الأدوار ديناميكيًا (`teams/index.blade.php:299`) + شارة الدور `x-merchant.status domain="role"` (السطر 427) — إضافة الدورين تعرضان تلقائيًا مع مفاتيح labels في status-kit/lang.
+
+**التعديلات المقترحة:**
+1. `app/Support/StoreOrderPhases.php` (جديد): `PRE_CARRIER` (11) / `POST_CARRIER` (شاملاً preparing + المتبقية) + `isPreCarrier(string $key)` — مصدر وحيد للفلتر (يُمطّق مع المرحلة 2).
+2. `orders/index.blade.php:504-513`: `searchableStatuses` ← الإبقاء على `allStatuses` كاملًا للـ override/التسميات لكن فلترة القائمة المفلترة بـ `isPreCarrier`؛ البوابتان تستهلكانه تلقائيًا؛ بلا مساس بالاستعلام و`$transitions`.
+3. `StoreRoleEnum`: + `STAFF_CONFIRMATION = 'staff_confirmation'` + `STAFF_TRACKING = 'staff_tracking'` (إبقاء `STAFF` القديم كقالب توافق).
+4. `StoreRoles::permissions()`:
+   - `staff_confirmation`: ORDER_VIEW + ORDER_CONFIRM + ORDER_CANCEL + CRM_ORDER_CONFIRMATION + STATS_CONFIRMATION + PRODUCT_VIEW + INVENTORY_VIEW + RETURNS_VERIFY_BARCODE.
+   - `staff_tracking`: ORDER_VIEW + CRM_ORDER_TRACKING + STATS_DELIVERY + INVENTORY_VIEW.
+5. `store-sidebar.blade.php:58/260-267`: بوابة ربط التتبع = `canStore(ORDER_VIEW) || canStore(CRM_ORDER_TRACKING)`.
+6. `tracking/index.blade.php:222`: البقاء على ORDER_VIEW (شمول) — لا تغيير إلزامي إلّا إن رُبطت بالدور تحديدًا.
+7. تسميات/ألوان الدورين في config status-kit (`role` group) + ترجمات `roles.*` ×4 — تعرضان تلقائيًا في منسق الفريق والشارة.
+
+**التحقق:** `view:cache` + pest (الملفات المتأثرة + الجولات المرجعية: orders/tracking/teams) + إثبات: فلتر الحالة = 11 حالة فقط، وبدون تسريب حالة توصيل؛ بوابة التتبع للـ tracker فقط؛ الـ staff القديم يبقى شاملاً؛ استجابة (الدوران + 375/768/1440) + تحديث Todos.md (ج8).
+
+**الاعتماديات:** المرحلة 2 (مطابقة القائمة الـ 11 عبر `StoreOrderPhases`).
+
+---
+**ملاحظات عامة للعنقود:**
+- بعد موافقة المستخدم على مرحلة تُنفَّذ بالترتيب فقط (لا دمج ولا قفز).
+- كل مرحلة تُحدَّث ✏️ هنا فور الانتهاء بـ (✅) + أدلة التحقق + `php -l`/`view:cache`/الاختبارات ـ كما في الأقسام السابقة.
+- قراران مفتوحان ينتظران المستخدم: (أ) شكل المسار (العادي أو المسارات العميقة القابلة للاشتراك) في المرحلة 1 — **تم البت: مسار واحد `customization/statuses` (أنظف)**؛ (ب) معالجة ZR Express/Anderson بلا وثائق في المرحلة 3 (fallback مؤقت أو مصدر خارجي).

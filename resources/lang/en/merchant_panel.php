@@ -679,4 +679,38 @@ return [
     'shipping_source_price_list' => 'Price list — :provider',
     'shipping_source_flat' => 'Flat rate — :provider',
     'office_none_for_destination' => 'No offices for this destination yet — refresh to load them',
+
+    // Customization — statuses (Phase 1 frame)
+    'customization' => 'Status Customization',
+    'customization_desc' => 'Customize the statuses your team uses for order confirmation, carrier tracking, and rider tracking.',
+    'statuses' => 'Statuses',
+    'tab_confirmation' => 'Confirmation',
+    'tab_carrier_tracking' => 'Carrier Tracking',
+    'tab_rider_tracking' => 'Rider Tracking',
+    'customization_empty' => 'This section will be filled in an upcoming update.',
+
+    // Customization — carrier tracking statuses (Phase 3)
+    'carrier_tracking_select' => 'Carrier',
+    'carrier_tracking_hint' => 'Mapping reference per carrier: the raw status value as reported by the carrier, the internal status it applies to, and its current label.',
+    'carrier_tracking_raw' => 'Raw status',
+    'carrier_tracking_applied' => 'Applied status',
+    'carrier_tracking_label' => 'Label',
+    'carrier_noest' => 'NOEST',
+    'carrier_ecotrack' => 'Ecotrack',
+    'carrier_yalidine' => 'Yalidine',
+
+    // Customization — confirmation statuses (Phase 2)
+    'status_label' => 'Label',
+    'status_color' => 'Color',
+    'status_position' => 'Order',
+    'confirmation_customize' => 'Customize statuses',
+    'confirmation_reorder' => 'Reorder statuses',
+    'move_up' => 'Move up',
+    'move_down' => 'Move down',
+    'status_custom' => 'Customized',
+    'color_gray' => 'Gray',
+    'color_success' => 'Green',
+    'color_warning' => 'Yellow',
+    'color_danger' => 'Red',
+    'color_info' => 'Blue',
 ];

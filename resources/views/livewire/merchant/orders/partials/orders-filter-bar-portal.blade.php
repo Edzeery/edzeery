@@ -244,11 +244,11 @@
                     <span class="truncate">{{ __('general.all') }}</span>
                     <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['shipping_provider']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
-                <div x-data="edzSearchableList()" data-items='@json($this->allProviders)' data-active='@json(array_filter([$this->filters['shipping_provider'] ?? null]))'>
+                <div x-data="edzSearchableList()" data-items='@json($this->allCarrierFilters)' data-active='@json(array_filter([$this->filters['shipping_provider'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
                     <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
                         <template x-for="item in filtered" :key="item.id">
-                            <button type="button" @click="$wire.setFilter('shipping_provider', item.id); close()"
+                            <button type="button" @click="$wire.setFilter('shipping_provider', item.id, item.kind); close()"
                                 :aria-pressed="isActive(item.id)"
                                 class="edz-dropdown__item justify-between"
                                 :class="activeCls(item.id)">

@@ -677,4 +677,38 @@ return [
     'shipping_source_price_list' => 'Lista de precios — :provider',
     'shipping_source_flat' => 'Tarifa plana — :provider',
     'office_none_for_destination' => 'Aún no hay oficinas para este destino — actualice para cargarlas',
+
+    // Personalización — estados (marco de la fase 1)
+    'customization' => 'Personalización de estados',
+    'customization_desc' => 'Personalice los estados que usa su equipo para la confirmación de pedidos, el seguimiento de transportistas y de repartidores.',
+    'statuses' => 'Estados',
+    'tab_confirmation' => 'Confirmación',
+    'tab_carrier_tracking' => 'Seguimiento de transportista',
+    'tab_rider_tracking' => 'Seguimiento de repartidor',
+    'customization_empty' => 'Esta sección se completará en una próxima actualización.',
+
+    // Personalización — estados de seguimiento de transportista (fase 3)
+    'carrier_tracking_select' => 'Transportista',
+    'carrier_tracking_hint' => 'Referencia de correspondencia por transportista: el valor bruto informado por el transportista, el estado interno aplicado y su etiqueta actual.',
+    'carrier_tracking_raw' => 'Estado bruto',
+    'carrier_tracking_applied' => 'Estado aplicado',
+    'carrier_tracking_label' => 'Etiqueta',
+    'carrier_noest' => 'NOEST',
+    'carrier_ecotrack' => 'Ecotrack',
+    'carrier_yalidine' => 'Yalidine',
+
+    // Personalización — estados de confirmación (fase 2)
+    'status_label' => 'Etiqueta',
+    'status_color' => 'Color',
+    'status_position' => 'Orden',
+    'confirmation_customize' => 'Personalizar estados',
+    'confirmation_reorder' => 'Reordenar estados',
+    'move_up' => 'Subir',
+    'move_down' => 'Bajar',
+    'status_custom' => 'Personalizado',
+    'color_gray' => 'Gris',
+    'color_success' => 'Verde',
+    'color_warning' => 'Amarillo',
+    'color_danger' => 'Rojo',
+    'color_info' => 'Azul',
 ];

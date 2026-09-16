@@ -676,4 +676,38 @@ return [
     'shipping_source_price_list' => 'قائمة أسعار — :provider',
     'shipping_source_flat' => 'سعر ثابت — :provider',
     'office_none_for_destination' => 'لا مكاتب لهذه الوجهة بعد — حدِّث المكاتب لتحميلها',
+
+    // تخصيص الحالات — إطار المرحلة الأولى
+    'customization' => 'تخصيص الحالات',
+    'customization_desc' => 'خصِّص الحالات التي يستخدمها فريقك للتأكيد وتتبع شركات التوصيل وتتبع الراجلين.',
+    'statuses' => 'الحالات',
+    'tab_confirmation' => 'حالات التأكيد',
+    'tab_carrier_tracking' => 'حالات تتبع الشركة',
+    'tab_rider_tracking' => 'حالات تتبع الراجل',
+    'customization_empty' => 'سيُملأ هذا القسم في تحديث قادم.',
+
+    // تخصيص الحالات — حالات تتبع الشركات (المرحلة الثالثة)
+    'carrier_tracking_select' => 'شركة التوصيل',
+    'carrier_tracking_hint' => 'مرجع التطابق لكل شركة: القيمة الخام كما ترد من الشركة، الحالة الداخلية المُطبَّقة عليها، وتسميتها الحالية.',
+    'carrier_tracking_raw' => 'قيمة الشركة الخام',
+    'carrier_tracking_applied' => 'الحالة المُطبَّقة',
+    'carrier_tracking_label' => 'التسمية',
+    'carrier_noest' => 'نويست',
+    'carrier_ecotrack' => 'إيكوتراك',
+    'carrier_yalidine' => 'ياليدين',
+
+    // تخصيص الحالات — حالات التأكيد (المرحلة الثانية)
+    'status_label' => 'التسمية',
+    'status_color' => 'اللون',
+    'status_position' => 'الترتيب',
+    'confirmation_customize' => 'تخصيص الحالات',
+    'confirmation_reorder' => 'ترتيب الحالات',
+    'move_up' => 'تحريك للأعلى',
+    'move_down' => 'تحريك للأسفل',
+    'status_custom' => 'مخصصة',
+    'color_gray' => 'رمادي',
+    'color_success' => 'أخضر',
+    'color_warning' => 'أصفر',
+    'color_danger' => 'أحمر',
+    'color_info' => 'أزرق',
 ];

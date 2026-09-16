@@ -677,4 +677,38 @@ return [
     'shipping_source_price_list' => 'Liste de prix — :provider',
     'shipping_source_flat' => 'Tarif forfaitaire — :provider',
     'office_none_for_destination' => "Aucun bureau pour cette destination pour le moment — actualisez pour les charger",
+
+    // Personnalisation — statuts (cadre de la phase 1)
+    'customization' => 'Personnalisation des statuts',
+    'customization_desc' => 'Personnalisez les statuts utilisés par votre équipe pour la confirmation de commande, le suivi des transporteurs et des livreurs.',
+    'statuses' => 'Statuts',
+    'tab_confirmation' => 'Confirmation',
+    'tab_carrier_tracking' => 'Suivi transporteur',
+    'tab_rider_tracking' => 'Suivi livreur',
+    'customization_empty' => "Cette section sera complétée dans une prochaine mise à jour.",
+
+    // Personnalisation — statuts de suivi transporteur (phase 3)
+    'carrier_tracking_select' => 'Transporteur',
+    'carrier_tracking_hint' => 'Référence de correspondance par transporteur : la valeur brute telle que rapportée par le transporteur, le statut interne appliqué et son libellé actuel.',
+    'carrier_tracking_raw' => 'Statut brut',
+    'carrier_tracking_applied' => 'Statut appliqué',
+    'carrier_tracking_label' => 'Libellé',
+    'carrier_noest' => 'NOEST',
+    'carrier_ecotrack' => 'Ecotrack',
+    'carrier_yalidine' => 'Yalidine',
+
+    // Personnalisation — statuts de confirmation (phase 2)
+    'status_label' => 'Libellé',
+    'status_color' => 'Couleur',
+    'status_position' => 'Ordre',
+    'confirmation_customize' => 'Personnaliser les statuts',
+    'confirmation_reorder' => 'Réordonner les statuts',
+    'move_up' => 'Monter',
+    'move_down' => 'Descendre',
+    'status_custom' => 'Personnalisé',
+    'color_gray' => 'Gris',
+    'color_success' => 'Vert',
+    'color_warning' => 'Jaune',
+    'color_danger' => 'Rouge',
+    'color_info' => 'Bleu',
 ];

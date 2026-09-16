@@ -517,8 +517,8 @@ use Illuminate\Support\Facades\Validator;
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                     </button>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allProviders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <button type="button" wire:click="setFilter('shipping_provider', '<?php echo e($pr['id']); ?>')" @click="close()"
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allCarrierFilters; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $pr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <button type="button" wire:click="setFilter('shipping_provider', '<?php echo e($pr['id']); ?>', '<?php echo e($pr['kind']); ?>')" @click="close()"
                             aria-pressed="<?php echo e(($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'true' : 'false'); ?>"
                             class="edz-dropdown__item justify-between <?php echo e(($this->filters['shipping_provider'] ?? null) == $pr['id'] ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
                             <span><?php echo e($pr['name']); ?></span>
@@ -704,7 +704,7 @@ use Illuminate\Support\Facades\Validator;
                 <span
                     class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                     <span class="font-semibold opacity-75"><?php echo e(__('order_flow.filter_provider')); ?>:</span>
-                    <span><?php echo e(collect($this->allProviders)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? $this->filters['shipping_provider']); ?></span>
+                    <span><?php echo e(collect($this->allCarrierFilters)->firstWhere('id', $this->filters['shipping_provider'])['name'] ?? $this->filters['shipping_provider']); ?></span>
                     <button
                         @click="$wire.setFilter('shipping_provider', null); $wire.setFilter('stopdesk_point', null)"
                         wire:loading.attr="disabled" class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>

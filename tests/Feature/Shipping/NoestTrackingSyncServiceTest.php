@@ -176,7 +176,7 @@ test('syncOne with unmapped events leaves the status untouched but refreshes las
         ->and(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->count())->toBe(0);
 });
 
-test('syncOne with unmapped events on a blank-status row falls back to in-transit so the shipment is never blank', function () {
+test('syncOne with unmapped events on a blank-status row leaves it blank — no status is guessed', function () {
     [$user, $store, $provider] = ntssEnv();
 
     $tracking = ntssTracking($store, $provider, 'TRK-SVC-444444');
@@ -193,16 +193,52 @@ test('syncOne with unmapped events on a blank-status row falls back to in-transi
     $tracking->refresh();
 
     expect($result['ok'])->toBeTrue()
-        ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::IN_TRANSIT->value)
+        ->and($tracking->tracking_status)->toBeNull()
         ->and($tracking->delivered_at)->toBeNull()
         ->and($tracking->returned_at)->toBeNull()
         ->and($tracking->last_synced_at)->not->toBeNull()
-        ->and(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->where('status', OrderTrackingStatus::IN_TRANSIT->value)->exists())->toBeTrue();
+        ->and(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->count())->toBe(0);
 
-    // Re-polling with the same unmapped events adds no second history row.
+    // Re-polling with the same unmapped events adds nothing.
     app(NoestTrackingSyncService::class)->syncOne($tracking);
 
-    expect(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->where('status', OrderTrackingStatus::IN_TRANSIT->value)->count())->toBe(1);
+    expect(OrderTrackingHistory::where('order_tracking_id', $tracking->id)->count())->toBe(0);
+});
+
+test('syncOne maps dictionary statuses onto the new on-hold and cancelled cases', function () {
+    [$user, $store, $provider] = ntssEnv();
+
+    $hold = ntssTracking($store, $provider, 'TRK-SVC-300001', OrderTrackingStatus::IN_TRANSIT->value);
+
+    Http::fake([
+        'noest.test/*' => Http::sequence()
+            ->push(ntssEntry($provider, 'TRK-SVC-300001', [
+                ['event' => 'Package suspended', 'event_key' => 'colis_suspendu'],
+            ]))
+            ->push(ntssEntry($provider, 'TRK-SVC-300002', [
+                ['event' => 'Requested deletion', 'event_key' => 'ask_to_delete_by_admin'],
+            ])),
+    ]);
+
+    $result = app(NoestTrackingSyncService::class)->syncOne($hold);
+
+    $hold->refresh();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($hold->tracking_status)->toBe(OrderTrackingStatus::ON_HOLD->value)
+        ->and($hold->carrier_status)->toBe('colis_suspendu')
+        ->and(OrderTrackingHistory::where('order_tracking_id', $hold->id)->where('status', OrderTrackingStatus::ON_HOLD->value)->exists())->toBeTrue();
+
+    $cancelled = ntssTracking($store, $provider, 'TRK-SVC-300002', OrderTrackingStatus::IN_TRANSIT->value);
+
+    $result = app(NoestTrackingSyncService::class)->syncOne($cancelled);
+
+    $cancelled->refresh();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($cancelled->tracking_status)->toBe(OrderTrackingStatus::CANCELLED->value)
+        ->and($cancelled->carrier_status)->toBe('ask_to_delete_by_admin')
+        ->and(OrderTrackingHistory::where('order_tracking_id', $cancelled->id)->where('status', OrderTrackingStatus::CANCELLED->value)->exists())->toBeTrue();
 });
 
 test('syncOne without a tracking number fails cleanly without side effects', function () {

@@ -17,10 +17,12 @@ enum OrderTrackingStatus: string
     case SHIPPED = 'shipped';
     case IN_TRANSIT = 'in_transit';
     case OUT_FOR_DELIVERY = 'out_for_delivery';
+    case ON_HOLD = 'on_hold';
     case DELIVERED = 'delivered';
     case RETURNED = 'returned';
     case RETURNING = 'returning';
     case FAILED_ATTEMPT = 'failed_attempt';
+    case CANCELLED = 'cancelled';
     case LOST = 'lost';
     case DAMAGED = 'damaged';
 
@@ -33,6 +35,7 @@ enum OrderTrackingStatus: string
             self::SHIPPED,
             self::IN_TRANSIT,
             self::OUT_FOR_DELIVERY,
+            self::ON_HOLD,
             self::RETURNING,
         ];
     }
@@ -45,6 +48,7 @@ enum OrderTrackingStatus: string
         return [
             self::DELIVERED,
             self::RETURNED,
+            self::CANCELLED,
             self::LOST,
             self::DAMAGED,
         ];
@@ -84,7 +88,14 @@ enum OrderTrackingStatus: string
             str_contains($value, 'return_in_progress') => self::RETURNING,
             str_contains($value, 'returned'),
             str_contains($value, 'return_to_sender') => self::RETURNED,
-            str_contains($value, 'lost') => self::LOST,
+            str_contains($value, 'on_hold'),
+            str_contains($value, 'hold'),
+            str_contains($value, 'blocked'),
+            str_contains($value, 'suspended') => self::ON_HOLD,
+            str_contains($value, 'cancel'),
+            str_contains($value, 'annul') => self::CANCELLED,
+            str_contains($value, 'lost'),
+            str_contains($value, 'abandoned') => self::LOST,
             str_contains($value, 'damaged'),
             str_contains($value, 'damage') => self::DAMAGED,
             str_contains($value, 'transit'),
@@ -100,10 +111,12 @@ enum OrderTrackingStatus: string
             self::SHIPPED => status_label(self::GROUP, 'shipped'),
             self::IN_TRANSIT => status_label(self::GROUP, 'in_transit'),
             self::OUT_FOR_DELIVERY => status_label(self::GROUP, 'out_for_delivery'),
+            self::ON_HOLD => status_label(self::GROUP, 'on_hold'),
             self::DELIVERED => status_label(self::GROUP, 'delivered'),
             self::RETURNED => status_label(self::GROUP, 'returned'),
             self::RETURNING => status_label(self::GROUP, 'returning'),
             self::FAILED_ATTEMPT => status_label(self::GROUP, 'failed_attempt'),
+            self::CANCELLED => status_label(self::GROUP, 'cancelled'),
             self::LOST => status_label(self::GROUP, 'lost'),
             self::DAMAGED => status_label(self::GROUP, 'damaged'),
         };
@@ -115,10 +128,12 @@ enum OrderTrackingStatus: string
             self::SHIPPED => status_color(self::GROUP, 'shipped'),
             self::IN_TRANSIT => status_color(self::GROUP, 'in_transit'),
             self::OUT_FOR_DELIVERY => status_color(self::GROUP, 'out_for_delivery'),
+            self::ON_HOLD => status_color(self::GROUP, 'on_hold'),
             self::DELIVERED => status_color(self::GROUP, 'delivered'),
             self::RETURNED => status_color(self::GROUP, 'returned'),
             self::RETURNING => status_color(self::GROUP, 'returning'),
             self::FAILED_ATTEMPT => status_color(self::GROUP, 'failed_attempt'),
+            self::CANCELLED => status_color(self::GROUP, 'cancelled'),
             self::LOST => status_color(self::GROUP, 'lost'),
             self::DAMAGED => status_color(self::GROUP, 'damaged'),
         };
@@ -130,10 +145,12 @@ enum OrderTrackingStatus: string
             self::SHIPPED => status_icon(self::GROUP, 'shipped'),
             self::IN_TRANSIT => status_icon(self::GROUP, 'in_transit'),
             self::OUT_FOR_DELIVERY => status_icon(self::GROUP, 'out_for_delivery'),
+            self::ON_HOLD => status_icon(self::GROUP, 'on_hold'),
             self::DELIVERED => status_icon(self::GROUP, 'delivered'),
             self::RETURNED => status_icon(self::GROUP, 'returned'),
             self::RETURNING => status_icon(self::GROUP, 'returning'),
             self::FAILED_ATTEMPT => status_icon(self::GROUP, 'failed_attempt'),
+            self::CANCELLED => status_icon(self::GROUP, 'cancelled'),
             self::LOST => status_icon(self::GROUP, 'lost'),
             self::DAMAGED => status_icon(self::GROUP, 'damaged'),
         };

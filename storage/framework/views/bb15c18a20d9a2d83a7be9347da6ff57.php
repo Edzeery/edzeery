@@ -369,12 +369,12 @@
                     class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary <?php echo e(!$this->filters['shipping_provider'] ? 'bg-surface-secondary font-medium' : ''); ?>">
                     —
                 </button>
-                <div x-data="edzSearchableList()" data-items='<?php echo json_encode($this->allProviders, 15, 512) ?>' data-active='<?php echo json_encode(array_filter([$this->filters['shipping_provider'] ?? null]), 15, 512) ?>'>
+                <div x-data="edzSearchableList()" data-items='<?php echo json_encode($this->allCarrierFilters, 15, 512) ?>' data-active='<?php echo json_encode(array_filter([$this->filters['shipping_provider'] ?? null]), 15, 512) ?>'>
                     <input type="search" x-model="query" placeholder="<?php echo e(__('general.search')); ?>" class="edz-input text-sm mb-1" autocomplete="off">
                     <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
                         <template x-for="item in filtered" :key="item.id">
                             <button
-                                @click="$wire.setFilter('shipping_provider', item.id); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints(item.id); close()"
+                                @click="$wire.setFilter('shipping_provider', item.id, item.kind); $wire.setFilter('stopdesk_point', null); $wire.loadFilterStopdeskPoints(item.id); close()"
                                 :aria-pressed="isActive(item.id)"
                                 class="w-full text-left px-2.5 py-1.5 rounded-lg text-xs hover:bg-surface-secondary"
                                 :class="activeCls(item.id)">
@@ -389,7 +389,7 @@
         
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array('stopdesk_point', $this->visibleColumns)): ?>
             <div x-show="open === 'stopdesk_point'" x-cloak>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!filled($this->filters['shipping_provider'])): ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!filled($this->filters['shipping_provider']) || ($this->filters['shipping_provider_kind'] ?? null) === 'rider'): ?>
                     <div class="px-2.5 py-1.5 rounded-lg text-xs text-ink-muted">
                         <?php echo e(__('merchant_panel.select_provider_first')); ?></div>
                 <?php else: ?>
