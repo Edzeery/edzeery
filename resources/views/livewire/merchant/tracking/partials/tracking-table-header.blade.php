@@ -5,7 +5,6 @@
     $headerFilterKeys = [
         'state' => 'state',
         'city' => 'city',
-        'total' => 'amount',
         'tracking_status' => 'status',
         'products' => 'products',
         'provider' => 'provider',
@@ -26,9 +25,7 @@
         : $colKey;
 
     $headerFilterActive = false;
-    if ($headerFilterKey === 'amount') {
-        $headerFilterActive = filled($this->filters['amount_min'] ?? null) || filled($this->filters['amount_max'] ?? null);
-    } elseif ($headerFilterKey === 'status') {
+    if ($headerFilterKey === 'status') {
         $headerFilterActive = count($this->filters['tracking_statuses'] ?? []) > 0;
     } elseif ($headerFilterKey === 'products') {
         $headerFilterActive = count($this->filters['products'] ?? []) > 0;

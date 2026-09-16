@@ -856,9 +856,9 @@ $loadOrders = function (): void {
     if (!empty($f['confirmed_by'])) {
         $query->whereHas('confirmedByHistory.changedBy', fn($q) => $q->where('id', $f['confirmed_by']));
     }
-    if (!empty($f['product_id'])) {
+    if (!empty($f['product_id'] ?? null)) {
         $query->whereHas('items', function ($iq) use ($f) {
-            $iq->where('product_id', (int) $f['product_id'])->orWhereHas('variant', fn($vq) => $vq->where('product_id', (int) $f['product_id']));
+            $iq->where('product_id', $f['product_id'])->orWhereHas('variant', fn($vq) => $vq->where('product_id', $f['product_id']));
         });
     } elseif (!empty($f['product'])) {
         $query->whereHas('items', function ($iq) use ($f) {
@@ -1064,18 +1064,24 @@ $setPerPage = function (int $perPage): void {
 };
 
 $setFilter = function (string $key, $value): void {
-    $intFilters = ['wilaya', 'city', 'assigned_to', 'shipping_provider'];
     $floatFilters = ['amount_min', 'amount_max', 'weight_min', 'weight_max'];
     $arrFilters = ['status'];
 
-    if (in_array($key, $intFilters, true)) {
-        $value = (int) $value;
-    } elseif (in_array($key, $floatFilters, true)) {
+    if (in_array($key, $floatFilters, true)) {
         $value = (float) $value;
     } elseif (in_array($key, $arrFilters, true)) {
-        $value = is_array($value) ? array_map('intval', $value) : [];
+        $value = is_array($value) ? array_values(array_filter($value)) : [];
     } elseif (in_array($key, ['source', 'delivery_type', 'shipment_type'], true)) {
         $value = (string) $value;
+    }
+
+    // Wilaya → commune cascade: picking a new wilaya invalidates any commune
+    // filter and re-seeds the commune list from the chosen wilaya.
+    if ($key === 'wilaya') {
+        $this->filters['city'] = null;
+        $this->allCities = $value
+            ? City::where('state_id', $value)->orderBy('name')->get()->toArray()
+            : [];
     }
 
     $this->filters[$key] = $value;
@@ -1098,6 +1104,7 @@ $clearFilters = function (): void {
         'date_to' => null,
         'delivery_type' => null,
         'shipping_provider' => null,
+        'product_id' => null,
         'product' => '',
         'source' => null,
         'address' => '',
@@ -2728,7 +2735,7 @@ $rebuildFormOffices = function (): void {
     $cityId = $this->form['city_id'] ?? null;
     if (!empty($cityId)) {
         $query->where(fn($q) => $q->where('city_id', $cityId)->orWhereNull('city_id'));
-        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [(int) $cityId]);
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [$cityId]);
     } else {
         $query->orderByRaw('(external_code = \'\') ASC, external_code, name');
     }
@@ -3677,7 +3684,7 @@ $inlineStopdeskOptions = function (Order $order): array {
     $query->where('state_id', $order->state_id);
     if ($order->city_id) {
         $query->where(fn($q) => $q->where('city_id', $order->city_id)->orWhereNull('city_id'));
-        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [(int) $order->city_id]);
+        $query->orderByRaw('(city_id = ?) DESC, (city_id IS NULL) ASC, (external_code = \'\') ASC, external_code, name', [$order->city_id]);
     } else {
         $query->orderByRaw('(external_code = \'\') ASC, external_code, name');
     }

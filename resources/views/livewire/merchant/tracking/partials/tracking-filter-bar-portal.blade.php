@@ -17,6 +17,9 @@
         'rider'           => __('order_flow.rider_tab_title'),
         'assigned_to'     => __('merchant_panel.assigned_agent'),
         'confirmed_by'    => __('merchant_panel.confirmed_by'),
+        'can_open'                      => __('merchant_panel.can_open'),
+        'send_from_carrier_warehouse'   => __('merchant_panel.send_from_carrier_warehouse'),
+        'shipment_type'                 => __('merchant_panel.shipment_type'),
     ];
 @endphp
 
@@ -36,6 +39,8 @@
         class="fixed inset-x-0 bottom-0 z-[210] w-full rounded-t-2xl border border-b-0 border-surface-border bg-surface
                p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-16px_48px_-12px_rgba(15,23,42,.25)]
                max-h-[75vh] overflow-y-auto edz-scroll
+               {{-- Taller scrollable area for large option lists (58 wilayas, 1540 communes). --}}
+               sm:max-h-[70vh]
                sm:inset-x-auto sm:bottom-auto sm:z-50 sm:w-64 sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg">
 
         <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
@@ -92,17 +97,19 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['state']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allStates)" data-active="@json(array_filter([$this->filters['state'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->allStates)' data-active='@json(array_filter([$this->filters['state'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('state', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="truncate" x-text="item.name"></span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('state', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="truncate" x-text="item.name"></span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -127,17 +134,19 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['provider']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allProviders)" data-active="@json(array_filter([$this->filters['provider'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->allProviders)' data-active='@json(array_filter([$this->filters['provider'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('provider', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="truncate" x-text="item.name"></span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('provider', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="truncate" x-text="item.name"></span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -220,17 +229,19 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['products']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allProducts)" data-active="@json($this->filters['products'] ?? [])">
+                <div x-data="edzSearchableList()" data-items='@json($this->allProducts)' data-active='@json($this->filters['products'] ?? [])'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.toggleProductFilter(item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="truncate" x-text="item.name"></span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.toggleProductFilter(item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="truncate" x-text="item.name"></span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -255,17 +266,19 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['city']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allCities)" data-active="@json(array_filter([$this->filters['city'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->allCities)' data-active='@json(array_filter([$this->filters['city'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('city', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="truncate" x-text="item.name"></span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('city', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="truncate" x-text="item.name"></span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -290,21 +303,23 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['rider']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->searchableRiders)" data-active="@json(array_filter([$this->filters['rider'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->searchableRiders)' data-active='@json(array_filter([$this->filters['rider'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('rider', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="inline-flex items-center gap-1 truncate">
-                                <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
-                                <span class="truncate" x-text="item.name"></span>
-                            </span>
-                            <span class="text-[10px] tabular-nums text-ink-muted" x-text="item.total > 0 ? item.total : ''"></span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('rider', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="inline-flex items-center gap-1 truncate">
+                                    <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
+                                    <span class="truncate" x-text="item.name"></span>
+                                </span>
+                                <span class="text-[10px] tabular-nums text-ink-muted" x-text="item.total > 0 ? item.total : ''"></span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -329,20 +344,22 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['assigned_to']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allMembers)" data-active="@json(array_filter([$this->filters['assigned_to'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->allMembers)' data-active='@json(array_filter([$this->filters['assigned_to'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('assigned_to', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="inline-flex items-center gap-1 truncate">
-                                <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
-                                <span class="truncate" x-text="item.name"></span>
-                            </span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('assigned_to', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="inline-flex items-center gap-1 truncate">
+                                    <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
+                                    <span class="truncate" x-text="item.name"></span>
+                                </span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
             </div>
         @endif
@@ -367,21 +384,94 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['confirmed_by']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                <div x-data="edzSearchableList()" data-items="@json($this->allMembers)" data-active="@json(array_filter([$this->filters['confirmed_by'] ?? null]))">
+                <div x-data="edzSearchableList()" data-items='@json($this->allMembers)' data-active='@json(array_filter([$this->filters['confirmed_by'] ?? null]))'>
                     <input type="search" x-model="query" placeholder="{{ __('general.search') }}" class="edz-input text-sm mb-1" autocomplete="off">
-                    <template x-for="item in filtered" :key="item.id">
-                        <button type="button" @click="$wire.setFilter('confirmed_by', item.id); close()"
-                            :aria-pressed="isActive(item.id)"
-                            class="edz-dropdown__item justify-between"
-                            :class="activeCls(item.id)">
-                            <span class="inline-flex items-center gap-1 truncate">
-                                <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
-                                <span class="truncate" x-text="item.name"></span>
-                            </span>
-                            <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
-                        </button>
-                    </template>
+                    <div class="max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll">
+                        <template x-for="item in filtered" :key="item.id">
+                            <button type="button" @click="$wire.setFilter('confirmed_by', item.id); close()"
+                                :aria-pressed="isActive(item.id)"
+                                class="edz-dropdown__item justify-between"
+                                :class="activeCls(item.id)">
+                                <span class="inline-flex items-center gap-1 truncate">
+                                    <x-edz.icon name="user" class="w-3 h-3 shrink-0 text-ink-muted" />
+                                    <span class="truncate" x-text="item.name"></span>
+                                </span>
+                                <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0" x-bind:class="checkCls(item.id)" />
+                            </button>
+                        </template>
+                    </div>
                 </div>
+            </div>
+        @endif
+    {{-- ==================== CAN-OPEN (tri-state) ==================== --}}
+        @if (in_array('can_open', $available))
+            <div x-show="open === 'can_open'" x-cloak class="edz-dropdown__section">
+                <div class="mb-1 flex items-center gap-0.5 px-0.5">
+                    <button type="button" @click="open = 'root'"
+                        class="-m-1 p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                        title="{{ __('general.back') }}" aria-label="{{ __('general.back') }}">
+                        <x-edz.icon :name="$backChevron" class="w-3.5 h-3.5" />
+                    </button>
+                    <p class="edz-dropdown__section-title m-0">{{ $groupLabels['can_open'] }}</p>
+                </div>
+                @foreach ([null => __('general.all'), true => __('buttons.yes'), false => __('buttons.no')] as $val => $lbl)
+                    <button type="button" @click="$wire.setFilter('can_open', {{ is_null($val) ? 'null' : ($val ? 'true' : 'false') }}); close()"
+                        class="edz-dropdown__item justify-between {{ $this->filters['can_open'] === $val ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span class="truncate">{{ $lbl }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0 {{ $this->filters['can_open'] === $val ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- ==================== SEND-FROM-CARRIER-WAREHOUSE (tri-state) ==================== --}}
+        @if (in_array('send_from_carrier_warehouse', $available))
+            <div x-show="open === 'send_from_carrier_warehouse'" x-cloak class="edz-dropdown__section">
+                <div class="mb-1 flex items-center gap-0.5 px-0.5">
+                    <button type="button" @click="open = 'root'"
+                        class="-m-1 p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                        title="{{ __('general.back') }}" aria-label="{{ __('general.back') }}">
+                        <x-edz.icon :name="$backChevron" class="w-3.5 h-3.5" />
+                    </button>
+                    <p class="edz-dropdown__section-title m-0">{{ $groupLabels['send_from_carrier_warehouse'] }}</p>
+                </div>
+                @foreach ([null => __('general.all'), true => __('buttons.yes'), false => __('buttons.no')] as $val => $lbl)
+                    <button type="button" @click="$wire.setFilter('send_from_carrier_warehouse', {{ is_null($val) ? 'null' : ($val ? 'true' : 'false') }}); close()"
+                        class="edz-dropdown__item justify-between {{ $this->filters['send_from_carrier_warehouse'] === $val ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span class="truncate">{{ $lbl }}</span>
+                        <x-edz.icon name="check" class="w-3.5 h-3.5 shrink-0 {{ $this->filters['send_from_carrier_warehouse'] === $val ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- ==================== SHIPMENT TYPE (single) ==================== --}}
+        @if (in_array('shipment_type', $available))
+            <div x-show="open === 'shipment_type'" x-cloak class="edz-dropdown__section">
+                <div class="mb-1 flex items-center gap-0.5 px-0.5">
+                    <button type="button" @click="open = 'root'"
+                        class="-m-1 p-1 rounded-md text-ink-muted hover:text-ink hover:bg-surface-tertiary"
+                        title="{{ __('general.back') }}" aria-label="{{ __('general.back') }}">
+                        <x-edz.icon :name="$backChevron" class="w-3.5 h-3.5" />
+                    </button>
+                    <p class="edz-dropdown__section-title m-0">{{ $groupLabels['shipment_type'] }}</p>
+                </div>
+                <button type="button" @click="$wire.setFilter('shipment_type', null); close()"
+                    aria-pressed="{{ empty($this->filters['shipment_type']) ? 'true' : 'false' }}"
+                    class="edz-dropdown__item justify-between {{ empty($this->filters['shipment_type']) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                    <span class="truncate">{{ __('general.all') }}</span>
+                    <x-edz.icon name="check"
+                        class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['shipment_type']) ? 'opacity-100' : 'opacity-0' }}" />
+                </button>
+                @foreach (['delivery' => __('merchant_panel.delivery'), 'exchange' => __('merchant_panel.exchange_label'), 'pickup' => __('merchant_panel.pickup_label')] as $val => $lbl)
+                    <button type="button" @click="$wire.setFilter('shipment_type', '{{ $val }}'); close()"
+                        aria-pressed="{{ ($this->filters['shipment_type'] ?? null) === $val ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ ($this->filters['shipment_type'] ?? null) === $val ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span class="truncate">{{ $lbl }}</span>
+                        <x-edz.icon name="check"
+                            class="w-3.5 h-3.5 shrink-0 {{ ($this->filters['shipment_type'] ?? null) === $val ? 'opacity-100' : 'opacity-0' }}" />
+                    </button>
+                @endforeach
             </div>
         @endif
     </div>

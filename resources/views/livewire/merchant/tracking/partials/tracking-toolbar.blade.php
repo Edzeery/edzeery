@@ -152,6 +152,16 @@
             </span>
         @endif
 
+        @if (filled($this->filters['rider']))
+            <span
+                class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
+                <span class="font-semibold opacity-75">{{ __('order_flow.rider_tab_title') }}:</span>
+                <span class="max-w-[12rem] truncate">{{ collect($this->searchableRiders)->firstWhere('id', $this->filters['rider'])['name'] ?? $this->filters['rider'] }}</span>
+                <button wire:click="setFilter('rider', null)" wire:loading.attr="disabled"
+                    class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
+            </span>
+        @endif
+
         @if (filled($this->filters['assigned_to']))
             <span
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">

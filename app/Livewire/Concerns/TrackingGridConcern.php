@@ -164,6 +164,18 @@ trait TrackingGridConcern
             );
         }
 
+        if (($f['can_open'] ?? null) !== null) {
+            $query->where('can_open', (bool) $f['can_open']);
+        }
+
+        if (($f['send_from_carrier_warehouse'] ?? null) !== null) {
+            $query->where('send_from_carrier_warehouse', (bool) $f['send_from_carrier_warehouse']);
+        }
+
+        if (($f['shipment_type'] ?? null) !== null) {
+            $query->where('shipment_type', $f['shipment_type']);
+        }
+
         $trackingStatusIds = \App\Models\Status::system()->forType('order')
             ->whereIn('key', \App\Domains\Order\Support\OrderWorkflow::carrier())
             ->pluck('id')->all();

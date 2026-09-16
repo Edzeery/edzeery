@@ -29,6 +29,9 @@ trait TrackingFilterConcern
             'rider' => null,
             'assigned_to' => null,
             'confirmed_by' => null,
+            'can_open' => null,
+            'send_from_carrier_warehouse' => null,
+            'shipment_type' => null,
         ];
         $this->page = 1;
         $this->loadShipments();
@@ -50,6 +53,9 @@ trait TrackingFilterConcern
             'rider' => 'rider',
             'assigned_to' => null,
             'confirmed_by' => null,
+            'can_open' => null,
+            'send_from_carrier_warehouse' => null,
+            'shipment_type' => null,
         ];
 
         $available = [];
@@ -89,6 +95,12 @@ trait TrackingFilterConcern
                         $count++;
                     }
                     break;
+                case 'can_open':
+                case 'send_from_carrier_warehouse':
+                    if (($this->filters[$group] ?? null) !== null) {
+                        $count++;
+                    }
+                    break;
                 default:
                     if (filled($this->filters[$group] ?? null)) {
                         $count++;
@@ -120,6 +132,14 @@ trait TrackingFilterConcern
             if (! $member) {
                 return;
             }
+        }
+
+        if (in_array($key, ['can_open', 'send_from_carrier_warehouse'], true) && $value !== null && ! is_bool($value)) {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($key === 'shipment_type' && $value !== null && ! in_array($value, ['delivery', 'exchange', 'pickup'], true)) {
+            return;
         }
 
         $this->filters[$key] = $value;

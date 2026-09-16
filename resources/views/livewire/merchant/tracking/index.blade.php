@@ -37,6 +37,9 @@ state([
         'rider' => null,
         'assigned_to' => null,
         'confirmed_by' => null,
+        'can_open' => null,
+        'send_from_carrier_warehouse' => null,
+        'shipment_type' => null,
     ],
     'search' => '',
     'filteredTotal' => 0,
@@ -221,15 +224,28 @@ mount(function (): void {
     $storeId = currentStoreId();
 
     $this->allProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
-        ->where('is_active', true)
+        ->where(function ($q) use ($storeId) {
+            // Keep active providers for new filters, but also keep inactive
+            // providers that still carry historical shipments so those rows
+            // stay filterable (mirrors the allCities/allStates order-derived
+            // sourcing instead of relying purely on the is_active flag).
+            $q->where('is_active', true)
+                ->orWhereIn('id', Order::where('store_id', $storeId)
+                    ->whereNotNull('shipping_provider_id')
+                    ->distinct()
+                    ->pluck('shipping_provider_id'));
+        })
         ->orderBy('name')
         ->get(['id', 'name'])
         ->toArray();
 
-    $this->allCities = \App\Models\Locations\City::whereIn(
-        'id',
-        Order::where('store_id', $storeId)->whereNotNull('city_id')->distinct()->pluck('city_id'),
-    )->orderBy('name')->get()->toArray();
+    // All communes (cities), not just the store's order-derived subset — the
+    // searchable client-side list allows picking any wilaya/commune in Algeria.
+    $this->allCities = \App\Models\Locations\City::orderBy('name')
+        ->get(['id', 'name'])
+        ->map(fn ($city) => ['id' => (string) $city->id, 'name' => $city->name])
+        ->values()
+        ->toArray();
 
     // Active team members power the assigned_to/confirmed_by filter lists. The
     // store owner is excluded — the owner is not an assignable/confirming agent.
@@ -248,10 +264,11 @@ mount(function (): void {
         ->values()
         ->toArray();
 
-    $this->allStates = \App\Models\Locations\State::whereIn(
-        'id',
-        Order::where('store_id', $storeId)->whereNotNull('state_id')->distinct()->pluck('state_id'),
-    )->orderBy('name')->get(['id', 'name'])->toArray();
+    $this->allStates = \App\Models\Locations\State::orderBy('name')
+        ->get(['id', 'name'])
+        ->map(fn ($state) => ['id' => (string) $state->id, 'name' => $state->name])
+        ->values()
+        ->toArray();
 
     // Distinct products sold across this store's orders (active + trashed): the
     // multi-select source for the always-visible products header filter.

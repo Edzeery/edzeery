@@ -197,7 +197,15 @@ trait TrackingColumnConcern
         if (in_array($column, $this->draftColumns, true)) {
             $this->draftColumns = array_values(array_diff($this->draftColumns, [$column]));
         } else {
-            $this->draftColumns[] = $column;
+            // Newly enabled columns are inserted before the actions column so
+            // actions stays the last column by default — unless the merchant
+            // repositions it manually via the settings modal.
+            $actionsPos = array_search('actions', $this->draftColumns, true);
+            if ($actionsPos !== false) {
+                array_splice($this->draftColumns, $actionsPos, 0, [$column]);
+            } else {
+                $this->draftColumns[] = $column;
+            }
         }
     }
 

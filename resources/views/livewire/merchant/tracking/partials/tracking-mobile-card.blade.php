@@ -31,9 +31,10 @@
         @if ($this->trackingTab === 'rider')
             <span>•</span>
             <span>{{ $s['delivery_rider'] ?: '—' }}</span>
+        @elseif (in_array('provider', $this->visibleColumns, true))
+            <span>•</span>
+            <span>{{ $s['provider'] }}</span>
         @endif
-        <span>•</span>
-        <span>{{ $s['provider'] }}</span>
         @if (! empty($s['tracking_number']))
                 <x-edz.tooltip label="{{ $s['tracking_number'] }}">
                     <button

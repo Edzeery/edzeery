@@ -2000,3 +2000,186 @@ git rm "it" "prepareBindings(\$bindings)"
 **التحقق:** `php -l` + `view:clear`+`view:cache` (الـ compiled يؤكد قسم open === 'products' في بوابة الشريط) + `TrackingSearchFilterTest` **33 نجاحًا (148 شهادة)** + `BladeInteractivityPolicy` 2 + **سويت التجار كاملًا 531 نجاحًا (2276 شهادة)** + `npm run build`.
 
 **دين يُسجَّل:** `tsfAttachProduct` ينشئ ProductVariant واحدًا لكل منتج (يُعاد استخدامه عبر الطلبات) لتفادي فخ UNIQUE `product_variants.store_id+sku` — إذا تحوّل المنتج لاحقًا لنظام variants متعددة، سيحتاج المساعد إعادة نظر.
+
+---
+
+## اصطلاح أخطاء تدقيق الفلاتر/البطاقات في صفحة التتبع — 2026-09-15
+
+**السياق:** تدقيق حيّ على الكوميت `d9e36ea` رفع 9 مشاكل (3 حرجة/4 متوسطة/2 صيانة). عند الفحص على **الكود الحالي** تبيّن أن أغلبها أُصلح في جولات سابقة؛ بقي 3 مشاكل فعلية أُصلحت الآن.
+
+**تقرير التحقق (قديم vs حالي):**
+- **أُصلحت سابقًا (ادعاءات متقادمة):** #2 زر Filters ظاهر دائمًا (tracking-toolbar.blade.php:58 بلا `@if(!empty(...))`)، #3 كل القوائم في البورتين تستخدم `edzSearchableList` مع حقل بحث، #4 المالك مستثنى من `allMembers` (index.blade.php:240)، #1 جزئيًا `city`/`amount` موجودان في `$hasActiveFilters` مع شرائح.
+- **الباقي حقيقي وأُصلح الآن:**
+  1. **شريحة الراكب الناقصة:** الراكب كان في `$hasActiveFilters` لكن بلا شريحة عرض → إذا فُلتِر براكب فقط يظهر الشريط فارغًا. أُضيفت شريحة راكب (تسمية + lookup في `searchableRiders` + زر مسح) في `tracking-toolbar.blade.php` قبل شريحة `assigned_to`.
+  2. **`allProviders` يستثني الشركات المعطّلة:** `where('is_active', true)` يمنع فلترة الطلبيات التاريخية لشركة أُهملت. أصبح `is_active OR id ∈ طلبيات المتجر` (نفس نمط الاشتقاق من الطلبيات لـ allCities/allStates) في `tracking/index.blade.php`.
+  3. **بطاقة الموبايل تعرض «شركة الشحن» في تاب الراكب:** `tracking-mobile-card.blade.php` كانت تعرض `$s['provider']` دائمًا (وتظهر `• —`) بينما سطح المكتب يخفي عمود provider في تاب الراكب. أصبح `@if(trackingTab==='rider') راكب @elseif(provider ∈ visibleColumns) شركة @endif` — مطابقة للسلوك المكتبي.
+- **يحتاج قرار المستخدم:** #7 فلتر الملاحظات (نص حر — الأقل فائدة). **يحتاج تحققًا بصريًا:** #8 موضع القوائم المنبثقة RTL (dropdown-position.js uses كتابة `left` فيزيائية، مع قصّ داخل الشاشة). #9 دين حجم الملفات مسجّل مسبقًا.
+
+**قرارات المستخدم (2026-09-15):**
+- **#7 فلتر الملاحظات:** مرفوض — لن يُضاف فلتر للملاحظات.
+- **#8 موضع القوائم RTL:** المستخدم سيتحقق بصريًا عند 375/768 ثم يقرر.
+- **#9 حجم `tracking-filter-bar-portal.blade.php`:** مؤجل — سيُدرس لاحقًا لرفاكتور احترافي (تفكيك حسب مجموعة الفلتر).
+
+**التحقق:** `view:clear`+`view:cache` — compiled يثبت شريحة الراكب + فرع `elseif(in_array('provider', ...))` في البطاقة. الاختبارات: TrackingSearchFilterTest **33** + TrackingGridBatch/TrackingProductsColumn/TrackingStatusHistory **19** + BladeInteractivity **2** = **54 نجاحًا.**
+
+---
+
+## إصلاح جذري: قائمة الولاية المكسورة في الفلاتر + رأس العمود — 2026-09-15
+
+**العرض:** قائمة الولاية في بوابة الفلاتر (شريط الأدوات) ورأس العمود تظهر مشوهة: الاقتباسات المزدوجة للـ JSON تكسر سمة `data-items` فيفشل `JSON.parse` وترتيب الأسماء يبدو خاطئًا.
+
+**السبب الجذري (ليس ترقيعًا):** `data-items="@json($this->allStates)"` تضع JSON خامًا في سمة **مزدوجة الاقتباس**. `@json` يترجم إلى `json_encode(..., 15, 512)` الذي يهرب `"` **داخل القيم** فقط (`\u0022`) — لكن الاقتباسات **البنيوية** للـ JSON (حول المفاتيح: `[{"id":...` ) تبقى `"` حرفية فتُغلق السمة مبكرًا ويفكك المتصفح البنية. بديل عن فرضية «بيانات قذرة بها `"`» — القاعدة نظيفة (58 ولاية بلا أي اقتباس) والملفات المترجمة كانت سليمة `15,512`.
+
+**الحل الجذري المطبق:** تحويل كل `data-items`/`data-active` في ملفي تتبع-المسارات إلى سمة **مفردة الاقتباس** `data-items='@json(...)'` — فتصبح `"` البنيوية آمنة داخل السمة، بينما أي `'` في القيم (مثل `M'Sila`) مهربة تلقائيًا بـ `\u0027` (لأن 15 يتضمن JSON_HEX_APOS). تحقّق تجريبيًا: `@json` لا يُنتج أي `'` خام — أمان تام للقيم.
+
+**الملفات (7 مواضع لكل ملف):**
+- `tracking-filter-portal.blade.php` — products/provider/rider/assigned_to/confirmed_by/state/city
+- `tracking-filter-bar-portal.blade.php` — state/provider/products/city/rider/assigned_to/confirmed_by
+
+**التحقق:** `view:clear`+`view:cache` — compiled يثبت `data-items='<?php echo json_encode(..., 15, 512) ?>'` في كل المواضع الـ 14. `TrackingSearchFilterTest` **33 نجاحًا (148 شهادة)**. لا تبقى أي `data-items="@json` في partials/tracking.
+
+**قرار للجولة القادمة (معلق):** نفس الجذر موجود أيضًا في `orders/partials/filter-portal.blade.php` + `orders/partials/orders-filter-bar-portal.blade.php` (~13 موضعًا). القرار: التوحيد على النطاقين أم الاكتفاء بالتتبع. **لم يُطبَّق بعد — بانتظار قرار المستخدم.**
+
+---
+
+## جلب كل الولايات والبلديات + سكرول عمودي في فلاتر التتبع — 2026-09-15
+
+**المشكلة:** قوائم الولاية والبلدية كانت تُجلب من **الطلبيات فقط** (`Order::whereIn('state_id'...)` / `whereIn('city_id'...)`) — أي تُعرض فقط الولايات/البلديّات التي ظهرت فعليًا في طلبيات المتجر، وليست كل القائمة الوطنية (58 ولاية / 1540 بلدية). **قرار المستخدم:** جلب **الكل** وعرضه مع بحث + سكرول عمودي.
+
+**ما طُبّق (`tracking/index.blade.php`):**
+- `allStates` ← `State::orderBy('name')` (كل الولايات — 58) مع `id` سلسلة.
+- `allCities` ← `City::orderBy('name')` (كل البلديات — 1540) مع `id` سلسلة.
+- `Order` import ما زال مستخدمًا (بوابة المنتجات/الشركات) — لم يُكسر شيء.
+
+**سكرول عمودي (يحافظ على البحث ثابتًا):** كل قائمة `edzSearchableList` في البورتين أصبحت تحوي لفًّا داخليًا `<div class="max-h-[40vh] sm:max-h-60 overflow-y-auto edz-scroll">` حول الـ `template x-for` — على الموبايل 40vh، وعلى الديسكتوب `sm:max-h-60` (15rem). أقسام state/city تحديدًا رُفع سقف حاوية البورتمن إلى `sm:max-h-[70vh]` لأنها الآن تضم 1540 بلدية.
+
+**الملفات (14 قائمة أصلحت):**
+- `tracking-filter-portal.blade.php` — 7 أقسام (products/provider/rider/assigned_to/confirmed_by/state/city) + `sm:max-h-[70vh]` لقسمي state/city.
+- `tracking-filter-bar-portal.blade.php` — 7 أقسام + `sm:max-h-[70vh]` للحاوية (كل الأقسام).
+
+**التحقق:** `view:clear`+`view:cache` — compiled يثبت الألفاف والسقوف الجديدة. `npm run build` — كلاسات `max-h-[40vh]`/`sm:max-h-60`/`sm:max-h-[70vh]`/`overflow-y-auto` موجودة في CSS النهائي. الاختبارات: TrackingSearchFilterTest **33 نجاحًا (148 شهادة)** + OrderCityScopeProviderTest **8 نجاحًا (13 شهادة)** (لم يتأثر — سكوبه الخاص للطلبات لا يستخدم قوائم التتبع).
+
+**ملاحظة أداء:** 1540 بلدية تُحمَّل كـ JSON داخل سمة `data-items` مرتين (بوابتان) — ~40KB. البحث كاملٌ client-side عبر `filtered`، والسكرول يمنع بناء 1540 زرًا مرئيًا فيُخفف ضغط الـ DOM. احتياطي إن اصطدمنا بالأداء لاحقًا: بوابة lazy-load عبر Livewire (تجربة DB على `filters.state`) — **غير مطبَّق الآن**.
+
+**التوحيد مع orders:** مؤجّل بقرار المستخدم حتى الحصول على نتيجة التتبع الاحترافية.
+
+---
+
+## دفعة الفلاتر والمصطلحات والمظهر — 2026-09-15 (2)
+
+**قرار المستخدم:** "في كثير من العمليات سأقول النتيجة النهائية فقط" — تنفيذ مباشر للدفعة الثانية دون انتظار.
+
+**1) إزالة فلتر إجمالي الطلبية من رأس عمود المجموع:**
+- حُذف `'total' => 'amount'` من `$headerFilterKeys` في `tracking-table-header.blade.php` → عمود المجموع لم يعد يعرض أيقونة فلتر.
+- حُذف قسم Amount من بوابة رأس العمود (`tracking-filter-portal.blade.php`) لأنه لم يعد قابلًا للفتح من الهيدر.
+- فلتر المجموع ما زال متاحًا في بوابة شريط الأدوات (قائمة Filters) — قرار بقائه هناك لأنه مستقل عن رأس العمود.
+
+**2) تحسين حجم القائمة المنسدلة على الشاشات الكبيرة (max-height: 350px):**
+- كل لفّات السكرول الداخلية الـ 14: `sm:max-h-60` (240px) ← `sm:max-h-[350px]` في البورتين.
+- حاوية الهيدر: `sm:max-h-64` ← `sm:max-h-[350px]` للأقسام غير state/city (التي تبقى `sm:max-h-[70vh]`).
+
+**3) ترتيب الأعمدة — عمود الإجراءات دائمًا الأخير افتراضيًا:**
+- `TrackColumnConcern::toggleDraftColumn()`: عند تفعيل عمود جديد يُدرج **قبل** `actions` بدل إلحاقه في نهاية القائمة — فيبقى actions الأخير حتى يعدِّل المستخدم مكانه يدويًا (أسهم/سحب في لوحة الإعدادات).
+
+**4) فلاتر جديدة في التتبع:**
+- `can_open` (السماح بفتح الطلبية) — ثلاثي All/N/A: `orders.can_open`.
+- `send_from_carrier_warehouse` (يُرسل من مخزن الناقل) — ثلاثي: `orders.send_from_carrier_warehouse`.
+- `shipment_type` (التوصيل/الاستبدال/التقاط الطرد) — فردي: `orders.shipment_type`.
+- المس: `filters` state (index.blade.php + clearFilters)، `availableFilterGroups` (للكل — لا تقييد بتبويب)، `activeFilterCount` (حالة `!== null` للثاليات لأن `filled(false)` خاطئة)، `setFilter` (تحويل قيمة منطقية للثاليات + اعتماد `delivery|exchange|pickup` فقط)، WHERE في `TrackingGridConcern::baseTrackingQuery`، بوابة شريط الأدوات (`$groupLabels` + 3 أقسام).
+- الترجمة: `merchant_panel.can_open` (كان ناقصًا رغم استخدامه في orders) + `refund_request` + كلمات مفتاحية للقدرات (أدناه) — أُضيفت للغات الأربع.
+
+**5) تصحيح المصطلحات (ar/fr/en/es):**
+- `merchant_panel.delivery`: ar 'التسليم' ← 'التوصيل' (fr بالفعل Livraison).
+- `merchant_panel.exchange_label`: ar 'تبديل' ← 'استبدال الطرد'.
+- `merchant_panel.pickup_label`: ar 'استلام' ← 'التقاط الطرد'.
+- مفاتيح جديدة في `merchant_panel.php` للغات الأربع: `capability_free_shipping_mode` (إرسال مجاني متوفر في API)، `capability_express_economic` (أنواع التوصيل الاقتصادي والعادي)، `capability_api_notes` (ملاحظات التوصيل عبر API)، `capability_order_delete` (حذف الطلبيات قبل الفاليديشن عبر API)، `capability_price_sync` (مزامنة أسعار التوصيل).
+
+**التحقق:** `php artisan view:clear`+`view:cache` (PHP 8.3.28) — compiled يتضمن `setFilter('can_open'/'send_from_carrier_warehouse'/'shipment_type')` في بوابة التتبع. `npm run build` — `max-h-\[350px\]` في CSS النهائي. الاختبارات: `vendor/bin/pest --filter=TrackingSearchFilter` **33 نجاحًا (148 شهادة)** + `--filter=OrderCityScopeProvider` **8 نجاحًا (13 شهادة)**.
+
+**ملاحظة:** `sm:max-h-60` لم تعد مستخدمة في أي من البورتين (كل المواضع أصبحت `sm:max-h-[350px]`).
+
+---
+
+## توحيد صفحات orders مع tracking (القوائم 350px) + تدقيق الأداء والأخطاء — 2026-09-16 (3)
+
+**قرار المستخدم:** "ابدأ التوحيد حيث ارتفاع قوائم الفلاتر ماكس 350px، وافحص مشاكل الأداء والأخطاء وقم باصلاحها" — توحيد بوابات فلاتر orders على نفس النمط المعمَّد في tracking.
+
+**1) توحيد بوابة رأس العمود `orders/partials/filter-portal.blade.php`:**
+- إصلاح خطأ JSON: كل `data-items="@json(...)"`/`data-active="@json(...)"` المزدوجة ← مفردة `data-items='@json(...)'` (7 قوائم: wilaya/status/assigned_to/shipping_provider/stopdesk_point/city/confirmed_by). كانت القيمة المغلفة بمزدوجة تكسر JSON عند وجود علامات داخل المحتوى (مشكلة حقيقية في العمليات).
+- لفّ القوائم السبع بالحاوية الداخلية `max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll` (نفس نمط tracking).
+- تقسيم سقف الحاوية: `sm:max-h-[70vh]` لـ wilaya/city (قوائم ضخمة)؛ `sm:max-h-[350px]` لبقية أقسام القائمة؛ `sm:w-*` بقيت كما هي.
+
+**2) توحيد بوابة شريط الأدوات `orders/partials/orders-filter-bar-portal.blade.php`:**
+- إصلاح JSON المزدوج (7 قوائم) ← مفردة (نفس الفئات).
+- لفّ القوائم السبع بالحاوية `max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll`.
+- حاوية البوابة: أُضيف `sm:max-h-[70vh]` (كانت بلا سقف على الشاشات الكبيرة — `max-h-[75vh]` تبقى للموبايل).
+
+**3) المقياس الكلي بعد التوحيد:**
+- 28 حاوية سكرول داخلية موحّدة (14 في tracking + 14 في orders) = `max-h-[40vh] sm:max-h-[350px] overflow-y-auto edz-scroll`.
+- صفر `data-items="@json` مزدوجة في كل merchant (بحث شامل: 0)، وصفر `sm:max-h-60`/`sm:max-h-64` في أي من البورات الأربع.
+
+**4) تدقيق الأداء والأخطاء (ما فُحص وما لم يُغيّر):**
+- `edzSearchableList` (panel.js): يقرأ `dataset.items`/`dataset.active` من جذر Alpine — متوافق تمامًا مع السمة المفردة؛ `filtered` يعمل filter محلي فقط عند الكتابة (لا شبكة)؛ `parseItems` يُعاد على فتح البوابة عبر `edz-filter-open`/`edz-toolbar-filter-open` + عند كل إعادة render (مقصود ليعكس أحدث حالة خادم).
+- حجم البيانات: قائمة المدن ≈ 1540 بلدية تُشحن في `data-items` (≈40KB) عند ظهور عمود city — تصميم قائم في tracking أيضًا؛ **مؤجّل** (لا تلفيق الآن): lazy-load عبر Livewire عند الفتح بدل الشحن مع كل render.
+- `filtered` يمرر كامل القائمة عند الكتابة (≤1540 عنصرًا) — مقبول، لا حاجة للفضاء الافتراضي الآن.
+- قائمتا حالة منسدلتان في orders خارج النطاق (ليست فلاتر): `orders/index` + `orders-table-cell` (قوائم تغيير الحالة لكل صف، `sm:max-h-64`) — تُرك كما هما؛ بند توحيد تالٍ محتمل.
+
+**التحقق:** `php artisan view:clear`+`view:cache` (PHP 8.3.28) — compile نظيف، وبالكاش 7 ملفات بصيغة `data-items='` وصفر بصيغة مزدوجة. الاختبارات: `vendor/bin/pest` (TrackingSearchFilterTest + OrderCityScopeProviderTest) **41 نجاحًا (161 شهادة)** — لا تراجعات.
+
+**مؤجل (توحيد تالٍ محتمل):** قوائم حالة الأوامر `sm:max-h-64` في `orders/index` + `orders-table-cell`؛ lazy-load لقوائم الفلاتر الضخمة عبر Livewire.
+
+---
+
+## إصلاح خطأ "Undefined array key product_id" في orders — 2026-09-16 (4)
+
+**العرض:** عند الفلترة بنوع التوصيل (shipment_type/delivery_type) بعد مسح الفلاتر، ظهر `Undefined array key "product_id"` داخل `orders/index.blade.php` (في الجزء المترجم من `loadOrders`).
+
+**السبب الجذري:** `mount` (state) يُهيّئ `filters` مع `'product_id' => null`، لكن `$clearFilters` حذف المفتاح `product_id` من القائمة (كان فيه `'product' => ''` فقط). بعد مسح الفلاتر يصبح `filters` بلا `product_id`، فأي فلتر لاحق (مثل نوع التوصيل) → `$setFilter` → `loadOrders` → سطر بناء الاستعلام `if (!empty($f['product_id']))` يقرأ مفتاحًا غير موجود → خطأ PHP 8. المفتاحان `source` و`send_from_carrier_warehouse` موجودان في clearFilters (لهذا لم يظهر الخطأ معهما من قبل).
+
+**الإصلاح (`resources/views/livewire/merchant/orders/index.blade.php`):**
+- أُضيف `'product_id' => null` إلى `$clearFilters` بعد `'shipping_provider'` — تطابق تام بين مفتاحي mount (26) وclearFilters (26 الآن).
+- تحصين دفاعي: شرط الاستعلام أصبح `!empty($f['product_id'] ?? null)`.
+- تحقّق شامل: كل مفاتيح الـ 24 المقروءة في `loadOrders` موجودة في clearFilters (لا فجوات أخرى).
+
+**التحقق:** `view:clear`+`view:cache` ناجح (PHP 8.3.28). `OrderCityScopeProviderTest` **8 نجاحًا (13 شهادة)** — لا تراجعات.
+
+---
+
+## إصلاح تتابع فلترة الولاية → البلدية في orders — 2026-09-16 (5)
+
+**العرض:** مشاكل عند الفلترة بالولايات والبلديات (قائمة بلدية فارغة من شريط الأدوات، نتائج خاطئة/فارغة عند تغيير الولاية مع بقاء بلدية قديمة).
+
+**السبب الجذري (تشخيص عميق):**
+- orders يملأ `allCities` من mount فارغًا ويعتمد على استدعاء يدوي `loadFilterCities` **حصرًا من رأس العمود** (filter-portal)؛ بينما tracking يملأ كل بلديات الجزائر مرة واحدة في mount (بدون cascade أصلًا) — لهذا القائمة تعمل هناك من أي بوابة.
+- زر الولاية في **شريط الأدوات** (orders-filter-bar-portal:158) كان يستدعي `setFilter('wilaya')` فقط بلا `loadFilterCities` → قائمة البلدية تبقى فارغة/قديمة.
+- `$setFilter` لا يصفّر `filters['city']` عند تغيير الولاية → `state_id=جديدة AND city_id=قديمة` → نتائج فارغة/مغل�لوطة.
+- زر "الكل" للولاية (شريط الأدوات) لا يمسح البلدية، عكس زر "—" في رأس العمود الذي كان يمسحها.
+
+**الإصلاح (`orders/index.blade.php` + `orders/partials/filter-portal.blade.php`):**
+- التتابع نُقل إلى **نقطة الدخول الواحدة** `$setFilter`: عند `key === 'wilaya'` يصفّر `filters['city']` ويملأ `allCities` ببلديات الولاية (أو `[]` عند null/0) قبل `loadOrders` — فيصحيح نتيجة الطلب الحالي نفسه.
+- وحّدت أزرار رأس العمود: `@click="setFilter('wilaya', item.id); close()"` بلا استدعاء `loadFilterCities` (زائدة الآن)؛ وزر "—" بلا `setFilter('city')` مكرر (كان يرسل طلبًا ثانيًا يُعيد تحميل الطلبات). زر "الكل" في شريط الأدوات يعمل تلقائيًا عبر `$setFilter`.
+- لا يوجد مسار مباشر آخر يغيّر `filters['wilaya']` (تحقق: كل الكتابات عبر `setFilter`، بما فيها شريحة الحذف في عرض الفلاتر النشطة).
+
+**التحقق:** `view:clear`+`view:cache` ناجح (PHP 8.3.28). `loadFilterCities` أصبحت كسجودًا غير مُستدعاة (تُركت دون حذف).
+
+**ملاحظة:** تطبيق نفس النمط على تتابع `shipping_provider` → `stopdesk_point` في شريط الأدوات (أزرار "كل"/الاختيار لا تمسح stopdesk_point ولا تستدعي `loadFilterStopdeskPoints`) — بند تالٍ محتمل.
+
+---
+
+## إصلاح الجذر "الفلتر يحدد رقم 1 دائمًا" في orders (UID مقابل int) — 2026-09-16 (6)
+
+**العرض:** اختيار أي ولاية/بلدية/شركة توصيل في الفلترة → القيمة المطبَّقة دائمًا "1"، الشريط يعرض الرقم بدل الاسم، والفلترة لا تصفي (كل النتائج أو صفر).
+
+**السبب الجذري (تشخيص عميق + إثبات بالبيانات):** قاعدة البيانات بالكامل تستخدم **معرّفات نصية UID** (مثال: ولياية `01m1ppwt6z0dy9vphxtw8nhg9s`، مزوّد `01m1pr6aq2033qqvtbjmceaxpt`، منتج، عضو، حالة — كلها نصوص طويلة). لكن `$setFilter` في orders كان يمرّر `wilaya`/`city`/`assigned_to`/`shipping_provider` عبر `$intFilters` → `(int)` لأي UID = **1** (PHP يقرأ "01" فقط). ما زاد الطين بلةً: MySQL يقارن عمود النص `state_id` برقم `1` بتحويل النص إلى رقم → كل UID يبدأ بـ "01…" يطابق `1` → الفلتر يختار **كل** الطلبات لا واحدًا.
+
+**الإثبات بالداتا:** `where('state_id', UID-حقيقي)` = 9 طلبات، بينما `where('state_id', 1)` القديم = 13 (الكل). المزوّد: 10 مقابل 11.
+
+**الإصلاح (`orders/index.blade.php`):**
+- حذف `$intFilters` من `$setFilter` (القيم تُخزَّن كـ UID نصي كما ترسلها JS — نفس سلوك tracking الذي يعمل).
+- `status`: استبدال `array_map('intval', …)` بـ `array_values(array_filter(…))` (حاضر لقفل المسار الاحتياطي؛ المسار الفعلي `toggleStatusFilter` كان يخزّن النص الصحيح أصلًا).
+- إزالة `(int)` عن `product_id` في استعلام loadOrders (خط 861) — كان نفس الخلل للمنتج.
+- إزالة `(int)` عن ربط `city_id` في `orderByRaw` لترتيب مكاتب النموذج (خطا 2741 و3690) — نفس الفئة (التفضيل "بلدي أولًا" لم يكن يعمل).
+
+**التحقق:** `view:clear`+`view:cache` ناجح؛ `OrderCityScopeProviderTest` **8/8 (13 شهادة)**؛ إثبات بالداتا أن الفلتر بالـ UID يحسب 9/10 صحيحة والقديم 13/11 خاطئة.
+
+**ملاحظة:** بقية `(int)` في الملف مشروعة (كميات/ترقيم صفحات/عدّادات). كسجود `loadFilterCities`/`loadFilterStopdeskPoints` (استُغني عنهما برأس العمود) تُركتا دون حذف — بند تنظيف محتمل.
