@@ -274,6 +274,47 @@ test('syncOne surfaces a failed provider request without touching the row', func
         ->and($tracking->last_synced_at)->toBeNull();
 });
 
+test('syncOne reports no_data without touching the row when the carrier does not know the number', function () {
+    [$user, $store, $provider] = ntssEnv();
+
+    $tracking = ntssTracking($store, $provider, 'TRK-SVC-UNKNOWN');
+
+    Http::fake([
+        'noest.test/*' => Http::response(['message' => 'Trackings non trouvés'], 404),
+    ]);
+
+    $result = app(NoestTrackingSyncService::class)->syncOne($tracking);
+
+    expect($result['ok'])->toBeFalse()
+        ->and($result['error'])->toBe('no_data')
+        ->and($tracking->refresh()->tracking_status)->toBe(OrderTrackingStatus::SHIPPED->value)
+        ->and($tracking->last_synced_at)->toBeNull();
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/get/trackings/info')
+        && $request['trackings'] === ['TRK-SVC-UNKNOWN']);
+});
+
+test('syncOne stamps carrier_unknown_at on no_data and clears it on a successful apply', function () {
+    [$user, $store, $provider] = ntssEnv();
+
+    $tracking = ntssTracking($store, $provider, 'TRK-UNK-FLAG');
+
+    Http::fakeSequence()
+        ->push(['message' => 'Trackings non trouvés'], 404)
+        ->push(ntssEntry($provider, 'TRK-UNK-FLAG', [
+            ['event' => 'Livré', 'event_key' => 'livre'],
+        ]));
+
+    app(NoestTrackingSyncService::class)->syncOne($tracking);
+
+    expect($tracking->refresh()->carrier_unknown_at)->not->toBeNull();
+
+    app(NoestTrackingSyncService::class)->syncOne($tracking->refresh());
+
+    expect($tracking->refresh()->carrier_unknown_at)->toBeNull()
+        ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::DELIVERED->value);
+});
+
 test('syncOne is idempotent — reapplying the same terminal status adds no history row', function () {
     [$user, $store, $provider] = ntssEnv();
 

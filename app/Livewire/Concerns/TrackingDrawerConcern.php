@@ -181,12 +181,39 @@ trait TrackingDrawerConcern
     }
 
     // ——— Phase C — automatic carrier sync (no manual status transitions). ———
+    private const UNKNOWN_SYNC_LIST_CAP = 25;
+
+    private function unknownTrackingItemHtml(OrderTracking $tracking): string
+    {
+        $orderNumber = (string) ($tracking->order?->number ?? $tracking->order_id);
+
+        return strtr(e(__('order_flow.tracking_unknown_item')), [
+            ':order' => '<bdi>'.e($orderNumber).'</bdi>',
+            ':tracking' => '<bdi>'.e((string) $tracking->tracking_number).'</bdi>',
+        ]);
+    }
+
+    private function unknownTrackingListHtml(\Illuminate\Support\Collection $trackings): string
+    {
+        $limited = $trackings->take(self::UNKNOWN_SYNC_LIST_CAP);
+
+        $rows = $limited
+            ->map(fn (OrderTracking $t) => '<div style="padding:.15rem 0">'.$this->unknownTrackingItemHtml($t).'</div>')
+            ->implode('');
+
+        if ($trackings->count() > self::UNKNOWN_SYNC_LIST_CAP) {
+            $rows .= '<div style="padding:.15rem 0">'.e(__('order_flow.tracking_unknown_more', ['count' => $trackings->count() - self::UNKNOWN_SYNC_LIST_CAP])).'</div>';
+        }
+
+        return '<div style="max-height:42vh;overflow:auto;line-height:2;text-align:start">'.$rows.'</div>';
+    }
+
     public function syncTracking(string $trackingId): void
     {
         abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
 
         $tracking = OrderTracking::where('store_id', currentStoreId())
-            ->with('shippingProvider')
+            ->with(['shippingProvider', 'order'])
             ->find($trackingId);
 
         if (! $tracking) {
@@ -201,12 +228,21 @@ trait TrackingDrawerConcern
             $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.tracking_synced')]);
         } else {
             \Illuminate\Support\Facades\Log::warning("tracking sync failed for [{$tracking->tracking_number}]: ".($result['error'] ?? 'unknown'));
-            $this->dispatch('swal:toast', [
-                'icon' => 'warning',
-                'title' => $result['error'] === 'no_number'
-                    ? __('order_flow.tracking_no_number')
-                    : __('order_flow.tracking_sync_failed'),
-            ]);
+
+            if (($result['error'] ?? null) === 'no_data') {
+                $this->dispatch('swal:toast', [
+                    'icon' => 'warning',
+                    'title' => __('order_flow.tracking_unknown_carrier'),
+                    'html' => $this->unknownTrackingListHtml(collect([$tracking])),
+                ]);
+            } else {
+                $this->dispatch('swal:toast', [
+                    'icon' => 'warning',
+                    'title' => ($result['error'] ?? null) === 'no_number'
+                        ? __('order_flow.tracking_no_number')
+                        : __('order_flow.tracking_sync_failed'),
+                ]);
+            }
 
             return;
         }
@@ -227,14 +263,16 @@ trait TrackingDrawerConcern
             return;
         }
 
+        $resolver = new StopdeskOfficeSync();
+
         $trackings = OrderTracking::query()
             ->where('store_id', currentStoreId())
             ->whereNotNull('tracking_number')
             ->whereHas('shippingProvider')
             ->whereIn('tracking_status', collect(OrderTrackingStatus::open())->map(fn ($s) => $s->value)->all())
-            ->with('shippingProvider')
+            ->with(['shippingProvider', 'order'])
             ->get()
-            ->filter(fn (OrderTracking $t) => (new StopdeskOfficeSync)->resolve($t->shippingProvider) !== null);
+            ->filter(fn (OrderTracking $t) => $resolver->resolve($t->shippingProvider) !== null);
 
         if ($trackings->isEmpty()) {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.tracking_sync_none')]);
@@ -246,22 +284,68 @@ trait TrackingDrawerConcern
 
         $done = 0;
         $failed = 0;
+        $unknown = collect();
 
-        foreach ($trackings as $tracking) {
-            $result = $service->syncOne($tracking);
+        foreach ($trackings->groupBy('shipping_provider_id') as $tracks) {
+            $provider = $tracks->first()->shippingProvider;
 
-            if ($result['ok'] ?? false) {
-                $done++;
-            } else {
-                $failed++;
+            $adapter = $resolver->resolve($provider);
+
+            if (! $adapter || ! method_exists($adapter, 'trackingsInfo')) {
+                $failed += $tracks->count();
+
+                continue;
+            }
+
+            foreach ($tracks->chunk(20) as $chunk) {
+                try {
+                    $data = $adapter->trackingsInfo($provider, $chunk->pluck('tracking_number')->all());
+                } catch (\Throwable $e) {
+                    report($e);
+                    $failed += $chunk->count();
+
+                    continue;
+                }
+
+                if (! is_array($data)) {
+                    $failed += $chunk->count();
+
+                    continue;
+                }
+
+                foreach ($chunk as $tracking) {
+                    $entry = $data[(string) $tracking->tracking_number] ?? null;
+
+                    if (! is_array($entry)) {
+                        $failed++;
+                        $unknown->push($tracking);
+
+                        continue;
+                    }
+
+                    $service->apply($tracking, $entry);
+                    $done++;
+                }
             }
         }
 
+        $unknownList = $unknown->isNotEmpty() ? $this->unknownTrackingListHtml($unknown) : '';
+
+        if ($failed === 0) {
+            $icon = 'success';
+            $title = __('order_flow.tracking_sync_bulk_done', ['done' => $done]);
+        } elseif ($done === 0 && $unknown->count() === $failed) {
+            $icon = 'warning';
+            $title = __('order_flow.tracking_unknown_carrier');
+        } else {
+            $icon = 'warning';
+            $title = __('order_flow.tracking_sync_bulk_failed', ['done' => $done, 'failed' => $failed]);
+        }
+
         $this->dispatch('swal:toast', [
-            'icon' => $failed === 0 ? 'success' : 'warning',
-            'title' => $failed === 0
-                ? __('order_flow.tracking_sync_bulk_done', ['done' => $done])
-                : __('order_flow.tracking_sync_bulk_failed', ['done' => $done, 'failed' => $failed]),
+            'icon' => $icon,
+            'title' => $title,
+            ...($unknownList !== '' ? ['html' => $unknownList] : []),
         ]);
 
         $this->loadShipments();
@@ -490,7 +574,12 @@ trait TrackingDrawerConcern
         $result = app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->cancel($order, $reason, currentMembership());
 
         if (($result['ok'] ?? false)) {
-            $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.shipment_cancelled')]);
+            $this->dispatch('swal:toast', [
+                'icon' => 'success',
+                'title' => ($result['notice'] ?? null) === 'carrier_unknown'
+                    ? __('order_flow.shipment_cancelled_unknown_carrier')
+                    : __('order_flow.shipment_cancelled'),
+            ]);
         } else {
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => ($result['error'] ?? __('order_flow.shipment_cancellation_failed'))]);
 

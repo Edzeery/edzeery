@@ -44,6 +44,13 @@ class NoestTrackingSyncService
         $entry = $data[(string) $tracking->tracking_number] ?? null;
 
         if (! is_array($entry)) {
+            // The carrier no longer knows this number (never created there, or
+            // already deleted off-platform). Persist the fact so cancellation
+            // can complete locally instead of failing on a pointless delete.
+            if ($tracking->carrier_unknown_at === null) {
+                $tracking->update(['carrier_unknown_at' => now()]);
+            }
+
             return ['ok' => false, 'error' => 'no_data'];
         }
 
@@ -58,6 +65,12 @@ class NoestTrackingSyncService
      */
     public function apply(OrderTracking $tracking, array $entry): void
     {
+        // A mapped entry proves the carrier knows the number — clear any
+        // "unknown at carrier" marker before the early-return paths.
+        if ($tracking->carrier_unknown_at !== null) {
+            $tracking->update(['carrier_unknown_at' => null]);
+        }
+
         $orderInfo = $entry['OrderInfo'] ?? [];
         $activity = $entry['activity'] ?? [];
 

@@ -368,6 +368,44 @@ test('syncAllTracking polls every open tracking and reports a summary', function
         ->and(OrderTrackingHistory::where('store_id', $store->id)->count())->toBe(1);
 });
 
+test('syncAllTracking lists the affected order numbers when a tracking is unknown to the carrier', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $order = twlOrder($store, $provider, 'TRK-SY-UNKNOWN', 'shipped');
+
+    Http::fake([
+        'noest.test/*' => Http::response(['message' => 'Trackings non trouvés'], 404),
+    ]);
+
+    $volt = twlVolt([$user, $store]);
+
+    $volt->call('syncAllTracking')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'warning'
+            && str_contains((string) ($params[0]['html'] ?? ''), (string) $order->number)
+            && str_contains((string) ($params[0]['html'] ?? ''), 'TRK-SY-UNKNOWN'));
+
+    expect(OrderTracking::where('order_id', $order->id)->firstOrFail()->tracking_status)
+        ->toBe(OrderTrackingStatus::IN_TRANSIT->value);
+});
+
+test('syncTracking shows the order number when the carrier does not know a single tracking', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $order = twlOrder($store, $provider, 'TRK-SY-SINGLE', 'shipped');
+
+    Http::fake([
+        'noest.test/*' => Http::response(['message' => 'Trackings non trouvés'], 404),
+    ]);
+
+    $tracking = OrderTracking::where('order_id', $order->id)->firstOrFail();
+
+    twlVolt([$user, $store])
+        ->call('syncTracking', $tracking->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'warning'
+            && str_contains((string) ($params[0]['html'] ?? ''), (string) $order->number)
+            && str_contains((string) ($params[0]['html'] ?? ''), 'TRK-SY-SINGLE'));
+});
+
 /* ───────────────────────── Delivery webhook ───────────────────────── */
 
 test('the delivery webhook applies a pushed event like a poll', function () {

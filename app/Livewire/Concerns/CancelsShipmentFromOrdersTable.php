@@ -37,7 +37,9 @@ trait CancelsShipmentFromOrdersTable
         $this->loadOrders();
         $this->dispatch('swal:toast', [
             'icon' => 'success',
-            'title' => __('order_flow.shipment_cancelled'),
+            'title' => ($result['notice'] ?? null) === 'carrier_unknown'
+                ? __('order_flow.shipment_cancelled_unknown_carrier')
+                : __('order_flow.shipment_cancelled'),
         ]);
     }
 }

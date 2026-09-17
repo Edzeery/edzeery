@@ -3,6 +3,7 @@
 namespace App\Domains\Shipping\Services;
 
 use App\Domains\Order\Services\OrderAuditService;
+use App\Domains\Order\Services\OrderConfirmationService;
 use App\Domains\Order\Services\OrderService;
 use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\ShippingProvider;
@@ -72,7 +73,7 @@ class OrderShippingGateway
             }
 
             if ($confirmFirst && in_array($order->status?->key, ['pending', 'draft', 'on_hold'], true)) {
-                $order = $this->orders->transition($order, 'confirmed', $reason, $changedBy);
+                $order = app(OrderConfirmationService::class)->confirm($order, $reason, $changedBy);
             }
 
             // --- Per-carrier pre-flight + post, BEFORE any 'shipped' state. ---
@@ -185,6 +186,8 @@ class OrderShippingGateway
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
     ): array {
+        $carrierUnknownNotice = false;
+
         DB::beginTransaction();
 
         try {
@@ -219,13 +222,32 @@ class OrderShippingGateway
 
                 $result = app($adapterClass)->deleteOrder($provider, (string) $tracking->tracking_number);
 
-                if (! ($result['ok'] ?? false)) {
-                    throw new \DomainException(
-                        (string) ($result['message'] ?? __('order_flow.shipment_cancellation_failed'))
-                    );
-                }
+                if (($result['ok'] ?? false)) {
+                    Log::info("shipment cancelled at carrier for order [{$order->number}] (tracking {$tracking->tracking_number})");
+                } else {
+                    // A tracking the carrier no longer knows (never created
+                    // there, or already deleted off-platform) has nothing to
+                    // delete: complete the local cancel and record the fact.
+                    // Other failures (network, credentials, rejected delete)
+                    // stay hard-blocking — never fake a local cancel for a
+                    // shipment that may still be live at the carrier.
+                    $knownAbsent = $tracking->carrier_unknown_at !== null;
+                    $notFoundAtCarrier = $knownAbsent || (bool) ($result['not_found'] ?? false);
 
-                Log::info("shipment cancelled at carrier for order [{$order->number}] (tracking {$tracking->tracking_number})");
+                    if (! $notFoundAtCarrier) {
+                        throw new \DomainException(
+                            (string) ($result['message'] ?? __('order_flow.shipment_cancellation_failed'))
+                        );
+                    }
+
+                    Log::warning(
+                        "cancel completed locally for order [{$order->number}] (tracking {$tracking->tracking_number}): "
+                        .($knownAbsent ? 'marked unknown at carrier' : 'carrier reports the tracking not found')
+                        .' ('.($result['message'] ?? 'no message').')'
+                    );
+
+                    $carrierUnknownNotice = true;
+                }
             }
 
             // Rider leg — unassign the delivery rider.
@@ -247,6 +269,17 @@ class OrderShippingGateway
                     'tracking_status' => null,
                 ]);
 
+                $historyPayload = [
+                    'shipment_cancelled' => true,
+                    'tracking_number' => $sentTrackingNumber,
+                    'previous_tracking_status' => $previousStatus,
+                    'previous_order_status' => $statusKey,
+                ];
+
+                if ($carrierUnknownNotice) {
+                    $historyPayload['carrier_not_found_at_cancel'] = true;
+                }
+
                 \App\Models\Orders\OrderTrackingHistory::create([
                     'store_id' => $tracking->store_id,
                     'order_id' => $tracking->order_id,
@@ -254,12 +287,7 @@ class OrderShippingGateway
                     'status' => 'cancelled',
                     'changed_by_membership_id' => $changedBy?->id,
                     'notes' => $reason,
-                    'payload' => [
-                        'shipment_cancelled' => true,
-                        'tracking_number' => $sentTrackingNumber,
-                        'previous_tracking_status' => $previousStatus,
-                        'previous_order_status' => $statusKey,
-                    ],
+                    'payload' => $historyPayload,
                     'created_at' => now(),
                 ]);
 
@@ -282,6 +310,7 @@ class OrderShippingGateway
             return [
                 'ok' => true,
                 'order' => $order->fresh(),
+                ...($carrierUnknownNotice ? ['notice' => 'carrier_unknown'] : []),
             ];
         } catch (\DomainException $e) {
             DB::rollBack();

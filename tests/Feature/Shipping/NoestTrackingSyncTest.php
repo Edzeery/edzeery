@@ -256,3 +256,79 @@ test('the adapter posts the bearer-authorized tracking batch', function () {
         && $request->hasHeader('Authorization', 'Bearer '.$provider->credentials['api_token'])
         && $request['trackings'] === ['TRK123456789']);
 });
+
+test('trackingsInfo treats a 404 not-found body as an empty result instead of throwing', function () {
+    [$user, $store, $provider] = ntEnv();
+
+    Http::fake([
+        'noest.test/*' => Http::response(['message' => 'Trackings non trouvés'], 404),
+    ]);
+
+    $data = app(\App\Domains\Shipping\Adapters\NoestIntegrationAdapter::class)
+        ->trackingsInfo($provider, ['TRK123456789']);
+
+    expect($data)->toBe([]);
+});
+
+test('the polling job marks trackings the carrier does not answer for as unknown', function () {
+    [$user, $store, $provider] = ntEnv();
+
+    $known = ntTracking($store, $provider, 'TRK-JOB-KNOWN');
+    $unknown = ntTracking($store, $provider, 'TRK-JOB-UNKNOWN');
+
+    Http::fake([
+        'noest.test/*' => Http::response([
+            'TRK-JOB-KNOWN' => [
+                'OrderInfo' => ['id' => '1'],
+                'activity' => [
+                    ['date' => now()->toDateTimeString(), 'event' => 'En cours', 'event_key' => 'validation_reception'],
+                ],
+            ],
+        ]),
+    ]);
+
+    (new SyncNoestTrackingJob($store->id))->handle();
+
+    expect($known->refresh()->carrier_unknown_at)->toBeNull()
+        ->and($unknown->refresh()->carrier_unknown_at)->not->toBeNull();
+});
+
+test('deleteOrder classifies a generic 422 unknown-tracking body as not_found', function () {
+    [$user, $store, $provider] = ntEnv();
+
+    $provider->update([
+        'credentials' => array_merge($provider->credentials, ['guid' => 'guid-1']),
+    ]);
+
+    Http::fake([
+        'noest.test/*' => Http::response(['success' => false, 'message' => 'The given data was invalid.'], 422),
+    ]);
+
+    $result = app(\App\Domains\Shipping\Adapters\NoestIntegrationAdapter::class)
+        ->deleteOrder($provider, 'TRK-DEL-1');
+
+    expect($result['ok'])->toBeFalse()
+        ->and($result['not_found'])->toBeTrue();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://noest.test/api/public/delete/order'
+        && $request['tracking'] === 'TRK-DEL-1'
+        && $request['user_guid'] === 'guid-1');
+});
+
+test('deleteOrder does not classify a generic carrier failure as not_found', function () {
+    [$user, $store, $provider] = ntEnv();
+
+    $provider->update([
+        'credentials' => array_merge($provider->credentials, ['guid' => 'guid-2']),
+    ]);
+
+    Http::fake([
+        'noest.test/*' => Http::response(['success' => false, 'message' => 'Upstream down'], 500),
+    ]);
+
+    $result = app(\App\Domains\Shipping\Adapters\NoestIntegrationAdapter::class)
+        ->deleteOrder($provider, 'TRK-DEL-2');
+
+    expect($result['ok'])->toBeFalse()
+        ->and(($result['not_found'] ?? false))->toBeFalse();
+});

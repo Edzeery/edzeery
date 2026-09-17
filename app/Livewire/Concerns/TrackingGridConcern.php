@@ -112,7 +112,7 @@ trait TrackingGridConcern
         }
 
         if (filled($f['date_to'] ?? null)) {
-            $query->where('created_at', '<=', $f['date_to'] . ' 23:59:59');
+            $query->where('created_at', '<=', $f['date_to'].' 23:59:59');
         }
 
         if (filled($f['amount_min'] ?? null) && is_numeric($f['amount_min'])) {
@@ -176,7 +176,7 @@ trait TrackingGridConcern
             $query->where('shipment_type', $f['shipment_type']);
         }
 
-        $trackingStatusIds = \App\Models\Status::system()->forType('order')
+        $trackingStatusIds = \App\Models\Status::system()->forType('tracking')
             ->whereIn('key', \App\Domains\Order\Support\OrderWorkflow::carrier())
             ->pluck('id')->all();
 

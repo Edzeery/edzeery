@@ -286,6 +286,15 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
         $data = $response->json();
 
         if ($response->failed()) {
+            // NOEST answers 404 "Trackings non trouvés" only when none of the
+            // posted numbers is known to the carrier. Per the contract above,
+            // unknown numbers are simply absent from the map, so treat that body
+            // as an empty result instead of a hard failure — a per-number sync
+            // must not log ERROR for a row the carrier simply no longer knows.
+            if ($response->status() === 404) {
+                return [];
+            }
+
             $message = (string) (is_array($data) ? ($data['message'] ?? $data['error'] ?? '') : '');
             throw new \RuntimeException("NOEST trackings/info request failed (HTTP {$response->status()})".($message !== '' ? ": {$message}" : ''));
         }
@@ -344,12 +353,55 @@ class NoestIntegrationAdapter implements CarrierIntegrationContract
                 ];
             }
 
-            $message = (string) ($data['message'] ?? $data['error'] ?? __('order_flow.shipment_cancellation_failed'));
-
-            return ['ok' => false, 'message' => $message];
+            return [
+                'ok' => false,
+                'not_found' => $this->indicatesUnknownTracking($data),
+                'message' => (string) ($data['message'] ?? $data['error'] ?? __('order_flow.shipment_cancellation_failed')),
+            ];
         } catch (\Throwable $e) {
             return ['ok' => false, 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * NOEST rejects a delete for a tracking it does not know with a generic
+     * Laravel 422 ("The given data was invalid.") — mirroring its "Trackings
+     * non trouvés" sync body — or an explicit introuvable/inexistante message.
+     * That is a *known-absent* state: nothing exists to delete at the carrier.
+     * Credential/payload problems surface as HTTP 401/403/500 or a missing
+     * message, so they are not classified as absent here.
+     */
+    private function indicatesUnknownTracking(array $data): bool
+    {
+        $message = mb_strtolower((string) ($data['message'] ?? $data['error'] ?? ''));
+
+        $errors = $data['errors'] ?? [];
+
+        if (is_array($errors)) {
+            foreach (array_filter($errors, 'is_array') as $field) {
+                $message .= ' '.mb_strtolower(implode(' ', array_filter($field, 'is_string')));
+            }
+        }
+
+        $needles = [
+            'the given data was invalid',
+            'tracking non trouv',
+            'trackings non trouv',
+            'commande introuvable',
+            'commande inexistante',
+            'n\'existe pas',
+            'not found',
+            'does not exist',
+            'unknown tracking',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($message, mb_strtolower($needle))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

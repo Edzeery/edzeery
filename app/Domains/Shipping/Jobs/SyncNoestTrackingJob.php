@@ -89,7 +89,18 @@ class SyncNoestTrackingJob implements ShouldQueue
                     continue;
                 }
 
+                $byNumber->forget((string) $trackingNumber);
+
                 $sync->apply($tracking, $entry);
+            }
+
+            // Numbers NOEST does not answer for are unknown on the carrier side
+            // (never created there, or deleted off-platform). Persist the fact
+            // so cancellation can complete locally instead of hard-failing.
+            foreach ($byNumber as $tracking) {
+                if ($tracking->carrier_unknown_at === null) {
+                    $tracking->update(['carrier_unknown_at' => now()]);
+                }
             }
 
             $this->touchSyncedAt($byNumber);

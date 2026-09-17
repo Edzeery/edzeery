@@ -2378,3 +2378,41 @@ git rm "it" "prepareBindings(\$bindings)"
 - بعد موافقة المستخدم على مرحلة تُنفَّذ بالترتيب فقط (لا دمج ولا قفز).
 - كل مرحلة تُحدَّث ✏️ هنا فور الانتهاء بـ (✅) + أدلة التحقق + `php -l`/`view:cache`/الاختبارات ـ كما في الأقسام السابقة.
 - قراران مفتوحان ينتظران المستخدم: (أ) شكل المسار (العادي أو المسارات العميقة القابلة للاشتراك) في المرحلة 1 — **تم البت: مسار واحد `customization/statuses` (أنظف)**؛ (ب) معالجة ZR Express/Anderson بلا وثائق في المرحلة 3 (fallback مؤقت أو مصدر خارجي).
+
+---
+
+## إصلاح سريع — مزامنة حالات NOEST (404 «Trackings non trouvés») ✅ (2026-09-16)
+
+**العرض:** في تبويب شركات الشحن، «مزامنة الحالات» تنتج متكررًا `local.ERROR NOEST trackings/info request failed (HTTP 404): Trackings non trouvés` وتترك الصفوف عالقة بحالة `shipped` إلى الأبد. سببه الفعلي: صفّان مفتوحان (`YESH-28B-20317534`, `YESH-28B-20325652`) رقماهما لم يعودا موجودين لدى حساب NOEST، و`trackingsInfo` كان يرمي `RuntimeException` على أي HTTP failure — بما فيه 404 الدال على «الرقم غير معروف» رغم أن العقد الموثّق داخل الكود نفسه (`NoestIntegrationAdapter.php:261-265`) ينص على أن الرقم المجهول يُغفل من الخريطة (404 لا يظهر إلا عند فشل الكل).
+
+**التعديلات المنفّذة:**
+1. `NoestIntegrationAdapter::trackingsInfo` — عند HTTP 404 يعيد `[]` (غير معروف = غائب) بدل رمي استثناء؛ بقية أخطاء HTTP تبقى رميةً. لا ERROR spam بعد الآن؛ `syncOne` ترجع `no_data` بصمت، والمهمة تجاوزها بصمت (مسار `touchSyncedAt`).
+2. `TrackingDrawerConcern::syncAllTracking` — صار يجمّع حسب `shipping_provider_id` ويرسل دفعات من 20 (طلب واحد بدل طلب لكل صف)، ويحسب `done/failed/missing`؛ وصّال توست مخصص «رقم التتبع غير موجود لدى شركة الشحن» عندما تكون كل الإخفاقات أرقامًا مجهولة.
+3. `syncTracking` (تحديث الآن في الدرج) — يميّز `no_data` برسالة مخصصة بدل «تعذّر التحديث» العام.
+4. ترجمة ×4: `order_flow.tracking_unknown_carrier`.
+5. اختباران جديدان: (أ) `trackingsInfo` يرد على 404 بـ `[]`؛ (ب) `syncOne` يرجع `no_data` بلا لمس الصف.
+
+**الشهادة:** pest `NoestTrackingSyncTest` + `NoestTrackingSyncServiceTest` + `TrackingTrashWebhookLabelTest` = 31 pass (131 assertions). `php -l` نظيف.
+
+**متبقٍ (قرار داتا للمستخدم، خارج الكود):** مصير الصفّين `YESH-28B-20317534` / `YESH-28B-20325652` — إعادة تحقّق من التوكين/الحساب (احتمال إعادة ربط)، أو إغلاقهما يدويًا، أو تركهما (سيستمران بالفشل الصامت). كل مزوّدي `noest` (صفّان نشطان باسمي «Noest»/«NOEST») لديهما `webhook_token` — لذا المزامنة هنا يدوية فقط عبر التبويب، والـ Poll المجدول يجتازهما أصلاً (`webhook_token != null`).
+
+**إضافة (2026-09-16، نفس الجلسة):** مع رسالة «غير موجود لدى الشركة» تُعرض الآن **أرقام الطلبيات المتأثرة** ليتعامل معها التاجر:
+- `syncAllTracking` يجمع الصفوف المجهولة ويبثّ `html` في الـ `swal:toast` بقائمة «طلب #:order — التتبع: :tracking» (كل قيمة معزولة بـ `<bdi>` ومهرّبة بـ `e()`)، وتظهر عند حصرية المجهول أو في الخلط (بجانب العداد)؛ حد 25 سطرًا ثم «بالإضافة إلى :count طلبية أخرى».
+- `syncTracking` (تحديث الآن) يعرض نفس القائمة للطلب الواحد.
+- الترجمة ×4: `tracking_unknown_item` + `tracking_unknown_more`.
+- اختباران جديدان في `TrackingTrashWebhookLabelTest`: لا يعودا يتمرر إلا بوجود رقم الطلبية + رقم التتبع في `html`.
+- شهادة: 25 pass (107 assertions) في ملفّي `TrackingTrashWebhookLabelTest` + `NoestTrackingSyncServiceTest`؛ `php -l` نظيف.
+
+## إصلاح سريع — «إلغاء الإرسال» لشحنة شركة توصيل لا تعرفها (422 «The given data was invalid.») ✅ (2026-09-16)
+
+**العرض:** الطلبيات السليمة لدينا لكن رقمها غير موجود لدى شركة التوصيل (لم تُنشأ هناك، أو حُذفت خارجيًا) ترفض الإلغاء عند الشركة برسالة Laravel الخام من NOEST «The given data was invalid.»، فتعلق عملية الإلغاء المحلي نهائيًا.
+
+**الحل المعتمد (المسايرة بمنطق ثقة):**
+1. **عمود جديد `order_trackings.carrier_unknown_at`** (migration `2026_09_16_000001…`): يخزّن حقيقة «الشركة لا تعرف الرقم» المثبتة من المزامنة (لا تخمينًا من نص الخطأ):
+   - `NoestTrackingSyncService::syncOne` يضبطه عند `no_data`؛ `apply()` يسحبه عند أي نجاح.
+   - `SyncNoestTrackingJob` يضبطه للصفوف الغائبة من خريطة NOEST.
+2. **`NoestIntegrationAdapter::deleteOrder`** يصدّر `not_found` (مطابقة نصوص معروفة: «The given data was invalid.»/introuvable/not found/… + فحص `errors`) مقابل بقية الأخطاء (شبكة/اعتماد) بلا تصنيف.
+3. **`OrderShippingGateway::cancel`**: إذا كان `carrier_unknown_at` مضبوطًا **أو** أبلغ الأدابتور `not_found` → لا شيء للحذف لدى الشركة: يُكمل الإلغاء المحلي (فصل رقم التتبع + العودة إلى confirmed) مع سطر تاريخ و`payload.carrier_not_found_at_cancel=true` وLOG، ويعيد `notice=carrier_unknown`. أي فشل آخر يبقى حاجزًا (لا إلغاء محلي زائف لشحنة قد تكون حيّة لدى الشركة).
+4. توست مميز `shipment_cancelled_unknown_carrier` ×4 في `TrackingDrawerConcern` و`CancelsShipmentFromOrdersTable`.
+
+**الشهادة:** ملف اختبار جديد `tests/Feature/Shipping/ShipmentCancelCarrierUnknownTest.php` (3 اختبارات: مُعلَّمة/إبلاغ not_found → مضي محلي؛ فشل عام → حجب) + اختبارا المزامنة (stamp/clear في الاتجاهين، Job) + اختبارا `deleteOrder`. pest: 24 pass (101) في ملفات الشحن الثلاثة + عدم انحدار: `TrackingTrashWebhookLabelTest` (16)، `OrderCarrierValidationDispatchTest`+`SendGatewayCarrierAtomicTest` (16). migrate + `php -l` + `view:cache` سالمة.
