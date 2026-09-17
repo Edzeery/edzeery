@@ -429,6 +429,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('closeBulkSendModal'))->execute(...$arguments);
     }
 
+    public function ensureRiderTrackingAfterSend(\App\Models\Orders\Order $order): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('ensureRiderTrackingAfterSend'))->execute(...$arguments);
+    }
+
     public function collectMissingFields(\App\Models\Orders\Order $order, bool $forSend = true): array
     {
         $arguments = [static::$__context, $this, func_get_args()];

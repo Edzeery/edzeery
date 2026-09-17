@@ -123,6 +123,14 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        'carrier-sync' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/carrier-sync.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_CARRIER_SYNC_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

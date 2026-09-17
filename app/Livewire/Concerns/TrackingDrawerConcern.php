@@ -263,13 +263,20 @@ trait TrackingDrawerConcern
             return;
         }
 
-        $resolver = new StopdeskOfficeSync();
+        $resolver = new StopdeskOfficeSync;
 
         $trackings = OrderTracking::query()
             ->where('store_id', currentStoreId())
             ->whereNotNull('tracking_number')
             ->whereHas('shippingProvider')
-            ->whereIn('tracking_status', collect(OrderTrackingStatus::open())->map(fn ($s) => $s->value)->all())
+            // Same "syncable" definition as SyncNoestTrackingJob::dueTrackings():
+            // a provider-backed, numbered tracking is due even before its first
+            // status is ever resolved (tracking_status stays NULL), so the manual
+            // bulk sync must never disagree with the scheduled poll.
+            ->where(function ($query) {
+                $query->whereIn('tracking_status', collect(OrderTrackingStatus::open())->map(fn ($s) => $s->value)->all())
+                    ->orWhereNull('tracking_status');
+            })
             ->with(['shippingProvider', 'order'])
             ->get()
             ->filter(fn (OrderTracking $t) => $resolver->resolve($t->shippingProvider) !== null);

@@ -458,7 +458,7 @@ test('assigning a rider creates an open tracking with a generated HM/SD number',
 
     expect($order->refresh()->delivery_rider_id)->toBe($rider->id)
         ->and($tracking)->not->toBeNull()
-        ->and($tracking->tracking_number)->toStartWith('HM-')
+        ->and($tracking->tracking_number)->toStartWith('TRA-HM-')
         ->and($tracking->tracking_status)->toBe(OrderTrackingStatus::SHIPPED->value)
         ->and($tracking->shipping_provider_id)->toBeNull()
         ->and($tracking->delivered_at)->toBeNull();
@@ -490,7 +490,7 @@ test('the stopdesk delivery type is stamped with an SD tracking prefix', functio
         ->set('trackingTab', 'rider')
         ->call('assignRider', (string) $order->id, $rider->id);
 
-    expect(OrderTracking::where('order_id', $order->id)->latest('created_at')->first()->tracking_number)->toStartWith('SD-');
+    expect(OrderTracking::where('order_id', $order->id)->latest('created_at')->first()->tracking_number)->toStartWith('TRA-SD-');
 });
 
 test('assigning a rider is refused when the order already has a shipping provider', function () {

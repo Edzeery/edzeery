@@ -125,6 +125,7 @@ return [
     'tracking_sync_failed' => 'No se pudo sincronizar el estado',
     'tracking_no_number' => 'Sin número de seguimiento para este envío',
     'tracking_unknown_carrier' => 'Número de seguimiento no encontrado en el transportista',
+    'tracking_status_unknown' => 'Sin sincronizar aún — estado desconocido',
     'tracking_unknown_item' => 'Pedido #:order — seguimiento : :tracking',
     'tracking_unknown_more' => 'y :count pedidos más',
     'rider_manage_link' => 'Gestionar repartidores',
@@ -223,6 +224,9 @@ return [
     'empty_trash_title' => '¿Vaciar la papelera?',
     'empty_trash_confirm' => ':count pedido(s) se eliminarán permanentemente; no se puede deshacer.',
     'order_deleted_permanently' => 'El pedido se eliminó permanentemente',
+    'move_to_trash_carrier_failed' => 'El pedido n.º :number no se movió a la papelera: no se pudo eliminar el envío en el transportista.',
+    'permanent_delete_carrier_failed' => 'El pedido n.º :number no se eliminó permanentemente: no se pudo eliminar el envío en el transportista.',
+    'empty_trash_carrier_failed' => 'Se detuvo el vaciado: no se pudo eliminar el pedido n.º :number en el transportista.',
 
     // ----- Webhook -----
     'webhook_endpoint' => 'URL del webhook',

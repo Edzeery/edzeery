@@ -158,6 +158,8 @@ test('trash mode lists only soft-deleted orders and restore brings them back', f
     $provider = twlNoestProvider($store);
     $order = twlOrder($store, $provider, 'TRK-TR-1', 'shipped');
 
+    Http::fake(['noest.test/*' => Http::response(['success' => true, 'message' => 'deleted'])]);
+
     $volt = twlVolt([$user, $store]);
     $volt->assertSet('trashCount', 0);
 
@@ -185,6 +187,8 @@ test('restoreAll restores every trashed order at once', function () {
     $a = twlOrder($store, $provider, 'TRK-RA-1', 'shipped');
     $b = twlOrder($store, $provider, 'TRK-RA-2', 'shipped');
 
+    Http::fake(['noest.test/*' => Http::response(['success' => true, 'message' => 'deleted'])]);
+
     $volt = twlVolt([$user, $store]);
     $volt->call('deleteOrder', (string) $a->id)
         ->call('deleteOrder', (string) $b->id)
@@ -201,9 +205,9 @@ test('forceDeleteOrder purges every child row permanently', function () {
     $provider = twlNoestProvider($store);
     $order = twlOrder($store, $provider, 'TRK-PD-1', 'shipped');
 
-    // The carrier delete is attempted first; a carrier failure (HTTP body
-    // success:false) must never block the local permanent purge.
-    Http::fake(['noest.test/*' => Http::response(['success' => false, 'message' => 'test offline'])]);
+    // The carrier delete is attempted first and succeeds, then every child row
+    // is purged permanently.
+    Http::fake(['noest.test/*' => Http::response(['success' => true, 'message' => 'deleted'])]);
 
     $product = Product::create([
         'store_id' => $store->id,
@@ -306,6 +310,87 @@ test('forceDeleteOrder skips the carrier delete for an already-validated shipmen
     Http::assertNothingSent();
 
     expect(Order::withTrashed()->find($order->id))->toBeNull();
+});
+
+test('deleteOrder soft delete is blocked when the carrier delete fails', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $order = twlOrder($store, $provider, 'TRK-BLOCK-1', 'shipped');
+
+    Http::fake(['noest.test/*' => Http::response(['success' => false, 'message' => 'carrier offline'])]);
+
+    $volt = twlVolt([$user, $store]);
+
+    $volt->call('deleteOrder', (string) $order->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error')
+        ->assertSet('trashCount', 0);
+
+    Http::assertSent(fn ($request) => str_ends_with($request->url(), '/delete/order')
+        && $request['tracking'] === 'TRK-BLOCK-1');
+
+    expect(Order::withTrashed()->find($order->id))->not->toBeNull()
+        ->and(Order::withTrashed()->find($order->id)->trashed())->toBeFalse();
+});
+
+test('deleteOrder soft delete proceeds when the tracking is already known absent at the carrier', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $order = twlOrder($store, $provider, 'TRK-ABSENT-1', 'shipped');
+
+    OrderTracking::where('order_id', $order->id)->update(['carrier_unknown_at' => now()]);
+
+    Http::fake([
+        'noest.test/*' => Http::response(
+            ['message' => 'The given data was invalid.', 'errors' => ['tracking' => ['Tracking non trouvé.']]],
+            422,
+        ),
+    ]);
+
+    $volt = twlVolt([$user, $store]);
+
+    $volt->call('deleteOrder', (string) $order->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success')
+        ->assertSet('trashCount', 1);
+
+    expect(Order::withTrashed()->find($order->id)->trashed())->toBeTrue();
+});
+
+test('forceDeleteOrder permanent purge is blocked when the carrier delete fails', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $order = twlOrder($store, $provider, 'TRK-PURGE-BLOCK', 'shipped');
+    $order->delete();
+
+    Http::fake(['noest.test/*' => Http::response(['success' => false, 'message' => 'carrier offline'])]);
+
+    $volt = twlVolt([$user, $store]);
+
+    $volt->call('toggleTrash')
+        ->call('forceDeleteOrder', (string) $order->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
+
+    expect(Order::withTrashed()->find($order->id))->not->toBeNull()
+        ->and(OrderTracking::where('order_id', $order->id)->exists())->toBeTrue();
+});
+
+test('forceDeleteAll stops at the first carrier delete failure and leaves every order in the trash', function () {
+    [$user, $store] = twlOwner();
+    $provider = twlNoestProvider($store);
+    $a = twlOrder($store, $provider, 'TRK-EMPTY-1', 'shipped');
+    $b = twlOrder($store, $provider, 'TRK-EMPTY-2', 'shipped');
+    $a->delete();
+    $b->delete();
+
+    Http::fake(['noest.test/*' => Http::response(['success' => false, 'message' => 'carrier offline'])]);
+
+    $volt = twlVolt([$user, $store]);
+
+    $volt->call('toggleTrash')
+        ->call('forceDeleteAll')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
+
+    expect(Order::withTrashed()->find($a->id))->not->toBeNull()
+        ->and(Order::withTrashed()->find($b->id))->not->toBeNull();
 });
 
 test('force delete and soft delete are refused for members without ORDER_DELETE', function () {

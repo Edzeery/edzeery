@@ -125,6 +125,7 @@ return [
     'tracking_sync_failed' => 'Impossible de synchroniser le statut',
     'tracking_no_number' => 'Aucun numéro de suivi pour cet envoi',
     'tracking_unknown_carrier' => 'Numéro de suivi introuvable chez le transporteur',
+    'tracking_status_unknown' => 'Pas encore synchronisé — statut inconnu',
     'tracking_unknown_item' => 'Commande #:order — suivi : :tracking',
     'tracking_unknown_more' => 'plus :count autres commandes',
     'rider_manage_link' => 'Gérer les livreurs',
@@ -223,6 +224,9 @@ return [
     'empty_trash_title' => 'Vider la corbeille ?',
     'empty_trash_confirm' => ':count commande(s) seront supprimées définitivement — cette action est irréversible.',
     'order_deleted_permanently' => 'Commande supprimée définitivement',
+    'move_to_trash_carrier_failed' => 'La commande #:number n’a pas été déplacée dans la corbeille — échec de la suppression de l’envoi chez le transporteur.',
+    'permanent_delete_carrier_failed' => 'La commande #:number n’a pas été supprimée définitivement — échec de la suppression de l’envoi chez le transporteur.',
+    'empty_trash_carrier_failed' => 'La vidange a été interrompue — échec de la suppression de la commande #:number chez le transporteur.',
 
     // ----- Webhook -----
     'webhook_endpoint' => 'URL du webhook',

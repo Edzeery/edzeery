@@ -129,6 +129,7 @@ return [
     'tracking_sync_failed' => 'Could not sync the status from the carrier',
     'tracking_no_number' => 'No tracking number for this shipment',
     'tracking_unknown_carrier' => 'Tracking number not found on the carrier',
+    'tracking_status_unknown' => 'Not synced yet — status unknown',
     'tracking_unknown_item' => 'Order #:order — tracking: :tracking',
     'tracking_unknown_more' => 'plus :count more orders',
     'rider_manage_link' => 'Manage delivery riders',
@@ -227,6 +228,9 @@ return [
     'empty_trash_title' => 'Empty the trash?',
     'empty_trash_confirm' => ':count order(s) will be permanently deleted — this cannot be undone.',
     'order_deleted_permanently' => 'The order was permanently deleted',
+    'move_to_trash_carrier_failed' => 'Order #:number was not moved to the trash — failed to delete the shipment at the carrier.',
+    'permanent_delete_carrier_failed' => 'Order #:number was not permanently deleted — failed to delete the shipment at the carrier.',
+    'empty_trash_carrier_failed' => 'Emptying stopped — failed to delete order #:number at the carrier.',
 
     // ----- Webhook -----
     'webhook_endpoint' => 'Webhook URL',

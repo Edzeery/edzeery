@@ -125,6 +125,7 @@ return [
     'tracking_sync_failed' => 'تعذّر تحديث الحالة من شركة الشحن',
     'tracking_no_number' => 'لا يوجد رقم تتبع لهذه الشحنة',
     'tracking_unknown_carrier' => 'رقم التتبع غير موجود لدى شركة الشحن',
+    'tracking_status_unknown' => 'لم تُزامَن بعد — الحالة غير معروفة',
     'tracking_unknown_item' => 'طلب #:order — التتبع: :tracking',
     'tracking_unknown_more' => 'بالإضافة إلى :count طلبية أخرى',
     'rider_manage_link' => 'إدارة أسماء رجال التوصيل',
@@ -220,6 +221,9 @@ return [
     'empty_trash_title' => 'تفريغ سلة المهملات؟',
     'empty_trash_confirm' => 'سيُحذف :count طلبية نهائيًا من كل مكان ولا يمكن استعادتها.',
     'order_deleted_permanently' => 'حُذفت الطلبية نهائيًا',
+    'move_to_trash_carrier_failed' => 'لم تُنقل الطلبية #:number إلى سلة المهملات — تعذّر حذف الشحنة لدى شركة التوصيل.',
+    'permanent_delete_carrier_failed' => 'لم تُحذف الطلبية #:number نهائيًا — تعذّر حذف الشحنة لدى شركة التوصيل.',
+    'empty_trash_carrier_failed' => 'أُوقف تفريغ السلة — تعذّر حذف الطلبية #:number لدى شركة التوصيل.',
 
     'webhook_endpoint' => 'رابط الاستقبال (Webhook)',
     'webhook_copy' => 'نسخ',

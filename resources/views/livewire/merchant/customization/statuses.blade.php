@@ -423,46 +423,58 @@ $deleteRiderStatus = function (string $key): void {
         {{-- Carrier tracking tab --}}
         @if ($tab === 'carrier_tracking')
             <div class="space-y-4">
-                <div class="flex items-end justify-between gap-3 flex-wrap">
-                    <div class="w-72 max-w-full">
-                        <label for="carrier-select" class="block text-sm font-medium text-ink mb-1">
+                <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5 items-start">
+                    <aside class="edz-card edz-card--padded lg:sticky lg:top-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
                             {{ __('merchant_panel.carrier_tracking_select') }}
-                        </label>
-                        <x-edz.select id="carrier-select" wire:model="carrier"
-                            :options="\App\Domains\Shipping\Support\CarrierStatusDictionary::carrierOptions()"
-                            option-value="value" option-label="label" placeholder="—" />
-                    </div>
-                    <p class="text-sm text-ink-muted max-w-sm">{{ __('merchant_panel.carrier_tracking_hint') }}</p>
-                </div>
+                        </p>
+                        <div class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible">
+                            @foreach (\App\Domains\Shipping\Support\CarrierStatusDictionary::carrierOptions() as $option)
+                                <button type="button"
+                                    wire:click="$set('carrier', '{{ $option['value'] }}')"
+                                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-start transition-colors whitespace-nowrap lg:whitespace-normal {{ $carrier === $option['value'] ? 'bg-brand-surface ring-1 ring-brand-ring' : 'hover:bg-surface-secondary' }}">
+                                    <x-edz.icon name="truck"
+                                        class="w-4 h-4 shrink-0 {{ $carrier === $option['value'] ? 'text-brand-500' : 'text-ink-muted' }}" />
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-medium text-ink truncate">{{ $option['label'] }}</span>
+                                    </span>
+                                </button>
+                            @endforeach
+                        </div>
+                        <p class="text-sm text-ink-muted mt-4">{{ __('merchant_panel.carrier_tracking_hint') }}</p>
+                    </aside>
 
-                <div class="edz-card edz-card--padded">
-                    <div class="overflow-x-auto">
-                        <table class="edz-table">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('merchant_panel.carrier_tracking_raw') }}</th>
-                                    <th>{{ __('merchant_panel.carrier_tracking_applied') }}</th>
-                                    <th>{{ __('merchant_panel.carrier_tracking_label') }}</th>
-                                    <th>{{ __('merchant_panel.carrier_tracking_meaning') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($this->carrierRows() as $row)
-                                    <tr wire:key="carrier-row-{{ $carrier }}-{{ $row['raw'] }}">
-                                        <td class="font-mono text-xs">{{ $row['raw'] }}</td>
-                                        <td>
-                                            <span
-                                                class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $row['resolved']->classes() }}">
-                                                {{ $row['status']->value }}
-                                            </span>
-                                        </td>
-                                        <td class="text-sm">{{ $row['resolved']->label }}</td>
-                                        <td class="text-sm text-ink-muted max-w-md">{{ $row['meaning'] }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <section>
+                        <div class="edz-card edz-card--padded">
+                            <div class="overflow-x-auto">
+                                <table class="edz-table">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ __('merchant_panel.carrier_tracking_raw') }}</th>
+                                            <th>{{ __('merchant_panel.carrier_tracking_applied') }}</th>
+                                            <th>{{ __('merchant_panel.carrier_tracking_label') }}</th>
+                                            <th>{{ __('merchant_panel.carrier_tracking_meaning') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($this->carrierRows() as $row)
+                                            <tr wire:key="carrier-row-{{ $carrier }}-{{ $row['raw'] }}">
+                                                <td class="font-mono text-xs">{{ $row['raw'] }}</td>
+                                                <td>
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $row['resolved']->classes() }}">
+                                                        {{ $row['status']->value }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-sm">{{ $row['resolved']->label }}</td>
+                                                <td class="text-sm text-ink-muted max-w-md">{{ $row['meaning'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         @endif

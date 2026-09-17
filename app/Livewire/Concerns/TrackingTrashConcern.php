@@ -12,9 +12,11 @@ use App\Models\Orders\OrderTrackingHistory;
 
 /**
  * Soft delete (to trash), restore and permanent purge for the tracking page —
- * every action is gated to ORDER_DELETE. The permanent delete tries to remove
- * an unvalidated carrier shipment at the carrier first; a carrier failure never
- * blocks local purging.
+ * every action is gated to ORDER_DELETE. Both the soft delete and the permanent
+ * purge mirror OrderShippingGateway::cancel(): before touching a shipped order
+ * locally they first delete an unvalidated carrier shipment at the carrier, and
+ * a carrier failure (anything but a skip, or a tracking the system already knows
+ * is absent at the carrier) hard-blocks the local action.
  */
 trait TrackingTrashConcern
 {
@@ -25,6 +27,19 @@ trait TrackingTrashConcern
         $order = Order::where('store_id', currentStoreId())->find($orderId);
 
         if (! $order) {
+            return;
+        }
+
+        // Carrier leg first: never soft-delete a live, unvalidated carrier
+        // shipment without deleting it at the carrier (see deleteAtCarrier).
+        $outcome = $this->resolveCarrierDelete($order);
+
+        if (! $outcome['allowed']) {
+            $this->dispatch('swal:toast', $this->blockedCarrierDeleteToast(
+                $outcome,
+                __('order_flow.move_to_trash_carrier_failed', ['number' => $order->number]),
+            ));
+
             return;
         }
 
@@ -101,6 +116,45 @@ trait TrackingTrashConcern
         $order->forceDelete();
     }
 
+    /**
+     * Run the carrier leg for a pending local delete (soft or permanent) and
+     * report whether the local action may proceed. Mirrors the same guarantee as
+     * OrderShippingGateway::cancel(): an ok/'skipped' result — or a tracking the
+     * system already knows is absent at the carrier (carrier_unknown_at) —
+     * allows the local action; anything else hard-blocks so a live carrier
+     * shipment is never deleted locally without being removed off-platform first.
+     *
+     * @return array{allowed: bool, result: array}
+     */
+    protected function resolveCarrierDelete(Order $order): array
+    {
+        $result = app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->deleteAtCarrier($order);
+
+        if (($result['ok'] ?? false) === true) {
+            return ['allowed' => true, 'result' => $result];
+        }
+
+        $tracking = app(\App\Domains\Order\Services\OrderTrackingService::class)->currentTracking($order);
+
+        return [
+            'allowed' => $tracking?->carrier_unknown_at !== null,
+            'result' => $result,
+        ];
+    }
+
+    protected function blockedCarrierDeleteToast(array $outcome, string $title): array
+    {
+        $toast = ['icon' => 'error', 'title' => $title];
+
+        $detail = $outcome['result']['error'] ?? $outcome['result']['message'] ?? null;
+
+        if ($detail !== null) {
+            $toast['text'] = (string) $detail;
+        }
+
+        return $toast;
+    }
+
     public function forceDeleteOrder(string $orderId): void
     {
         abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
@@ -111,9 +165,18 @@ trait TrackingTrashConcern
             return;
         }
 
-        // Try to delete an unvalidated carrier shipment at the carrier first; a
-        // carrier failure never blocks the local permanent purge.
-        app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->deleteAtCarrier($order);
+        // Carrier leg first: an unvalidated live shipment must be deleted at the
+        // carrier before the local permanent purge; a failure hard-blocks.
+        $outcome = $this->resolveCarrierDelete($order);
+
+        if (! $outcome['allowed']) {
+            $this->dispatch('swal:toast', $this->blockedCarrierDeleteToast(
+                $outcome,
+                __('order_flow.permanent_delete_carrier_failed', ['number' => $order->number]),
+            ));
+
+            return;
+        }
 
         $this->purgeOrderRows($order);
 
@@ -137,7 +200,17 @@ trait TrackingTrashConcern
         }
 
         foreach ($trashed as $order) {
-            app(\App\Domains\Shipping\Services\OrderShippingGateway::class)->deleteAtCarrier($order);
+            $outcome = $this->resolveCarrierDelete($order);
+
+            if (! $outcome['allowed']) {
+                $this->dispatch('swal:toast', $this->blockedCarrierDeleteToast(
+                    $outcome,
+                    __('order_flow.empty_trash_carrier_failed', ['number' => $order->number]),
+                ));
+
+                return;
+            }
+
             $this->purgeOrderRows($order);
         }
 

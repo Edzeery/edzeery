@@ -36,6 +36,31 @@
 <?php $component = $__componentOriginaldc6b8a3f696fa5e7823376deba19f536; ?>
 <?php unset($__componentOriginaldc6b8a3f696fa5e7823376deba19f536); ?>
 <?php endif; ?>
+        <?php elseif(! empty($s['tracking_number'])): ?>
+            <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-surface-tertiary text-ink-muted">
+                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'clock','class' => 'w-3.5 h-3.5 shrink-0']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'clock','class' => 'w-3.5 h-3.5 shrink-0']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                <?php echo e(__('order_flow.tracking_status_unknown')); ?>
+
+            </span>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div>
     <div class="mt-2 text-sm text-ink"><?php echo e($s['customer']); ?>

@@ -1251,6 +1251,20 @@ $closeBulkSendModal = function (): void {
     $this->bulkSendSkipCount = 0;
 };
 
+// Every rider hand-off must carry its scannable tracking number. The shipped
+// transition creates the tracking row with a NULL number for the rider leg, so
+// after a successful send the {PREFIX}-{HM|SD}-{6 digits} number is generated
+// and backfilled (idempotent) for orders whose carrier is a rider only.
+$ensureRiderTrackingAfterSend = function (Order $order): void {
+    if (! $order->delivery_rider_id || $order->shipping_provider_id) {
+        return;
+    }
+
+    $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
+    $fresh = $order->fresh();
+    $trackingService->ensureRiderTracking($fresh, $trackingService->generateRiderTrackingNumber($fresh));
+};
+
 // Per-order readiness + missing-field list — single source is the
 // OrderCompleteness domain service (confirm = no carrier, send = + carrier).
 $collectMissingFields = function (Order $order, bool $forSend = true): array {
@@ -1346,6 +1360,10 @@ $confirmBulkSend = function (): void {
                 $skipped[] = $order->number . ' (' . $result['error'] . ')';
                 continue;
             }
+
+            // Rider hand-off: backfill the tracking number (see the
+            // ensureRiderTrackingAfterSend closure above).
+            $this->ensureRiderTrackingAfterSend($order);
 
             if (! empty($result['rate_note'])) {
                 $rateNotes++;
@@ -2133,11 +2151,7 @@ $submitConfirmAndSend = function (): void {
         // Rider hand-off: backfill the HM/SD tracking number so the rider tab
         // and the label always carry a scannable code (the shipped transition
         // creates the tracking row with a null number for the rider leg).
-        if ($riderId) {
-            $fresh = $order->fresh();
-            $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
-            $trackingService->ensureRiderTracking($fresh, $trackingService->generateRiderTrackingNumber($fresh));
-        }
+        $this->ensureRiderTrackingAfterSend($order);
 
         if (! blank($this->confirmNote)) {
         $order->update(['meta' => array_merge($order->meta ?? [], ['confirm_note' => $this->confirmNote])]);
@@ -2219,6 +2233,10 @@ $sendConfirmedOrder = function (string $orderId): void {
             $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => $result['error']]);
             return;
         }
+
+        // Rider hand-off: backfill the tracking number (see the
+        // ensureRiderTrackingAfterSend closure above).
+        $this->ensureRiderTrackingAfterSend($order);
 
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.orders_sent')]);
 

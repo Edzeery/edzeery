@@ -6,6 +6,7 @@ use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderTracking;
 use App\Models\Orders\OrderTrackingHistory;
+use App\Models\Stores\Store;
 use Illuminate\Support\Str;
 
 class OrderTrackingService
@@ -44,20 +45,49 @@ class OrderTrackingService
     }
 
     /**
-     * Unique, rider-scoped tracking number (HM/SD prefix by delivery type) used
-     * when handing an order to a delivery rider. Printed on the label as a
-     * scannable Code128 barcode. Uniqueness is guarded against every other
-     * tracking number of the store.
+     * Unique, rider-scoped tracking number printed on the label as a scannable
+     * Code128 barcode. Format: {STORE-3}-{HM|SD}-{6 digits}, e.g. EDZ-HM-402731.
+     * The prefix is the first 3 ASCII letters of the store name (shorter names
+     * repeat their last letter; a name with no ASCII letters falls back to the
+     * slug's letters) and HM/SD keeps the home-vs-stopdesk delivery marker.
+     * Uniqueness is guarded against every other tracking number of the store.
      */
     public function generateRiderTrackingNumber(Order $order): string
     {
-        $prefix = $order->delivery_type === 'stopdesk' ? 'SD' : 'HM';
+        $prefix = $this->storePrefix($order->store);
+        $type = $order->delivery_type === 'stopdesk' ? 'SD' : 'HM';
 
         do {
-            $candidate = $prefix . '-' . strtoupper(Str::random(8));
+            $candidate = $prefix . '-' . $type . '-' . random_int(100000, 999999);
         } while (OrderTracking::where('store_id', $order->store_id)->where('tracking_number', $candidate)->exists());
 
         return $candidate;
+    }
+
+    /**
+     * 3-letter store prefix for rider tracking numbers. Code128-safe ASCII only:
+     * name is uppercased, non-letters stripped and the first 3 letters kept; a
+     * name shorter than 3 letters repeats its last letter ('Lo' → LOO); a name
+     * with no ASCII letters (e.g. Arabic) falls back to the slug's letters, then
+     * to 'STO'.
+     */
+    protected function storePrefix(Store $store): string
+    {
+        $letters = preg_replace('/[^A-Z]/', '', strtoupper($store->name));
+
+        if ($letters === '') {
+            $letters = preg_replace('/[^A-Z]/', '', strtoupper($store->slug));
+        }
+
+        if ($letters === '') {
+            $letters = 'STO';
+        }
+
+        while (strlen($letters) < 3) {
+            $letters .= substr($letters, -1);
+        }
+
+        return substr($letters, 0, 3);
     }
 
     /**

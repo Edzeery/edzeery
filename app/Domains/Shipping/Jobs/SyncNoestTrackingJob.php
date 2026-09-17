@@ -2,6 +2,7 @@
 
 namespace App\Domains\Shipping\Jobs;
 
+use App\Domains\Shipping\Models\CarrierSyncRun;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Domains\Shipping\Services\NoestTrackingSyncService;
 use App\Domains\Shipping\Services\StopdeskOfficeSync;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Polls NOEST's /get/trackings/info for every open (or not-yet-synced) tracking
@@ -59,16 +61,30 @@ class SyncNoestTrackingJob implements ShouldQueue
             return;
         }
 
+        $startedAt = now();
+        $counters = ['attempted' => 0, 'updated' => 0, 'unknown' => 0, 'failed' => 0];
+
         $base = $this->dueTrackings($provider);
         if ($base->isEmpty()) {
+            $this->finishRun($provider, $startedAt, $counters);
+
             return;
         }
+
+        $counters['attempted'] = $base->count();
+
+        Log::channel('carrier-sync')->info('carrier_sync_started', [
+            'store_id' => $provider->store_id,
+            'shipping_provider_id' => $provider->id,
+            'attempted' => $counters['attempted'],
+        ]);
 
         foreach ($base->chunk(20) as $chunk) {
             try {
                 $data = $adapter->trackingsInfo($provider, $chunk->pluck('tracking_number')->all());
             } catch (\Throwable $e) {
                 report($e);
+                $counters['failed'] += $chunk->count();
                 continue;
             }
 
@@ -92,6 +108,7 @@ class SyncNoestTrackingJob implements ShouldQueue
                 $byNumber->forget((string) $trackingNumber);
 
                 $sync->apply($tracking, $entry);
+                $counters['updated']++;
             }
 
             // Numbers NOEST does not answer for are unknown on the carrier side
@@ -100,11 +117,46 @@ class SyncNoestTrackingJob implements ShouldQueue
             foreach ($byNumber as $tracking) {
                 if ($tracking->carrier_unknown_at === null) {
                     $tracking->update(['carrier_unknown_at' => now()]);
+                    $counters['unknown']++;
                 }
             }
 
             $this->touchSyncedAt($byNumber);
         }
+
+        $this->finishRun($provider, $startedAt, $counters);
+    }
+
+    /**
+     * Persist the pilot metrics row and log the run summary. Performance
+     * counters are accumulated in-memory during the polling loop — never
+     * re-queried afterward (no N+1 on the run's tracked rows).
+     */
+    private function finishRun(ShippingProvider $provider, \Illuminate\Support\Carbon $startedAt, array $counters): void
+    {
+        $finishedAt = now();
+
+        CarrierSyncRun::create([
+            'store_id' => $provider->store_id,
+            'shipping_provider_id' => $provider->id,
+            'started_at' => $startedAt,
+            'finished_at' => $finishedAt,
+            'attempted' => $counters['attempted'],
+            'updated' => $counters['updated'],
+            'unknown' => $counters['unknown'],
+            'failed' => $counters['failed'],
+        ]);
+
+        Log::channel('carrier-sync')->info('carrier_sync_finished', [
+            'store_id' => $provider->store_id,
+            'shipping_provider_id' => $provider->id,
+            'started_at' => $startedAt->toIso8601String(),
+            'finished_at' => $finishedAt->toIso8601String(),
+            'attempted' => $counters['attempted'],
+            'updated' => $counters['updated'],
+            'unknown' => $counters['unknown'],
+            'failed' => $counters['failed'],
+        ]);
     }
 
     /**

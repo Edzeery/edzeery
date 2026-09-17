@@ -2483,3 +2483,21 @@ git rm "it" "prepareBindings(\$bindings)"
 - مزامنة الكل: `open()` الحالية = `shipped,in_transit,out_for_delivery,on_hold,failed_attempt,returning` والاستعلام الحي يلتقط الشحنة `YESH-28B-20573449/failed_attempt` (كانت صفرًا قبله).
 - pest: `OrderTrackingStatusTest` (6/6 — الجديد: تطابق open() مع isOpen لكل حالة) + `OrderCompletenessTest` (25/25 — الجديدان: backfill الحالة + إبقاء حالة موجودة + مسح المزوّد، مع الاتّساقية: لا استبدال رقم/حالة موجودة) + تتبع المراجعة (`OrderTrackingTest`, `TrackingGrid*`, `TrackingStatusHistoryPopupTest`, `NoestTrackingSyncService*`) 45/45 + **Shipping كامل 60/60 (280)** + **Merchant Order* 337/337 (1310)** + **Merchant Tracking* 117/117 (575)** + سويتات الحالات (`StatusLabelPrecedence`, `StatusResolverDomain`, `CustomStatusBranch`, `StatusCustomizationPage`, `StoreStatusCustomization`) 34/34. `php -l` نظيف ×8 + rollback/re-migrate نظيف.
 - توثيق: `DATABASE_PLAN_Schema.md` و`DATABASE_PLAN_MIGRATIONS.md` حُدّثا للنوع النصّي الجديد مع سبب التغيير.
+
+---
+
+## إصلاح سلبي زائف «لا شحنات للمزامنة» — مزامنة الكل مع `tracking_status = NULL` ✅ (2026-09-17)
+
+**مرجع المرحلة:** Phase "Fix No shipments to sync False Negative (Bulk Sync Filter)" — ضد commit `47166ac9`.
+
+**التشخيص:** الشحنة الحقيقية `YESH-28B-20576482` غير موجودة في قاعدة التطوير المحلية (بيانات إنتاج فقط) — لا يمكن تقرير أي فرضية من الثلاث على البيانات الحقيقية هنا؛ النهج المطبَّق هو الفرضية 2-الأولى (صف بشركة ورقم صالحين وحالة NULL ممسوحة بمسار خارج `startShipment()` — مثل مسار الإلغاء ثم إعادة الإرسال). فحص النطاق: `OrderTrackingStatus::open()` لا يُستعمل إلا في `syncAllTracking()` (grep كامل في `app/`) — بلا أثر جانبي لتوسيع هذا الاستعلام وحده؛ بقي استعلام فلتر الشبكة في `TrackingGridConcern:107` (حساسية فلتر، لا صلة).
+
+**ما نُفّذ (كان جزئيًا في الشجرة غير الملتزمة، أُكمل وأُثبت):**
+1. **`app/Livewire/Concerns/TrackingDrawerConcern.php` (syncAllTracking):** الاستعلام أصبح `whereIn(tracking_status, open()) OR whereNull(tracking_status)` — نفس تعريف «synable» لـ `SyncNoestTrackingJob::dueTrackings()` كي لا يختلف السحب اليدوي أبدًا عن المهام المجدولة. لم يُلمس `OrderTrackingStatus::open()/terminal()` ولا فلتر `webhook_token` في المهمة (بالتصميم).
+2. **العرض:** `tracking-row-cell.blade.php` + `tracking-mobile-card.blade.php` — عندما يكون `tracking_status` فارغًا وله رقم تتبع → شارة «لم تُزامَن بعد — الحالة غير معروفة» (`order_flow.tracking_status_unknown` ×4 لغات) بدل الخلية الفارغة.
+3. **نقطة بمفردها:** Pint على الملفين (كانت عليهما مخالفتا أسلوب).
+4. **اختبار الانحدار:** `tests/Feature/Shipping/SyncAllTrackingNullStatusTest.php` (ملف جديد، 2):
+   - صف `tracking_status = NULL` + مزوّد صالح + رقم → يظهر في `syncAllTracking()` ويُحل إلى `DELIVERED` مع `delivered_at`/`last_synced_at`/History.
+   - صفان (NULL + `in_transit`) يُسحبان معًا في تشغيل واحد — الرقم الحقيقي `YESH-28B-20576482` مستخدم حرفيًا في كلا الاختبارين (التحقق القياسي لمعيار القبول بدل الوصول إلى PPROD).
+
+**الشهادة:** `SyncAllTrackingNullStatusTest` 2/2 (9 تأكيدات) + `TrackingTrashWebhookLabelTest` 22/22 (82 تأكيدًا) خضراء. السويت الكاملة 839 ناجح (3417 تأكيدًا) — الفشل الثلاثة **سابقة التأسيس وغير مرتبطة** بها: اثنان قفل ملفات Windows في `BulkDispatchValidateTest` (`rename storage/framework/views … Access is denied` — معروف ومؤرَّخ)، وواحد في `CarrierSyncObservabilityTest` (مشروع مراقبة غير ملتزم، `expectsOutputToContain('8')` لا يطابق جدول الـ artisan command). `php -l` نظيف ×4، Pint نظيف، الجولة الكاملة السابقة (4 أخطاء متقلّبة) تؤكد نفس النمط. التنبيه: لا توجد قاعدة بيانات إنتاج/Staging محلية لإثبات YESH-28B-20576482 بعينها — الإثبات القياسي عبر رقم التتبع الحرفي داخل الاختبار؛ إن أمكن الوصول إلى نسخة من الإنتاج، فالتأكيد النهائي استعلام السطر (1) في خطة المرحلة.

@@ -165,6 +165,13 @@
                         {{ $statusKit->label() }}
                     </button>
                 </x-edz.tooltip>
+            @elseif (! empty($s['tracking_number']))
+                <x-edz.tooltip label="{{ __('order_flow.tracking_status_unknown') }}">
+                    <span class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-surface-tertiary text-ink-muted">
+                        <x-edz.icon name="clock" class="w-3.5 h-3.5 shrink-0" />
+                        {{ __('order_flow.tracking_status_unknown') }}
+                    </span>
+                </x-edz.tooltip>
             @else
                 —
             @endif

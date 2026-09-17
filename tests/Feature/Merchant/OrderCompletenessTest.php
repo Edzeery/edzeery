@@ -404,18 +404,42 @@ test('a rider order without an address is incomplete when sending', function () 
         ->and(app(OrderCompleteness::class)->isComplete($order, true))->toBeFalse();
 });
 
-// ——— Rider tracking number: HM/SD prefix by delivery type, store-unique ———
+// ——— Rider tracking number: {STORE-3}-{WILAYA-2}-{HM|SD}-{6 digits}, store-unique ———
 
-test('generateRiderTrackingNumber prefixes HM for home and SD for stopdesk', function () {
+test('generateRiderTrackingNumber uses the store prefix with HM/SD for the delivery type', function () {
     [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
     $service = app(OrderTrackingService::class);
     $order = ocoOrder($store, 'pending');
 
-    expect(str_starts_with($service->generateRiderTrackingNumber($order), 'HM-'))->toBeTrue();
+    expect($service->generateRiderTrackingNumber($order))->toMatch('/^OCO-HM-\d{6}$/');
 
     $order->update(['delivery_type' => 'stopdesk']);
 
-    expect(str_starts_with($service->generateRiderTrackingNumber($order), 'SD-'))->toBeTrue();
+    expect($service->generateRiderTrackingNumber($order))->toMatch('/^OCO-SD-\d{6}$/');
+});
+
+test('generateRiderTrackingNumber uses the first 3 ASCII letters of the store name with the delivery marker', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $store->update(['name' => 'Edzeery Shop']);
+
+    $service = app(OrderTrackingService::class);
+    $order = ocoOrder($store, 'pending');
+
+    expect($service->generateRiderTrackingNumber($order))->toMatch('/^EDZ-HM-\d{6}$/');
+
+    $order->update(['delivery_type' => 'stopdesk']);
+
+    expect($service->generateRiderTrackingNumber($order))->toMatch('/^EDZ-SD-\d{6}$/');
+});
+
+test('generateRiderTrackingNumber pads short store names', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $store->update(['name' => 'Lo']);
+
+    $service = app(OrderTrackingService::class);
+    $order = ocoOrder($store, 'pending');
+
+    expect($service->generateRiderTrackingNumber($order))->toMatch('/^LOO-HM-\d{6}$/');
 });
 
 test('generateRiderTrackingNumber never collides with existing tracking numbers', function () {
@@ -509,6 +533,64 @@ test('ensureRiderTracking clears a stale carrier provider so rider tracks are ne
 
 // ——— Confirm-and-send to a rider through the actual drawer component ———
 
+test('sending an already-confirmed order directly to a rider backfills its tracking number', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider Direct',
+        'phone' => '0556767678',
+        'is_active' => true,
+    ]);
+
+    $order->update(['delivery_rider_id' => $rider->id]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->call('sendConfirmedOrder', $order->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ocoToast($params)['icon'] === 'success');
+
+    $shipped = $order->fresh();
+
+    expect($shipped->status?->key)->toBe('shipped')
+        ->and($shipped->delivery_rider_id)->toBe($rider->id)
+        ->and($shipped->shipping_provider_id)->toBeNull();
+
+    $tracking = OrderTracking::where('order_id', $order->id)->first();
+
+    expect($tracking)->not->toBeNull()
+        ->and($tracking->tracking_number)->toMatch('/^OCO-HM-\d{6}$/');
+});
+
+test('bulk send to a rider backfills its tracking number', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
+
+    $rider = DeliveryRider::create([
+        'store_id' => $store->id,
+        'name' => 'Rider Bulk',
+        'phone' => '0557878789',
+        'is_active' => true,
+    ]);
+
+    $order->update(['delivery_rider_id' => $rider->id]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.orders.index')
+        ->set('selectedOrders', [(string) $order->id])
+        ->call('openBulkSendModal')
+        ->call('confirmBulkSend');
+
+    $tracking = OrderTracking::where('order_id', $order->id)->first();
+
+    expect($tracking)->not->toBeNull()
+        ->and($order->fresh()->status?->key)->toBe('shipped')
+        ->and($tracking->tracking_number)->toMatch('/^OCO-HM-\d{6}$/');
+});
+
 test('confirm-and-send to a rider ships the order and backfills an HM/SD tracking number', function () {
     [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
     $order = ocoOrder($store, 'confirmed', ['with_provider' => false]);
@@ -539,7 +621,7 @@ test('confirm-and-send to a rider ships the order and backfills an HM/SD trackin
     $tracking = OrderTracking::where('order_id', $order->id)->first();
 
     expect($tracking)->not->toBeNull()
-        ->and($tracking->tracking_number)->toMatch('/^HM-/');
+        ->and($tracking->tracking_number)->toMatch('/^OCO-HM-\d{6}$/');
 });
 
 test('confirm-and-send refuses an inactive or foreign rider', function () {
