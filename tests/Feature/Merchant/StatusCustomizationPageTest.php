@@ -94,3 +94,86 @@ test('carrier tracking tab renders the status dictionary as a reference table', 
         ->assertSee('Bloqué', false)
         ->assertSee('Colis abandonné', false);
 });
+
+test('carrier tracking tab shows the Arabic real meaning column', function () {
+    [$user, $store] = createCustomizationMember('owner');
+
+    $this->actingAs($user);
+    $this->session(['current_store_id' => $store->id]);
+
+    Livewire::test('merchant.customization.statuses')
+        ->call('setTab', 'carrier_tracking')
+        ->assertSet('tab', 'carrier_tracking')
+        ->assertSee('تم تسليم الشحنة للزبون', false)
+        ->assertSee('أُوقفت المعالجة بانتظار تدخل الإدارة', false);
+});
+
+test('rider tracking tab exposes customize/reorder views and add button', function () {
+    [$user, $store] = createCustomizationMember('owner');
+
+    $this->actingAs($user);
+    $this->session(['current_store_id' => $store->id]);
+
+    $component = Livewire::test('merchant.customization.statuses')
+        ->call('setTab', 'rider_tracking')
+        ->assertSet('tab', 'rider_tracking')
+        ->assertSee("setRiderView('customize')", false)
+        ->assertSee("setRiderView('order')", false)
+        ->assertSee("showAddRider", false);
+
+    // Add a custom rider status through the component.
+    $component->set('newRiderLabel', 'Arrived at rider')
+        ->set('newRiderColor', 'info')
+        ->call('addRiderStatus')
+        ->assertDispatched('swal');
+
+    expect(\App\Models\Status::where('store_id', $store->id)->where('type', 'tracking')->exists())->toBeTrue();
+
+    $riderKeys = collect($component->get('riderStatusList'))->pluck('key')->all();
+    expect($riderKeys)->toBe(\App\Models\Status::where('store_id', $store->id)->where('type', 'tracking')->pluck('key')->all());
+});
+
+test('rider tab deletes a custom status through the component', function () {
+    [$user, $store] = createCustomizationMember('owner');
+
+    $this->actingAs($user);
+    $this->session(['current_store_id' => $store->id]);
+
+    $service = app(\App\Services\Stores\StoreStatusService::class);
+    $custom = $service->addStatus((string) $store->id, \App\Services\Stores\StoreStatusService::TRACKING_TYPE, 'Temp rider', 'gray');
+
+    Livewire::test('merchant.customization.statuses')
+        ->call('setTab', 'rider_tracking')
+        ->call('deleteRiderStatus', $custom->key)
+        ->assertDispatched('swal');
+
+    expect(\App\Models\Status::where('id', $custom->id)->exists())->toBeFalse();
+});
+
+test('confirmation tab adds a linked custom status and shows the link badge', function () {
+    $this->seed(\Database\Seeders\SystemStatusesSeeder::class);
+
+    [$user, $store] = createCustomizationMember('owner');
+
+    $this->actingAs($user);
+    $this->session(['current_store_id' => $store->id]);
+
+    $component = Livewire::test('merchant.customization.statuses')
+        ->assertSee("showAddConfirmation", false);
+
+    $component->set('newConfirmationLabel', 'Contacted and confirmed')
+        ->set('newConfirmationColor', 'success')
+        ->set('newConfirmationLinkedTo', 'confirmed')
+        ->call('addConfirmationStatus')
+        ->assertDispatched('swal');
+
+    $custom = \App\Models\Status::where('store_id', $store->id)->where('type', 'order')->where('linked_to', 'confirmed')->first();
+
+    expect($custom)->not->toBeNull()
+        ->and($custom->label)->toBe('Contacted and confirmed')
+        ->and($custom->movement_type)->toBe('reserve');
+
+    // The custom row is included in the on-page confirmation list.
+    $keys = collect($component->get('statusList'))->pluck('key')->all();
+    expect(in_array($custom->key, $keys, true))->toBeTrue();
+});

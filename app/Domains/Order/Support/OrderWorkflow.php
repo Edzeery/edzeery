@@ -59,4 +59,23 @@ class OrderWorkflow
     {
         return in_array($statusKey, self::carrier(), true);
     }
+
+    /**
+     * معرّفات حالات التوصيل على مستوى الطلبية (type=order).
+     *
+     * نقطة الدخول الوحيدة المسموحة لفلترة orders.status_id في صفحة «تتبع الطلبيات».
+     * مفتاحٌ واحد لكل حالة في type='order' فقط؛ نوع 'tracking' مخصص لعمود
+     * order_trackings.tracking_status ولا يُستخدم هنا أبدًا — المفاتيح متطابقة بين
+     * النوعين بمعرّفات مختلفة، والخلط بينهما كان سبب فراغ تبويبي صفحة التتبع.
+     *
+     * @return string[]
+     */
+    public static function carrierStatusIds(): array
+    {
+        return \App\Models\Status::system()
+            ->forType('order')
+            ->whereIn('key', self::carrier())
+            ->pluck('id')
+            ->all();
+    }
 }

@@ -2308,7 +2308,7 @@ git rm "it" "prepareBindings(\$bindings)"
 - **تاب `carrier_tracking` في صفحة الحالات:** `x-edz.select` بشركة (noest/ecotrack/yalidine، `wire:model="carrier"`) + جدول `raw (mono) ⇦ القيمة المُطبَّقة (badge/classes) ⇦ التسمية المترجمة` عبر `StatusResolver::resolve('tracking', key, storeId)` (row جديد `$carrierRows`). مفاتيح `merchant_panel` ×4 الجديدة: `carrier_tracking_select/hint/raw/applied/label` + `carrier_noest/ecotrack/yalidine` (الفرنسية: Libellé/Statut brut/…).
 **التحقق:** `CarrierStatusDictionaryTest` (جديد — 7 اختبارات: الشركات الـ 3 + NOEST + on_hold/cancelled + Events إدارية null + Ecotrack + Yalidine + lists/keysFor) + `OrderTrackingStatusTest` (11 حالة + تصنيفات + matcher + labels ×2 + icons) + `NoestTrackingSyncServiceTest` (اختبار fallback المُستبدل: صف فارغ بلا حالة بلا History + اختبار dict جديد `colis_suspendu`→on_hold و`ask_to_delete_by_admin`→cancelled) + `StatusCustomizationPageTest` (جديد: Livewire tab test — `setTab('carrier_tracking')` + تبديل `carrier` إلى `yalidine`) + `StatusLabelPrecedenceTest` (9→11 + on_hold/cancelled). **الجولة الكاملة: 800 ناجح (3222 تأكيدًا)** (`php -l` نظيف ×5 + Pint 10 ملفات + `view:cache` ناجح). **ملاحظة قرار:** تركت تسميات صفوف البذرة على نمط التسمية الإنجليزية الرائج لبقية صفوف السيدر (override `label=''` كي تُترجم من status-kit) — لا تغيير على `systemLabel()` في هذه المرحلة.
 
-### المرحلة 4 — حالات تتبع راجل التوصيل: تخصيص + تاب الترتيب ⬜
+### المرحلة 4 — حالات تتبع راجل التوصيل: تخصيص + تاب الترتيب ✅
 
 **الهدف:** تاب «تخصيص حالات تتبع الراجل» (إضافة/تعديل تسمية/لون/تفعيل) + «ترتيب حالات تتبع الراجل» (↑/↓ ⇒ sort_order) — حالاتنا المحلية لا تُستقبل من أي API.
 
@@ -2322,6 +2322,26 @@ git rm "it" "prepareBindings(\$bindings)"
 **التحقق:** إضافة حالة راجل مخصصة لمتجر → تظهر في قائمة/ترتيب/stepper الراجل فقط ولا تسرّب للشركة؛ Feature test + `view:cache`.
 
 **الاعتماديات:** المراحل 1 و2 (نفس آلية override).
+
+**✅ منجز (2026-09-17) — بقرارات المستخدم خلال الجلسة** («التفاصيل → المرحلة 4 فقط»؛ الترجمة «المصدران معًا»؛ عمود «المعنى الحقيقي» في تبويب الشركة؛ حالات تأكيد مخصصة مرتبطة بحالة أصلية = فرع وظيفي). ما نُفّذ:
+- **`Status` (+ هجرة جديدة `2026_09_17_000000_add_linked_to_to_statuses_table.php`):** عمود `linked_to` nullable (مفتاح الحالة الأصلية لصفوف المتجر المركّبة/المخصصة).
+- **`StoreStatusService`:** إعادة كتابة بالكامل — `TRACKING_TYPE`، `riderList()/riderSave*/moveRider()/addStatus()/deleteStatus()`، `canonicalKey()`، قواعد المرحلة 2ْ للـ override + فرع `linked_to`؛ كتابة صفوف متجر `(store_scope_id, type, key)`؛ `scopeType` للحالة غير النظامية (rider/custom order).
+- **صفحة `statuses.blade.php`:** إعادة كتابة — تابات 3 (confirmation/carrier_tracking/rider_tracking) + «ترتيب»؛ دارة `$tab`; عرض/ترتيب ↑/↓؛ إضافة/حذف حالة راجل باسم ولون؛ إضافة حالة تأكيد مخصصة (label/color) باختيار حالة أصلية `linked_to` تُعرض شارة الربط.
+- **مفاتيح المفاتيح المخصصة:**
+  - `OrderService::transition()`: المفتاح النظامي → الصف النظامي (الـ override للعرض فقط محفوظ)؛ مفتاح خاص بالمتجر فقط → صف المتجر عبر `firstOrFail` (لا `ModelNotFoundException` لمفاتيح الفروع).
+  - `OrderService::availableTransitions()`: إن كانت حالة الطلبية الحالية صف متجر ذا `linked_to` → تُؤخذ انتقالات الأصل (الفرع يرث مخارج أصله — ليس طريقًا مسدودًا).
+  - `OrderService::canTransition()`: يقبل المفتاح المخصص إن كان `linked_to` سمح له النّتقال (أصله هدف مسموح).
+  - `OrderObserver::handleStatusChange`: يقرأ `movement_type`/`affects_inventory` من الصف الحي (نظامي أو متجر) → احتياط المخزون يُطبق لمرة واحدة عند دخول فرع مخصص.
+- **`OrderWorkflow::carrierStatusIds()`** (introduced بالمرحلة المبكرة) + `StoreOrderPermissions::forStatus($key, $storeId)`.
+- **الترجمة «المصدران معًا»:** مفاتيح status-kit ×4 تعكس معنى NOEST الحقيقي + تسميات عربية تُبذر في `SystemStatusesSeeder` (label عربي) و`CarrierStatusDictionary` (`RAW_TO_STATUS` + `RAW_TO_MEANING`: 35 noest + 30 ecotrack + 36 yalidine، و`list()` بمفتاح `meaning`).
+- **تبويب الشركة — عمود «المعنى الحقيقي»:** `RAW_TO_MEANING` يُعرض ثالثًا بجانب raw/الحالة المُطبَّقة؛ أحداث NOEST الإدارية الخمسة بلا مفتاح داخلي لا تُعرض.
+- **إصلاح bug سابق الوجود للوصول لسويت أخضر:** `OrderConfirmationService` (`use App\Domains\Order\Support\OrderCompleteness` — كلاس غير موجود) → حُذف الاستيراد (الكلاس في نفس النيم سبيس `App\Domains\Order\Services\OrderCompleteness`)؛ كان يكسر حاو الحل (BindingResolutionException) في `submitConfirmAndSend`/`sendConfirmedOrder` وبقية مسار الإرسال. يلمس نجاحه: `SendGatewayCarrierAtomicTest` + `SendCarrierFailureTest`.
+
+**التحقق (الأدلة):**
+- `StoreStatusCustomizationTest` + `OrderTrackingStatusTest`: **22 ناجح (119 تأكيدًا)** (30.21s).
+- `StatusCustomizationPageTest`: **7 ناجح (43 تأكيدًا)** — تبويب الشركة (عمود المعنى العربي عبر `RAW_TO_MEANING`)، تبويب الراجل (عرض قائمتين «تخصيص» و«ترتيب» + زر إضافة + حذف حالة مخصصة عبر المكوّن)، تاب التأكيد (إضافة حالة مخصصة مرتبطة + شارة الربط).
+- `CustomStatusBranchTest` (جديد): **4 ناجح (18 تأكيدًا)** — ظهور مفاتيح المتجر لدى الـ Resolver؛ الفرع الوظيفي (canTransition→true، انتقال إلى صف المتجر، reserve 1× عند 10→8، تاريخ الحالة بالصف المخصص، والخروج عبر 'preparing' بلا حركة إضافية)؛ حالة الجلوس على فرع ترث انتقالات الأصل (contains 'preparing'/'pending'/'cancelled')؛ انتقال بمفتاح مجهول → `ModelNotFoundException`.
+- **السويت الكاملة: 829 ناجح (3342 تأكيدًا)** (685.58s) + `php -l` نظيف على `OrderService` و`OrderConfirmationService` + `view:cache` سليم. قاموس العزل: فشلا `SendGatewayCarrierAtomicTest`/`SendCarrierFailureTest` كانا بسبب استيراد `OrderCompleteness` الخاطئ المُسجَّل أعلاه (لا علاقة بتعديلات `OrderService`) — أثبته توقف الاختبارين (8/8) بعد إصلاح الاستيراد وحده.
 
 ### المرحلة 5 — بوب أب التتبع: تابان فرعيان «تتبع الطلبية» / «ملاحظات شركة التوصيل» ⬜
 
@@ -2416,3 +2436,50 @@ git rm "it" "prepareBindings(\$bindings)"
 4. توست مميز `shipment_cancelled_unknown_carrier` ×4 في `TrackingDrawerConcern` و`CancelsShipmentFromOrdersTable`.
 
 **الشهادة:** ملف اختبار جديد `tests/Feature/Shipping/ShipmentCancelCarrierUnknownTest.php` (3 اختبارات: مُعلَّمة/إبلاغ not_found → مضي محلي؛ فشل عام → حجب) + اختبارا المزامنة (stamp/clear في الاتجاهين، Job) + اختبارا `deleteOrder`. pest: 24 pass (101) في ملفات الشحن الثلاثة + عدم انحدار: `TrackingTrashWebhookLabelTest` (16)، `OrderCarrierValidationDispatchTest`+`SendGatewayCarrierAtomicTest` (16). migrate + `php -l` + `view:cache` سالمة.
+
+---
+
+## إصلاح فراغ صفحة التتبع — الفصل المنطقي بين حالات «الطلبية» و«التتبع» (عدم التكرار) ✅ (2026-09-17)
+
+**العرض:** تبويبا صفحة التتبع (`merchant.tracking.index`) لا يعرضان أي صفوف إطلاقًا. السبب الجذري (بتشخيص حي): الكوميت `8e121b3` غيّر في `TrackingGridConcern.php:179` فلترة `orders.status_id` من `Status::system()->forType('order')` إلى `forType('tracking')` عند مفاتيح `OrderWorkflow::carrier()`.
+
+**الخلط التصنيفي (حلّه القرار المعماري):** لكل مفتاح مثل `shipped` صفّان مختلفا ULID: واحد `type='order'` (حالة الطلبية) وآخر `type='tracking'` (حالة الشحنة لدى الشركة). `orders.status_id` يشير دائمًا لنوع `order` — فلترة بنوع `tracking` لا تطابق أي طلب → صفر صف في التبويبين. القرار المعتمد: **الفصل المنطقي الصحيح مع عدم التكرار** — التجارب الثلاثة لم تعد مصادر مكرّرة يدوية بل:
+- **`orders.status_id` (نوع order)** = حالة الطلبية، ومنها تمرّ تسليمات الشركة والراجل معًا (`OrderShippingGateway` ينتقل إلى `shipped` عبر `OrderService::transition` الذي يقرأ `forType('order')` دائمًا) → هي التي تقرر ظهور الطلبية في صفحة التتبع.
+- **`order_trackings.tracking_status` (نوع tracking)** = حالة الشحنة لدى الشركة (أوسع: on_hold/returning/failed_attempt/lost/damaged…).
+- **التأكيد (نوع order، قائمة `StoreOrderPhases`/Confirmation Pipeline)** = مرحلة ما قبل الإرسال.
+
+**ما نُفِّذ:**
+1. `database/seeders/SystemStatusesSeeder.php` — حُذفت كتلة TRACKING اليدوية (11 صفًا) وأصبحت تُبنى من `OrderTrackingStatus::cases()` (وحيد المصدر) مع **فحصَي اتساق يرمي `RuntimeException`**: (أ) مفاتيح tracking المزروعة == حالات enum؛ (ب) مفاتيح كل مجموعة `OrderWorkflow::backOffice()/carrier()/closed()` ⊆ مفاتيح صفوف type=order.
+2. `app/Domains/Order/Support/OrderWorkflow.php` — **نقطة دخول موحّدة جديدة `carrierStatusIds()`**: «مفاتيح `carrier()` → معرّفات `type='order'`». هي الوحيدة المسموحة لفلترة `orders.status_id` في صفحة التتبع.
+3. `app/Livewire/Concerns/TrackingGridConcern.php:179` — يستدعي `OrderWorkflow::carrierStatusIds()` بدل الاستعلام المضمّن، مع تعليق توثيق الفصل الثلاثي.
+4. `tests/Feature/Merchant/TrackingGridStatusScopeTest.php` (جديد) — 3 اختبارات: ظهور طلب شركة في تبويب carrier؛ ظهور طلب موصِّل في تبويب rider؛ «التركيز»: `carrierStatusIds()` لا تتقاطع أبدًا مع معرّفات نوع tracking ولا يطابقها أي `orders.status_id`.
+
+**الأدلة/الشهادة:** بذر حي ناجح بلا استثناء (صفوف tracking الـ 11 مطابقة لـ enum label/color/ترتيب)؛ pest: **52/52** في مجموعة التتبع (`TrackingGridStatusScopeTest` 3 + `TrackingSearchFilterTest` 33 — كانت 18 فاشلًا + `TrackingTrashWebhookLabelTest` 16 — كان 1 فاشلًا) و**24/24** في سويتات الشحن (`ShipmentCancelCarrierUnknownTest` + `NoestTrackingSyncTest` + `NoestTrackingSyncServiceTest`) — صفر انحدار. `php -l` نظيف ×4.
+
+> القاعدة لمن يعدّل لاحقًا: لا يُستعمل `forType('tracking')` لفلترة `orders.status_id` إطلاقًا؛ مرّر بفلاتر صفحة التتبع عبر `OrderWorkflow::carrierStatusIds()` فقط.
+>
+> مرتبط بالعنقود أعلاه: هذه الحالات (11) تخدم المرحلة 4 (راجل/متجر، unittest-المرحلة 2) والمرحلة 6 (فلتر التأكيد) — نقطة الدخول الموحّدة تبقى مصدر الحقيقة ولا ينبغي تكرار قوائم المفاتيح الثابتة في أي صفحة جديدة.
+
+---
+
+## إصلاح ثلاثي — store_scope_id (SQLSTATE 1265) + حالة تتبع الراجل الفارغة + «لا توجد شحنات قابلة للمزامنة» ✅ (2026-09-17)
+
+**العرض (3 تقارير مترابطة):** (1) `SQLSTATE[01000] … Data truncated for column 'store_scope_id'` عند إضافة/تخصيص/تعديل حالة؛ (2) عمود «الحالة» في جدول تتبع الطلبيات (تبويبا الشركة والراجل) فارغ؛ (3) «مزامنة الكل» تقول «لا توجد شحنات قابلة للمزامنة مع شركات التوصيل» رغم وجود شحنة بمُعرِّف تتبع فعلي. تم التشخيص حيًّا على قاعدة بيانات المتجر الحالية (وبموافقة المستخدم الصريحة «نفّذ هجرة الإصلاح»/«افحص وأصلح»).
+
+**الأسباب الجذرية (ثلاثة مستقلة):**
+1. **`store_scope_id` عصريًا خاطئ:** العمود مولّد `unsignedBigInteger` بالصيغة `IFNULL(store_id, 0)` بينما `store_id` هو ULID (char 26). MySQL يقطّع أي ULID عند التحويل العددي (أثبت حيًّا: `CAST(IFNULL('01m2qnh10v7w009ffhz1h7qbtn',0) AS UNSIGNED)` = `1`) → كل المتاجر تتصادم في scope=1، ومع كسر strict يكتب `1` (truncated) أو يرفض الصف (1265).
+2. **`OrderTracking::tracking_status` فارغة على مسار الراجل:** `ensureRiderTracking` كان يملأ `tracking_number` فقط على صف مفتوح موجود ولا يضبط الحالة أبدًا → الشبكة تعرض «—». (بيانات حية: طلب 00002 راجل رتبة تتبع `tracking_status=NULL, carrier_status='cancelled'` ومزوّد قديم لم يُسحب.)
+3. **`OrderTrackingStatus::open()` تنقص `failed_attempt`:** `syncAllTracking` يفلتر `whereIn('tracking_status', open())` وهذه الحالة (غير نهائية — `isOpen()` تُرجع true لها) كانت مستثناة → الشحنة الوحيدة بمُعرِّف تتبع فعلي (`YESH-28B-20573449`, `failed_attempt`) مستبعدة من المزامنة دائمًا.
+
+**ما نُفّذ:**
+1. **هجرة جديدة `2026_09_17_163636_fix_statuses_store_scope_id_ulid_scope.php`:** `store_scope_id` يُعاد إنشاؤه كـ `string(26)` مولّد = `IFNULL(store_id, '0')` (سنتينال: `'0'` للنظام، ULID للمتجر) مع إعادة بناء `unique(statuses_scope_type_key_unique)`؛ `down()` يعكس (`unsignedBigInteger`). أُصلح كذلك مرجعا Filament SuperAdmin: `StatusForm::store_scope_id` بلا `->numeric()` (عمود مولّد يُقرأ فقط → `->disabled()`)، `StatusesTable::store_scope_id` بلا `->numeric()->sortable()` فقط.
+2. **`OrderTrackingService::ensureRiderTracking`:** على صف مفتوح موجود — يملأ `tracking_number`، ويلفّ `tracking_status='shipped'` إن كانت فارغة (مع سطر History `rider_backfill`)، ويمسح `shipping_provider_id` القديم (مسار الراجل لا يُبثّ أبدًا؛ إبقاؤه كان سيُدخل رقم HM/SD المحلي في مزامنة الشركة). Idempotent.
+3. **`OrderTrackingStatus::open()`:** أُضيف `FAILED_ATTEMPT` (القائمة صارت مطابقة تمامًا للحالات غير النهائية — اختبار يثبت التطابق لكل حالة). التعبير `::open()` لا يُستخدم إلا في `TrackingDrawerConcern::syncAllTracking:272` فلذلك لا أثر جانبي.
+
+**الشهادة (على قاعدة بيانات حية لمتجر حقيقي):**
+- `php artisan migrate` (forward + rollback/re-migrate) نظيف؛ `SHOW CREATE TABLE statuses` يظهر `varchar(26) GENERATED ALWAYS AS (ifnull(store_id,'0'))`.
+- `StoreStatusService::addStatus` + `riderSaveLabel` (override بلا مساس بترجمة kit) + `moveRider` + `riderList(count=12)` + `deleteStatus` على المتجر الحي بنجاح — لا `SQLSTATE[01000]` (كان يفشل قبل الهجرة).
+- إصلاح حي للطلب 00002: `ensureRiderTracking` ملأ `SD-EE9LLDZN` + `shipped` ومسح المزوّد القديم؛ وحيد المصدر بعد تكرار الاستدعاء (لم يُلمس `SD-...`/`shipped`).
+- مزامنة الكل: `open()` الحالية = `shipped,in_transit,out_for_delivery,on_hold,failed_attempt,returning` والاستعلام الحي يلتقط الشحنة `YESH-28B-20573449/failed_attempt` (كانت صفرًا قبله).
+- pest: `OrderTrackingStatusTest` (6/6 — الجديد: تطابق open() مع isOpen لكل حالة) + `OrderCompletenessTest` (25/25 — الجديدان: backfill الحالة + إبقاء حالة موجودة + مسح المزوّد، مع الاتّساقية: لا استبدال رقم/حالة موجودة) + تتبع المراجعة (`OrderTrackingTest`, `TrackingGrid*`, `TrackingStatusHistoryPopupTest`, `NoestTrackingSyncService*`) 45/45 + **Shipping كامل 60/60 (280)** + **Merchant Order* 337/337 (1310)** + **Merchant Tracking* 117/117 (575)** + سويتات الحالات (`StatusLabelPrecedence`, `StatusResolverDomain`, `CustomStatusBranch`, `StatusCustomizationPage`, `StoreStatusCustomization`) 34/34. `php -l` نظيف ×8 + rollback/re-migrate نظيف.
+- توثيق: `DATABASE_PLAN_Schema.md` و`DATABASE_PLAN_MIGRATIONS.md` حُدّثا للنوع النصّي الجديد مع سبب التغيير.

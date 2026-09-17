@@ -6,6 +6,7 @@ use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Team\StoreMembership;
+use App\Services\Stores\StoreStatusService;
 
 /**
  * Maps an order status key to the fine-grained permission required to move an
@@ -39,8 +40,16 @@ class StoreOrderPermissions
         'postponed',
     ];
 
-    public static function forStatus(string $statusKey): string
+    /**
+     * الصلاحية المطلوبة للانتقال إلى حالة. اختياريًا تُمعِن الصلبة حاليًا: الحالة
+     * المخصصة المرتبطة بحالة تأكيد أصلية (linked_to) تُعامل كأصلها.
+     */
+    public static function forStatus(string $statusKey, ?string $storeId = null): string
     {
+        if ($storeId !== null) {
+            $statusKey = app(StoreStatusService::class)->canonicalKey($storeId, $statusKey);
+        }
+
         if (in_array($statusKey, self::CONFIRM_STATUSES, true)) {
             return StorePermissionEnum::ORDER_CONFIRM->value;
         }

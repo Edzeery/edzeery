@@ -16,7 +16,7 @@ class StatusForm
                 Select::make('store_id')
                     ->relationship('store', 'name'),
                 TextInput::make('store_scope_id')
-                    ->numeric(),
+                    ->disabled(),
                 TextInput::make('type')
                     ->required(),
                 TextInput::make('key')

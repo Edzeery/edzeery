@@ -360,12 +360,12 @@ return [
     ],
 
     'tracking' => [
-        'shipped' => 'Shipped',
+        'shipped' => 'Shipment Created',
         'in_transit' => 'In Transit',
         'out_for_delivery' => 'Out for Delivery',
         'on_hold' => 'On Hold',
         'delivered' => 'Delivered',
-        'returned' => 'Returned',
+        'returned' => 'Returned to Seller',
         'returning' => 'Returning',
         'failed_attempt' => 'Failed Delivery Attempt',
         'cancelled' => 'Cancelled',

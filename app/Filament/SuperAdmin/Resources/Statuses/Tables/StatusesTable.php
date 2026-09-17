@@ -21,7 +21,6 @@ class StatusesTable
                 TextColumn::make('store.name')
                     ->searchable(),
                 TextColumn::make('store_scope_id')
-                    ->numeric()
                     ->sortable(),
                 TextColumn::make('type')
                     ->searchable(),

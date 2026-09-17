@@ -413,7 +413,7 @@
             <span
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                 <span class="font-semibold opacity-75"><?php echo e(__('order_flow.tracking_status')); ?>:</span>
-                <span class="max-w-[16rem] truncate"><?php echo e(collect(\App\Enums\Store\OrderTrackingStatus::cases())->filter(fn ($ts) => in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true))->map(fn ($ts) => $ts->label())->join(', ')); ?></span>
+                <span class="max-w-[16rem] truncate"><?php echo e(collect($this->trackingStatusOptions())->filter(fn ($opt) => in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true))->map(fn ($opt) => $opt['label'])->join(', ')); ?></span>
                 <button wire:click="setFilter('tracking_statuses', [])" wire:loading.attr="disabled"
                     class="hover:text-accent-900"><?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>

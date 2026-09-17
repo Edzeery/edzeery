@@ -139,7 +139,7 @@
 MySQL يسمح بتكرار NULL داخل unique composite، لذلك نستخدم عمود “scope” مولّد.
 
 **أضف عمود GENERATED:**
-- `store_scope_id` = IFNULL(store_id, 0)
+- `store_scope_id` = `IFNULL(store_id, '0')` — **string(26)**, لأن `store_id` هو ULID char(26)؛ منهج unsignedBigInteger كان يقطع ULID إلى `1` وتتصادم المتاجر (SQLSTATE 1265). أُصلح بهجرة `fix_statuses_store_scope_id_ulid_scope`.
 
 ثم Unique:
 - unique(['store_scope_id', 'type', 'key'])

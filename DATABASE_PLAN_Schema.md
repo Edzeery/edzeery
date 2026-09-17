@@ -863,11 +863,14 @@ public function up(): void
 
             /**
              * نطاق موحد:
-             * system = 0
-             * store  = store_id
+             * system = '0'
+             * store  = store_id (ULID char 26)
+             *
+             * عمود string(26) لأن store_id هو ULID — منهج unsignedBigInteger كان
+             * يقطع ULID إلى 1 وتتصادم المتاجر (SQLSTATE 1265 Data truncated).
              */
-            $table->unsignedBigInteger('store_scope_id')
-                ->virtualAs(DB::raw('IFNULL(store_id, 0)'));
+            $table->string('store_scope_id', 26)
+                ->virtualAs(DB::raw("IFNULL(store_id, '0')"));
 
             // order | payment | shipment
             $table->string('type');

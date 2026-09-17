@@ -36,6 +36,7 @@ enum OrderTrackingStatus: string
             self::IN_TRANSIT,
             self::OUT_FOR_DELIVERY,
             self::ON_HOLD,
+            self::FAILED_ATTEMPT,
             self::RETURNING,
         ];
     }

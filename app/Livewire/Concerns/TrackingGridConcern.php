@@ -176,9 +176,10 @@ trait TrackingGridConcern
             $query->where('shipment_type', $f['shipment_type']);
         }
 
-        $trackingStatusIds = \App\Models\Status::system()->forType('tracking')
-            ->whereIn('key', \App\Domains\Order\Support\OrderWorkflow::carrier())
-            ->pluck('id')->all();
+        // فلترة orders.status_id تنحصر بحالات التوصيل من نوع "order" عبر نقطة الدخول
+        // الموحّدة OrderWorkflow::carrierStatusIds() — نوع "tracking" يخص عمود
+        // order_trackings.tracking_status ولا يُستخدم هنا (الخلط بينهما يفرّغ التبويبات).
+        $trackingStatusIds = \App\Domains\Order\Support\OrderWorkflow::carrierStatusIds();
 
         if (! empty($trackingStatusIds)) {
             $query->whereIn('status_id', $trackingStatusIds);

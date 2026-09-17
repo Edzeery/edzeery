@@ -62,16 +62,47 @@ class OrderTrackingService
 
     /**
      * Ensure a rider hand-off has a tracking row + number so the rider tab is never
-     * blank: creates a fresh open SHIPPED tracking when none exists, otherwise only
-     * backfills the number on the current open row. Idempotent.
+     * blank: creates a fresh open SHIPPED tracking when none exists, otherwise
+     * backfills the number and, when the status is missing, a SHIPPED status on the
+     * current open row. A rider hand-off is never carrier-probed, so any stale
+     * shipping_provider_id is cleared. Idempotent.
      */
     public function ensureRiderTracking(Order $order, string $trackingNumber): OrderTracking
     {
         $open = $this->currentOpenTracking($order);
 
         if ($open) {
+            $previous = $open->tracking_status;
+            $changes = [];
+
             if (blank($open->tracking_number)) {
-                $open->update(['tracking_number' => $trackingNumber]);
+                $changes['tracking_number'] = $trackingNumber;
+            }
+
+            if (blank($open->tracking_status)) {
+                $changes['tracking_status'] = OrderTrackingStatus::SHIPPED->value;
+            }
+
+            // Rider hand-offs are never carrier-probed: clear any stale carrier
+            // provider so bulk sync (whereHas shippingProvider + open status)
+            // never tries to refresh a local HM/SD rider number.
+            if ($open->shipping_provider_id !== null) {
+                $changes['shipping_provider_id'] = null;
+            }
+
+            if (! empty($changes)) {
+                $open->update($changes);
+
+                if (array_key_exists('tracking_status', $changes)) {
+                    $this->recordHistory(
+                        $open,
+                        OrderTrackingStatus::SHIPPED->value,
+                        null,
+                        null,
+                        ['previous_status' => $previous, 'rider_backfill' => true],
+                        $order,
+                    );
+                }
             }
 
             return $open;

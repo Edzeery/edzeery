@@ -171,13 +171,13 @@
                         class="w-3.5 h-3.5 shrink-0 {{ empty($this->filters['tracking_statuses']) ? 'opacity-100' : 'opacity-0' }}" />
                 </button>
 
-                @foreach (\App\Enums\Store\OrderTrackingStatus::cases() as $ts)
-                    <button type="button" @click="$wire.toggleTrackingStatus('{{ $ts->value }}'); close()"
-                        aria-pressed="{{ in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'true' : 'false' }}"
-                        class="edz-dropdown__item justify-between {{ in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
-                        <span class="truncate">{{ $ts->label() }}</span>
+                @foreach ($this->trackingStatusOptions() as $opt)
+                    <button type="button" @click="$wire.toggleTrackingStatus('{{ $opt['value'] }}'); close()"
+                        aria-pressed="{{ in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'true' : 'false' }}"
+                        class="edz-dropdown__item justify-between {{ in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'bg-accent-surface text-accent-fg font-semibold' : '' }}">
+                        <span class="truncate">{{ $opt['label'] }}</span>
                         <x-edz.icon name="check"
-                            class="w-3.5 h-3.5 shrink-0 {{ in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0' }}" />
+                            class="w-3.5 h-3.5 shrink-0 {{ in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0' }}" />
                     </button>
                 @endforeach
             </div>

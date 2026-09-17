@@ -20,10 +20,20 @@ class OrderService
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
     ): Order {
+        // System keys always resolve to the system row (store overrides affect
+        // display only). A store-custom status (no system row) — a functional
+        // branch linked to an original confirmation key — resolves to its store row.
         $newStatus = Status::system()
             ->forType('order')
             ->where('key', $newStatusKey)
-            ->firstOrFail();
+            ->first();
+
+        if (! $newStatus) {
+            $newStatus = Status::where('store_id', $order->store_id)
+                ->where('type', 'order')
+                ->where('key', $newStatusKey)
+                ->firstOrFail();
+        }
 
         return $this->transitionToStatus($order, $newStatus, $reason, $changedBy);
     }
@@ -73,6 +83,20 @@ public function availableTransitions(Order $order): array
         // This eliminates the N+1 when loadOrders() eager-loads 'status'.
         $currentKey = $order->status?->key;
 
+        // A store-custom confirmation status is a functional branch of its
+        // linked original: its place in the workflow is the origin's place.
+        if ($currentKey && $order->store_id) {
+            $branch = Status::where('store_id', $order->store_id)
+                ->where('type', 'order')
+                ->where('key', $currentKey)
+                ->whereNotNull('linked_to')
+                ->first();
+
+            if ($branch?->linked_to) {
+                $currentKey = $branch->linked_to;
+            }
+        }
+
         $systemTransitions = match ($currentKey) {
             'draft'              => ['pending', 'cancelled'],
             'pending'            => ['confirmed', 'cancelled', 'postponed', 'no_answer_1', 'wrong_number', 'out_of_stock', 'duplicate'],
@@ -106,7 +130,25 @@ public function availableTransitions(Order $order): array
      */
     public function canTransition(Order $order, string $statusKey): bool
     {
-        return in_array($statusKey, $this->availableTransitions($order));
+        if (in_array($statusKey, $this->availableTransitions($order))) {
+            return true;
+        }
+
+        // Functional branch: a store-custom status is acceptable whenever its
+        // linked original is an allowed target.
+        if ($order->store_id) {
+            $branchOrigin = Status::where('store_id', $order->store_id)
+                ->where('type', 'order')
+                ->where('key', $statusKey)
+                ->whereNotNull('linked_to')
+                ->value('linked_to');
+
+            if ($branchOrigin) {
+                return in_array($branchOrigin, $this->availableTransitions($order), true);
+            }
+        }
+
+        return false;
     }
 
     /**

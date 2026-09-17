@@ -100,21 +100,21 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 </button>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = \App\Enums\Store\OrderTrackingStatus::cases(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ts): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <button @click="$wire.toggleTrackingStatus('<?php echo e($ts->value); ?>'); close()"
-                        aria-pressed="<?php echo e(in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'true' : 'false'); ?>"
-                        class="edz-dropdown__item justify-between <?php echo e(in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
-                        <span class="truncate"><?php echo e($ts->label()); ?></span>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->trackingStatusOptions(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opt): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <button @click="$wire.toggleTrackingStatus('<?php echo e($opt['value']); ?>'); close()"
+                        aria-pressed="<?php echo e(in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'true' : 'false'); ?>"
+                        class="edz-dropdown__item justify-between <?php echo e(in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'bg-accent-surface text-accent-fg font-semibold' : ''); ?>">
+                        <span class="truncate"><?php echo e($opt['label']); ?></span>
                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'check','class' => 'w-3.5 h-3.5 '.e(in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0').'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0').'']); ?>
+<?php $component->withAttributes(['name' => 'check','class' => 'w-3.5 h-3.5 '.e(in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true) ? 'opacity-100' : 'opacity-0').'']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>

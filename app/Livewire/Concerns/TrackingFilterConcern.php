@@ -3,6 +3,8 @@
 namespace App\Livewire\Concerns;
 
 use App\Domains\Shipping\Services\DeliveryRiderService;
+use App\Enums\Store\OrderTrackingStatus;
+use App\Models\Status;
 
 /**
  * Tracking-grid filters, active-filter accounting and header/drill-down filter
@@ -155,6 +157,41 @@ trait TrackingFilterConcern
             : array_merge($current, [$value]);
         $this->page = 1;
         $this->loadShipments();
+    }
+
+    /**
+     * خيارات فلتر حالة التتبع: حالات enum الأساسية (11) دائمًا. على تبويب
+     * الراجل تُضاف حالات الراجل المخصصة للمتجر — ولا تُعرض مطلقًا على تبويب
+     * الشركة (لا تسرّب لمفاتيح الشركات).
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    public function trackingStatusOptions(): array
+    {
+        $options = collect(OrderTrackingStatus::cases())
+            ->map(fn ($case) => ['value' => $case->value, 'label' => $case->label()])
+            ->all();
+
+        if ($this->trackingTab !== 'rider') {
+            return $options;
+        }
+
+        $baseKeys = collect(OrderTrackingStatus::cases())->map->value->all();
+        $customRows = Status::query()
+            ->where('type', 'tracking')
+            ->where('store_id', currentStoreId())
+            ->whereNotIn('key', $baseKeys)
+            ->orderBy('sort_order')
+            ->get();
+
+        foreach ($customRows as $row) {
+            $options[] = [
+                'value' => $row->key,
+                'label' => $row->label !== '' ? (string) $row->label : $row->key,
+            ];
+        }
+
+        return $options;
     }
 
     public function toggleProductFilter(string $value): void

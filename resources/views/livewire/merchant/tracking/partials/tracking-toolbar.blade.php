@@ -136,7 +136,7 @@
             <span
                 class="inline-flex items-center gap-1 pe-2 ps-2 py-0.5 rounded-full text-xs bg-accent-surface text-accent-fg">
                 <span class="font-semibold opacity-75">{{ __('order_flow.tracking_status') }}:</span>
-                <span class="max-w-[16rem] truncate">{{ collect(\App\Enums\Store\OrderTrackingStatus::cases())->filter(fn ($ts) => in_array($ts->value, $this->filters['tracking_statuses'] ?? [], true))->map(fn ($ts) => $ts->label())->join(', ') }}</span>
+                <span class="max-w-[16rem] truncate">{{ collect($this->trackingStatusOptions())->filter(fn ($opt) => in_array($opt['value'], $this->filters['tracking_statuses'] ?? [], true))->map(fn ($opt) => $opt['label'])->join(', ') }}</span>
                 <button wire:click="setFilter('tracking_statuses', [])" wire:loading.attr="disabled"
                     class="hover:text-accent-900"><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
             </span>

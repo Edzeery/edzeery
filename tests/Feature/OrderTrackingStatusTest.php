@@ -26,6 +26,27 @@ it('classifies open and terminal statuses correctly', function () {
         ->and(OrderTrackingStatus::CANCELLED->isOpen())->toBeFalse();
 });
 
+it('includes every non-terminal case in the open() sync list', function () {
+    $openValues = collect(OrderTrackingStatus::open())
+        ->map(fn (OrderTrackingStatus $status) => $status->value)
+        ->all();
+
+    expect($openValues)->toContain('shipped')
+        ->and($openValues)->toContain('in_transit')
+        ->and($openValues)->toContain('out_for_delivery')
+        ->and($openValues)->toContain('on_hold')
+        ->and($openValues)->toContain('failed_attempt')
+        ->and($openValues)->toContain('returning');
+
+    foreach (OrderTrackingStatus::cases() as $status) {
+        if ($status->isOpen()) {
+            expect(in_array($status, OrderTrackingStatus::open(), true))->toBeTrue(
+                "{$status->value} is open but missing from open()"
+            );
+        }
+    }
+});
+
 it('maps raw carrier strings into normalised statuses', function () {
     expect(OrderTrackingStatus::fromCarrier('Package delivered'))->toBe(OrderTrackingStatus::DELIVERED)
         ->and(OrderTrackingStatus::fromCarrier('out for delivery'))->toBe(OrderTrackingStatus::OUT_FOR_DELIVERY)
@@ -45,11 +66,11 @@ it('maps raw carrier strings into normalised statuses', function () {
 it('resolves localised kit labels for the tracking domain', function () {
     app()->setLocale('ar');
 
-    expect(OrderTrackingStatus::SHIPPED->label())->toBe('تم الشحن')
-        ->and(OrderTrackingStatus::ON_HOLD->label())->toBe('معلّق')
-        ->and(OrderTrackingStatus::CANCELLED->label())->toBe('ملغي')
-        ->and(OrderTrackingStatus::LOST->label())->toBe('ضائع')
-        ->and(OrderTrackingStatus::DAMAGED->label())->toBe('تالف');
+    expect(OrderTrackingStatus::SHIPPED->label())->toBe('تم إنشاء الشحنة')
+        ->and(OrderTrackingStatus::ON_HOLD->label())->toBe('معلّقة')
+        ->and(OrderTrackingStatus::CANCELLED->label())->toBe('مُلغاة')
+        ->and(OrderTrackingStatus::LOST->label())->toBe('مفقودة')
+        ->and(OrderTrackingStatus::DAMAGED->label())->toBe('تالفة');
 
     app()->setLocale('en');
 

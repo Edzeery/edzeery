@@ -14,11 +14,22 @@ layout('components.layouts.store');
 state([
     'tab' => 'confirmation',
     'confirmationView' => 'customize',
+    'riderView' => 'customize',
     'storeId' => null,
     'statusList' => [],
     'labels' => [],
     'colors' => [],
+    'riderStatusList' => [],
+    'riderLabels' => [],
+    'riderColors' => [],
     'carrier' => 'noest',
+    'showAddConfirmation' => false,
+    'showAddRider' => false,
+    'newConfirmationLabel' => '',
+    'newConfirmationColor' => 'gray',
+    'newConfirmationLinkedTo' => 'confirmed',
+    'newRiderLabel' => '',
+    'newRiderColor' => 'gray',
 ]);
 
 mount(function (): void {
@@ -26,6 +37,7 @@ mount(function (): void {
 
     $this->storeId = currentStoreId();
     $this->loadConfirmation();
+    $this->loadRider();
 });
 
 $loadConfirmation = function (): void {
@@ -36,8 +48,29 @@ $loadConfirmation = function (): void {
     $this->colors = collect($this->statusList)->pluck('color', 'key')->all();
 };
 
+$loadRider = function (): void {
+    $service = app(StoreStatusService::class);
+
+    $this->riderStatusList = $service->riderList((string) $this->storeId);
+    $this->riderLabels = collect($this->riderStatusList)->pluck('override_label', 'key')->all();
+    $this->riderColors = collect($this->riderStatusList)->pluck('color', 'key')->all();
+};
+
 $resolve = function (string $key) {
     return StatusResolver::resolve('order', $key, (string) $this->storeId);
+};
+
+$resolveTracking = function (string $key) {
+    return StatusResolver::resolve('tracking', $key, (string) $this->storeId);
+};
+
+$confirmationOptions = function (): array {
+    return collect(StoreStatusService::CONFIRMATION_KEYS)
+        ->map(fn (string $key) => [
+            'value' => $key,
+            'label' => StatusResolver::resolve('order', $key, (string) $this->storeId)->label,
+        ])
+        ->all();
 };
 
 $colorOptions = function (): array {
@@ -57,6 +90,7 @@ $carrierRows = function (): array {
         $rows[] = [
             'raw' => $row['raw'],
             'status' => $row['status'],
+            'meaning' => $row['meaning'],
             'resolved' => StatusResolver::resolve('tracking', $row['status']->value, (string) $this->storeId),
         ];
     }
@@ -68,6 +102,12 @@ $setConfirmationView = function (string $view): void {
     abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
     $this->confirmationView = $view === 'order' ? 'order' : 'customize';
+};
+
+$setRiderView = function (string $view): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    $this->riderView = $view === 'order' ? 'order' : 'customize';
 };
 
 $saveChanges = function (): void {
@@ -94,6 +134,30 @@ $saveChanges = function (): void {
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
 };
 
+$saveRiderChanges = function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    $service = app(StoreStatusService::class);
+
+    foreach ($this->riderStatusList as $row) {
+        $key = $row['key'];
+
+        $newLabel = trim((string) ($this->riderLabels[$key] ?? ''));
+        if ($newLabel !== $row['override_label']) {
+            $service->riderSaveLabel((string) $this->storeId, $key, $newLabel);
+        }
+
+        $newColor = (string) ($this->riderColors[$key] ?? $row['color']);
+        if ($newColor !== $row['color']) {
+            $service->riderSaveColor((string) $this->storeId, $key, $newColor);
+        }
+    }
+
+    $this->loadRider();
+
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+};
+
 $moveStatus = function (string $key, int $direction): void {
     abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
 
@@ -102,6 +166,87 @@ $moveStatus = function (string $key, int $direction): void {
     $this->loadConfirmation();
 
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+};
+
+$moveRiderStatus = function (string $key, int $direction): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    app(StoreStatusService::class)->moveRider((string) $this->storeId, $key, $direction);
+
+    $this->loadRider();
+
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+};
+
+$addConfirmationStatus = function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    try {
+        app(StoreStatusService::class)->addStatus(
+            (string) $this->storeId,
+            StoreStatusService::TYPE,
+            $this->newConfirmationLabel,
+            $this->newConfirmationColor,
+            $this->newConfirmationLinkedTo,
+        );
+
+        $this->newConfirmationLabel = '';
+        $this->newConfirmationColor = 'gray';
+        $this->showAddConfirmation = false;
+        $this->loadConfirmation();
+
+        $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+    } catch (Throwable $e) {
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+    }
+};
+
+$addRiderStatus = function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    try {
+        app(StoreStatusService::class)->addStatus(
+            (string) $this->storeId,
+            StoreStatusService::TRACKING_TYPE,
+            $this->newRiderLabel,
+            $this->newRiderColor,
+        );
+
+        $this->newRiderLabel = '';
+        $this->newRiderColor = 'gray';
+        $this->showAddRider = false;
+        $this->loadRider();
+
+        $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+    } catch (Throwable $e) {
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+    }
+};
+
+$deleteConfirmationStatus = function (string $key): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    try {
+        app(StoreStatusService::class)->deleteStatus((string) $this->storeId, StoreStatusService::TYPE, $key);
+        $this->loadConfirmation();
+
+        $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+    } catch (Throwable $e) {
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+    }
+};
+
+$deleteRiderStatus = function (string $key): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    try {
+        app(StoreStatusService::class)->deleteStatus((string) $this->storeId, StoreStatusService::TRACKING_TYPE, $key);
+        $this->loadRider();
+
+        $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+    } catch (Throwable $e) {
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+    }
 };
 ?>
 
@@ -146,13 +291,20 @@ $moveStatus = function (string $key, int $direction): void {
                         </button>
                     </div>
 
-                    @if ($confirmationView === 'customize')
-                        <button type="button" wire:click="saveChanges" wire:loading.attr="disabled"
-                            class="edz-btn edz-btn--primary edz-btn--sm">
-                            <x-edz.icon name="check-circle" class="w-4 h-4" />
-                            {{ __('merchant_panel.save') }}
+                    <div class="flex gap-1">
+                        @if ($confirmationView === 'customize')
+                            <button type="button" wire:click="saveChanges" wire:loading.attr="disabled"
+                                class="edz-btn edz-btn--primary edz-btn--sm">
+                                <x-edz.icon name="check-circle" class="w-4 h-4" />
+                                {{ __('merchant_panel.save') }}
+                            </button>
+                        @endif
+                        <button type="button" wire:click="$set('showAddConfirmation', true)"
+                            class="edz-btn edz-btn--ghost edz-btn--sm">
+                            <x-edz.icon name="plus" class="w-4 h-4" />
+                            {{ __('merchant_panel.confirmation_add') }}
                         </button>
-                    @endif
+                    </div>
                 </div>
 
                 @if ($confirmationView === 'customize')
@@ -165,6 +317,7 @@ $moveStatus = function (string $key, int $direction): void {
                                         <th>{{ __('merchant_panel.status') }}</th>
                                         <th>{{ __('merchant_panel.status_label') }}</th>
                                         <th class="w-48">{{ __('merchant_panel.status_color') }}</th>
+                                        <th class="w-14"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -178,7 +331,15 @@ $moveStatus = function (string $key, int $direction): void {
                                                         class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $resolved->classes() }}">
                                                         {{ $resolved->label }}
                                                     </span>
-                                                    @if ($row['has_override'])
+                                                    @if ($row['is_custom'])
+                                                        <span class="edz-badge edz-badge--warning">{{ __('merchant_panel.status_custom') }}</span>
+                                                        @if ($row['linked_to'])
+                                                            <span class="edz-badge edz-badge--neutral" title="{{ __('merchant_panel.status_linked_to') }}">
+                                                                <x-edz.icon name="link" class="w-3 h-3" />
+                                                                {{ $this->resolve($row['linked_to'])->label }}
+                                                            </span>
+                                                        @endif
+                                                    @elseif ($row['has_override'])
                                                         <span class="edz-badge edz-badge--neutral">{{ __('merchant_panel.status_custom') }}</span>
                                                     @endif
                                                 </div>
@@ -196,6 +357,16 @@ $moveStatus = function (string $key, int $direction): void {
                                                         <option value="{{ $variant }}">{{ __('merchant_panel.color_'.$variant) }}</option>
                                                     @endforeach
                                                 </select>
+                                            </td>
+                                            <td>
+                                                @if ($row['is_custom'])
+                                                    <button type="button" wire:click="deleteConfirmationStatus('{{ $row['key'] }}')"
+                                                        wire:confirm="{{ __('merchant_panel.confirm_delete_status') }}"
+                                                        class="edz-btn edz-btn--ghost edz-btn--icon text-red-500"
+                                                        title="{{ __('merchant_panel.status_delete') }}">
+                                                        <x-edz.icon name="trash" class="w-4 h-4" />
+                                                    </button>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -215,6 +386,12 @@ $moveStatus = function (string $key, int $direction): void {
                                         class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $resolved->classes() }}">
                                         {{ $resolved->label }}
                                     </span>
+                                    @if ($row['is_custom'] && $row['linked_to'])
+                                        <span class="edz-badge edz-badge--neutral" title="{{ __('merchant_panel.status_linked_to') }}">
+                                            <x-edz.icon name="link" class="w-3 h-3" />
+                                            {{ $this->resolve($row['linked_to'])->label }}
+                                        </span>
+                                    @endif
                                     <div class="ms-auto flex items-center gap-1">
                                         <button type="button" wire:click="moveStatus('{{ $row['key'] }}', -1)"
                                             @disabled($index === 0) title="{{ __('merchant_panel.move_up') }}"
@@ -226,6 +403,14 @@ $moveStatus = function (string $key, int $direction): void {
                                             class="edz-btn edz-btn--ghost edz-btn--icon disabled:opacity-30">
                                             <x-edz.icon name="arrow-down" class="w-4 h-4" />
                                         </button>
+                                        @if ($row['is_custom'])
+                                            <button type="button" wire:click="deleteConfirmationStatus('{{ $row['key'] }}')"
+                                                wire:confirm="{{ __('merchant_panel.confirm_delete_status') }}"
+                                                class="edz-btn edz-btn--ghost edz-btn--icon text-red-500"
+                                                title="{{ __('merchant_panel.status_delete') }}">
+                                                <x-edz.icon name="trash" class="w-4 h-4" />
+                                            </button>
+                                        @endif
                                     </div>
                                 </li>
                             @endforeach
@@ -258,6 +443,7 @@ $moveStatus = function (string $key, int $direction): void {
                                     <th>{{ __('merchant_panel.carrier_tracking_raw') }}</th>
                                     <th>{{ __('merchant_panel.carrier_tracking_applied') }}</th>
                                     <th>{{ __('merchant_panel.carrier_tracking_label') }}</th>
+                                    <th>{{ __('merchant_panel.carrier_tracking_meaning') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -271,6 +457,7 @@ $moveStatus = function (string $key, int $direction): void {
                                             </span>
                                         </td>
                                         <td class="text-sm">{{ $row['resolved']->label }}</td>
+                                        <td class="text-sm text-ink-muted max-w-md">{{ $row['meaning'] }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -282,12 +469,213 @@ $moveStatus = function (string $key, int $direction): void {
 
         {{-- Rider tracking tab --}}
         @if ($tab === 'rider_tracking')
-            <div class="edz-card edz-card--padded">
-                <div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                    <div class="w-12 h-12 rounded-xl bg-surface-secondary flex items-center justify-center">
-                        <x-edz.icon name="user" class="w-6 h-6 text-ink-muted" />
+            <div class="space-y-4">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex gap-1">
+                        <button type="button" wire:click="setRiderView('customize')"
+                            class="edz-btn edz-btn--sm {{ $riderView === 'customize' ? 'edz-btn--primary' : 'edz-btn--ghost' }}">
+                            <x-edz.icon name="adjustments" class="w-4 h-4" />
+                            {{ __('merchant_panel.rider_customize') }}
+                        </button>
+                        <button type="button" wire:click="setRiderView('order')"
+                            class="edz-btn edz-btn--sm {{ $riderView === 'order' ? 'edz-btn--primary' : 'edz-btn--ghost' }}">
+                            <x-edz.icon name="arrow-up" class="w-4 h-4 rotate-90" />
+                            {{ __('merchant_panel.rider_reorder') }}
+                        </button>
                     </div>
-                    <p class="text-sm text-ink-muted max-w-sm">{{ __('merchant_panel.customization_empty') }}</p>
+
+                    <div class="flex gap-1">
+                        @if ($riderView === 'customize')
+                            <button type="button" wire:click="saveRiderChanges" wire:loading.attr="disabled"
+                                class="edz-btn edz-btn--primary edz-btn--sm">
+                                <x-edz.icon name="check-circle" class="w-4 h-4" />
+                                {{ __('merchant_panel.save') }}
+                            </button>
+                        @endif
+                        <button type="button" wire:click="$set('showAddRider', true)"
+                            class="edz-btn edz-btn--ghost edz-btn--sm">
+                            <x-edz.icon name="plus" class="w-4 h-4" />
+                            {{ __('merchant_panel.rider_add') }}
+                        </button>
+                    </div>
+                </div>
+
+                @if ($riderView === 'customize')
+                    <div class="edz-card edz-card--padded">
+                        <div class="overflow-x-auto">
+                            <table class="edz-table">
+                                <thead>
+                                    <tr>
+                                        <th class="w-14">{{ __('merchant_panel.status_position') }}</th>
+                                        <th>{{ __('merchant_panel.status') }}</th>
+                                        <th>{{ __('merchant_panel.status_label') }}</th>
+                                        <th class="w-48">{{ __('merchant_panel.status_color') }}</th>
+                                        <th class="w-14"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($riderStatusList as $index => $row)
+                                        @php $resolved = $this->resolveTracking($row['key']); @endphp
+                                        <tr wire:key="rider-row-{{ $row['key'] }}">
+                                            <td class="text-ink-muted font-mono text-xs">{{ $index + 1 }}</td>
+                                            <td>
+                                                <div class="flex items-center gap-2">
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $resolved->classes() }}">
+                                                        {{ $resolved->label }}
+                                                    </span>
+                                                    @if ($row['is_custom'])
+                                                        <span class="edz-badge edz-badge--warning">{{ __('merchant_panel.status_custom') }}</span>
+                                                    @elseif ($row['has_override'])
+                                                        <span class="edz-badge edz-badge--neutral">{{ __('merchant_panel.status_custom') }}</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" maxlength="255"
+                                                    wire:model.defer="riderLabels.{{ $row['key'] }}"
+                                                    placeholder="{{ $resolved->label }}"
+                                                    class="edz-input edz-input--sm w-full" />
+                                            </td>
+                                            <td>
+                                                <select wire:model.defer="riderColors.{{ $row['key'] }}"
+                                                    class="edz-input edz-input--sm w-full">
+                                                    @foreach ($this->colorOptions() as $variant)
+                                                        <option value="{{ $variant }}">{{ __('merchant_panel.color_'.$variant) }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td>
+                                                @if ($row['is_custom'])
+                                                    <button type="button" wire:click="deleteRiderStatus('{{ $row['key'] }}')"
+                                                        wire:confirm="{{ __('merchant_panel.confirm_delete_status') }}"
+                                                        class="edz-btn edz-btn--ghost edz-btn--icon text-red-500"
+                                                        title="{{ __('merchant_panel.status_delete') }}">
+                                                        <x-edz.icon name="trash" class="w-4 h-4" />
+                                                    </button>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @else
+                    <div class="edz-card edz-card--padded">
+                        <ul class="divide-y divide-surface-border">
+                            @foreach ($riderStatusList as $index => $row)
+                                @php $resolved = $this->resolveTracking($row['key']); @endphp
+                                <li wire:key="rider-order-{{ $row['key'] }}"
+                                    class="flex items-center gap-3 py-3">
+                                    <span class="edz-badge edz-badge--neutral font-mono">{{ $index + 1 }}</span>
+                                    <span
+                                        class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full {{ $resolved->classes() }}">
+                                        {{ $resolved->label }}
+                                    </span>
+                                    <div class="ms-auto flex items-center gap-1">
+                                        <button type="button" wire:click="moveRiderStatus('{{ $row['key'] }}', -1)"
+                                            @disabled($index === 0) title="{{ __('merchant_panel.move_up') }}"
+                                            class="edz-btn edz-btn--ghost edz-btn--icon disabled:opacity-30">
+                                            <x-edz.icon name="arrow-up" class="w-4 h-4" />
+                                        </button>
+                                        <button type="button" wire:click="moveRiderStatus('{{ $row['key'] }}', 1)"
+                                            @disabled($index === count($riderStatusList) - 1) title="{{ __('merchant_panel.move_down') }}"
+                                            class="edz-btn edz-btn--ghost edz-btn--icon disabled:opacity-30">
+                                            <x-edz.icon name="arrow-down" class="w-4 h-4" />
+                                        </button>
+                                        @if ($row['is_custom'])
+                                            <button type="button" wire:click="deleteRiderStatus('{{ $row['key'] }}')"
+                                                wire:confirm="{{ __('merchant_panel.confirm_delete_status') }}"
+                                                class="edz-btn edz-btn--ghost edz-btn--icon text-red-500"
+                                                title="{{ __('merchant_panel.status_delete') }}">
+                                                <x-edz.icon name="trash" class="w-4 h-4" />
+                                            </button>
+                                        @endif
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            </div>
+        @endif
+
+        {{-- Add confirmation status modal --}}
+        @if ($showAddConfirmation)
+            <div x-data x-on:keydown.escape.window="$wire.set('showAddConfirmation', false)"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div class="edz-card w-full max-w-md" @click.outside="$wire.set('showAddConfirmation', false)">
+                    <div class="edz-card__header">
+                        <h3 class="edz-card__title">{{ __('merchant_panel.confirmation_add_title') }}</h3>
+                    </div>
+                    <div class="edz-card__body space-y-4">
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.confirmation_add_label') }}</label>
+                            <input type="text" maxlength="255" wire:model="newConfirmationLabel"
+                                class="edz-input" placeholder="{{ __('merchant_panel.confirmation_add_label_placeholder') }}" />
+                        </div>
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.confirmation_add_color') }}</label>
+                            <select wire:model="newConfirmationColor" class="edz-input">
+                                @foreach ($this->colorOptions() as $variant)
+                                    <option value="{{ $variant }}">{{ __('merchant_panel.color_'.$variant) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.confirmation_add_linked_to') }}</label>
+                            <select wire:model="newConfirmationLinkedTo" class="edz-input">
+                                @foreach ($this->confirmationOptions() as $option)
+                                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-ink-muted">{{ __('merchant_panel.confirmation_add_linked_hint') }}</p>
+                        </div>
+                    </div>
+                    <div class="edz-card__footer flex justify-end gap-2">
+                        <button wire:click="$set('showAddConfirmation', false)" class="edz-btn edz-btn--ghost">
+                            {{ __('buttons.cancel') }}
+                        </button>
+                        <button wire:click="addConfirmationStatus" class="edz-btn edz-btn--primary">
+                            {{ __('merchant_panel.confirmation_add_submit') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Add rider status modal --}}
+        @if ($showAddRider)
+            <div x-data x-on:keydown.escape.window="$wire.set('showAddRider', false)"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div class="edz-card w-full max-w-md" @click.outside="$wire.set('showAddRider', false)">
+                    <div class="edz-card__header">
+                        <h3 class="edz-card__title">{{ __('merchant_panel.rider_add_title') }}</h3>
+                    </div>
+                    <div class="edz-card__body space-y-4">
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.rider_add_label') }}</label>
+                            <input type="text" maxlength="255" wire:model="newRiderLabel"
+                                class="edz-input" placeholder="{{ __('merchant_panel.rider_add_label_placeholder') }}" />
+                        </div>
+                        <div>
+                            <label class="edz-label">{{ __('merchant_panel.rider_add_color') }}</label>
+                            <select wire:model="newRiderColor" class="edz-input">
+                                @foreach ($this->colorOptions() as $variant)
+                                    <option value="{{ $variant }}">{{ __('merchant_panel.color_'.$variant) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="edz-card__footer flex justify-end gap-2">
+                        <button wire:click="$set('showAddRider', false)" class="edz-btn edz-btn--ghost">
+                            {{ __('buttons.cancel') }}
+                        </button>
+                        <button wire:click="addRiderStatus" class="edz-btn edz-btn--primary">
+                            {{ __('merchant_panel.rider_add_submit') }}
+                        </button>
+                    </div>
                 </div>
             </div>
         @endif

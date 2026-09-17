@@ -436,6 +436,77 @@ test('generateRiderTrackingNumber never collides with existing tracking numbers'
     expect($existing->doesntContain($next))->toBeTrue();
 });
 
+test('ensureRiderTracking backfills tracking status on an open row so the rider tab is never blank', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'pending');
+    $service = app(OrderTrackingService::class);
+
+    $tracking = OrderTracking::create([
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'tracking_number' => null,
+        'tracking_status' => null,
+    ]);
+
+    $service->ensureRiderTracking($order, 'HM-TEST1234');
+
+    expect($tracking->fresh()->tracking_number)->toBe('HM-TEST1234')
+        ->and($tracking->fresh()->tracking_status)->toBe('shipped');
+
+    // Idempotent: calling again with a new number must not overwrite existing values.
+    $service->ensureRiderTracking($order, 'HM-OTHER5678');
+
+    expect($tracking->fresh()->tracking_number)->toBe('HM-TEST1234')
+        ->and($tracking->fresh()->tracking_status)->toBe('shipped');
+});
+
+test('ensureRiderTracking leaves an existing tracking_status untouched', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $order = ocoOrder($store, 'pending');
+    $service = app(OrderTrackingService::class);
+
+    $tracking = OrderTracking::create([
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'tracking_number' => null,
+        'tracking_status' => 'in_transit',
+    ]);
+
+    $service->ensureRiderTracking($order, 'HM-KEEPME01');
+
+    expect($tracking->fresh()->tracking_number)->toBe('HM-KEEPME01')
+        ->and($tracking->fresh()->tracking_status)->toBe('in_transit');
+});
+
+test('ensureRiderTracking clears a stale carrier provider so rider tracks are never carrier-probed', function () {
+    [$user, $store, $membership] = ocoUser(StoreRoleEnum::OWNER->value);
+    $organization = ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => 'Stale Carrier',
+        'code' => 'stale-local',
+        'credentials' => [],
+        'is_active' => true,
+    ]);
+    $order = ocoOrder($store, 'pending');
+    $service = app(OrderTrackingService::class);
+
+    $tracking = OrderTracking::create([
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'shipping_provider_id' => $organization->id,
+        'tracking_number' => null,
+        'tracking_status' => null,
+    ]);
+
+    $service->ensureRiderTracking($order, 'HM-CLEARED1');
+
+    $fresh = $tracking->fresh();
+
+    expect($fresh->shipping_provider_id)->toBeNull()
+        ->and($fresh->tracking_status)->toBe('shipped')
+        ->and($fresh->tracking_number)->toBe('HM-CLEARED1');
+});
+
 // ——— Confirm-and-send to a rider through the actual drawer component ———
 
 test('confirm-and-send to a rider ships the order and backfills an HM/SD tracking number', function () {

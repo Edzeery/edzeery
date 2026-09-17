@@ -1729,7 +1729,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $membership = $this->getCurrentMembership();
 
-    if (! canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey))) {
+    if (! canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey, (string) currentStoreId()))) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }

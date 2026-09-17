@@ -16,6 +16,7 @@ class Status extends Model
         'store_id',
         'type',
         'key',
+        'linked_to',
         'label',
         'color',
         'is_system',

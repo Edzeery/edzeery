@@ -370,17 +370,17 @@ return [
     ],
 
     'tracking' => [
-        'shipped' => 'تم الشحن',
+        'shipped' => 'تم إنشاء الشحنة',
         'in_transit' => 'قيد النقل',
-        'out_for_delivery' => 'خارج للتوصيل',
-        'on_hold' => 'معلّق',
-        'delivered' => 'تم التوصيل',
-        'returned' => 'مُعاد',
-        'returning' => 'في طريق العودة',
-        'failed_attempt' => 'محاولة توصيل فاشلة',
-        'cancelled' => 'ملغي',
-        'lost' => 'ضائع',
-        'damaged' => 'تالف',
+        'out_for_delivery' => 'خرجت للتوصيل',
+        'on_hold' => 'معلّقة',
+        'delivered' => 'تم التسليم',
+        'returned' => 'أُعيدت للبائع',
+        'returning' => 'في طريق الإرجاع',
+        'failed_attempt' => 'فشلت محاولة التسليم',
+        'cancelled' => 'مُلغاة',
+        'lost' => 'مفقودة',
+        'damaged' => 'تالفة',
     ],
 
 ];

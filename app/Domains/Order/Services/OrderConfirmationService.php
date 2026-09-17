@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domains\Order\Services;
 
 use App\Domains\Order\Exceptions\OrderIncompleteException;
-use App\Domains\Order\Support\OrderCompleteness;
 use App\Models\Orders\Order;
 use App\Models\Status;
 use App\Models\Stores\Team\StoreMembership;

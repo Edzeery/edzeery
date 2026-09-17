@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\Store\InventoryMovementType;
+use App\Enums\Store\OrderTrackingStatus;
+use App\Domains\Order\Support\OrderWorkflow;
 use App\Models\Status;
 use Illuminate\Database\Seeder;
 
@@ -419,129 +421,57 @@ class SystemStatusesSeeder extends Seeder
 
             /* =========================
              | TRACKING STATUSES — Shipment-level lifecycle (order_trackings)
-             ========================= */
-
-            [
-                'type' => 'tracking',
-                'key' => 'shipped',
-                'label' => 'Shipped',
-                'color' => 'info',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 1,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'in_transit',
-                'label' => 'In Transit',
-                'color' => 'info',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 2,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'out_for_delivery',
-                'label' => 'Out for Delivery',
-                'color' => 'info',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 3,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'on_hold',
-                'label' => 'On Hold',
-                'color' => 'warning',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 4,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'delivered',
-                'label' => 'Delivered',
-                'color' => 'success',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 5,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'returned',
-                'label' => 'Returned',
-                'color' => 'warning',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 6,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'returning',
-                'label' => 'Returning',
-                'color' => 'info',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 7,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'failed_attempt',
-                'label' => 'Failed Delivery Attempt',
-                'color' => 'warning',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 8,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'cancelled',
-                'label' => 'Cancelled',
-                'color' => 'danger',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 9,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'lost',
-                'label' => 'Lost',
-                'color' => 'danger',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 10,
-            ],
-
-            [
-                'type' => 'tracking',
-                'key' => 'damaged',
-                'label' => 'Damaged',
-                'color' => 'danger',
-                'is_system' => true,
-                'affects_inventory' => false,
-                'movement_type' => null,
-                'sort_order' => 11,
-            ],
+             | تُبنى برمجيًا من OrderTrackingStatus enum (المصدر الوحيد للمفاتيح/
+             | التسمية/اللون/الترتيب) حتى لا تتكرر قائمة مفاتيح ثانية قابلة للانحراف.
+             */
         ];
+
+        // حالة التتبع = مستوى الشحنة (order_trackings.tracking_status)، مستقل عن
+        // حالة الطلبية (orders.status_id من نوع order). كل case في enum
+        // OrderTrackingStatus يُترجم إلى صف من نوع 'tracking' بمصدر واحد.
+        foreach (OrderTrackingStatus::cases() as $index => $case) {
+            $statuses[] = [
+                'type' => 'tracking',
+                'key' => $case->value,
+                // التسمية البديلة (fallback) في قاعدة البيانات عربية = المعنى الصحيح
+                // من قاموس الحالات، أمّا العرض متعدد اللغات فمن ملفات status-kit.
+                'label' => __("status-kit::statuses.tracking.{$case->value}", [], 'ar'),
+                'color' => $case->kitVariant(),
+                'is_system' => true,
+                'affects_inventory' => false,
+                'movement_type' => null,
+                'sort_order' => $index + 1,
+            ];
+        }
+
+        // فحص الاتساق الدلالي عند البذر (بدون أي مهاجرة): كل مفاتيح حالات الطلبية
+        // المعرّفة في OrderWorkflow وكل حالات التتبع المعرّفة في OrderTrackingStatus
+        // يجب أن تكون مدخلةً في $statuses — يكشف فورًا أي تكرار أو انحراف مستقبلي
+        // (مثل الخلط الذي سبّب انحدار صفحة التتبع بين order/tracking).
+        $seededTrackingKeys = collect($statuses)->where('type', 'tracking')->pluck('key')->all();
+        $declaredTrackingKeys = collect(OrderTrackingStatus::cases())
+            ->map(fn ($case) => $case->value)
+            ->all();
+
+        if ($seededTrackingKeys !== $declaredTrackingKeys) {
+            throw new \RuntimeException(
+                'Tracking statuses seeded ('.implode(', ', $seededTrackingKeys).') '
+                .'do not match OrderTrackingStatus enum ('.implode(', ', $declaredTrackingKeys).').'
+            );
+        }
+
+        $seededOrderKeys = collect($statuses)->where('type', 'order')->pluck('key')->all();
+
+        foreach (['backOffice', 'carrier', 'closed'] as $group) {
+            $missing = array_values(array_diff(OrderWorkflow::$group(), $seededOrderKeys));
+
+            if ($missing !== []) {
+                throw new \RuntimeException(
+                    "Order status group [{$group}] declares keys missing from seeded order statuses: "
+                    .implode(', ', $missing)
+                );
+            }
+        }
 
         foreach ($statuses as $status) {
             Status::updateOrCreate(

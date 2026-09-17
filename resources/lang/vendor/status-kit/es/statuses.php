@@ -361,16 +361,16 @@ return [
     ],
 
     'tracking' => [
-        'shipped' => 'Enviado',
+        'shipped' => 'Registrada',
         'in_transit' => 'En tránsito',
         'out_for_delivery' => 'En reparto',
         'on_hold' => 'En espera',
-        'delivered' => 'Entregado',
-        'returned' => 'Devuelto',
+        'delivered' => 'Entregada',
+        'returned' => 'Devuelta',
         'returning' => 'En devolución',
-        'failed_attempt' => 'Intento de entrega fallido',
-        'cancelled' => 'Cancelado',
-        'lost' => 'Perdido',
-        'damaged' => 'Dañado',
+        'failed_attempt' => 'Intento fallido',
+        'cancelled' => 'Cancelada',
+        'lost' => 'Perdida',
+        'damaged' => 'Dañada',
     ],
 ];
