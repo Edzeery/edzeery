@@ -8,6 +8,7 @@ return [
     'event_sent_to_carrier' => 'Remise au transporteur',
     'event_tracking' => 'Suivi → :status',
     'event_reassigned' => 'Commande réattribuée',
+    'tracking_reassigned' => 'Envoi réattribué avec succès',
     'event_type_created' => 'Création',
     'event_type_status' => 'Changement de statut',
     'event_type_field_changed' => 'Modification',

@@ -8,6 +8,7 @@ return [
     'event_sent_to_carrier' => 'تم تسليمها لشركة التوصيل',
     'event_tracking' => 'التتبع ← :status',
     'event_reassigned' => 'أُعيدت إسناد الطلبية',
+    'tracking_reassigned' => 'تمت إعادة إسناد الشحنة بنجاح',
     'event_type_created' => 'إنشاء',
     'event_type_status' => 'تغيير الحالة',
     'event_type_field_changed' => 'تعديل',

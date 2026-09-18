@@ -9,6 +9,7 @@ return [
     'event_sent_to_carrier' => 'Handed to carrier',
     'event_tracking' => 'Tracking → :status',
     'event_reassigned' => 'Order was reassigned',
+    'tracking_reassigned' => 'Shipment reassigned successfully',
     'event_type_created' => 'Created',
     'event_type_status' => 'Status change',
     'event_type_field_changed' => 'Edit',

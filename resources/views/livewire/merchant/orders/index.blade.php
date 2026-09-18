@@ -1,5 +1,6 @@
 ﻿<?php
 use App\Domains\Order\Models\UserColumnPreference;
+use App\Domains\Order\Support\AssignmentCandidateResolver;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Order\Services\OrderService;
 use App\Enums\Store\StorePermissionEnum;
@@ -121,6 +122,7 @@ state([
     'showReassignModal' => false,
     'reassignOrderId' => null,
     'reassignMembershipId' => '',
+    'reassignCandidates' => [],
 
     // Order form modal (Phase 9 @include partial — state kept here on the parent instance)
     'showCreateModal' => false,
@@ -2458,6 +2460,9 @@ $openReassignModal = function (string $orderId): void {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
+    $this->reassignCandidates = app(AssignmentCandidateResolver::class)
+        ->resolve(currentStoreId(), 'confirm', StorePermissionEnum::ORDER_CONFIRM->value)
+        ->toArray();
     $this->reassignOrderId = $orderId;
     $this->reassignMembershipId = '';
     $this->showReassignModal = true;
@@ -2478,7 +2483,7 @@ $submitReassign = function (): void {
     $targetMembership = StoreMembership::where('store_id', currentStoreId())->findOrFail($this->reassignMembershipId);
     $byMembership = $this->getCurrentMembership();
 
-    if (!$byMembership) {
+    if (!$byMembership || ! $targetMembership->can(StorePermissionEnum::ORDER_CONFIRM)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2487,6 +2492,7 @@ $submitReassign = function (): void {
     $service->reassign($order, $targetMembership, $byMembership);
 
     $this->showReassignModal = false;
+    $this->reassignCandidates = [];
     $this->loadOrders();
 
     $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('merchant.order_reassigned')]);
@@ -5750,7 +5756,15 @@ $submitEdit = function (): void {
 
     {{-- Create / Edit Modal + Product/Variant Picker Modals --}}
     <div x-data="orderProductPicker()">
-        @include('livewire.merchant.orders.partials.reassign-modal')
+        @include('livewire.merchant.orders.partials.reassign-modal', [
+            'reassignOpen' => $showReassignModal,
+            'reassignSubmit' => 'submitReassign',
+            'reassignCloseSet' => 'showReassignModal',
+            'reassignModel' => 'reassignMembershipId',
+            'reassignTargetId' => $reassignMembershipId,
+            'reassignCandidates' => $reassignCandidates,
+            'reassignTitle' => __('merchant_panel.reassign_order'),
+        ])
     </div>
 
     @include('livewire.merchant.orders.partials.table-settings-modal')

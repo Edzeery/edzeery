@@ -344,6 +344,11 @@ return [
     'reassign_order' => 'Réaffecter la commande',
     'assign_to' => 'Affecter à',
     'select_agent' => 'Sélectionner un agent',
+    'on_shift' => 'En service',
+    'dual_role_badge' => 'Confirmation + Suivi',
+    'current_load' => 'Charge actuelle',
+    'reassign_no_candidates' => 'Aucun agent éligible',
+    'reassign_over_capacity_warning' => 'Cet agent a atteint sa limite de capacité. La réaffectation augmentera quand même sa charge.',
 
     // Order detail expanded section
     'items' => 'Articles',

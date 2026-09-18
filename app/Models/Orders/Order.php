@@ -195,9 +195,19 @@ class Order extends Model
 
     public function confirmedByHistory(): HasOne
     {
+        // The "confirmed" filter must live INSIDE the one-of-many subquery:
+        // a plain ->latestOfMany()->whereHas(...) only filters the outer
+        // JOINed result, so it returns null as soon as a newer (e.g. shipped /
+        // delivered) history exists. Using ofMany + a constraint closure keeps
+        // MAX(created_at) computed over confirmed rows only.
         return $this->hasOne(OrderStatusHistory::class)
-            ->whereHas('status', fn ($q) => $q->where('key', 'confirmed'))
-            ->latestOfMany('created_at');
+            ->ofMany(
+                ['created_at' => 'max'],
+                fn ($query) => $query->whereHas(
+                    'status',
+                    fn ($q) => $q->where('key', 'confirmed')
+                )
+            );
     }
 
     public function events(): HasMany

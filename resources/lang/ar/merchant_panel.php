@@ -346,6 +346,11 @@ return [
     'reassign_order' => 'إعادة تكليف الطلبية',
     'assign_to' => 'تكليف لـ',
     'select_agent' => 'اختر مندوباً',
+    'on_shift' => 'في الوردية',
+    'dual_role_badge' => 'تأكيد + تتبع',
+    'current_load' => 'الحمل الحالي',
+    'reassign_no_candidates' => 'لا يوجد مندوبون مؤهلون',
+    'reassign_over_capacity_warning' => 'وصل هذا المندوب إلى الحد الأقصى لحمله. ستتم إعادة التكليف وسيُضاف الحمل على أي حال.',
 
     // Order detail expanded section
     'items' => 'المنتجات',

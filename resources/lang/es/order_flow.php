@@ -8,6 +8,7 @@ return [
     'event_sent_to_carrier' => 'Entregado al transportista',
     'event_tracking' => 'Seguimiento → :status',
     'event_reassigned' => 'Pedido reasignado',
+    'tracking_reassigned' => 'Envío reasignado correctamente',
     'event_type_created' => 'Creación',
     'event_type_status' => 'Cambio de estado',
     'event_type_field_changed' => 'Edición',

@@ -11,7 +11,9 @@ Route::domain('{store:slug}.' . config('app.domain'))
         Volt::route('/', 'storefront.home')->name('storefront.home');
 
         // Checkout
-        Volt::route('/checkout', 'storefront.order-form')->name('storefront.checkout');
+        Volt::route('/checkout', 'storefront.order-form')
+            ->middleware('storefront.cart')
+            ->name('storefront.checkout');
 
         // Cart AJAX endpoints
         Route::post('/cart/add', [\App\Http\Controllers\Storefront\CartController::class, 'add'])->name('storefront.cart.add');

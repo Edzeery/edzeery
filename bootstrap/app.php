@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'store.context' => \App\Http\Middleware\Api\EnsureStoreContext::class,
             'resolve.store' => \App\Http\Middleware\ResolveStoreFromSubdomain::class,
             'store.locale' => \App\Http\Middleware\Store\SetStoreLocale::class,
+            'storefront.cart' => \App\Http\Middleware\Store\EnsureCartNotEmpty::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

@@ -21,6 +21,7 @@ uses([
     \App\Livewire\Concerns\TrackingTrashConcern::class,
     \App\Livewire\Concerns\TrackingFilterConcern::class,
     \App\Livewire\Concerns\TrackingBulkValidateConcern::class,
+    \App\Livewire\Concerns\TrackingReassignConcern::class,
 ]);
 
 state([
@@ -158,6 +159,15 @@ state([
     'formAvailableStates' => [],
     'formCoverageHint' => '',
     'formDuplicateWarnings' => [],
+]);
+
+// Reassign modal (P34.4) — internal team reassign on the carrier tab for the
+// tracking context, scoped by the resolver to CRM_ORDER_TRACKING holders.
+state([
+    'trackingReassignOpen' => false,
+    'trackingReassignId' => null,
+    'trackingReassignMembershipId' => '',
+    'trackingReassignCandidates' => [],
 ]);
 
 updated([
@@ -359,6 +369,17 @@ mount(function (): void {
 
     {{-- Bulk dispatch-validation FAB + modal (carrier tab, Phase 8) --}}
     @include('livewire.merchant.tracking.partials.tracking-bulk-validate')
+
+    {{-- Internal team reassign modal (P34.4) — shared with the orders page --}}
+    @include('livewire.merchant.orders.partials.reassign-modal', [
+        'reassignOpen' => $trackingReassignOpen,
+        'reassignSubmit' => 'submitTrackingReassign',
+        'reassignCloseSet' => 'trackingReassignOpen',
+        'reassignModel' => 'trackingReassignMembershipId',
+        'reassignTargetId' => $trackingReassignMembershipId,
+        'reassignCandidates' => $trackingReassignCandidates,
+        'reassignTitle' => __('merchant_panel.reassign_order'),
+    ])
 
     <script>
         if (! window.__edzTrackingOpenLabel) {

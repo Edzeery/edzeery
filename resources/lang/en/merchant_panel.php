@@ -346,6 +346,11 @@ return [
     'reassign_order' => 'Reassign Order',
     'assign_to' => 'Assign to',
     'select_agent' => 'Select Agent',
+    'on_shift' => 'On shift',
+    'dual_role_badge' => 'Confirm + Track',
+    'current_load' => 'Current load',
+    'reassign_no_candidates' => 'No eligible agents available',
+    'reassign_over_capacity_warning' => 'This agent is at their capacity limit. Reassigning will add to their load anyway.',
 
     // Order detail expanded section
     'items' => 'Items',

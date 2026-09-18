@@ -104,6 +104,15 @@
                             </button>
                         @endif
 
+                        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->trackingTab === 'carrier')
+                            <button type="button" wire:click="openTrackingReassignModal('{{ $s['id'] }}')"
+                                @click="open = false"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-secondary">
+                                <x-edz.icon name="arrows-right-left" class="w-4 h-4" />
+                                {{ __('merchant_panel.reassign') }}
+                            </button>
+                        @endif
+
                         <button type="button" wire:click="openLabel('{{ $s['id'] }}')"
                             @click="open = false"
                             class="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-secondary">

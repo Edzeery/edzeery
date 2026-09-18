@@ -341,6 +341,11 @@ return [
     'reassign_order' => 'Reasignar pedido',
     'assign_to' => 'Asignar a',
     'select_agent' => 'Seleccionar agente',
+    'on_shift' => 'En turno',
+    'dual_role_badge' => 'Confirmación + Seguimiento',
+    'current_load' => 'Carga actual',
+    'reassign_no_candidates' => 'No hay agentes elegibles',
+    'reassign_over_capacity_warning' => 'Este agente ha alcanzado su límite de capacidad. La reasignación igualmente sumará a su carga.',
 
     // Order detail expanded section
     'items' => 'Artículos',

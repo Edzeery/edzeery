@@ -44,9 +44,14 @@ state([
 ]);
 
 mount(function (): void {
-    $this->name = auth()->user()?->name ?? '';
-    $this->phone = auth()->user()?->phone ?? '';
-    $this->email = auth()->user()?->email ?? '';
+    // Returning buyers are remembered per store in the session so their
+    // contact details come back pre-filled. A logged-in platform user's
+    // profile takes precedence over that remembered identity.
+    $profile = session('storefront_customer_' . currentStoreId(), []);
+
+    $this->name  = auth()->user()?->name  ?: ($profile['name']  ?? '');
+    $this->phone = auth()->user()?->phone ?: ($profile['phone'] ?? '');
+    $this->email = auth()->user()?->email ?: ($profile['email'] ?? '');
 
     // Single-carrier stores skip the company picker entirely.
     $providers = $this->availableProviders;
@@ -476,6 +481,13 @@ $submitOrder = function () {
         DB::commit();
 
         $cartService->clear($storeId);
+
+        // Remember the buyer's identity for their next visit to the store.
+        session(['storefront_customer_' . $storeId => [
+            'name'  => $this->name,
+            'phone' => $this->phone,
+            'email' => $this->email,
+        ]]);
 
         // Auto-assign order
         try {
