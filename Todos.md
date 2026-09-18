@@ -2548,3 +2548,36 @@ git rm "it" "prepareBindings(\$bindings)"
 - `php -l` نظيف، `view:clear` + `view:cache` سليمان، `npm run build` ناجح (تحذيرات Sass الخاصة بـ Bootstrap موجودة سابقًا).
 - **الجولة الكاملة: 849 ناجح (3468 تأكيدًا) — فشل وحيد سابق التأسيس** في `CarrierSyncObservabilityTest` (`expectsOutputToContain('8')` لا يطابق مخرجات `carrier-sync:report`) + 1 risky (نفس الملف)؛ أُثبت أنه مسبق: يفشل منفردًا وبعد إخفاء التعديل (`git stash`). يُشغَّل بالذاكرة الموسعة `-d memory_limit=-1`.
 - **التحقق البصري اليدوي المُتوقَّع على المتجر الحي (375/768/1440):** ① 375px — بطاقة الملخص ثم العميل مكدّستين، لا خط زمني؛ ② 768px — الملخص يسار/العميل يمين جنبًا إلى جنب في صف واحد؛ ③ 1440px — بطاقتان متساويتا الارتفاع تقريبًا مع مسافات أوسع وCTR في الوسط؛ ④ ملخص مالي: subtotal + shipping − discount = الإجمالي (عند وجود خصم على الطلب).
+
+---
+
+## Phase 33-rider — إصلاح «إرسال الطلبية إلى رجل التوصيل بلا رقم تتبع» + تنسيق الرقم الجديد (سبتمبر 2026) ✅
+
+**طلب المستخدم (بالعربية):** «لا يزال إرسال الطلبية إلى رجل التوصيل بلا رقم التتبع» — إصلاح إنشاء تتبع بطريقة جديدة: 3 حروف من اسم المتجر — نوع التوصيل `HM|SD` — رقم عشوائي 6 أرقام.
+
+- **التنسيق الجديد في `OrderTrackingService::generateRiderTrackingNumber()`:** `{PREFIX}-{HM|SD}-{6 أرقام}` (مثال `EDZ-HM-402731`) — أُزيل مقطع الولاية نهائيًا مع حذف `stateCode()` والاعتماد على `State`؛ بقيت `storePrefix()` (أول 3 أحرف ASCII، حشو آخر حرف: `Lo`→`LOO`، سقوط بالـ slug عند اسم بلا أحرف لاتينية، fallback `STO`) مع حلقات تجاوز الاصطدام وحماية Code128.
+- **الجذر الفعلي:** مسار إرسال الراجل في `OrderShippingGateway::send()` كان ينشئ صف `OrderTracking` برقم تتبع **NULL**، والمسار الوحيد الذي كان يملؤه = درج التأكيد فقط (`submitConfirmAndSend`)؛ مسارا الإرسال المباشر (`sendConfirmedOrder`) والإرسال الجماعي (`confirmBulkSend`) تجاوزا التخزين. **الحل:** closure مشتركة `$ensureRiderTrackingAfterSend(Order $order)` في `merchant/orders/index.blade.php` (حراس مسار الراجل: `delivery_rider_id` مضمّن و`shipping_provider_id` فارغ؛ محايدة عبر `ensureRiderTracking`) ومربوطة بالمسارات الثلاثة.
+- **الشهادة:** `OrderCompletenessTest` 29/29 التأكيدات `OCO-HM-`/`EDZ-HM-`/`LOO-HM-`… بما فيها اختبارا انحدار جديدان («إرسال طلبية مؤكَّدة مباشرة إلى الراجل يسترجع رقم تتبعها» و«الإرسال الجماعي إلى الراجل يسترجع رقم تتبعها» بتأكيد `/^OCO-HM-\d{6}$/`) + `TrackingSearchFilterTest` 33/33 (`TRA-HM-`/`TRA-SD-`) — عبر `view:cache` ثم `view:clear` (تجنّب قفل تحويل ملفات Windows).
+
+---
+
+## Phase 34.1 — أساسات فصل سعة التأكيد عن التتبع (توزيع الطلبيات) — مخطط + نماذج + إعدادات فقط ✅ (2026-09-18)
+
+**طلب المستخدم/قرار المالك:** لكل متجر سقفا سعة منفصلان لفريقي التأكيد والتتبع حتى لعضو يملك الصلاحيتين معًا؛ تجاوز ناعم تلقائي حتى نسبة يقوّمها التاجر فوق `max_concurrent_orders` (افتراضي 10%)، يُطبَّق لاحقًا وبالتساوي على الجانبين (المراحل 34.2–34.4 خارج النطاق). هذه المرحلة تضع الأساسات فقط — **بلا منطق تعيين/تجاوز**.
+
+**ما نُفّذ (ضد commit `9dc4b6d`):**
+
+1. **هجرات `2026_09_18_*` (4):**
+   - `confirmation_shifts.role_scope` (string، افتراضي `'confirm'` — كل الصفوف القائمة تبقى صالحة بلا إعادة بذر) + فهرس مركّب `confirmation_shifts_store_role_active_idx` على `(store_id, membership_id, role_scope, is_active)` (الاسم القصير تجنّبًا لخطأ MySQL 1059، حُدّد صراحةً).
+   - `order_trackings`: `assigned_to_membership_id`/`assigned_by_membership_id` (foreignUlid → `store_memberships` nullOnDelete) + `assigned_at` (timestamp) + `assignment_method` (string) — مرآة حرفية لأعمدة جانب التأكيد — + فهرس على `assigned_to_membership_id`.
+   - `over_capacity` (boolean افتراضي false) على `orders` و`order_trackings`.
+   - `store_settings`: `distribution_overflow_enabled` (boolean افتراضي true) + `distribution_overflow_percentage` (unsignedTinyInteger افتراضي 10؛ المدى 0–100 في طبقة التحقق فقط).
+2. **النماذج:** `ConfirmationShift` (+`role_scope` في `$fillable`/`$casts` + `scopeConfirm()`/`scopeTrack()`؛ 153→165 سطر) ▪ `StoreSetting` (+الحقلان في `$fillable` + casts boolean/integer؛ 59→63) ▪ `OrderTracking` (+الحقلان وجداول/تحقق التواريخ في `$fillable`/`$casts` + `assignedTo()`/`assignedBy()` BelongsTo→StoreMembership؛ 136→153).
+3. **وصفحة جديدة** `livewire/merchant/order-distribution-settings/` (Volt `index.blade.php` **51 سطر** تحت 400 + قسم `partials/overflow-settings.blade.php` **42 سطر** تحت 300): تبديل «تفعيل التجاوز التلقائي» (x-edz.checkbox بنمط بطاقات toggle القائمة) + حقل نسبة 0–100 بمدخل number والحرف ٪، معطّل عند الإيقاف، تحقق خادمي `required|integer|min:0|max:100`، حفظ عبر `$store->settings()->updateOrCreate()` + توست `settings_saved`. حارس `canStore(STORE_UPDATE)` في mount والحفظ. مسار `merchant.order-distribution-settings` في `routes/merchant.php` + رابط قائمة جانبية (عمليات، حارس `$canViewOrderSettings`) + 8 مفاتيح ترجمة ×4 لغات. واجهة متجاوبة بطبيعتها (عرض max-w-2xl/48، لا نوافذ ثابتة): 375px مكدّسة، 768/1440 بحد أقصى 672px.
+4. **الشهادة:** `migrate:fresh --seed` نظيف؛ الأعمدة الخمسة عشر + الفهارس مؤكَّدة بـ `SHOW COLUMNS`/`SHOW INDEX` (راجع `verify_cols.php`)؛ `ConfirmationShiftTest` (6) + `OrderAssignmentServiceTest` (6) = 12/12 بنجاح **بدون تعديل** (توافق رجعي: الجهات بلا `role_scope` تحصل `confirm` افتراضيًا)؛ اختبار عابر مؤقّت (حُذف لاحقًا) أثبت عرض/حفظ/رفض 150 على الصفحة الجديدة 3/3؛ `php -l` نظيف ×9؛ لا استعلامات في حلقة (mount: قراءة settings واحدة؛ حفظ: updateOrCreate واحدة).
+
+| فرع | الحالة | الملفات الرئيسية | تحقق |
+|---|---|---|---|
+| 34.1 أساسات توزيع الطلبيات | ✅ | 4 هجرات `2026_09_18_*` + ConfirmationShift + StoreSetting + OrderTracking + order-distribution-settings/{index, partials/overflow-settings} + routes/merchant.php + store-sidebar + merchant_panel.php ×4 | migrate:fresh --seed + 12/12 (بدون تعديل) + فهارس الـ cols + تجربة عرض مؤقتة 3/3 |
+
+> **الاعتماد المباشر للمرحلة 34.2:** تعيين سعة التتبع يستهلك `role_scope='track'` (نطاق الـ scopes `scopeConfirm()/scopeTrack()` والفهرس المركّب الجديد) وعمودي `order_trackings.assigned_to/assigned_at/assignment_method/over_capacity`؛ والتجاوز الناعم (34.3) يستهلك `store_settings.distribution_overflow_*` و`over_capacity`. يُمنع تعديل `OrderAssignmentService`/`OrderConfirmationService`/`DispatchPendingAssignmentsJob`/`reassign-modal.blade.php`/`order-settings.blade.php` قبل فتح 34.2.

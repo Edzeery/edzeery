@@ -32,6 +32,7 @@ if ($store) {
         'merchant.orders.*',
         'merchant.returns.*',
         'merchant.order-settings',
+        'merchant.order-distribution-settings',
         'merchant.debts.*',
     );
     $withData['deliveryOpen'] = request()->routeIs(
@@ -281,6 +282,14 @@ with($withData);
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__sub-link--active @endif">
                             <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                             <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
+                        </a>
+                    @endif
+
+                    @if ($canViewOrderSettings)
+                        <a href="{{ route('merchant.order-distribution-settings', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-distribution-settings')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="adjustments" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.order_distribution_settings') }}</span>
                         </a>
                     @endif
 

@@ -35,6 +35,8 @@ class StoreSetting extends Model
         'max_order_qty',
         'payment_methods',
         'contact_info',
+        'distribution_overflow_enabled',
+        'distribution_overflow_percentage',
     ];
 
     protected $casts = [
@@ -48,6 +50,8 @@ class StoreSetting extends Model
         'payment_methods' => 'array',
         'contact_info' => 'array',
         'supported_languages' => 'array',
+        'distribution_overflow_enabled' => 'boolean',
+        'distribution_overflow_percentage' => 'integer',
     ];
 
     /* ================= Relations ================= */

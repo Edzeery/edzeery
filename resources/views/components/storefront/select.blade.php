@@ -160,7 +160,7 @@
             </div>
         @endif
 
-        <ul id="{{ $uid }}-listbox" role="listbox" class="overflow-y-auto overflow-x-hidden overscroll-contain flex-1">
+        <ul id="{{ $uid }}-listbox" role="listbox" class="overflow-y-auto overflow-x-hidden overscroll-contain flex-1 sf-scroll">
             <template x-for="(opt, idx) in filteredOptions" :key="opt.value">
                 <li role="option"
                     :class="{

@@ -41,6 +41,11 @@ class OrderTracking extends Model
         'carrier_validated_by_membership_id',
         'carrier_validation_error',
         'notes',
+        'assigned_to_membership_id',
+        'assigned_at',
+        'assignment_method',
+        'assigned_by_membership_id',
+        'over_capacity',
     ];
 
     protected $casts = [
@@ -54,6 +59,8 @@ class OrderTracking extends Model
         'processed_at'    => 'datetime',
         'requeued_at'     => 'datetime',
         'carrier_validated_at' => 'datetime',
+        'assigned_at'     => 'datetime',
+        'over_capacity'   => 'boolean',
     ];
 
     public function order(): BelongsTo
@@ -94,6 +101,16 @@ class OrderTracking extends Model
     public function validatedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'carrier_validated_by_membership_id');
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'assigned_to_membership_id');
+    }
+
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'assigned_by_membership_id');
     }
 
     public function isDelivered(): bool

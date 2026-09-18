@@ -49,8 +49,13 @@ mount(function (): void {
     $this->email = auth()->user()?->email ?? '';
 
     // Single-carrier stores skip the company picker entirely.
-    if ($this->availableProviders->count() === 1) {
-        $this->selectedProvider = (string) $this->availableProviders->first()->id;
+    $providers = $this->availableProviders;
+    if ($providers->count() === 1) {
+        $this->selectedProvider = (string) $providers->first()->id;
+    } elseif (! $this->selectedProvider && ($default = $providers->firstWhere('is_default', true))) {
+        // Several carriers: pre-select the marked default so the cascade is
+        // ready immediately — the buyer can still switch it.
+        $this->selectedProvider = (string) $default->id;
     }
 });
 
@@ -140,8 +145,9 @@ $availableProviders = computed(function (): \Illuminate\Support\Collection {
                     ->where(fn ($r) => $r->whereNotNull('office_cost')->orWhereNotNull('home_cost')->orWhereNotNull('free_above')))
                 ->orWhereHas('rates', fn ($q) => $q->where('store_id', $storeId)->where('is_active', true));
         })
+        ->orderByDesc('is_default')
         ->orderBy('name')
-        ->get(['id', 'name', 'flat_rate']);
+        ->get(['id', 'name', 'flat_rate', 'is_default']);
 });
 
 $hasActiveProviders = computed(function (): bool {
@@ -494,7 +500,7 @@ $submitOrder = function () {
 };
 ?>
 
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 xl:max-w-6xl py-8 sm:py-12">
 
     <div class="mb-8">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
@@ -534,6 +540,10 @@ $submitOrder = function () {
 
         if ($isSingleProvider) {
             $this->selectedProvider = (string) $providers->first()->id;
+        } elseif (! $this->selectedProvider && ($defaultProvider = $providers->firstWhere('is_default', true))) {
+            // Several carriers: pre-select the marked default so the cascade
+            // is ready immediately — the buyer can still switch it.
+            $this->selectedProvider = (string) $defaultProvider->id;
         }
         $providerId = $this->selectedProvider
             ? (string) $this->selectedProvider
@@ -645,10 +655,10 @@ $submitOrder = function () {
         </div>
     </div>
 
-    <form wire:submit="submitOrder" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <form wire:submit="submitOrder" class="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-3 gap-6 md:gap-8">
 
         {{-- Left Column --}}
-        <div class="lg:col-span-2 space-y-6">
+        <div class="md:col-span-3 lg:col-span-2 space-y-6">
 
             {{-- Customer Info --}}
             <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
@@ -932,25 +942,36 @@ $submitOrder = function () {
         </div>
 
         {{-- Right Column: Order Summary --}}
-        <div class="lg:col-span-1">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm sticky top-24">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{ __('storefront.order_summary') }}</h2>
+        <div class="md:col-span-2 lg:col-span-1">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 sm:p-6 shadow-sm md:sticky md:top-24">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl store-bg-primary-soft flex items-center justify-center shrink-0">
+                        <x-edz.icon name="bag" class="text-xl store-text-primary w-5 h-5" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white leading-tight">{{ __('storefront.order_summary') }}</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $cartCount }} {{ __('storefront.items') }}</p>
+                    </div>
+                    <span class="shrink-0 inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full store-bg-primary text-white text-xs font-semibold tabular-nums">
+                        {{ $cartCount }}
+                    </span>
+                </div>
 
-                <div class="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                <div class="mb-4 -me-1 max-h-64 overflow-y-auto sf-scroll ps-1">
                     @forelse($cartItems as $item)
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 py-2.5 {{ ! $loop->last ? 'border-b border-gray-100 dark:border-gray-700/60' : '' }}">
                             <img src="{{ $item['image'] }}" alt="{{ $item['product_name'] }}"
-                                 class="w-10 h-10 rounded-lg object-cover bg-gray-100 dark:bg-gray-700 shrink-0"
+                                 class="w-10 h-10 rounded-lg object-cover border border-gray-100 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 shrink-0"
                                  onerror="this.onerror=null;this.src='{{ asset('img/icons/noimg.png') }}'">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $item['product_name'] }}</p>
                                 @if($item['variant_name'])
-                                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $item['variant_name'] }}</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ $item['variant_name'] }}</p>
                                 @endif
                             </div>
-                            <div class="text-right shrink-0">
+                            <div class="flex flex-col items-end text-right shrink-0 ps-2">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white tabular-nums">{{ currency($item['price'] * $item['quantity']) }}</p>
-                                <p class="text-xs text-gray-400 dark:text-gray-500">&times; {{ $item['quantity'] }}</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 tabular-nums">&times; {{ $item['quantity'] }}</p>
                             </div>
                         </div>
                     @empty
@@ -958,10 +979,10 @@ $submitOrder = function () {
                     @endforelse
                 </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2.5">
                     <div class="flex justify-between text-sm">
-                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.subtotal') }} ({{ $cartCount }} {{ __('storefront.items') }})</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ currency($cartSubtotal) }}</span>
+                        <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.subtotal') }}</span>
+                        <span class="font-medium text-gray-900 dark:text-white tabular-nums">{{ currency($cartSubtotal) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500 dark:text-gray-400">{{ __('storefront.shipping') }}
@@ -969,7 +990,7 @@ $submitOrder = function () {
                                 <span class="text-gray-400 dark:text-gray-500">· {{ $shippingInfo['provider_name'] }}</span>
                             @endif
                         </span>
-                        <span class="font-medium text-gray-900 dark:text-white">
+                        <span class="font-medium text-gray-900 dark:text-white tabular-nums">
                             @if($shippingInfo['is_free'] ?? false)
                                 <span class="text-emerald-600 dark:text-emerald-400">{{ __('storefront.free') }}</span>
                             @elseif(($shippingInfo['available'] ?? true))
@@ -981,10 +1002,10 @@ $submitOrder = function () {
                     </div>
                 </div>
 
-                <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
-                    <div class="flex justify-between">
-                        <span class="text-base font-semibold text-gray-900 dark:text-white">{{ __('storefront.total') }}</span>
-                        <span class="text-xl font-bold store-text-primary">
+                <div class="rounded-xl store-bg-primary-soft border border-[color-mix(in_srgb,var(--store-primary)_25%,transparent)] mt-4 px-4 py-3.5">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('storefront.total') }}</span>
+                        <span class="text-xl font-bold store-text-primary tabular-nums leading-none">
                             {{ currency($cartSubtotal + ($shippingInfo['cost'] ?? 0)) }}
                         </span>
                     </div>

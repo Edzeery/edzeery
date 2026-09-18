@@ -20,6 +20,7 @@ class ConfirmationShift extends Model
         'days_of_week',
         'is_active',
         'max_concurrent_orders',
+        'role_scope',
     ];
 
     protected $casts = [
@@ -28,11 +29,22 @@ class ConfirmationShift extends Model
         'start_time' => 'string',
         'end_time' => 'string',
         'max_concurrent_orders' => 'integer',
+        'role_scope' => 'string',
     ];
 
     public function membership(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Stores\Team\StoreMembership::class, 'membership_id');
+    }
+
+    public function scopeConfirm(Builder $query): Builder
+    {
+        return $query->where('role_scope', 'confirm');
+    }
+
+    public function scopeTrack(Builder $query): Builder
+    {
+        return $query->where('role_scope', 'track');
     }
 
     /**
