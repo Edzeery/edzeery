@@ -352,6 +352,18 @@ return [
     'reassign_no_candidates' => 'No eligible agents available',
     'reassign_over_capacity_warning' => 'This agent is at their capacity limit. Reassigning will add to their load anyway.',
 
+    // Distribution queue (P34.5)
+    'order_distribution_queue' => 'Distribution Queue',
+    'order_distribution_queue_desc' => 'Assignments needing attention — unassigned items and items flagged over capacity',
+    'queue_tab_confirmation' => 'Confirmation',
+    'queue_tab_tracking' => 'Tracking',
+    'queue_unassigned' => 'Unassigned',
+    'queue_over_capacity' => 'Over capacity',
+    'queue_current_assignee' => 'Assigned to',
+    'queue_empty_confirmation' => 'No confirmation items need attention',
+    'queue_empty_tracking' => 'No tracking shipments need attention',
+    'queue_empty_hint' => 'Unassigned and over-capacity items will appear here.',
+
     // Order detail expanded section
     'items' => 'Items',
     'no_items' => 'No items on this order',

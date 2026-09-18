@@ -31,7 +31,8 @@ class AssignmentCapacityExhaustedNotification extends Notification implements Sh
             ->subject('Assignment Capacity Exhausted')
             ->level('warning')
             ->line("Your {$team} team has reached full assignment capacity.")
-            ->line("Currently {$this->unassignedCount} pending item(s) cannot be auto-assigned to an available team member.");
+            ->line("Currently {$this->unassignedCount} pending item(s) cannot be auto-assigned to an available team member.")
+            ->action('Open distribution queue', route('merchant.order-distribution-queue', ['store' => $this->store->slug]));
     }
 
     public function toArray($notifiable): array

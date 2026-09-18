@@ -352,6 +352,18 @@ return [
     'reassign_no_candidates' => 'لا يوجد مندوبون مؤهلون',
     'reassign_over_capacity_warning' => 'وصل هذا المندوب إلى الحد الأقصى لحمله. ستتم إعادة التكليف وسيُضاف الحمل على أي حال.',
 
+    // طابور التوزيع (P34.5)
+    'order_distribution_queue' => 'طابور التوزيع',
+    'order_distribution_queue_desc' => 'مهام تحتاج انتباهًا — طلبيات غير مُسندة وطلبيات تجاوزت الطاقة الاستيعابية',
+    'queue_tab_confirmation' => 'التأكيد',
+    'queue_tab_tracking' => 'التتبع',
+    'queue_unassigned' => 'غير مُسندة',
+    'queue_over_capacity' => 'تجاوز السعة',
+    'queue_current_assignee' => 'مُسند إلى',
+    'queue_empty_confirmation' => 'لا توجد طلبيات تأكيد تحتاج انتباهًا',
+    'queue_empty_tracking' => 'لا توجد شحنات تتبع تحتاج انتباهًا',
+    'queue_empty_hint' => 'ستظهر هنا الطلبيات غير المُسندة والتي تجاوزت السعة.',
+
     // Order detail expanded section
     'items' => 'المنتجات',
     'no_items' => 'لا توجد عناصر في الطلب',

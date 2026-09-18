@@ -347,6 +347,18 @@ return [
     'reassign_no_candidates' => 'No hay agentes elegibles',
     'reassign_over_capacity_warning' => 'Este agente ha alcanzado su límite de capacidad. La reasignación igualmente sumará a su carga.',
 
+    // Cola de distribución (P34.5)
+    'order_distribution_queue' => 'Cola de distribución',
+    'order_distribution_queue_desc' => 'Tareas que requieren atención: elementos sin asignar y envíos por encima de la capacidad',
+    'queue_tab_confirmation' => 'Confirmación',
+    'queue_tab_tracking' => 'Seguimiento',
+    'queue_unassigned' => 'Sin asignar',
+    'queue_over_capacity' => 'Capacidad superada',
+    'queue_current_assignee' => 'Asignado a',
+    'queue_empty_confirmation' => 'No hay elementos de confirmación que requieran atención',
+    'queue_empty_tracking' => 'No hay envíos de seguimiento que requieran atención',
+    'queue_empty_hint' => 'Los elementos sin asignar y por encima de la capacidad aparecerán aquí.',
+
     // Order detail expanded section
     'items' => 'Artículos',
     'no_items' => 'No hay artículos en este pedido',

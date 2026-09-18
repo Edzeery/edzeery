@@ -32,6 +32,7 @@ if ($store) {
         'merchant.orders.*',
         'merchant.returns.*',
         'merchant.order-settings',
+        'merchant.order-distribution-queue',
         'merchant.debts.*',
     );
     $withData['deliveryOpen'] = request()->routeIs(
@@ -58,6 +59,7 @@ if ($store) {
     $withData['canViewTeam'] = canStore(StorePermissionEnum::TEAM_VIEW->value);
     $withData['canViewOrders'] = canStore(StorePermissionEnum::ORDER_VIEW->value);
     $withData['canViewOrderSettings'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
+    $withData['canViewQueue'] = canStore(StorePermissionEnum::ORDER_MANAGE->value);
     $withData['canViewStoreSettings'] = canStore(StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value);
     $withData['canViewStorefront'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewCustomization'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
@@ -230,7 +232,7 @@ with($withData);
             </div>
         @endif
 
-        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts)
+        @if ($canViewOrders || $canViewOrderSettings || $canViewReturns || $canViewDebts || $canViewQueue)
             <div class="edz-sidebar__group">
                 <button type="button"
                         @click="openGroups.operations = !openGroups.operations"
@@ -281,6 +283,14 @@ with($withData);
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-settings')) edz-sidebar__sub-link--active @endif">
                             <x-edz.icon name="settings" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                             <span class="edz-sidebar__label">{{ __('merchant_panel.order_settings') }}</span>
+                        </a>
+                    @endif
+
+                    @if ($canViewQueue)
+                        <a href="{{ route('merchant.order-distribution-queue', $store) }}" wire:navigate
+                           class="edz-sidebar__sub-link @if (request()->routeIs('merchant.order-distribution-queue')) edz-sidebar__sub-link--active @endif">
+                            <x-edz.icon name="list-bullet" class="edz-sidebar__icon edz-sidebar__sub-icon" />
+                            <span class="edz-sidebar__label">{{ __('merchant_panel.order_distribution_queue') }}</span>
                         </a>
                     @endif
 

@@ -2631,7 +2631,17 @@ esolveCityId.
 5. **مفاتيح ترجمة جديدة** في `ar/en/fr/es` (`merchant_panel`): `on_shift`, `dual_role_badge`, `current_load`, `reassign_no_candidates`, `reassign_over_capacity_warning`; و`order_flow.tracking_reassigned`. كلها سليمة لـ `php -l`.
 6. **التحقق:** `php -l` نظيف (PHP جديد + 8 ملفات لغة)، `view:cache`/`view:clear` نظيف، اختبار `tests/Feature/Order/AssignmentCandidateResolverTest.php` (**7 اختبارات**) + `tests/Feature/Order` كاملة = 30/30، و`tests/Feature/Merchant` كاملة = **575 ناجح (2448 assertion)**. الفحص البصري على 375/768/1440 لم يُجرَ من الجهاز (لا متصفح) ويحتاج مراجعة المستخدم.
 
-> **المرحلة التالية 34.5 (الوحيدة المتبقية):** واجهة طابور التجاوز (overflow queue view) وإظهار الإشعارات المتعلقة به في لوحات الطلبات/التتبع.
+## Phase 34.5 — صفحة طابور التوزيع (overflow queue) + رابط البريد — 2026-09-18 ✅
+
+**إغلاق مبادرة Phase 34 كاملة (34.1 → 34.5):** عبر 34.1 (settings overflow)، 34.2/34.3 (توزيع موزون + تجاوز + علم over_capacity)، 34.4 (أعضاء محدودو الصلاحيات + إعادة التكليف المشتركة) إلى 34.5 — مبادرة توزيع/تأكيد/تتبع الطلبات انتهت وظيفيًا.
+
+1. **الصفحة الجديدة:** `Volt::route('/{store:slug}/order-distribution-queue')` (`routes/merchant.php`) محمية بـ `ORDER_MANAGE`، تتبويبان (تأكيد/تتبع) بنمط تبويبات `order-settings` مع شارة عدّاد حي. `livewire/merchant/order-distribution-queue.blade.php` (**158 سطر** < 400) + partials (`tabs` **20**، `queue-table` **80**).
+2. **مصدرا الصف:** `app/Livewire/Concerns/DistributionQueueConcern.php` (**116 سطر** < 250) — `orders`/`order_trackings` حيث `assigned_to_membership_id IS NULL` أو `over_capacity=true`؛ استبعاد الحالات النهائية بمفتاح مُستمد من `OrderStatus::isTerminal()` (مصدر واحد، لا نسخة ثالثة) وقصر التتبع على `OrderTrackingStatus::open()`؛ ترتيب «غير المُسند ثم الأقدم»؛ eager-load بلا N+1.
+3. **إعادة التكليف:** إعادة استخدام `reassign-modal.blade.php` المشترك بعقد `@include` نفسه + `AssignmentCandidateResolver` (confirm/track حسب التبويب) + الخدمتين الأصليتين؛ عند التقديم تُمسح `over_capacity` (تكليف يدوي — الحقل غير متتبع في الآرودت، بلا ضجيج) فتغادر الصف الطابور Livewire فورًا.
+4. **الوصول:** رابط شقيق لـ `order-settings` في الفئة «العمليات» بـ `store-sidebar.blade.php` (مقيّد بـ `ORDER_MANAGE`) + زر action في بريد `AssignmentCapacityExhaustedNotification` (`route('merchant.order-distribution-queue', ['store' => $store->slug])`).
+5. **ترجمة:** 10 مفاتيح جديدة في `merchant_panel` عبر `ar/en/fr/es`.
+6. **التحقق:** `tests/Feature/Merchant/OrderDistributionQueueTest.php` (**8 اختبارات/47 assertion**) — حارس الصلاحية، تضمين/استثناء التبويبين + ترتيب الأقدم أولًا، إعادة تكليف حية (تأكيد + تتبع) مع مسح العلم، رفض عضو بلا صلاحية، حالات الفراغ، ثبات عدد الاستعلامات. `tests/Feature/Order` = 30/30، `tests/Feature/Merchant` = **583 ناجح (2495 assertion)**، `BladeInteractivityPolicyTest` = 2/2، `php -l` + `view:cache` سليمان. الفحص البصري 375/768/1440 يبقى للمستخدم (لا متصفح في البيئة).
+
 ## حساب الديمو — بيانات شبه حقيقية + أعضاء محدودو الصلاحيات (نسخة بذرة 2026-09-18) ✅
 
 **السياق/القرار:** بناءً على طلب «جهّز حساب الديمو في السيدر ببيانات تجريبية وضف موظف تأكيد فقط وموظف تتبع فقط وموظف تأكيد وتتبع وراجع المشروع كامل وضف بيانات تجريبية» — تم تطوير `database/seeders/DemoStoreSeeder.php` (ازداد من 447 إلى **1210 سطرًا**) ليغطي كل التحسينات الأخيرة ببيانات صافية للعرض (الإسناد/السعات/التجاوز، التتبع، التأكيد، bulk validate، المرتجعات، تعديل الأسعار).

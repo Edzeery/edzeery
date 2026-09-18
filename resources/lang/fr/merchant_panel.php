@@ -350,6 +350,18 @@ return [
     'reassign_no_candidates' => 'Aucun agent éligible',
     'reassign_over_capacity_warning' => 'Cet agent a atteint sa limite de capacité. La réaffectation augmentera quand même sa charge.',
 
+    // File de distribution (P34.5)
+    'order_distribution_queue' => 'File de distribution',
+    'order_distribution_queue_desc' => 'Tâches nécessitant votre attention — éléments non assignés et expéditions en dépassement de capacité',
+    'queue_tab_confirmation' => 'Confirmation',
+    'queue_tab_tracking' => 'Suivi',
+    'queue_unassigned' => 'Non assigné',
+    'queue_over_capacity' => 'Capacité dépassée',
+    'queue_current_assignee' => 'Assigné à',
+    'queue_empty_confirmation' => 'Aucun élément de confirmation ne nécessite votre attention',
+    'queue_empty_tracking' => 'Aucun envoi de suivi ne nécessite votre attention',
+    'queue_empty_hint' => 'Les éléments non assignés et en dépassement de capacité apparaîtront ici.',
+
     // Order detail expanded section
     'items' => 'Articles',
     'no_items' => 'Aucun article sur cette commande',
