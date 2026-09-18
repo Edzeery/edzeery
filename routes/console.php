@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Order\Jobs\DispatchPendingAssignmentsJob;
+use App\Domains\Order\Jobs\DispatchPendingTrackingAssignmentsJob;
 use App\Domains\Order\Jobs\ShiftHandoverJob;
 use App\Domains\Shipping\Jobs\SyncNoestTrackingJob;
 use App\Domains\Shipping\Jobs\SyncStopdeskOfficesJob;
@@ -15,6 +16,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::job(new DispatchPendingAssignmentsJob)->everyFifteenMinutes();
+
+Schedule::job(new DispatchPendingTrackingAssignmentsJob)->everyFifteenMinutes();
 
 Schedule::call(function () {
     $stores = Store::where('status', 'active')->get();

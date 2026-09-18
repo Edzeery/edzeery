@@ -2,17 +2,20 @@
 
 namespace App\Domains\Order\Services;
 
+use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
 use App\Domains\Order\Models\ConfirmationProductAssignment;
-use App\Domains\Order\Models\ConfirmationShift;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderAssignmentService
 {
+    use ResolvesCapacityBalancedCandidates;
+
     /**
      * Full auto-assignment pipeline for an order.
      */
@@ -130,7 +133,7 @@ class OrderAssignmentService
      * vs general) is decided later in selectBest() so a store with a narrow
      * specialist roster still falls back to general confirmers.
      */
-    private function resolveCandidatePool(string $storeId, array $productIds): \Illuminate\Support\Collection
+    private function resolveCandidatePool(string $storeId, array $productIds): Collection
     {
         // Members with ORDER_CONFIRM permission in this store
         // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
@@ -160,19 +163,6 @@ class OrderAssignmentService
     }
 
     /**
-     * Effective open-order cap for a member: the highest max_concurrent_orders
-     * across their active shifts (a cap is shift-scoped, the member owns the total).
-     */
-    private function membershipCap(string $storeId, string $membershipId): ?int
-    {
-        return ConfirmationShift::where('store_id', $storeId)
-            ->where('membership_id', $membershipId)
-            ->where('is_active', true)
-            ->whereNotNull('max_concurrent_orders')
-            ->max('max_concurrent_orders');
-    }
-
-    /**
      * Status keys considered "terminal" (excluded from the open-order count).
      */
     private function terminalStatusKeys(): array
@@ -181,14 +171,49 @@ class OrderAssignmentService
     }
 
     /**
+     * Open orders per assigned membership (orders table, joining the statuses
+     * table so terminal statuses are excluded).
+     */
+    private function openOrderCounts(string $storeId): array
+    {
+        return DB::table('orders')
+            ->join('statuses', 'orders.status_id', '=', 'statuses.id')
+            ->where('orders.store_id', $storeId)
+            ->whereNull('orders.deleted_at')
+            ->whereNotNull('orders.assigned_to_membership_id')
+            ->whereNotIn('statuses.key', $this->terminalStatusKeys())
+            ->select('orders.assigned_to_membership_id', DB::raw('COUNT(*) as open_count'))
+            ->groupBy('orders.assigned_to_membership_id')
+            ->pluck('open_count', 'assigned_to_membership_id')
+            ->toArray();
+    }
+
+    /**
+     * Latest assigned_at per membership (orders table).
+     */
+    private function lastAssignedAt(string $storeId): array
+    {
+        return DB::table('orders')
+            ->where('store_id', $storeId)
+            ->whereNull('deleted_at')
+            ->whereNotNull('assigned_to_membership_id')
+            ->whereNotNull('assigned_at')
+            ->select('assigned_to_membership_id', DB::raw('MAX(assigned_at) as last_assigned'))
+            ->groupBy('assigned_to_membership_id')
+            ->pluck('last_assigned', 'assigned_to_membership_id')
+            ->toArray();
+    }
+
+    /**
      * Select the best candidate following priority tiers:
      *  1. On-shift specialists (product-matched to the order)
      *  2. On-shift general confirmers
-     * Within each tier, balance by fewest open orders then oldest assignment.
-     * Members who reached their max_concurrent_orders cap are skipped entirely.
+     * Within each tier, balance by fewest open orders then oldest last
+     * assignment. Members who reached their max_concurrent_orders cap are
+     * skipped entirely (see ResolvesCapacityBalancedCandidates).
      */
     private function selectBest(
-        \Illuminate\Support\Collection $candidates,
+        Collection $candidates,
         string $storeId,
         array $productIds
     ): ?StoreMembership {
@@ -200,98 +225,24 @@ class OrderAssignmentService
         }
 
         $specialistIds = $this->specialistMembershipIds($storeId, $productIds);
+        $openCounts = $this->openOrderCounts($storeId);
+        $lastAssigned = $this->lastAssignedAt($storeId);
 
-        $openCounts = DB::table('orders')
-            ->join('statuses', 'orders.status_id', '=', 'statuses.id')
-            ->where('orders.store_id', $storeId)
-            ->whereNull('orders.deleted_at')
-            ->whereNotNull('orders.assigned_to_membership_id')
-            ->whereNotIn('statuses.key', $this->terminalStatusKeys())
-            ->select('orders.assigned_to_membership_id', DB::raw('COUNT(*) as open_count'))
-            ->groupBy('orders.assigned_to_membership_id')
-            ->pluck('open_count', 'assigned_to_membership_id')
-            ->toArray();
+        // Specialists (product-matched) first, then general confirmers.
+        foreach ([true, false] as $specialists) {
+            $best = $this->bestCandidateOnShift(
+                $candidates->filter(fn (StoreMembership $m) => (in_array($m->id, $specialistIds)) === $specialists),
+                $storeId,
+                'confirm',
+                $openCounts,
+                $lastAssigned,
+            );
 
-        $withinQuota = function (StoreMembership $m) use ($storeId, $openCounts): bool {
-            $cap = $this->membershipCap($storeId, $m->id);
-            if ($cap === null) {
-                return true;
+            if ($best) {
+                return $best;
             }
-            return ($openCounts[$m->id] ?? 0) < $cap;
-        };
-
-        $onShiftSpecialists = $this->filterOnShift(
-            $candidates->filter(fn (StoreMembership $m) => in_array($m->id, $specialistIds))
-        )->filter($withinQuota);
-
-        if ($onShiftSpecialists->isNotEmpty()) {
-            return $this->loadBalance($onShiftSpecialists, $storeId, $openCounts);
-        }
-
-        $onShiftGeneral = $this->filterOnShift(
-            $candidates->filter(fn (StoreMembership $m) => ! in_array($m->id, $specialistIds))
-        )->filter($withinQuota);
-
-        if ($onShiftGeneral->isNotEmpty()) {
-            return $this->loadBalance($onShiftGeneral, $storeId, $openCounts);
         }
 
         return null;
-    }
-
-    /**
-     * Filter candidates to those on active shift.
-     */
-    private function filterOnShift(\Illuminate\Support\Collection $candidates): \Illuminate\Support\Collection
-    {
-        return $candidates->filter(function (StoreMembership $m) {
-            $isOnShift = $m->isOnActiveShift();
-            if (! $isOnShift) {
-                Log::debug('Member not on active shift', [
-                    'membership_id' => $m->id,
-                    'user_id' => $m->user_id,
-                ]);
-            }
-            return $isOnShift;
-        })->values();
-    }
-
-    /**
-     * Load-balance: fewest open orders, then oldest assigned_at.
-     */
-    /**
-     * Load-balance: fewest open orders, then oldest assigned_at.
-     * Accepts an optional precomputed open-count map to avoid a duplicate query.
-     */
-    private function loadBalance(
-        \Illuminate\Support\Collection $candidates,
-        string $storeId,
-        array $openOrderCounts = []
-    ): ?StoreMembership {
-        $openOrderCounts = $openOrderCounts ?: DB::table('orders')
-            ->join('statuses', 'orders.status_id', '=', 'statuses.id')
-            ->where('orders.store_id', $storeId)
-            ->whereNull('orders.deleted_at')
-            ->whereNotNull('orders.assigned_to_membership_id')
-            ->whereNotIn('statuses.key', $this->terminalStatusKeys())
-            ->select('orders.assigned_to_membership_id', DB::raw('COUNT(*) as open_count'))
-            ->groupBy('orders.assigned_to_membership_id')
-            ->pluck('open_count', 'assigned_to_membership_id')
-            ->toArray();
-
-        $lastAssigned = DB::table('orders')
-            ->where('store_id', $storeId)
-            ->whereNull('deleted_at')
-            ->whereNotNull('assigned_to_membership_id')
-            ->whereNotNull('assigned_at')
-            ->select('assigned_to_membership_id', DB::raw('MAX(assigned_at) as last_assigned'))
-            ->groupBy('assigned_to_membership_id')
-            ->pluck('last_assigned', 'assigned_to_membership_id')
-            ->toArray();
-
-        return $candidates->sortBy([
-            fn (StoreMembership $m) => $openOrderCounts[$m->id] ?? 0,
-            fn (StoreMembership $m) => $lastAssigned[$m->id] ?? '1970-01-01',
-        ])->first();
     }
 }

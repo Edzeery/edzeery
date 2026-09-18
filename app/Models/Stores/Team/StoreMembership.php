@@ -147,7 +147,7 @@ class StoreMembership extends Model
         return $this->hasMany(\App\Domains\Order\Models\ConfirmationProductAssignment::class, 'membership_id');
     }
 
-    public function isOnActiveShift(?\Carbon\Carbon $at = null): bool
+    public function isOnActiveShift(?\Carbon\Carbon $at = null, string $roleScope = 'confirm'): bool
     {
         // Use store's timezone for shift calculations (avoids N+1 by using storeWithTimezone when eager loaded)
         $store = $this->storeWithTimezone()->first() ?? $this->store;
@@ -159,6 +159,7 @@ class StoreMembership extends Model
 
         return $this->confirmationShifts()
             ->where('is_active', true)
+            ->when($roleScope === 'track', fn ($q) => $q->track(), fn ($q) => $q->confirm())
             ->get(['days_of_week', 'start_time', 'end_time', 'is_active'])
             ->contains(fn ($shift) => $shift->coversDayTime($dayOfWeek, $time));
     }
