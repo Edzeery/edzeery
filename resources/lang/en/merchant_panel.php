@@ -198,8 +198,6 @@ return [
     // Order Settings
     'order_settings' => 'Order Settings',
     'order_settings_desc' => 'Manage team shifts and product assignments for order confirmation',
-    'order_distribution_settings' => 'Order Distribution Settings',
-    'order_distribution_settings_desc' => 'Control team capacity for confirmation and tracking shifts, plus automatic overflow',
     'distribution_overflow_group' => 'Automatic overflow above capacity',
     'distribution_overflow_group_desc' => 'These settings are honored equally by the confirmation and tracking sides when distributing orders.',
     'distribution_overflow_enabled' => 'Enable automatic overflow',

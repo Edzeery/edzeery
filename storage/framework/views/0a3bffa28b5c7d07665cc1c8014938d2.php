@@ -62,13 +62,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         (new Actions\CallMethod('saveOverflow'))->execute(...$arguments);
     }
 
-    public function save(): void
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        (new Actions\CallMethod('save'))->execute(...$arguments);
-    }
-
     public function setTab(string $tab): void
     {
         $arguments = [static::$__context, $this, func_get_args()];

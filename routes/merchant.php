@@ -95,7 +95,6 @@ Route::prefix('merchant')
             ->name('tracking.label');
         Volt::route('/{store:slug}/returns', 'merchant.returns.index')->name('returns.index');
         Volt::route('/{store:slug}/order-settings', 'merchant.order-settings')->name('order-settings');
-        Volt::route('/{store:slug}/order-distribution-settings', 'merchant.order-distribution-settings.index')->name('order-distribution-settings');
 
         // Delivery — split into standalone pages (sidebar group).
         Volt::route('/{store:slug}/delivery', 'merchant.delivery.providers')->name('delivery');

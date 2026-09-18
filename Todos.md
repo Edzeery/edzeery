@@ -2604,3 +2604,16 @@ git rm "it" "prepareBindings(\$bindings)"
 | 34.2 ����� ����� ��� ������ | ? | ResolvesCapacityBalancedCandidates + OrderAssignmentService + StoreMembership::isOnActiveShift + OrderTrackingAssignmentService + DispatchPendingTrackingAssignmentsJob + routes/console.php + OrderTrackingAssignmentServiceTest | php -l �7 + 12/12 (���� �����) + 9/9 + ���� 248/151/107/41/53 + �� N+1 |
 
 > **�������� ������� 34.3:** ������� ������ ������ `store_settings.distribution_overflow_enabled/percentage` �`orders.over_capacity`/`order_trackings.over_capacity` (�� ������� ��� � ���� false) �������� �������� ��� ����� ������� �������. ����� ����� `OrderAssignmentService`/`OrderTrackingAssignmentService`/`DispatchPendingAssignmentsJob`/`DispatchPendingTrackingAssignmentsJob` ��� ��� 34.3.
+---
+
+## Order-Settings Cleanup — دمج تبويب التجاوز بعد 34.3: نظافة + إصلاح regression ✅ (2026-09-18)
+
+**السياق/القرار:** بعد 34.3 التجاوز الناعم عاش في مكانين (تبويب داخل `/{store:slug}/order-settings` + صفحة مستقلة `/{store:slug}/order-distribution-settings`). قرار المالك: تبقى التبويب فقط، والحذف للمرجعية المستقلة، وهذا تنظيف هيكلي/كود ميت فقط — بلا وظائف جديدة.
+
+1. **إصلاح عطل `storage/logs/laravel.log`:** سطر `$this->members = StoreMembership::where(...)` كان يضع `Eloquent\Builder` في حالة Livewire فتُرمى `Property type not supported in Livewire for property ... members` عند mount الصفحة — أُعيد `->with('user')->get()->toArray()`.
+2. **حذف الصفحة المستقلة:** `order-distribution-settings/index.blade.php` حُذف (المسار مزال مسبقًا من `routes/merchant.php`، فلا route cache — ترجع 404)؛ أُزيل اسم المسار `merchant.order-distribution-settings` من `store-sidebar.blade.php` (مصفوفة `operationsOpen`)؛ حُذف المفتاحان الميتان `order_distribution_settings`/`order_distribution_settings_desc` من `ar/en/fr/es`. الـ partial المشترك `order-distribution-settings/partials/overflow-settings.blade.php` بقي مكانه ويُضمَّن من `order-settings.blade.php` كأحد التبويبات.
+3. **إجراء حفظ واحد:** حُذف closure `$save` الميت (كان شادوًا/alias سابقًا ثم إملاء كاملًا بلا ربط)؛ بقي `saveOverflow` الوحيد (تحقق `required|integer|min:0|max:100` + `settings()->updateOrCreate` + toast `settings_saved`) — لا `wire:click="save"` معلّق في أي Blade (grep).
+4. **تقسيم `order-settings.blade.php` إلى partials** بنمط `confirm-drawer`: `livewire/merchant/order-settings/partials/{overview,tabs,shifts-tab,assignments-tab,shift-modal,assignments-modal}.blade.php`؛ كامل كتلة Volt (state/actions) في الملف الرئيسي، والـ overflow tab inline يضمّن الـ partial المشترك. **816 → 393 سطرًا** (تحت سقف 400).
+5. **الشهادة:** `php -l` نظيف ×4 ملفات لغة؛ `view:cache`/`view:clear` نظيف؛ الـ markup بعد الفصل مطابق حرفيًا للمصدر (تقسيم مكاني فقط → لا تغيير في 375/768/1440)؛ `ConfirmationShiftTest`+`OrderAssignmentServiceTest`+`OrderTrackingAssignmentServiceTest` = 23/23؛ مجموعة `tests/Feature/Merchant` كاملة = 575 اختبارًا (2448 assertion) خضراء.
+
+> **التالي — Phase 34.4 (بانتظار موافقة منفصلة):** إعادة بناء `reassign-modal.blade.php`. غير مسموح بلمس الـ modal/الخدمات قبل فتحها.

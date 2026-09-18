@@ -197,8 +197,6 @@ return [
     // Order Settings
     'order_settings' => 'إعدادات الطلبات',
     'order_settings_desc' => 'إدارة مناوبات الفريق وتعيينات المنتجات لتأكيد الطلبات',
-    'order_distribution_settings' => 'إعدادات توزيع الطلبيات',
-    'order_distribution_settings_desc' => 'التحكم في الطاقة الاستيعابية لمناعوبات التأكيد والتتبع والتجاوز التلقائي',
     'distribution_overflow_group' => 'التجاوز التلقائي فوق الطاقة الاستيعابية',
     'distribution_overflow_group_desc' => 'تُحترم هذه الإعدادات بالتساوي من طرفي التأكيد والتتبع عند توزيع الطلبيات.',
     'distribution_overflow_enabled' => 'تفعيل التجاوز التلقائي',

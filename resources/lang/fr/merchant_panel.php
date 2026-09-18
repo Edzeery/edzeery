@@ -150,8 +150,6 @@ return [
     'created_by' => 'Créé par',
     'order_settings' => 'Paramètres des commandes',
     'order_settings_desc' => 'Gérer les équipes et les affectations de produits pour la confirmation des commandes',
-    'order_distribution_settings' => 'Paramètres de distribution des commandes',
-    'order_distribution_settings_desc' => 'Contrôler la capacité des équipes de confirmation et de suivi ainsi que le dépassement automatique',
     'distribution_overflow_group' => 'Dépassement automatique au-delà de la capacité',
     'distribution_overflow_group_desc' => 'Ces paramètres sont appliqués de la même manière à la confirmation et au suivi lors de la distribution des commandes.',
     'distribution_overflow_enabled' => 'Activer le dépassement automatique',

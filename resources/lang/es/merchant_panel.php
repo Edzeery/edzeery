@@ -150,8 +150,6 @@ return [
     'created_by' => 'Creado por',
     'order_settings' => 'Configuración de pedidos',
     'order_settings_desc' => 'Gestionar turnos del equipo y asignaciones de productos para confirmación de pedidos',
-    'order_distribution_settings' => 'Configuración de distribución de pedidos',
-    'order_distribution_settings_desc' => 'Controla la capacidad de los turnos de confirmación y seguimiento y el desbordamiento automático',
     'distribution_overflow_group' => 'Desbordamiento automático por encima de la capacidad',
     'distribution_overflow_group_desc' => 'Estos ajustes se aplican por igual a la confirmación y al seguimiento al distribuir pedidos.',
     'distribution_overflow_enabled' => 'Activar el desbordamiento automático',

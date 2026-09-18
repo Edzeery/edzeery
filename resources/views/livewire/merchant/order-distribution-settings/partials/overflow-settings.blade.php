@@ -34,7 +34,7 @@
     </div>
 
     <div class="mt-6 pt-6 border-t border-surface-border flex justify-end">
-        <button type="button" wire:click="save" class="edz-btn edz-btn--primary">
+        <button type="button" wire:click="saveOverflow" class="edz-btn edz-btn--primary">
             <x-edz.icon name="save" class="w-4 h-4 me-1" />
             {{ __('buttons.save') }}
         </button>

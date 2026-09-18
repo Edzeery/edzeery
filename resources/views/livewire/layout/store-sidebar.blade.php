@@ -32,7 +32,6 @@ if ($store) {
         'merchant.orders.*',
         'merchant.returns.*',
         'merchant.order-settings',
-        'merchant.order-distribution-settings',
         'merchant.debts.*',
     );
     $withData['deliveryOpen'] = request()->routeIs(
