@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Domains\Cart\Services\CartService;
 use App\Models\InventoryMovement;
@@ -17,7 +17,6 @@ use App\Models\Stores\Store;
  *  - A successful checkout decreases variant stock and records a SALE movement.
  *  - Priority: product override -> store default -> ignored.
  */
-
 function colStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -25,7 +24,7 @@ function colStore(array $settings = []): Store
     $store = Store::create([
         'user_id' => $user->id,
         'name' => 'Limits Store',
-        'slug' => 'lim-' . uniqid(),
+        'slug' => 'lim-'.uniqid(),
         'status' => 'active',
         'landing_template' => 'catalog',
     ]);
@@ -45,8 +44,8 @@ function colProduct(Store $store, array $overrides = []): Product
     return Product::create(array_merge([
         'store_id' => $store->id,
         'name' => 'Limits Product',
-        'slug' => 'lpr-' . uniqid(),
-        'sku' => 'LPR-' . uniqid(),
+        'slug' => 'lpr-'.uniqid(),
+        'sku' => 'LPR-'.uniqid(),
         'type' => 'variable',
         'price' => 500,
         'is_active' => true,
@@ -59,7 +58,7 @@ function colVariant(Store $store, Product $product, int $stock = 10): ProductVar
         'store_id' => $store->id,
         'product_id' => $product->id,
         'name' => 'Default',
-        'sku' => 'LVR-' . uniqid(),
+        'sku' => 'LVR-'.uniqid(),
         'price' => 500,
         'stock' => $stock,
     ]);
@@ -144,10 +143,10 @@ test('successful checkout creates pending order; confirmation reserves stock', f
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Walk-in Customer')
         ->set('phone', '0550000000')
+        ->set('delivery_type', 'home')
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
         ->set('address', 'Street 1')
-        ->set('delivery_type', 'home')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
         ->assertHasNoErrors();
@@ -196,10 +195,10 @@ test('backorder checkout beyond stock succeeds without touching the ledger', fun
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Patient Customer')
         ->set('phone', '0551111111')
+        ->set('delivery_type', 'home')
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
         ->set('address', 'Street 2')
-        ->set('delivery_type', 'home')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
         ->assertHasNoErrors();
@@ -209,7 +208,8 @@ test('backorder checkout beyond stock succeeds without touching the ledger', fun
         ->and(InventoryMovement::where('product_variant_id', $variant->id)->count())->toBe(0);
 });
 
-test('inventory tracking off leaves stock and ledger untouched on checkout', function () {    $country = Country::create(['name' => 'Freeland', 'code' => 'FL', 'is_active' => true]);
+test('inventory tracking off leaves stock and ledger untouched on checkout', function () {
+    $country = Country::create(['name' => 'Freeland', 'code' => 'FL', 'is_active' => true]);
     $state = State::create([
         'country_id' => $country->id,
         'state_code' => 'FL-01',
@@ -229,10 +229,10 @@ test('inventory tracking off leaves stock and ledger untouched on checkout', fun
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Untracked Customer')
         ->set('phone', '0552222222')
+        ->set('delivery_type', 'home')
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
         ->set('address', 'Street 3')
-        ->set('delivery_type', 'home')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
         ->assertHasNoErrors();
@@ -270,7 +270,7 @@ test('product page exposes the effective cap and disables increment at it', func
     $product = colProduct($store);
     colVariant($store, $product, 30);
 
-    $html = test()->get('http://' . $store->slug . '.example.test/product/' . $product->slug)
+    $html = test()->get('http://'.$store->slug.'.example.test/product/'.$product->slug)
         ->assertOk()
         ->getContent();
 
@@ -420,19 +420,20 @@ test('desk choice is required and the list is scoped to the wilaya with carrier 
         ->set('delivery_type', 'stopdesk')
         ->set('state_id', (string) $state->id);
 
-    // The lazy dropdown no longer embeds the office list in the page; the
-    // carrier card still renders server-side.
+    // The office list is embedded inline (no lazy on-open fetch); the carrier
+    // card and every office of the wilaya render server-side with the picker.
     $html = $component->html();
     expect($html)->toContain('role="office-select"')
-        ->and($html)->toContain('data-lazy="1"')
-        ->and($html)->toContain('data-source="stopdeskSelectOptions"')
+        ->and($html)->not->toContain('data-lazy="1"')
+        ->and($html)->not->toContain('data-source="stopdeskSelectOptions"')
         ->and($html)->toContain('Yalidine')
-        ->and($html)->not->toContain('Near Desk')
-        ->and($html)->not->toContain('Far Desk')
+        ->and($html)->toContain('Near Desk')
+        ->and($html)->toContain('Far Desk')
         ->and($html)->not->toContain('role="city-select"');
 
-    // The on-open payload offers every office of the wilaya with the carrier.
-    $options = $component->instance()->stopdeskSelectOptions("s{$state->id}|p{$provider->id}");
+    // The embedded payload offers every office of the wilaya with the carrier.
+    $instance = $component->instance();
+    $options = $instance->formatOfficeOptions($instance->officesForSelection())->values()->all();
     expect($options)->toHaveCount(2)
         ->and(array_column($options, 'value'))->toContain((string) $nearDesk->id, (string) $farDesk->id)
         ->and(array_column($options, 'label'))->toContain('Near Desk', 'Far Desk');
@@ -441,8 +442,8 @@ test('desk choice is required and the list is scoped to the wilaya with carrier 
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Desk Required Customer')
         ->set('phone', '0555555555')
-        ->set('state_id', (string) $state->id)
         ->set('delivery_type', 'stopdesk')
+        ->set('state_id', (string) $state->id)
         ->set('selectedStopdesk', '')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
@@ -513,15 +514,16 @@ test('desk list offers every office of the wilaya, whatever its commune', functi
         ->set('delivery_type', 'stopdesk')
         ->set('state_id', (string) $state->id);
 
-    // Like the carrier case, the office list is fetched lazily: the page only
-    // carries the wiring, the payload returns every office of the wilaya.
+    // The office list is embedded inline (no lazy on-open fetch): the picker
+    // carries every office of the wilaya in the page.
     $html = $component->html();
     expect($html)->toContain('role="office-select"')
-        ->and($html)->toContain('data-lazy="1"')
-        ->and($html)->toContain('data-source="stopdeskSelectOptions"')
-        ->and($html)->not->toContain('Near Desk');
+        ->and($html)->not->toContain('data-lazy="1"')
+        ->and($html)->not->toContain('data-source="stopdeskSelectOptions"')
+        ->and($html)->toContain('Near Desk');
 
-    $options = $component->instance()->stopdeskSelectOptions("s{$state->id}|p");
+    $instance = $component->instance();
+    $options = $instance->formatOfficeOptions($instance->officesForSelection())->values()->all();
     expect($options)->toHaveCount(3)
         ->and(array_column($options, 'value'))->toContain((string) $nearDesk->id, (string) $hubDesk->id, (string) $farDesk->id)
         ->and(array_column($options, 'label'))->toContain('Near Desk', 'Wilaya Hub', 'Far Desk');

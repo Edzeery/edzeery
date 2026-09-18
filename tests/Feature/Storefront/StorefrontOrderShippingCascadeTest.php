@@ -314,18 +314,19 @@ test('every office of the selected wilaya is offered, ordered by desk code, with
         ->set('delivery_type', 'stopdesk')
         ->set('state_id', (string) $state->id);
 
-    // The lazy dropdown no longer embeds the wilaya-wide office list in the
-    // page: only the wiring (source + scope) and an empty seed travel in HTML.
+    // The wilaya-wide office list is embedded inline (no lazy on-open fetch):
+    // the page carries the office picker with its full, ordered options.
     $html = $component->html();
     expect($html)->toContain('role="office-select"')
-        ->and($html)->toContain('data-lazy="1"')
-        ->and($html)->toContain('data-source="stopdeskSelectOptions"')
-        ->and($html)->not->toContain('Desk A')
-        ->and($html)->not->toContain('Desk B');
+        ->and($html)->not->toContain('data-lazy="1"')
+        ->and($html)->not->toContain('data-source="stopdeskSelectOptions"')
+        ->and($html)->toContain('Desk A')
+        ->and($html)->toContain('Desk B');
 
-    // The on-open payload returns every office of the wilaya with the desk
-    // code, commune and address / phone details, sorted 02A before 02B.
-    $options = $component->instance()->stopdeskSelectOptions("s{$state->id}|p{$provider->id}");
+    // Every office of the wilaya with the desk code, commune and address /
+    // phone details, sorted 02A before 02B.
+    $instance = $component->instance();
+    $options = $instance->formatOfficeOptions($instance->officesForSelection())->values()->all();
 
     expect($options)->toHaveCount(2);
     $codes = array_values(array_column($options, 'code'));
@@ -472,9 +473,9 @@ test('home orders charge home_cost and store the typed address', function () {
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Home Customer')
         ->set('phone', '0554000000')
+        ->set('delivery_type', 'home')
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
-        ->set('delivery_type', 'home')
         ->set('address', 'Zone 5, Block 7')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
@@ -545,9 +546,9 @@ test('legacy stores without carriers keep the whole cascade working', function (
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Legacy Customer')
         ->set('phone', '0556000000')
+        ->set('delivery_type', 'home')
         ->set('state_id', (string) $state->id)
         ->set('city_id', (string) $city->id)
-        ->set('delivery_type', 'home')
         ->set('address', 'Old Town')
         ->set('payment_method', 'cod')
         ->call('submitOrder')
@@ -652,8 +653,8 @@ test('the state cascade still resolves for a flat-rate carrier after dead filter
     \Livewire\Volt\Volt::test('storefront.order-form')
         ->set('name', 'Flat Customer')
         ->set('phone', '0559000000')
-        ->set('state_id', (string) $state->id)
         ->set('delivery_type', 'home')
+        ->set('state_id', (string) $state->id)
         ->set('city_id', (string) oscCity($state, 'Flat Com')->id)
         ->set('address', 'Flat Road 3')
         ->set('payment_method', 'cod')
@@ -703,4 +704,164 @@ test('a store whose only carriers are dead shows the unavailable state and block
         ->assertDispatched('edz-notice');
 
     expect(Order::where('store_id', $store->id)->count())->toBe(0);
+});
+
+test('a wilaya with a single commuted office auto-picks it and the order carries both, no explicit desk', function () {
+    $state = oscState('Cascade Solo');
+    $city = oscCity($state, 'Solo Com');
+    $store = oscStore();
+    $provider = oscProvider($store, 'Solo Carrier');
+
+    StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'name' => 'Solo Desk',
+        'address' => 'Solo Road 1',
+        'is_active' => true,
+    ]);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $component = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Auto Solo')
+        ->set('phone', '0552100000')
+        ->set('delivery_type', 'stopdesk')
+        ->set('state_id', (string) $state->id);
+
+    // Picking the wilaya alone auto-picks the single office and derives its
+    // commune — the updated() hook mutates state that the test can observe.
+    $deskId = StopdeskPoint::where('store_id', $store->id)->value('id');
+    expect($component->get('selectedStopdesk'))->toBe((string) $deskId)
+        ->and($component->get('city_id'))->toBe((string) $city->id);
+
+    $component->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::where('store_id', $store->id)->latest('id')->first();
+    expect((string) $order?->stopdesk_point_id)->toBe((string) $deskId)
+        ->and($order?->city_id)->toBe((string) $city->id)
+        ->and($order?->state_id)->toBe((string) $state->id)
+        ->and($order?->address)->toBe('Solo Desk — Solo Com');
+});
+
+test('a wilaya with a single uncommuted office auto-picks it and keeps the order commune null', function () {
+    $state = oscState('Cascade Hub');
+    $store = oscStore();
+    $provider = oscProvider($store, 'Hub Carrier');
+
+    StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $state->id,
+        'city_id' => null,
+        'name' => 'Wilaya Hub',
+        'address' => 'Hub Road 9',
+        'is_active' => true,
+    ]);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $component = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('name', 'Auto Hub')
+        ->set('phone', '0552200000')
+        ->set('delivery_type', 'stopdesk')
+        ->set('state_id', (string) $state->id);
+
+    $deskId = StopdeskPoint::where('store_id', $store->id)->value('id');
+    expect($component->get('selectedStopdesk'))->toBe((string) $deskId)
+        ->and($component->get('city_id'))->toBe('');
+
+    $component->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::where('store_id', $store->id)->latest('id')->first();
+    expect((string) $order?->stopdesk_point_id)->toBe((string) $deskId)
+        ->and($order?->city_id)->toBeNull();
+});
+
+test('moving to another wilaya drops the stale desk and auto-picks the new single office', function () {
+    $stateA = oscState('Cascade Switch A');
+    $stateB = oscState('Cascade Switch B');
+    $cityA = oscCity($stateA, 'Switch Com A');
+    $cityB = oscCity($stateB, 'Switch Com B');
+    $store = oscStore();
+    $provider = oscProvider($store, 'Switch Carrier');
+
+    StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $stateA->id,
+        'city_id' => $cityA->id,
+        'name' => 'Desk A',
+        'is_active' => true,
+    ]);
+    $deskB = StopdeskPoint::create([
+        'store_id' => $store->id,
+        'shipping_provider_id' => $provider->id,
+        'state_id' => $stateB->id,
+        'city_id' => $cityB->id,
+        'name' => 'Desk B',
+        'is_active' => true,
+    ]);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $component = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('delivery_type', 'stopdesk')
+        ->set('state_id', (string) $stateA->id);
+
+    $deskAId = StopdeskPoint::where('store_id', $store->id)->where('state_id', $stateA->id)->value('id');
+    expect($component->get('selectedStopdesk'))->toBe((string) $deskAId);
+
+    $component->set('state_id', (string) $stateB->id);
+
+    expect($component->get('selectedStopdesk'))->toBe((string) $deskB->id)
+        ->and($component->get('city_id'))->toBe((string) $cityB->id);
+
+    $component->set('name', 'Switch Customer')
+        ->set('phone', '0552300000')
+        ->set('payment_method', 'cod')
+        ->call('submitOrder')
+        ->assertHasNoErrors();
+
+    $order = Order::where('store_id', $store->id)->latest('id')->first();
+    expect((string) $order?->stopdesk_point_id)->toBe((string) $deskB->id)
+        ->and($order?->city_id)->toBe((string) $cityB->id)
+        ->and($order?->state_id)->toBe((string) $stateB->id);
+});
+
+test('home commune options are embedded inline, scoped to the chosen wilaya', function () {
+    $state = oscState('Cascade Inline');
+    $otherState = oscState('Cascade Elsewhere');
+    $cityA = oscCity($state, 'Inline Com A');
+    $cityB = oscCity($state, 'Inline Com B');
+    oscCity($otherState, 'Elsewhere Com');
+    $store = oscStore();
+    oscProvider($store, 'Inline Carrier', 500.0);
+
+    oscSeed();
+    oscCart($store)->addItem($store->id, oscVariant($store, oscProduct($store))->id, 1);
+
+    $html = \Livewire\Volt\Volt::test('storefront.order-form')
+        ->set('delivery_type', 'home')
+        ->set('state_id', (string) $state->id)
+        ->html();
+
+    // The commune list ships with the page (no lazy on-open fetch) and only
+    // the chosen wilaya's communes are offered — the list cannot fail to load.
+    expect($html)->toContain('role="city-select"')
+        ->and($html)->not->toContain('data-lazy="1"')
+        ->and($html)->not->toContain('data-source="citiesSelectOptions"')
+        ->and($html)->toContain('Inline Com A')
+        ->and($html)->toContain('Inline Com B')
+        ->and($html)->toContain('&quot;value&quot;:&quot;'.$cityA->id.'&quot;')
+        ->and($html)->toContain('&quot;value&quot;:&quot;'.$cityB->id.'&quot;')
+        ->and($html)->not->toContain('Elsewhere Com');
 });

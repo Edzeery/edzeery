@@ -78,25 +78,11 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('formatOfficeOptions'))->execute(...$arguments);
     }
 
-    public function stopdeskSelectOptions(string $scope = ''): array
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('stopdeskSelectOptions'))->execute(...$arguments);
-    }
-
     public function citiesForSelection(): \Illuminate\Support\Collection
     {
         $arguments = [static::$__context, $this, func_get_args()];
 
         return (new Actions\CallMethod('citiesForSelection'))->execute(...$arguments);
-    }
-
-    public function citiesSelectOptions(string $scope = ''): array
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('citiesSelectOptions'))->execute(...$arguments);
     }
 
     public function quoteShipping(float $subtotal, array $shippingProductIds): array

@@ -54,17 +54,18 @@ mount(function (): void {
     }
 });
 
-updated(['state_id'], function (): void {
+updated(['state_id' => function (): void {
     $this->city_id = '';
 
-    // A new wilaya invalidates a previously picked desk unless the desk belongs
-    // to that same wilaya (fires again when the office auto-fills the commune).
+    // A previously picked desk stays valid only while it still belongs to the
+    // chosen wilaya; otherwise it is cleared and the eligible fall-through
+    // below auto-picks anew (a wilaya with a single office picks itself).
     if ($this->selectedStopdesk) {
         $officeState = StopdeskPoint::whereKey($this->selectedStopdesk)->value('state_id');
-        if ($officeState !== null && (string) $officeState !== (string) $this->state_id) {
-            $this->selectedStopdesk = '';
+        if ($officeState === null || (string) $officeState === (string) $this->state_id) {
+            return;
         }
-        return;
+        $this->selectedStopdesk = '';
     }
 
     if ($this->delivery_type !== 'stopdesk' || ! $this->state_id) {
@@ -80,21 +81,21 @@ updated(['state_id'], function (): void {
             $this->city_id = (string) $first->city_id;
         }
     }
-});
+}]);
 
-updated(['selectedProvider'], function (): void {
+updated(['selectedProvider' => function (): void {
     $this->state_id = '';
     $this->city_id = '';
     $this->selectedStopdesk = '';
-});
+}]);
 
-updated(['delivery_type'], function (): void {
+updated(['delivery_type' => function (): void {
     $this->state_id = '';
     $this->city_id = '';
     $this->selectedStopdesk = '';
-});
+}]);
 
-updated(['city_id'], function (): void {
+updated(['city_id' => function (): void {
     $this->selectedStopdesk = '';
 
     if ($this->delivery_type !== 'stopdesk' || ! $this->state_id || ! $this->city_id) {
@@ -105,9 +106,9 @@ updated(['city_id'], function (): void {
     if ($points->count() === 1) {
         $this->selectedStopdesk = (string) $points->first()->id;
     }
-});
+}]);
 
-updated(['selectedStopdesk'], function (): void {
+updated(['selectedStopdesk' => function (): void {
     if ($this->delivery_type !== 'stopdesk' || ! $this->selectedStopdesk) {
         return;
     }
@@ -124,7 +125,7 @@ updated(['selectedStopdesk'], function (): void {
         $this->state_id = (string) $office->state_id;
     }
     $this->city_id = $office->city_id !== null ? (string) $office->city_id : '';
-});
+}]);
 
 $availableProviders = computed(function (): \Illuminate\Support\Collection {
     $storeId = currentStoreId();
@@ -197,15 +198,6 @@ $formatOfficeOptions = function (\Illuminate\Support\Collection $stopdesks): \Il
     })->values();
 };
 
-// Stopdesk offices scoped to the current (wilaya + carrier): fetched lazily by
-// the select on first open per scope, then cached client-side.
-$stopdeskSelectOptions = function (string $scope = ''): array {
-    return $this->formatOfficeOptions($this->officesForSelection())->all();
-};
-
-// Communes of the chosen wilaya, scoped to the delivery type: the checkout
-// still sends intensity-reduced payloads even after the select moved to lazy
-// loading, so the city list lives behind the same on-open fetch as the desks.
 $citiesForSelection = function (): \Illuminate\Support\Collection {
     $storeId = currentStoreId();
     $providers = $this->availableProviders;
@@ -262,15 +254,6 @@ $citiesForSelection = function (): \Illuminate\Support\Collection {
         return City::where('state_id', $this->state_id)->active()->orderBy('name')->get();
     }
     return City::whereIn('id', $scopedCityIds)->active()->orderBy('name')->get();
-};
-
-$citiesSelectOptions = function (string $scope = ''): array {
-    return $this->citiesForSelection()->map(fn ($city) => [
-        'value' => (string) $city->id,
-        'label' => $city->name,
-        'hint'  => null,
-        'code'  => null,
-    ])->values()->all();
 };
 
 $quoteShipping = function (float $subtotal, array $shippingProductIds): array {
@@ -616,19 +599,9 @@ $submitOrder = function () {
 
         $officeOptions = $this->formatOfficeOptions($stopdesks);
 
-        // Seeds for the lazily-fed lists: only the currently selected option so
-        // the initial HTML never carries the whole (wilaya-wide) option set.
-        $officeSeed = $this->selectedStopdesk
-            ? $officeOptions->filter(fn ($o) => (string) $o['value'] === (string) $this->selectedStopdesk)->values()
-            : collect();
-        $citySeed = $this->city_id
-            ? collect([[
-                'value' => (string) $this->city_id,
-                'label' => (string) ($cities->first(fn ($c) => (string) $c->id === (string) $this->city_id)?->name ?? ''),
-                'hint' => null,
-                'code' => null,
-            ]])
-            : collect();
+        // Communes and offices are embedded inline, scoped to the current
+        // wilaya / carrier: the lists arrive with the page so they can never
+        // fail to appear (no lazy on-open fetch, no per-open round-trip).
 
         $shippingProductIds = ! empty($variants)
             ? $variants->pluck('product_id')->filter()->unique()->values()->all()
@@ -820,10 +793,8 @@ $submitOrder = function () {
                     @if ($this->delivery_type === 'home')
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.city') }}</label>
-                            <x-storefront.select :options="$citySeed" option-value="value" option-label="label"
+                            <x-storefront.select :options="$cities" option-value="id" option-label="name"
                                 wire:model.live="city_id"
-                                lazy source="citiesSelectOptions"
-                                :scope="'s' . ($this->state_id ?: '') . '|dt' . $this->delivery_type"
                                 :search="true"
                                 search-placeholder="{{ __('storefront.search') }}"
                                 placeholder="{{ __('storefront.select_city') }}"
@@ -874,11 +845,9 @@ $submitOrder = function () {
                                 <input type="hidden" value="{{ $singleOffice->id }}" data-role="selected-office" />
                             @elseif($stopdesks->count() > 1)
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{{ __('storefront.select_stopdesk_point') }}</label>
-                                <x-storefront.select :options="$officeSeed" option-value="value" option-label="label"
+                                <x-storefront.select :options="$officeOptions" option-value="value" option-label="label"
                                     option-code="code" option-extra="extra"
                                     wire:model.live="selectedStopdesk"
-                                    lazy source="stopdeskSelectOptions"
-                                    :scope="'s' . ($this->state_id ?: '') . '|p' . $providerId"
                                     :search="true"
                                     search-placeholder="{{ __('storefront.search') }}"
                                     placeholder="{{ __('storefront.select_stopdesk_point') }}"

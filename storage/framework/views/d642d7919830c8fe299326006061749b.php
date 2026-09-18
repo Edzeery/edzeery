@@ -131,19 +131,9 @@ use Illuminate\Validation\Rule;
 
         $officeOptions = $this->formatOfficeOptions($stopdesks);
 
-        // Seeds for the lazily-fed lists: only the currently selected option so
-        // the initial HTML never carries the whole (wilaya-wide) option set.
-        $officeSeed = $this->selectedStopdesk
-            ? $officeOptions->filter(fn ($o) => (string) $o['value'] === (string) $this->selectedStopdesk)->values()
-            : collect();
-        $citySeed = $this->city_id
-            ? collect([[
-                'value' => (string) $this->city_id,
-                'label' => (string) ($cities->first(fn ($c) => (string) $c->id === (string) $this->city_id)?->name ?? ''),
-                'hint' => null,
-                'code' => null,
-            ]])
-            : collect();
+        // Communes and offices are embedded inline, scoped to the current
+        // wilaya / carrier: the lists arrive with the page so they can never
+        // fail to appear (no lazy on-open fetch, no per-open round-trip).
 
         $shippingProductIds = ! empty($variants)
             ? $variants->pluck('product_id')->filter()->unique()->values()->all()
@@ -571,14 +561,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"><?php echo e(__('storefront.city')); ?></label>
                             <?php if (isset($component)) { $__componentOriginal1e47f77404551aa8f8b0c91590b60327 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal1e47f77404551aa8f8b0c91590b60327 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.storefront.select','data' => ['options' => $citySeed,'optionValue' => 'value','optionLabel' => 'label','wire:model.live' => 'city_id','lazy' => true,'source' => 'citiesSelectOptions','scope' => 's' . ($this->state_id ?: '') . '|dt' . $this->delivery_type,'search' => true,'searchPlaceholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_city')).'','disabled' => ! $this->state_id,'icon' => 'location','role' => 'city-select']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.storefront.select','data' => ['options' => $cities,'optionValue' => 'id','optionLabel' => 'name','wire:model.live' => 'city_id','search' => true,'searchPlaceholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_city')).'','disabled' => ! $this->state_id,'icon' => 'location','role' => 'city-select']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('storefront.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($citySeed),'option-value' => 'value','option-label' => 'label','wire:model.live' => 'city_id','lazy' => true,'source' => 'citiesSelectOptions','scope' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('s' . ($this->state_id ?: '') . '|dt' . $this->delivery_type),'search' => true,'search-placeholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_city')).'','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(! $this->state_id),'icon' => 'location','role' => 'city-select']); ?>
+<?php $component->withAttributes(['options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($cities),'option-value' => 'id','option-label' => 'name','wire:model.live' => 'city_id','search' => true,'search-placeholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_city')).'','disabled' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(! $this->state_id),'icon' => 'location','role' => 'city-select']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal1e47f77404551aa8f8b0c91590b60327)): ?>
@@ -740,14 +730,14 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"><?php echo e(__('storefront.select_stopdesk_point')); ?></label>
                                 <?php if (isset($component)) { $__componentOriginal1e47f77404551aa8f8b0c91590b60327 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal1e47f77404551aa8f8b0c91590b60327 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.storefront.select','data' => ['options' => $officeSeed,'optionValue' => 'value','optionLabel' => 'label','optionCode' => 'code','optionExtra' => 'extra','wire:model.live' => 'selectedStopdesk','lazy' => true,'source' => 'stopdeskSelectOptions','scope' => 's' . ($this->state_id ?: '') . '|p' . $providerId,'search' => true,'searchPlaceholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_stopdesk_point')).'','icon' => 'business','role' => 'office-select']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.storefront.select','data' => ['options' => $officeOptions,'optionValue' => 'value','optionLabel' => 'label','optionCode' => 'code','optionExtra' => 'extra','wire:model.live' => 'selectedStopdesk','search' => true,'searchPlaceholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_stopdesk_point')).'','icon' => 'business','role' => 'office-select']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('storefront.select'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($officeSeed),'option-value' => 'value','option-label' => 'label','option-code' => 'code','option-extra' => 'extra','wire:model.live' => 'selectedStopdesk','lazy' => true,'source' => 'stopdeskSelectOptions','scope' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('s' . ($this->state_id ?: '') . '|p' . $providerId),'search' => true,'search-placeholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_stopdesk_point')).'','icon' => 'business','role' => 'office-select']); ?>
+<?php $component->withAttributes(['options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($officeOptions),'option-value' => 'value','option-label' => 'label','option-code' => 'code','option-extra' => 'extra','wire:model.live' => 'selectedStopdesk','search' => true,'search-placeholder' => ''.e(__('storefront.search')).'','placeholder' => ''.e(__('storefront.select_stopdesk_point')).'','icon' => 'business','role' => 'office-select']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal1e47f77404551aa8f8b0c91590b60327)): ?>

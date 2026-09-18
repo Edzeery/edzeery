@@ -2501,3 +2501,50 @@ git rm "it" "prepareBindings(\$bindings)"
    - صفان (NULL + `in_transit`) يُسحبان معًا في تشغيل واحد — الرقم الحقيقي `YESH-28B-20576482` مستخدم حرفيًا في كلا الاختبارين (التحقق القياسي لمعيار القبول بدل الوصول إلى PPROD).
 
 **الشهادة:** `SyncAllTrackingNullStatusTest` 2/2 (9 تأكيدات) + `TrackingTrashWebhookLabelTest` 22/22 (82 تأكيدًا) خضراء. السويت الكاملة 839 ناجح (3417 تأكيدًا) — الفشل الثلاثة **سابقة التأسيس وغير مرتبطة** بها: اثنان قفل ملفات Windows في `BulkDispatchValidateTest` (`rename storage/framework/views … Access is denied` — معروف ومؤرَّخ)، وواحد في `CarrierSyncObservabilityTest` (مشروع مراقبة غير ملتزم، `expectsOutputToContain('8')` لا يطابق جدول الـ artisan command). `php -l` نظيف ×4، Pint نظيف، الجولة الكاملة السابقة (4 أخطاء متقلّبة) تؤكد نفس النمط. التنبيه: لا توجد قاعدة بيانات إنتاج/Staging محلية لإثبات YESH-28B-20576482 بعينها — الإثبات القياسي عبر رقم التتبع الحرفي داخل الاختبار؛ إن أمكن الوصول إلى نسخة من الإنتاج، فالتأكيد النهائي استعلام السطر (1) في خطة المرحلة.
+
+---
+
+## إصلاح سلسلة الدفع (الزائر): hooks `updated` المعطوبة + تضمين قوائم البلديات/المكاتب بدل الجلب الكسول ✅ (2026-09-17)
+
+**طلب المستخدم:** 4 أخطاء بالدفع: (1) توصيل للمنزل لا تُجلب البلديات ويوجد بطء؛ (2) ولاية ذات مكتب واحد ترفض الطلب بـ"اختر مكتب الاستلام"؛ (3) طلبات المكتب تدخل بلا البلدية؛ (4) لا يختبئ منتقي شركة التوصيل عند شركة واحدة.
+
+### التشخيص المعتمد بالأدلة
+
+- **الجذر (Bug 2 و 3):** توقيع `updated()` خاطئ في `storefront/order-form.blade.php`. الملف استخدم `updated(['state_id'], function(){…})` — وسيطاً ثانياً منفصلاً — بينما الصيغة الوحيدة المعتمدة في Volt ترابطية: `updated(['state_id' => function(){…}])`. بالصيغة الخاطئة يُخزَّن `CompileContext::$updated` بمفاتيح رقمية `[0..9]` بدل `['state_id' => …]`، و`CallPropertyHook::execute` يبحث بالمفتاح الاسمي `$context->updated[$propertyName] ?? fn()=>null` → **ردّ فارغ دائماً (لم يعمل أي من الـ 5 hooks قط)**. إثبات: `[DBG CTX] updated keys=[0..9] hook_state_id_present=false`؛ واستدعاء يدوي `$i->updated('state_id')` بلا أثر؛ واستبقا\ Todos.md:1049 اعترف ضمناً ("طفرة updated لا تظهر في assertSet") إذ عُوّض الاختبار بضبط `selectedStopdesk` صراحةً.
+- **Bug 4** كان منفَّذاً أصلاً (`mount` + render: `availableProviders->count()===1` → `selectedProvider` مثبت + `role="company-select"` مخفي) — حدَّدته اختبار إعادة مباشرة.
+- **Bug 1 (لا تُجلب البلديات + بطء):** الخادم سليم (سجل laravel فارغ؛ `citiesSelectOptions` مصدره المترجم سليم واختبارات الخادم تمر). العطل في **مسار الجلب الكسول العميل** (`ensureRemoteOptions` → `$wire.call('citiesSelectOptions', scope)` + بوابة `_waitServerAck` بسقف 6 ثوانٍ) — مسار **لم يُتحقق منه بصرياً منذ بنائه** (كل مراحل 34-35/1092 علّمت "يتطلب تحققاً بصرياً يدوياً"). «الطريقة الأفضل» المعتمدة: **تضمين القوائم مباشرة** (محصورة بالنطاق الحالي)، إذ أن `$citiesForSelection()` و`officesForSelection()` كنتيجة تُحسب أصلاً عند كل render — القوائم تصل مع الصفحة، لا تعتمد على جلب العميل، وتزول مهلة الـ 6 ثوانٍ والتأخّر والسباق نهائياً.
+
+### ما نُفّذ (`resources/views/livewire/storefront/order-form.blade.php` فقط — لا حشر منطق خارجي حاجة)
+
+1. **الـ 5 hooks** (state_id / selectedProvider / delivery_type / city_id / selectedStopdesk) حُوِّلت إلى `updated(['x' => fn()])` الصحيحة.
+2. **إصلاح `return` غير المشروط في `updated('state_id')`:** المكتب القديم يبقى فقط إن كان لولاية المختارة؛ وإلا يُمسح ويتابع التدفّق للـ auto-pick (الانتقال من ولاية لمكتب واحد → أخرى لمكتب واحد يثبّت الجديد الآن).
+3. **حذف الجلب الكسول من الـ checkout:** `role="city-select"` و`role="office-select"` أصبحا مضمَّنين inline (:options="$cities" / :options="$officeOptions") بلا `lazy/source/scope`؛ حُذفت closureا `$citiesSelectOptions`/`$stopdeskSelectOptions` وبذور الـ seeds (dead code)؛ بقي `$citiesForSelection`/`$officesForSelection`/`$formatOfficeOptions` (تُستخدم في render).
+4. **المراجعة:** `storefront-select.js`/`select.blade.php` لم يتغيّرا (لا يزالان يدعمان lazy لمن يحتاجه — لأنه لا أحد من checkout).
+
+### التحديثات والشهادة
+
+- **اختبارات دائمة +4 في `StorefrontOrderShippingCascadeTest` (تُثبت أن الـ hooks تشتغل الآن):** ولاية مكتب واحد (ببلدية) تثبّت المكتب ذاتياً وتحمل البلدية للطلب **بلا ضبط صريح**؛ ولاية مكتب واحد (بدون بلدية) تثبّت وتبقى بلدية الطلب NULL؛ الانتقال لولاية أخرى يُسقط المكتب القديم ويثبّت الجديد مع بلديتها؛ بلديات المنزل مضمّنة ومحصورة بالولاية المختارة (لا data-lazy، ولا بلديات ولاية أخرى).
+- **تحديث 3 تأكيدات lazy → inline** في `StorefrontOrderShippingCascadeTest` + `CartOrderLimitsTest` (قوائم المكتب بالمصادر تُفحص الآن عبر `formatOfficeOptions(officesForSelection())` + الأسماء ظاهرة في HTML).
+- **إعادة ترتيب `set()` في 7 اختبارات قديمة** (كانت «state_id/city_id ثم delivery_type» — عُلّقت على السلوك المعطوب؛ الـ hook الحي الآن يصفّر الجغرافيا عند تبديل نوع التوصيل كما في المتصفح الواقعي).
+- **الشهادة:** `pest tests/Feature/Storefront` = **119 ناجح (416 تأكيد)** قبلها 116 (‎-1 ملف إعادة مؤقت +4 دائمة). `php -l` نظيفـ، Pint نظيف (أصلح 1 مخالفة تركيب في CartOrderLimitsTest)، `view:clear`+`view:cache` سليمان، `npm` غير مطلوب (لا تغيير JS). الجولة الكاملة قيد التدوير بعد الإلغاء (عدد النهائي يُعتمد بالتوازي).
+- **تحقق بصري يدوي يُتوقَّع من المستخدم على `demo.edzeery.com` (375/768/1440):** ① المنزل ← اختر ولاية → البلديات **تظهر فوراً** (لا سبينر طويل) وتُخزَّن مع الطلب؛ ② المكتب ← ولاية بمكتب واحد (مثل 01 Adrar) → بطاقة المكتب تُثبَّت تلقائياً والطلب يُنشأ (ببلدية أو بدونها حسب المكتب)؛ ③ المكتب ← ولاية بمكاتب متعددة (مثل 16 Alger) → اختيار المكتب يحمل بلدية المكتب إلى الطلب؛ ④ شركة واحدة → لا منتقي شركة وسطر «عبر الشركة» يظهر.
+
+---
+
+## إعادة تصميم صفحة نجاح الطلب `/order/success/{order:id}` — متجاوبة بلا خط زمني ✅ (2026-09-18)
+
+**طلب المستخدم:** صفحة المتجر «طلب ناجح» — تبديل كامل التخطيط إلى عمودين (معلومات العميل في جهة + ملخص الطلب في الجهة الأخرى) بهوية Apple Design Restraint، متجاوبة على 375/768/1440px، وإزالة بلوك تتبع الحالة («ماذا يحدث بعد ذلك؟») نهائيًا.
+
+### ما نُفّذ (`resources/views/livewire/storefront/order-success.blade.php` فقط — بلا مفاتيح ترجمة أو استعلامات أو JS جديدة)
+
+1. **حذف بلوك «ماذا يحدث بعد ذلك؟» كاملًا** (كان بالأسطر 196–261: `what_happens_next` + `step_order_placed/100%/step_out_for_delivery/step_delivered`) — لا تعرض الحالة إطلاقًا بعد الآن؛ أُبقي سطر «سنتصل بك» كلمسة تواصل وليست حالة.
+2. **تخطيط عمودين متجاوب:** حاوية `max-w-5xl mx-auto`؛ شبكة `grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start` — الملخص `md:col-span-7` والعميل/التوصيل `md:col-span-5`؛ 375px مكدّس (الملخص أولًا)، 768px عمودان جنبًا إلى جنب، 1440px مسافات/حشوة أوسع (`lg:gap-8` + `lg:px-8`). بطاقات بكلاسات التصميم المعيارية (`rounded-2xl border shadow-sm bg-white dark:bg-gray-800`) وهويات المتجر `store-*`.
+3. **ملخص الطلب:** عناصر بصورة 48–56px (`rounded-xl object-cover` + fallback `noimg.png`) مع المتغير و«سعر × كمية» و`tabular-nums`؛ أسطر subtotal / shipping («مجانًا» بالأخضر عند الصفر) / **خصم شرطي** (عبر `titles.discount` الموجود باللغات الأربع — صفر مفاتيح جديدة) / الإجمالي من accessor `grand_total`.
+4. **بطاقة العميل/التوصيل:** الاسم، الهاتف (`dir="ltr"`)، طريقة الدفع (`cod → storefront.payment_on_delivery` وإلا القيمة الخام)، كتلة توصيل: stopdesk بارزة بهوية المتجر (نُقلت من بطاقة الملخص) أو منزلي (address + city + state بـ `break-words`)، وملاحظات بحدود `border-t`.
+5. **الأداء:** أُزيل `'status'` من eager-load في `mount()` (استعلام أقل)؛ لا جلب كسول جديد (تجنّب `stopdeskPoint.city`) ولا JS/SCSS.
+
+### الشهادة
+
+- `php -l` نظيف، `view:clear` + `view:cache` سليمان، `npm run build` ناجح (تحذيرات Sass الخاصة بـ Bootstrap موجودة سابقًا).
+- **الجولة الكاملة: 849 ناجح (3468 تأكيدًا) — فشل وحيد سابق التأسيس** في `CarrierSyncObservabilityTest` (`expectsOutputToContain('8')` لا يطابق مخرجات `carrier-sync:report`) + 1 risky (نفس الملف)؛ أُثبت أنه مسبق: يفشل منفردًا وبعد إخفاء التعديل (`git stash`). يُشغَّل بالذاكرة الموسعة `-d memory_limit=-1`.
+- **التحقق البصري اليدوي المُتوقَّع على المتجر الحي (375/768/1440):** ① 375px — بطاقة الملخص ثم العميل مكدّستين، لا خط زمني؛ ② 768px — الملخص يسار/العميل يمين جنبًا إلى جنب في صف واحد؛ ③ 1440px — بطاقتان متساويتا الارتفاع تقريبًا مع مسافات أوسع وCTR في الوسط؛ ④ ملخص مالي: subtotal + shipping − discount = الإجمالي (عند وجود خصم على الطلب).
