@@ -31,13 +31,15 @@ class OrderTrackingAssignmentService
         // 1. Resolve candidate pool
         $candidates = $this->resolveCandidatePool($storeId);
 
-        // 2. Balance: fewest open assignments, then oldest last assignment
-        $selected = $this->bestCandidateOnShift(
+        // 2. Balance: fewest open assignments, then oldest last assignment,
+        //    allowing store-configured overflow when no member fits strictly.
+        [$selected, $wasOverflow] = $this->bestCandidateWithOverflow(
             $candidates,
             $storeId,
             'track',
             $this->openAssignmentCounts($storeId),
             $this->lastAssignedAt($storeId),
+            $this->overflowPercentage($store),
         );
 
         if (! $selected) {
@@ -54,7 +56,11 @@ class OrderTrackingAssignmentService
                 'assigned_at' => null,
                 'assigned_by_membership_id' => null,
                 'assignment_method' => null,
+                'over_capacity' => false,
             ]);
+
+            $this->notifyCapacityExhausted($store, 'track', $this->unassignedTrackingCount($storeId));
+
             return $tracking;
         }
 
@@ -62,6 +68,7 @@ class OrderTrackingAssignmentService
             'assigned_to_membership_id' => $selected->id,
             'assigned_at' => now(),
             'assignment_method' => 'auto',
+            ...($wasOverflow ? ['over_capacity' => true] : []),
         ]);
 
         Log::info('Order tracking auto-assigned', [
@@ -147,5 +154,22 @@ class OrderTrackingAssignmentService
             ->groupBy('assigned_to_membership_id')
             ->pluck('last_assigned', 'assigned_to_membership_id')
             ->toArray();
+    }
+
+    /**
+     * Unassigned trackings in the state the dispatcher targets (used for
+     * the capacity-exhausted alert).
+     */
+    private function unassignedTrackingCount(string $storeId): int
+    {
+        $openStatuses = collect(OrderTrackingStatus::open())
+            ->map(fn ($status) => $status->value)
+            ->all();
+
+        return OrderTracking::where('store_id', $storeId)
+            ->whereNull('assigned_to_membership_id')
+            ->whereNull('assignment_method')
+            ->whereIn('tracking_status', $openStatuses)
+            ->count();
     }
 }

@@ -372,4 +372,39 @@ test('all capped members leave the order unassigned', function () {
     $service->assign($orderC);
 
     expect($orderC->fresh()->assigned_to_membership_id)->toBeNull();
+});test('overflow extends a capped confirmer when the store enables headroom', function () {
+    $store = assignmentStore();
+    $a = assignmentMembership($store, 'staff');
+    $b = assignmentMembership($store, 'staff');
+
+    foreach ([$a, $b] as $member) {
+        ConfirmationShift::create([
+            'store_id' => $store->id,
+            'membership_id' => $member->id,
+            'shift_type' => 'morning',
+            'start_time' => '08:00',
+            'end_time' => '17:00',
+            'days_of_week' => [1, 2, 3, 4, 5],
+            'is_active' => true,
+            'max_concurrent_orders' => 1,
+        ]);
+    }
+
+    // Everyone is at their strict cap of 1: A holds one, B holds one.
+    $product = assignmentProduct($store, 'Overflow Confirm');
+    $openA = assignOrder($store, $product);
+    $openA->update(['assigned_to_membership_id' => $a->id, 'assigned_at' => now()]);
+    $openB = assignOrder($store, $product);
+    $openB->update(['assigned_to_membership_id' => $b->id, 'assigned_at' => now()->subMinutes(30)]);
+
+    $store->settings()->updateOrCreate([], [
+        'distribution_overflow_enabled' => true,
+        'distribution_overflow_percentage' => 100,
+    ]);
+
+    $order = assignOrder($store, $product);
+    app(OrderAssignmentService::class)->assign($order);
+
+    expect($order->fresh()->assigned_to_membership_id)->toBeIn([$a->id, $b->id])
+        ->and($order->fresh()->over_capacity)->toBeTrue();
 });

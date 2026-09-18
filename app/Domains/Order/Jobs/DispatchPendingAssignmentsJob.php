@@ -22,7 +22,7 @@ class DispatchPendingAssignmentsJob implements ShouldQueue
         $unassigned = Order::whereNull('assigned_to_membership_id')
             ->whereNull('assignment_method')
             ->whereHas('status', fn ($q) => $q->where('key', 'pending'))
-            ->with('store')
+            ->with('store.settings')
             ->get();
 
         foreach ($unassigned as $order) {

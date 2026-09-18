@@ -75,6 +75,7 @@ class Order extends Model
         'shipment_type',
         'meta',
         'send_from_carrier_warehouse',
+        'over_capacity',
     ];
 
     protected $casts = [
@@ -87,6 +88,7 @@ class Order extends Model
         'confirmation_attempts' => 'integer',
         'meta' => 'array',
         'send_from_carrier_warehouse' => 'boolean',
+        'over_capacity' => 'boolean',
     ];
 
     const DELIVERY_HOME    = 'home';

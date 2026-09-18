@@ -283,3 +283,30 @@ test('reassign refuses a member of a different store', function () {
     expect(fn () => app(OrderTrackingAssignmentService::class)->reassign($tracking, $to, $by))
         ->toThrow(\InvalidArgumentException::class);
 });
+test('overflow extends a capped tracker when the store enables headroom', function () {
+    $store = trackingStore();
+    $a = trackingMembership($store);
+    $b = trackingMembership($store);
+
+    foreach ([$a, $b] as $member) {
+        trackShift($store, $member, 1);
+    }
+
+    // Everyone is at their strict cap of 1: A holds one, B holds one.
+    $order = trackingOrder($store);
+    $openA = openTracking($store, $order);
+    $openA->update(['assigned_to_membership_id' => $a->id, 'assigned_at' => now()]);
+    $openB = openTracking($store, $order);
+    $openB->update(['assigned_to_membership_id' => $b->id, 'assigned_at' => now()->subMinutes(30)]);
+
+    $store->settings()->updateOrCreate([], [
+        'distribution_overflow_enabled' => true,
+        'distribution_overflow_percentage' => 100,
+    ]);
+
+    $tracking = openTracking($store, $order);
+    app(OrderTrackingAssignmentService::class)->assign($tracking);
+
+    expect($tracking->fresh()->assigned_to_membership_id)->toBeIn([$a->id, $b->id])
+        ->and($tracking->fresh()->over_capacity)->toBeTrue();
+});

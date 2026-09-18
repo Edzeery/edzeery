@@ -41,6 +41,9 @@ state([
     'assignProductNames' => [],
     'storeTimezone' => null,
     'onShiftNow' => 0,
+
+    'overflowEnabled' => false,
+    'overflowPercentage' => 10,
 ]);
 
 mount(function (): void {
@@ -54,10 +57,29 @@ $loadData = function (): void {
     $store = \App\Models\Stores\Store::where('id', $storeId)->with('settings')->first();
     $this->storeTimezone = $store?->settings?->timezone ?? config('app.timezone');
 
+    $settings = $store?->settings;
+    $this->overflowEnabled = (bool) ($settings?->distribution_overflow_enabled ?? false);
+    $this->overflowPercentage = (int) ($settings?->distribution_overflow_percentage ?? 10);
+
+    // Overflow settings hydrated from store settings (failsafe defaults match the
+    // standalone distribution page: disabled unless explicitly enabled).
+    $this->overflowEnabled = (bool) ($store?->settings?->distribution_overflow_enabled ?? false);
+    $this->overflowPercentage = (int) ($store?->settings?->distribution_overflow_percentage ?? 10);
+
+    $this->overflowEnabled = (bool) ($store?->settings?->distribution_overflow_enabled ?? false);
+    $this->overflowPercentage = (int) ($store?->settings?->distribution_overflow_percentage ?? 10);
+
+    $settings = $store?->settings;
+    $this->overflowEnabled = (bool) ($settings?->distribution_overflow_enabled ?? false);
+    $this->overflowPercentage = (int) ($settings?->distribution_overflow_percentage ?? 10);
+
     $this->members = StoreMembership::where('store_id', $storeId)
         ->with('user')
         ->get()
         ->toArray();
+
+    $this->overflowEnabled = (bool) ($store?->settings?->distribution_overflow_enabled ?? false);
+    $this->overflowPercentage = (int) ($store?->settings?->distribution_overflow_percentage ?? 10);
 
     $this->shifts = ConfirmationShift::where('store_id', $storeId)
         ->with('membership.user')
@@ -79,8 +101,47 @@ $loadData = function (): void {
         ->toArray();
 };
 
+$saveOverflow = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $this->validate([
+        'overflowPercentage' => ['required', 'integer', 'min:0', 'max:100'],
+    ]);
+
+    currentStore()->settings()->updateOrCreate([], [
+        'distribution_overflow_enabled' => $this->overflowEnabled,
+        'distribution_overflow_percentage' => $this->overflowPercentage,
+    ]);
+
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+};
+
+$save = function (): void {
+    abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
+
+    $this->validate([
+        'overflowEnabled' => ['boolean'],
+        'overflowPercentage' => ['required', 'integer', 'min:0', 'max:100'],
+    ]);
+
+    currentStore()?->settings()->updateOrCreate([], [
+        'distribution_overflow_enabled' => $this->overflowEnabled,
+        'distribution_overflow_percentage' => $this->overflowPercentage,
+    ]);
+
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
+
+    $this->loadData();
+};
+
 $setTab = function (string $tab): void {
     $this->tab = $tab;
+};
+
+// Thin alias so the shared overflow partial's `wire:click="save"` resolves to
+// this component's overflow saver (kept distinct from $saveOverflow internally).
+$save = function (): void {
+    $this->saveOverflow();
 };
 
 // ——— Shift Type auto-fill times ———
@@ -445,6 +506,11 @@ $removeAssignment = function (string $assignmentId): void {
             <x-edz.icon name="package" class="w-4 h-4" />
             {{ __('merchant_panel.tab_product_assignments') }}
         </button>
+        <button wire:click="setTab('overflow')"
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px {{ $tab === 'overflow' ? 'border-brand-500 text-brand-fg' : 'border-transparent text-ink-muted hover:text-ink' }}">
+            <x-edz.icon name="trending-up" class="w-4 h-4" />
+            {{ __('merchant_panel.distribution_overflow_group') }}
+        </button>
     </div>
 
     {{-- Shifts Tab --}}
@@ -550,6 +616,13 @@ $removeAssignment = function (string $assignmentId): void {
                 </button>
             </div>
         @endif
+    @endif
+
+    {{-- Distribution Overflow Tab --}}
+    @if($tab === 'overflow')
+        <div class="max-w-2xl">
+            @include('livewire.merchant.order-distribution-settings.partials.overflow-settings')
+        </div>
     @endif
 
     {{-- Product Assignments Tab --}}
@@ -716,8 +789,10 @@ $removeAssignment = function (string $assignmentId): void {
     @endif
 
     {{-- Assign Products Modal --}}
+    <div class="contents" @edz-modal-closed.window="$wire.set('showAssignModal', false)">
     @if($showAssignModal)
-    <x-edz.modal :isOpen="true" wire:key="assign-modal-{{ $showAssignModal ? 'open' : 'closed' }}">
+    <div @edz-modal-closed.window="$wire.set('showAssignModal', false)">
+        <x-edz.modal :isOpen="true" wire:key="assign-modal-{{ $showAssignModal ? 'open' : 'closed' }}">
         <form wire:submit="saveAssignments">
             <div class="p-6 space-y-4">
                 <h3 class="text-lg font-semibold text-ink">{{ __('merchant_panel.assign_products') }}</h3>
@@ -761,4 +836,5 @@ $removeAssignment = function (string $assignmentId): void {
         </form>
     </x-edz.modal>
     @endif
+    </div>
 </div>

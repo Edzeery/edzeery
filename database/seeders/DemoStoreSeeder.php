@@ -432,9 +432,9 @@ class DemoStoreSeeder extends Seeder
     {
         $riders = [
             ['name' => 'Yacine Belkacem', 'phone' => '0550100011', 'email' => 'yacine.b@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_MOTORCYCLE, 'is_active' => true, 'notes' => 'Covers the city centre, available mornings.'],
-            ['name' => 'Amina Cherif',    'phone' => '0660200022', 'email' => 'amina.c@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_CAR,       'is_active' => true, 'notes' => 'Large orders and bulk deliveries.'],
+            ['name' => 'Ahmed Cherif',    'phone' => '0660200022', 'email' => 'ahmed.c@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_CAR,       'is_active' => true, 'notes' => 'Large orders and bulk deliveries.'],
             ['name' => 'Sofiane Hamdi',   'phone' => '0770300033', 'email' => 'sofiane.h@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_BICYCLE,   'is_active' => false, 'notes' => 'Short-distance courier, currently on leave.'],
-            ['name' => 'Lina Meziane',    'phone' => '0550400044', 'email' => 'lina.m@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_VAN,       'is_active' => true, 'notes' => 'Furniture and heavy items, suburb routes.'],
+            ['name' => 'Khaled Meziane',    'phone' => '0550400044', 'email' => 'khaled.m@demo.edzeery.com', 'vehicle_type' => DeliveryRider::VEHICLE_VAN,       'is_active' => true, 'notes' => 'Furniture and heavy items, suburb routes.'],
         ];
 
         foreach ($riders as $rider) {

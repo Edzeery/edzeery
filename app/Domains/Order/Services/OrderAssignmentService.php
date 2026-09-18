@@ -40,7 +40,7 @@ class OrderAssignmentService
         $candidates = $this->resolveCandidatePool($storeId, $productIds);
 
         // 3. Prioritize: specialists (product-matched) → general on-shift pool
-        $selected = $this->selectBest($candidates, $storeId, $productIds);
+        [$selected, $wasOverflow] = $this->selectBest($store, $candidates, $storeId, $productIds);
 
         if (! $selected) {
             Log::warning('Order auto-assignment skipped: no candidates on active shift', [
@@ -57,6 +57,8 @@ class OrderAssignmentService
                 'assigned_by_membership_id' => null,
                 'assignment_method' => null,
             ]);
+
+            $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedConfirmationCount($storeId));
             return $order;
         }
 
@@ -64,6 +66,7 @@ class OrderAssignmentService
             'assigned_to_membership_id' => $selected->id,
             'assigned_at' => now(),
             'assignment_method' => 'auto',
+            ...($wasOverflow ? ['over_capacity' => true] : []),
         ]);
 
         Log::info('Order auto-assigned', [
@@ -110,6 +113,7 @@ class OrderAssignmentService
         $openOrders = Order::where('store_id', $store->id)
             ->whereNotNull('assigned_to_membership_id')
             ->whereHas('status', fn ($q) => $q->whereNotIn('key', $terminalStatuses))
+            ->with('store.settings')
             ->get();
 
         foreach ($openOrders as $order) {
@@ -210,39 +214,57 @@ class OrderAssignmentService
      *  2. On-shift general confirmers
      * Within each tier, balance by fewest open orders then oldest last
      * assignment. Members who reached their max_concurrent_orders cap are
-     * skipped entirely (see ResolvesCapacityBalancedCandidates).
+     * skipped; when the store enables soft overflow, the cap is extended by
+     * the configured percentage before giving up (see
+     * ResolvesCapacityBalancedCandidates). Returns [selected, wasOverflow].
      */
     private function selectBest(
+        Store $store,
         Collection $candidates,
         string $storeId,
         array $productIds
-    ): ?StoreMembership {
+    ): array {
         if ($candidates->isEmpty()) {
             Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
                 'store_id' => $storeId,
             ]);
-            return null;
+            return [null, false];
         }
 
+        $overflowPercentage = $this->overflowPercentage($store);
         $specialistIds = $this->specialistMembershipIds($storeId, $productIds);
         $openCounts = $this->openOrderCounts($storeId);
         $lastAssigned = $this->lastAssignedAt($storeId);
 
         // Specialists (product-matched) first, then general confirmers.
         foreach ([true, false] as $specialists) {
-            $best = $this->bestCandidateOnShift(
+            [$best, $wasOverflow] = $this->bestCandidateWithOverflow(
                 $candidates->filter(fn (StoreMembership $m) => (in_array($m->id, $specialistIds)) === $specialists),
                 $storeId,
                 'confirm',
                 $openCounts,
                 $lastAssigned,
+                $overflowPercentage,
             );
 
             if ($best) {
-                return $best;
+                return [$best, $wasOverflow];
             }
         }
 
-        return null;
+        return [null, false];
+    }
+
+    /**
+     * Unassigned orders in the state the confirm dispatcher targets (used for
+     * the capacity-exhausted alert).
+     */
+    private function unassignedConfirmationCount(string $storeId): int
+    {
+        return Order::where('store_id', $storeId)
+            ->whereNull('assigned_to_membership_id')
+            ->whereNull('assignment_method')
+            ->whereHas('status', fn ($q) => $q->where('key', 'pending'))
+            ->count();
     }
 }

@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::table('store_settings', function (Blueprint $table) {
             $table->boolean('distribution_overflow_enabled')
-                ->default(true)
+                ->default(false)
                 ->after('payment_methods');
 
             $table->unsignedTinyInteger('distribution_overflow_percentage')

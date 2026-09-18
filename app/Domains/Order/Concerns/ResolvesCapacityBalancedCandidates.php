@@ -3,16 +3,21 @@
 namespace App\Domains\Order\Concerns;
 
 use App\Domains\Order\Models\ConfirmationShift;
+use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
+use App\Notifications\AssignmentCapacityExhaustedNotification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Capacity-balanced candidate resolution shared by the confirmation and tracking
- * auto-assignment pipelines: on-shift filtering, shift-role-scoped quota and load
- * balancing (fewest open assignments, then oldest last assignment). The consumer
- * supplies the permission-filtered candidate pool plus source-specific open-count
- * and last-assigned maps (orders vs order_trackings).
+ * auto-assignment pipelines: on-shift filtering, shift-role-scoped quota, load
+ * balancing (fewest open assignments, then oldest last assignment), optional
+ * soft overflow (store-configured % headroom above a member's base cap) and the
+ * capacity-exhausted alert (throttled per store + role scope). The consumer
+ * supplies the permission-filtered candidate pool plus source-specific
+ * open-count and last-assigned maps (orders vs order_trackings).
  */
 trait ResolvesCapacityBalancedCandidates
 {
@@ -27,7 +32,87 @@ trait ResolvesCapacityBalancedCandidates
         array $openCounts,
         array $lastAssignedAt,
     ): ?StoreMembership {
-        $caps = $this->quotaCapsByMember($storeId, $roleScope, $candidates);
+        return $this->bestOnShiftWithinCaps(
+            $candidates,
+            $roleScope,
+            $openCounts,
+            $lastAssignedAt,
+            $this->quotaCapsByMember($storeId, $roleScope, $candidates),
+        );
+    }
+
+    /**
+     * Overflow-aware selection: strict-quota pass first (unchanged), then a
+     * second pass with effective caps extended by the store's overflow
+     * percentage (capped members only — uncapped members are never affected).
+     * Returns [selected, wasOverflow].
+     */
+    protected function bestCandidateWithOverflow(
+        Collection $candidates,
+        string $storeId,
+        string $roleScope,
+        array $openCounts,
+        array $lastAssignedAt,
+        ?int $overflowPercentage,
+    ): array {
+        $selected = $this->bestCandidateOnShift($candidates, $storeId, $roleScope, $openCounts, $lastAssignedAt);
+
+        if ($selected) {
+            return [$selected, false];
+        }
+
+        if ($overflowPercentage === null || $overflowPercentage <= 0) {
+            return [null, false];
+        }
+
+        $extendedCaps = [];
+
+        foreach ($this->quotaCapsByMember($storeId, $roleScope, $candidates) as $memberId => $cap) {
+            $extendedCaps[$memberId] = max($cap, (int) ceil($cap * (1 + $overflowPercentage / 100)));
+        }
+
+        $selected = $this->bestOnShiftWithinCaps($candidates, $roleScope, $openCounts, $lastAssignedAt, $extendedCaps);
+
+        return $selected ? [$selected, true] : [null, false];
+    }
+
+    /**
+     * Overflow percentage from store settings, or null when disabled/missing
+     * so selection falls back to the strict-quota behavior.
+     */
+    protected function overflowPercentage(Store $store): ?int
+    {
+        $settings = $store->settings;
+
+        if (! $settings || ! $settings->distribution_overflow_enabled) {
+            return null;
+        }
+
+        $percentage = $settings->distribution_overflow_percentage;
+
+        return ($percentage !== null && $percentage > 0) ? $percentage : null;
+    }
+
+    /**
+     * Throttled capacity-exhausted alert to the store owner: only the first
+     * failure of a store/role-scope within a 30-minute window sends.
+     */
+    protected function notifyCapacityExhausted(Store $store, string $roleScope, int $unassignedCount): void
+    {
+        if (! Cache::add("assignment_overflow_alert:{$store->id}:{$roleScope}", true, now()->addMinutes(30))) {
+            return;
+        }
+
+        $store->owner?->notify(new AssignmentCapacityExhaustedNotification($store, $roleScope, $unassignedCount));
+    }
+
+    private function bestOnShiftWithinCaps(
+        Collection $candidates,
+        string $roleScope,
+        array $openCounts,
+        array $lastAssignedAt,
+        array $caps,
+    ): ?StoreMembership {
         $best = null;
 
         foreach ($candidates as $member) {

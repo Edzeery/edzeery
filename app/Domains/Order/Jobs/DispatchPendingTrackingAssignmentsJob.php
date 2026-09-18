@@ -24,7 +24,7 @@ class DispatchPendingTrackingAssignmentsJob implements ShouldQueue
         $unassigned = OrderTracking::whereNull('assigned_to_membership_id')
             ->whereNull('assignment_method')
             ->where('tracking_status', OrderTrackingStatus::SHIPPED->value)
-            ->with('store')
+            ->with('store.settings')
             ->get();
 
         foreach ($unassigned as $tracking) {
