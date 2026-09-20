@@ -291,33 +291,7 @@ $closePermissionGroup = function (): void {
 };
 
 $savePermissionGroup = function (): void {
-    $permissions = $this->permissions ?? [];
-
-    if ($this->editingId) {
-        $membership = StoreMembership::findOrFail($this->editingId);
-        abort_unless($this->canModify($membership), 403);
-
-        try {
-            DB::transaction(function () use ($membership, $permissions): void {
-                $user = $membership->user;
-                if ($user) {
-                    $user->guard_name = 'merchant';
-                    $user->syncPermissions($permissions);
-                }
-                $membership->syncPermissions($permissions);
-            });
-
-            $this->activePermissionGroup = null;
-            $this->dispatch('swal', type: 'success', title: __('teams.permissions_saved'));
-        } catch (\Throwable $e) {
-            $this->dispatch('swal', type: 'error', title: $e->getMessage());
-        }
-
-        return;
-    }
-
     $this->activePermissionGroup = null;
-    $this->dispatch('swal', type: 'success', title: __('teams.permissions_saved'));
 };
 
 $togglePermission = function (string $permission, bool $checked): void {
