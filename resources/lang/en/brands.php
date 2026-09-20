@@ -1,14 +1,14 @@
 <?php
 
 return [
-    'add_brand' => 'Add brand',
     'activate' => 'Activate',
     'active' => 'Active',
+    'add_brand' => 'Add brand',
     'all_statuses' => 'All statuses',
     'brand_active' => 'Active',
-    'create_details' => 'Add a new brand to your catalog',
     'brand_name' => 'Brand name',
     'brand_slug' => 'brand-slug',
+    'create_details' => 'Add a new brand to your catalog',
     'created' => 'Created',
     'deactivate' => 'Deactivate',
     'edit_brand' => 'Edit brand',

@@ -42,7 +42,7 @@
 
         <!-- Close Button -->
         @if ($showCloseButton)
-            <button @click="open = false" class="edz-modal__close end-4 me-auto" aria-label="Close">
+            <button type="button" @click="open = false" class="edz-modal__close end-4 me-auto" aria-label="Close">
                 <x-edz.icon name="x-mark" class="w-5 h-5" />
             </button>
         @endif

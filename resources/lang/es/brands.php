@@ -1,14 +1,14 @@
 <?php
 
 return [
-    'add_brand' => 'Agregar marca',
     'activate' => 'Activar',
     'active' => 'Activo',
+    'add_brand' => 'Agregar marca',
     'all_statuses' => 'Todos los estados',
     'brand_active' => 'Activo',
-    'create_details' => 'Agregar una nueva marca a tu catálogo',
     'brand_name' => 'Nombre de la marca',
     'brand_slug' => 'brand-slug',
+    'create_details' => 'Agregar una nueva marca a tu catálogo',
     'created' => 'Creado',
     'deactivate' => 'Desactivar',
     'edit_brand' => 'Editar marca',

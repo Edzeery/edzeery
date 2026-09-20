@@ -1,14 +1,14 @@
 <?php
 
 return [
-    'add_brand' => 'إضافة علامة تجارية',
-    'activate' => 'تفعيل',
+    'activate' => 'فعّل',
     'active' => 'نشط',
+    'add_brand' => 'إضافة علامة تجارية',
     'all_statuses' => 'جميع الحالات',
     'brand_active' => 'نشط',
-    'create_details' => 'إضافة علامة تجارية جديدة إلى كتالوجك',
     'brand_name' => 'اسم العلامة التجارية',
     'brand_slug' => 'brand-slug',
+    'create_details' => 'إضافة علامة تجارية جديدة إلى كتالوجك',
     'created' => 'تاريخ الإنشاء',
     'deactivate' => 'تعطيل',
     'edit_brand' => 'تعديل العلامة التجارية',

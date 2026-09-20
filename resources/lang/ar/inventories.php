@@ -6,6 +6,8 @@ return [
     'adjust_stock' => 'تعديل المخزون',
     'cancel' => 'إلغاء',
     'current_stock' => 'المخزون الحالي: :count',
+    'in_stock' => 'متوفر في المخزون',
+    'inventory' => 'المخزون',
     'list_subtitle' => 'كل متغير ومستوى المخزون الحالي',
     'list_title' => 'المخزون',
     'low_stock' => 'مخزون منخفض',
