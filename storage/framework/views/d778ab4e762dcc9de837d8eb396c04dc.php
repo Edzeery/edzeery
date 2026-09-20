@@ -140,7 +140,9 @@ use Livewire\Volt\Component;
         'reassignModel' => 'trackingReassignMembershipId',
         'reassignTargetId' => $trackingReassignMembershipId,
         'reassignCandidates' => $trackingReassignCandidates,
-        'reassignTitle' => __('merchant_panel.reassign_order'),
+        'reassignTitle' => $trackingReassignBulk
+            ? __('order_flow.bulk_reassign_title', ['count' => count($this->selectedShipments)])
+            : __('merchant_panel.reassign_order'),
     ], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <script>

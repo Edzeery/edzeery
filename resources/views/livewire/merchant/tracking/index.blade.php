@@ -22,6 +22,7 @@ uses([
     \App\Livewire\Concerns\TrackingFilterConcern::class,
     \App\Livewire\Concerns\TrackingBulkValidateConcern::class,
     \App\Livewire\Concerns\TrackingReassignConcern::class,
+    \App\Livewire\Concerns\TrackingBulkSelectionConcern::class,
 ]);
 
 state([
@@ -80,13 +81,14 @@ state([
     'shipmentNotes' => [],
     'shipmentNotesMeta' => null,
 
-    // Bulk dispatch-validation (Phase 8) — carrier-tab FAB analysis + chunked
-    // /valid/orders handover. The analysis covers the current page's shipments.
+    // Bulk dispatch-validation (Phase 8) — toolbar scanner/camera modal (one
+    // scan = one immediate validation with an in-modal result list) plus the
+    // bulk bar's direct validate-at-carrier with a per-shipment results popup.
     'showBulkValidateModal' => false,
-    'bulkValidateAnalysis' => [],
-    'bulkValidateReadyCount' => 0,
-    'bulkValidateSkipCount' => 0,
     'bulkValidateBusy' => false,
+    'bulkValidateResults' => [],
+    'showBulkValidateResults' => false,
+    'bulkValidateNeedsCount' => 0,
 
     // Phase A — active tab: 'carrier' (shipping companies) | 'rider' (delivery rider)
     'trackingTab' => 'carrier',
@@ -170,6 +172,13 @@ state([
     'trackingReassignCandidates' => [],
 ]);
 
+// Bulk multi-select (Phase 36) — selected shipment ids + derived selection state.
+state([
+    'selectedShipments' => [],
+    'selectModeActive' => false,
+    'selectAllChecked' => false,
+]);
+
 updated([
     'search' => function (): void {
         $this->page = 1;
@@ -222,6 +231,8 @@ updated([
 
         // Each tab owns its own trash bin — leaving for the other tab exits trash mode.
         $this->showTrash = false;
+
+        $this->clearSelection();
 
         $this->page = 1;
         $this->loadShipments();
@@ -367,7 +378,7 @@ mount(function (): void {
     @include('livewire.merchant.orders.partials.order-form-modal')
     @include('livewire.merchant.orders.partials.orders-product-picker')
 
-    {{-- Bulk dispatch-validation FAB + modal (carrier tab, Phase 8) --}}
+    {{-- Dispatch-validation — toolbar scanner modal + bulk results popup (Phase 8) --}}
     @include('livewire.merchant.tracking.partials.tracking-bulk-validate')
 
     {{-- Internal team reassign modal (P34.4) — shared with the orders page --}}
@@ -378,7 +389,9 @@ mount(function (): void {
         'reassignModel' => 'trackingReassignMembershipId',
         'reassignTargetId' => $trackingReassignMembershipId,
         'reassignCandidates' => $trackingReassignCandidates,
-        'reassignTitle' => __('merchant_panel.reassign_order'),
+        'reassignTitle' => $trackingReassignBulk
+            ? __('order_flow.bulk_reassign_title', ['count' => count($this->selectedShipments)])
+            : __('merchant_panel.reassign_order'),
     ])
 
     <script>

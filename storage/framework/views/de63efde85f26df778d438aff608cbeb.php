@@ -45,17 +45,33 @@ unset($__defined_vars, $__key, $__value); ?>
 <div x-data='{
     open: <?php echo \Illuminate\Support\Js::from($isOpen)->toHtml() ?>,
     preventClose: <?php echo \Illuminate\Support\Js::from($preventClose)->toHtml() ?>,
+    depth: 0,
     init() {
-        this.$watch("open", value => {
+        const stack = window.__edzModalStack ||= [];
+        if (this.open) {
+            if (!stack.includes(this.$el)) stack.push(this.$el);
+            this.depth = stack.indexOf(this.$el) + 1;
+            document.body.style.overflow = "hidden";
+        }
+        this.$watch("open", (value) => {
+            const stack = window.__edzModalStack ||= [];
             if (value) {
+                if (!stack.includes(this.$el)) stack.push(this.$el);
+                this.depth = stack.indexOf(this.$el) + 1;
                 document.body.style.overflow = "hidden";
             } else {
-                document.body.style.overflow = "unset";
+                const i = stack.indexOf(this.$el);
+                if (i !== -1) stack.splice(i, 1);
+                this.depth = 0;
+                document.body.style.overflow = stack.length ? "hidden" : "unset";
                 this.$dispatch("edz-modal-closed");
             }
         });
     }
-}' x-show="open" x-cloak @keydown.escape.window="if (!preventClose) open = false"
+}' x-show="open" x-cloak
+    @keydown.escape.window="if (!preventClose) { const s = window.__edzModalStack ||= []; if (s[s.length - 1] === $el) open = false }"
+    @edz-modal-closed="if ($event.target !== $event.currentTarget) $event.stopPropagation()"
+    :style="'--edz-modal-depth:' + depth"
     class="edz-modal"
     <?php echo e($attributes->except('class')); ?>>
 
@@ -105,5 +121,4 @@ unset($__defined_vars, $__key, $__value); ?>
 
         </div>
     </div>
-</div>
-<?php /**PATH C:\laragon\www\edzeery\resources\views\components\edz\modal.blade.php ENDPATH**/ ?>
+</div><?php /**PATH C:\laragon\www\edzeery\resources\views\components\edz\modal.blade.php ENDPATH**/ ?>

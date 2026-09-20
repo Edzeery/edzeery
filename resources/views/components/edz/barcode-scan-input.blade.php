@@ -49,7 +49,7 @@
          round-trips (e.g. wire:model updates) never morph the live scanner DOM. --}}
     <div wire:ignore>
         <template x-if="cameraOpen">
-            <x-edz.modal :is-open="true" size="md">
+            <x-edz.modal :is-open="true" size="md" data-edz-camera>
                 <div class="p-4 pt-1 sm:p-6 sm:pt-5">
                     <span class="edz-modal__handle" aria-hidden="true"></span>
 

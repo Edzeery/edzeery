@@ -1,6 +1,6 @@
 {{-- Label-print modal (own sheet — fallback when the carrier has no label endpoint or its label fetch fails; carrier labels open in a new tab via the auth proxy instead). window.print() is scoped to #edz-label-sheet so only the sheet prints. --}}
 @if ($this->labelOpen && $this->labelData)
-    <x-edz.modal :is-open="$this->labelOpen" @close="$wire.closeLabel()" size="md"
+    <x-edz.modal :is-open="$this->labelOpen" @edz-modal-closed="$event.target === $event.currentTarget && $wire.closeLabel()" size="md"
         wire:key="label-print-modal-{{ $this->labelOrderId }}">
         <style>
             @media print {

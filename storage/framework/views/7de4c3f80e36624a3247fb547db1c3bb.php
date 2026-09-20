@@ -1,12 +1,71 @@
 
 
+<?php
+    // Bulk multi-select is available on the live grid to anyone holding at least
+    // one of the bulk actions (reassign / dispatch-validate / soft delete). The
+    // trash view never shows checkboxes — selection is cleared on entering it.
+    $bulkEligible = ! $this->showTrash && (
+        canReassignOrders()
+        || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)
+        || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value)
+    );
+?>
 
-<div class="hidden md:block edz-card">
+
+<div class="hidden md:block edz-card" wire:loading.class="opacity-60 pointer-events-none"
+    wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
     <div class="relative">
         <div class="overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
             <table class="w-max min-w-full text-sm">
                 <thead class="sticky top-0 z-10 bg-surface [&_th]:bg-surface">
                     <tr class="text-start text-xs uppercase tracking-wide text-ink-muted border-b border-surface-border">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bulkEligible): ?>
+                            <th class="px-3 py-3 w-10">
+                                <span class="inline-flex items-center justify-center w-4 h-4"
+                                    wire:loading.remove wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
+                                    <?php if (isset($component)) { $__componentOriginal0283f82cff84f4c646f29d974f5967a4 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal0283f82cff84f4c646f29d974f5967a4 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.checkbox','data' => ['size' => 'sm','checked' => $this->selectAllChecked,'wire:click' => 'toggleSelectAll($event.target.checked)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.checkbox'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['size' => 'sm','checked' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->selectAllChecked),'wire:click' => 'toggleSelectAll($event.target.checked)']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $attributes = $__attributesOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $component = $__componentOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__componentOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+                                </span>
+                                <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['class' => 'w-4 h-4 text-accent-600','wire:loading' => true,'wire:target' => 'toggleSelectOrder,toggleSelectAll,clearSelection']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.spinner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['class' => 'w-4 h-4 text-accent-600','wire:loading' => true,'wire:target' => 'toggleSelectOrder,toggleSelectAll,clearSelection']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+                            </th>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->visibleColumns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $colKey): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-table-header', ['colKey' => $colKey], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -26,8 +85,33 @@
                     $statusKit = $s['tracking_status']
                         ? \Edzeery\MyStatusKit\Facades\Status::for('tracking', $s['tracking_status'])
                         : null;
+                    $rowChecked = in_array($s['id'], $this->selectedShipments, true);
                 ?>
-                <tr class="group hover:bg-surface-secondary/50 transition <?php echo e($rowTint); ?>" wire:key="row-<?php echo e($s['id']); ?>">
+                <tr class="group hover:bg-surface-secondary/50 transition <?php echo e($rowTint); ?> <?php echo e($rowChecked ? 'bg-accent-surface-subtle' : ''); ?>" wire:key="row-<?php echo e($s['id']); ?>">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bulkEligible): ?>
+                        <td class="px-3 py-3 w-10">
+                            <?php if (isset($component)) { $__componentOriginal0283f82cff84f4c646f29d974f5967a4 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal0283f82cff84f4c646f29d974f5967a4 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.checkbox','data' => ['size' => 'sm','checked' => $rowChecked,'value' => ''.e($s['id']).'','wire:click' => 'toggleSelectOrder(\''.e($s['id']).'\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.checkbox'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['size' => 'sm','checked' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($rowChecked),'value' => ''.e($s['id']).'','wire:click' => 'toggleSelectOrder(\''.e($s['id']).'\')']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $attributes = $__attributesOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $component = $__componentOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__componentOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+                        </td>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->visibleColumns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $colKey): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-row-cell', [
                             's' => $s,
@@ -38,7 +122,7 @@
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <tr>
-                    <td colspan="<?php echo e(count($this->visibleColumns)); ?>" class="px-4 py-12 text-center text-ink-muted">
+                    <td colspan="<?php echo e(count($this->visibleColumns) + ($bulkEligible ? 1 : 0)); ?>" class="px-4 py-12 text-center text-ink-muted">
                         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'truck','class' => 'w-8 h-8 mx-auto mb-2']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -71,9 +155,10 @@
 </div>
 
 
-<div class="md:hidden space-y-3">
+<div class="md:hidden space-y-3" wire:loading.class="opacity-60 pointer-events-none"
+    wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $this->shipments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-        <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-mobile-card', ['s' => $s], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+        <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-mobile-card', ['s' => $s, 'bulkEligible' => $bulkEligible], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
         <div class="edz-card edz-card--padded text-center text-ink-muted py-12">
             <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>

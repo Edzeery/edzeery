@@ -26,17 +26,17 @@
     <button @click="open = !open" type="button"
         class="edz-btn edz-btn--primary edz-btn--sm inline-flex items-center gap-1.5"
         wire:loading.attr="disabled"
-        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate">
+        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus">
         <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['class' => 'w-4 h-4','wire:loading' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate','wire:key' => 'bulk-spinner']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['class' => 'w-4 h-4','wire:loading' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus','wire:key' => 'bulk-spinner']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.spinner'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['class' => 'w-4 h-4','wire:loading' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate','wire:key' => 'bulk-spinner']); ?>
+<?php $component->withAttributes(['class' => 'w-4 h-4','wire:loading' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus','wire:key' => 'bulk-spinner']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
@@ -49,14 +49,14 @@
 <?php endif; ?>
         <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'bars-2','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'bars-2','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'bars-2','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate']); ?>
+<?php $component->withAttributes(['name' => 'bars-2','class' => 'w-4 h-4','wire:loading.remove' => true,'wire:target' => 'bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
@@ -111,7 +111,7 @@
                sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-1 sm:z-50 sm:w-72
                sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg sm:max-h-96"
         wire:loading.attr="disabled"
-        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate">
+        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus">
         <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
         <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
             <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
@@ -194,7 +194,7 @@
 <?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
 <?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
 <?php endif; ?>
-            <button wire:click="bulkAssignAgent($this->bulkAssignMembershipId)" type="button"
+            <button wire:click="bulkAssignAgent($wire.bulkAssignMembershipId)" type="button"
                 class="mt-1.5 w-full edz-btn edz-btn--accent edz-btn--sm justify-center"
                 wire:loading.attr="disabled" wire:target="bulkAssignAgent">
                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
@@ -276,35 +276,6 @@
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
                 <span><?php echo e(__('order_flow.bulk_status_title')); ?></span>
-            </button>
-        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-
-        
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)): ?>
-            <button wire:click="openBulkValidateModal" @click="open = false" type="button"
-                class="w-full flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-secondary disabled:opacity-50"
-                wire:loading.attr="disabled" wire:target="openBulkValidateModal,confirmBulkValidate">
-                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'checkmark-circle','class' => 'w-4 h-4 shrink-0 text-ink-muted']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('edz.icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'checkmark-circle','class' => 'w-4 h-4 shrink-0 text-ink-muted']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
-<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
-<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
-<?php endif; ?>
-                <span><?php echo e(__('order_flow.bulk_validate_btn')); ?></span>
             </button>
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 

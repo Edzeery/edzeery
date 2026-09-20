@@ -14,9 +14,9 @@
     <button @click="open = !open" type="button"
         class="edz-btn edz-btn--primary edz-btn--sm inline-flex items-center gap-1.5"
         wire:loading.attr="disabled"
-        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate">
-        <x-edz.spinner class="w-4 h-4" wire:loading wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate" wire:key="bulk-spinner" />
-        <x-edz.icon name="bars-2" class="w-4 h-4" wire:loading.remove wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate" />
+        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus">
+        <x-edz.spinner class="w-4 h-4" wire:loading wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus" wire:key="bulk-spinner" />
+        <x-edz.icon name="bars-2" class="w-4 h-4" wire:loading.remove wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus" />
         <span>{{ __('merchant.bulk_tasks') }}</span>
         <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-accent-fg text-accent text-[10px] font-bold tabular-nums">
             {{ count($this->selectedOrders) }}
@@ -41,7 +41,7 @@
                sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-0 sm:top-full sm:mt-1 sm:z-50 sm:w-72
                sm:rounded-xl sm:border-b sm:p-2 sm:shadow-lg sm:max-h-96"
         wire:loading.attr="disabled"
-        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus,openBulkValidateModal,confirmBulkValidate">
+        wire:target="bulkAssignAgent,openBulkSendModal,confirmBulkSend,bulkDelete,submitBulkStatus">
         <span class="pointer-events-none mx-auto mb-2 block h-1 w-10 rounded-full bg-surface-border sm:hidden"></span>
         <div class="flex items-center justify-between gap-2 px-1 mb-1.5 sm:hidden">
             <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-ink uppercase tracking-wide">
@@ -67,7 +67,7 @@
             <x-edz.select wire:model="bulkAssignMembershipId"
                 :options="$this->allMembers" option-value="id" option-label="user.name" search
                 placeholder="{{ __('merchant_panel.select_agent') }}" size="sm" />
-            <button wire:click="bulkAssignAgent($this->bulkAssignMembershipId)" type="button"
+            <button wire:click="bulkAssignAgent($wire.bulkAssignMembershipId)" type="button"
                 class="mt-1.5 w-full edz-btn edz-btn--accent edz-btn--sm justify-center"
                 wire:loading.attr="disabled" wire:target="bulkAssignAgent">
                 <x-edz.icon name="user" class="w-3.5 h-3.5" />
@@ -91,16 +91,6 @@
                 wire:loading.attr="disabled" wire:target="openBulkStatusModal,submitBulkStatus">
                 <x-edz.icon name="adjustments-horizontal" class="w-4 h-4 shrink-0 text-ink-muted" />
                 <span>{{ __('order_flow.bulk_status_title') }}</span>
-            </button>
-        @endif
-
-        {{-- Validate at carrier (Phase 36) â€” dispatch handover, own permission --}}
-        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value))
-            <button wire:click="openBulkValidateModal" @click="open = false" type="button"
-                class="w-full flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-secondary disabled:opacity-50"
-                wire:loading.attr="disabled" wire:target="openBulkValidateModal,confirmBulkValidate">
-                <x-edz.icon name="checkmark-circle" class="w-4 h-4 shrink-0 text-ink-muted" />
-                <span>{{ __('order_flow.bulk_validate_btn') }}</span>
             </button>
         @endif
 

@@ -1,21 +1,21 @@
-{{-- Bulk dispatch-validation (Phase 8): carrier-tab FAB + analysis modal.
-     Gated by order.dispatch_validate; never in trash mode. The modal analyzes
-     the current page's shipments, scans barcodes one-by-one, then hands the
-     ready ones to the carrier through chunked /valid/orders. --}}
-@if (
-    $this->trackingTab === 'carrier'
-    && ! $this->showTrash
-    && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)
-)
-    <button wire:click="openBulkValidateModal" type="button"
-        title="{{ __('order_flow.bulk_validate_btn') }}"
-        class="fixed bottom-6 end-6 z-40 inline-flex items-center gap-2 rounded-full edz-btn edz-btn--primary edz-btn--sm shadow-lg shadow-ink/20">
-        <x-edz.icon name="shield-check" class="w-4 h-4" />
-        <span class="hidden sm:inline">{{ __('order_flow.bulk_validate_btn') }}</span>
-    </button>
-@endif
+{{-- Dispatch-validation (Phase 8) — gated by order.dispatch_validate.
+     Two popups:
 
-<x-edz.modal :is-open="$this->showBulkValidateModal" @close="$wire.closeBulkValidateModal()" size="md"
+      1. Scanner / camera modal (toolbar button, only when shipments need
+         validation). Every scanned barcode validates IMMEDIATELY via the
+         single-order flow and appends its own outcome to the in-modal list:
+         order number + tracking + success / error reason. There is no
+         separate "اعتماد" confirmation step.
+
+      2. Bulk results popup — opened by the bulk bar's "اعتماد لدى الناقل"
+         after a DIRECT carrier handover, listing each selected shipment with
+         its tracking number and its success / failure reason.
+
+     Both are @if-guarded and mount fresh, matching the project's modal
+     pattern (orders bulk-send, tracking-history, label-print). --}}
+
+@if ($this->showBulkValidateModal)
+<x-edz.modal :is-open="true" @edz-modal-closed="$event.target === $event.currentTarget && $wire.closeBulkValidateModal()" size="md"
     show-close-button wire:key="tracking-bulk-validate">
     <div class="p-5">
         <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.validate_shipment_title') }}</h3>
@@ -27,52 +27,56 @@
                 placeholder="{{ __('order_flow.validate_scan_placeholder') }}" />
         </div>
 
-        @if ($this->bulkValidateReadyCount > 0)
+        @if (count($this->bulkValidateResults) > 0)
             <p class="text-sm font-semibold text-ink mb-2">
-                {{ __('order_flow.bulk_validate_ready_title') }} ({{ $this->bulkValidateReadyCount }})
+                {{ __('order_flow.scan_results_title') }} ({{ count($this->bulkValidateResults) }})
             </p>
-            <ul class="space-y-1 max-h-44 overflow-y-auto edz-scroll mb-4">
-                @foreach (collect($this->bulkValidateAnalysis)->where('ready', true) as $entry)
-                    <li class="flex items-center justify-between gap-2 rounded-md bg-surface px-2 py-1">
-                        <span class="inline-flex items-center gap-1.5 text-success-600">
-                            <x-edz.icon name="check-circle" class="w-4 h-4" />
-                            <span class="text-xs font-medium">#{{ $entry['number'] }}</span>
+            <ul class="space-y-1 max-h-52 overflow-y-auto edz-scroll mb-4">
+                @foreach ($this->bulkValidateResults as $entry)
+                    <li class="flex items-start justify-between gap-2 rounded-md bg-surface px-2 py-1.5">
+                        <span class="inline-flex items-center gap-1.5 {{ $entry['ok'] ? 'text-success-600' : 'text-danger-600' }}">
+                            <x-edz.icon name="{{ $entry['ok'] ? 'check-circle' : 'x-circle' }}" class="w-4 h-4 shrink-0" />
+                            <span class="text-xs font-medium">#{{ $entry['number'] }} — {{ $entry['tracking_number'] }}</span>
                         </span>
-                        <span class="truncate text-xs text-ink-muted max-w-[55%]">{{ $entry['tracking_number'] }}</span>
+                        <span class="truncate text-xs text-ink-muted max-w-[45%]" title="{{ $entry['message'] }}">{{ $entry['message'] }}</span>
                     </li>
                 @endforeach
             </ul>
         @endif
 
-        @if ($this->bulkValidateSkipCount > 0)
-            <x-edz.alert type="warning">
-                <p class="font-semibold mb-1">{{ __('order_flow.bulk_validate_skipped_title', ['count' => $this->bulkValidateSkipCount]) }}</p>
-                <ul class="space-y-1 max-h-40 overflow-y-auto edz-scroll">
-                    @foreach (collect($this->bulkValidateAnalysis)->where('ready', false) as $entry)
-                        <li class="leading-relaxed break-words text-xs">
-                            #{{ $entry['number'] }} — {{ implode('، ', $entry['reasons']) }}
-                        </li>
-                    @endforeach
-                </ul>
-            </x-edz.alert>
-        @endif
-
-        <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
-            <button wire:click="closeBulkValidateModal" type="button" class="edz-btn edz-btn--ghost"
-                wire:loading.attr="disabled" wire:target="confirmBulkValidate">
+        <div class="mt-6 flex justify-end">
+            <button wire:click="closeBulkValidateModal" type="button" class="edz-btn edz-btn--ghost">
                 {{ __('buttons.cancel') }}
-            </button>
-            <button wire:click="confirmBulkValidate" type="button"
-                @disabled($this->bulkValidateReadyCount === 0 || $this->bulkValidateBusy)
-                wire:loading.attr="disabled" wire:target="confirmBulkValidate"
-                class="edz-btn edz-btn--primary {{ $this->bulkValidateReadyCount === 0 || $this->bulkValidateBusy ? 'opacity-50 cursor-not-allowed' : '' }}">
-                <x-edz.spinner wire:target="confirmBulkValidate" class="w-4 h-4" />
-                <span>{{ $this->bulkValidateReadyCount === 0
-                    ? __('order_flow.bulk_validate_confirm_none')
-                    : ($this->bulkValidateReadyCount === count($this->bulkValidateAnalysis)
-                        ? __('order_flow.bulk_validate_confirm')
-                        : __('order_flow.bulk_validate_confirm_some', ['count' => $this->bulkValidateReadyCount])) }}</span>
             </button>
         </div>
     </div>
 </x-edz.modal>
+@endif
+
+@if ($this->showBulkValidateResults)
+<x-edz.modal :is-open="true" @edz-modal-closed="$event.target === $event.currentTarget && $wire.closeBulkValidateResults()" size="md"
+    show-close-button wire:key="bulk-validate-results">
+    <div class="p-5">
+        <h3 class="text-lg font-semibold text-ink mb-1">{{ __('order_flow.bulk_validate_results_title') }}</h3>
+        <p class="text-xs text-ink-muted mb-4">{{ __('order_flow.bulk_validate_results_hint') }}</p>
+
+        <ul class="space-y-1 max-h-72 overflow-y-auto edz-scroll mb-4">
+            @foreach ($this->bulkValidateResults as $entry)
+                <li class="flex items-start justify-between gap-2 rounded-md bg-surface px-2 py-1.5">
+                    <span class="inline-flex items-center gap-1.5 {{ $entry['ok'] ? 'text-success-600' : 'text-danger-600' }}">
+                        <x-edz.icon name="{{ $entry['ok'] ? 'check-circle' : 'x-circle' }}" class="w-4 h-4 shrink-0" />
+                        <span class="text-xs font-medium">#{{ $entry['number'] }} — {{ $entry['tracking_number'] }}</span>
+                    </span>
+                    <span class="truncate text-xs text-ink-muted max-w-[45%]" title="{{ $entry['message'] }}">{{ $entry['message'] }}</span>
+                </li>
+            @endforeach
+        </ul>
+
+        <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-2">
+            <button wire:click="closeBulkValidateResults" type="button" class="edz-btn edz-btn--ghost">
+                {{ __('buttons.close') }}
+            </button>
+        </div>
+    </div>
+</x-edz.modal>
+@endif

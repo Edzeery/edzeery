@@ -11,15 +11,76 @@ use App\Models\Orders\OrderTracking;
 use App\Models\Orders\OrderTrackingHistory;
 
 /**
- * Soft delete (to trash), restore and permanent purge for the tracking page —
- * every action is gated to ORDER_DELETE. Both the soft delete and the permanent
- * purge mirror OrderShippingGateway::cancel(): before touching a shipped order
- * locally they first delete an unvalidated carrier shipment at the carrier, and
- * a carrier failure (anything but a skip, or a tracking the system already knows
- * is absent at the carrier) hard-blocks the local action.
+ * Soft delete (to trash), restore and permanent purge for the tracking page.
+ * Soft delete + restore are gated to ORDER_DELETE; the permanent purge in
+ * addition requires ORDER_DELETE_FINAL (owner, or an explicit permission —
+ * admins/managers/staff never derive it from their role). Both the soft delete
+ * and the permanent purge mirror OrderShippingGateway::cancel(): before touching
+ * a shipped order locally they first delete an unvalidated carrier shipment at
+ * the carrier, and a carrier failure (anything but a skip, or a tracking the
+ * system already knows is absent at the carrier) hard-blocks the local action.
  */
 trait TrackingTrashConcern
 {
+    /**
+     * Bulk soft delete — moves every selected shipment to the trash, running the
+     * carrier leg per order first. Selection is reusable across pages, so the
+     * scope is trimmed to the store's non-deleted orders on the fly.
+     */
+    public function bulkDeleteOrders(): void
+    {
+        if (! canStore(StorePermissionEnum::ORDER_DELETE->value)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+            return;
+        }
+
+        $orders = Order::where('store_id', currentStoreId())
+            ->whereIn('id', $this->selectedShipments)
+            ->whereNull('deleted_at')
+            ->get();
+
+        if ($orders->isEmpty()) {
+            $this->clearSelection();
+            $this->loadShipments();
+
+            return;
+        }
+
+        $deleted = 0;
+        $blocked = 0;
+
+        foreach ($orders as $order) {
+            $outcome = $this->resolveCarrierDelete($order);
+
+            if (! $outcome['allowed']) {
+                $blocked++;
+
+                continue;
+            }
+
+            $order->delete();
+            $deleted++;
+        }
+
+        $this->clearSelection();
+        $this->loadShipments();
+
+        if ($blocked > 0) {
+            $this->dispatch('swal:toast', [
+                'icon' => 'warning',
+                'title' => __('order_flow.bulk_delete_blocked', ['count' => $blocked]),
+            ]);
+
+            return;
+        }
+
+        if ($deleted > 0) {
+            $this->dispatch('swal:toast', [
+                'icon' => 'success',
+                'title' => __('order_flow.bulk_delete_done', ['count' => $deleted]),
+            ]);
+        }
+    }
     public function deleteOrder(string $orderId): void
     {
         abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
@@ -59,6 +120,7 @@ trait TrackingTrashConcern
         abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
 
         $this->showTrash = ! $this->showTrash;
+        $this->clearSelection();
         $this->page = 1;
         $this->loadShipments();
     }
@@ -157,7 +219,7 @@ trait TrackingTrashConcern
 
     public function forceDeleteOrder(string $orderId): void
     {
-        abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+        abort_unless(canFinalDeleteOrders(), 403);
 
         $order = Order::where('store_id', currentStoreId())->onlyTrashed()->find($orderId);
 
@@ -187,7 +249,7 @@ trait TrackingTrashConcern
 
     public function forceDeleteAll(): void
     {
-        abort_unless(canStore(StorePermissionEnum::ORDER_DELETE->value), 403);
+        abort_unless(canFinalDeleteOrders(), 403);
 
         $trashed = Order::where('store_id', currentStoreId())
             ->onlyTrashed()

@@ -2,14 +2,14 @@
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->statusHistoryFor): ?>
     <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $this->statusHistoryFor !== null,'@close' => '$wire.closeStatusHistory()','size' => 'md','wire:key' => 'tracking-status-popup-'.e($this->statusHistoryFor).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $this->statusHistoryFor !== null,'@edzModalClosed' => '$event.target === $event.currentTarget && $wire.closeStatusHistory()','size' => 'md','wire:key' => 'tracking-status-popup-'.e($this->statusHistoryFor).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->statusHistoryFor !== null),'@close' => '$wire.closeStatusHistory()','size' => 'md','wire:key' => 'tracking-status-popup-'.e($this->statusHistoryFor).'']); ?>
+<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->statusHistoryFor !== null),'@edz-modal-closed' => '$event.target === $event.currentTarget && $wire.closeStatusHistory()','size' => 'md','wire:key' => 'tracking-status-popup-'.e($this->statusHistoryFor).'']); ?>
         <div class="p-4 pt-1 sm:p-6 sm:pt-5">
             <span class="edz-modal__handle" aria-hidden="true"></span>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($this->statusHistoryMeta)): ?>

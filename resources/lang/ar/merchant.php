@@ -6,6 +6,7 @@ return [
     'assign_delivery_man' => 'تكليف برجل التوصيل',
     'bank_account' => 'الحساب البنكي',
     'bulk_assign_agent' => 'تكليف بالمندوب',
+    'bulk_reassign' => 'إعادة تَكليف المحدد',
     'bulk_clear' => 'مسح التحديد',
     'bulk_delete' => 'حذف المحدد',
     'bulk_processing' => 'جارٍ المعالجة...',

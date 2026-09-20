@@ -7,34 +7,112 @@ use App\Domains\Shipping\Services\OrderShippingGateway;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderTracking;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Bulk dispatch-validation on the tracking page (Phase 8): a carrier-tab FAB
- * analyzes the current page's shipments, then hands the ready ones over to the
- * carrier through the chunked (≤100 / call) NOEST /valid/orders flow. Every
- * success is persisted via the gateway and audited as an OrderEvent; the
- * barcode path validates one scanned tracking through the single-order flow.
+ * Dispatch-validation on the tracking page (Phase 8).
+ *
+ * Two entry surfaces, both gated by ORDER_DISPATCH_VALIDATE:
+ *
+ *  1. The bulk-tasks "اعتماد لدى الناقل" — validates the selected shipments
+ *     DIRECTLY (no pre-analysis modal) through the chunked (≤100 / call)
+ *     NOEST /valid/orders flow and reports a per-shipment result row (order
+ *     number, tracking number, success, failure reason) in a dedicated results
+ *     popup. Skipped rows are reported with their own reason.
+ *
+ *  2. The toolbar scanner / camera modal — every scanned barcode validates
+ *     immediately through the single-order flow and appends its own result
+ *     row to the in-modal list; no separate "اعتماد" confirmation step.
  */
 trait TrackingBulkValidateConcern
 {
+    /**
+     * Open the scanner / camera modal. Selection-agnostic: it validates one
+     * scanned tracking at a time, so it also works on an empty page.
+     */
     public function openBulkValidateModal(): void
     {
-        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value), 403);
-
-        if (empty($this->shipments)) {
-            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.bulk_validate_confirm_none')]);
+        if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
 
             return;
         }
 
-        $orderIds = collect($this->shipments)->pluck('id')->filter()->values()->toArray();
+        // The scanner surfaces its own results in-modal; a stale results popup
+        // from the bulk bar must never stack on top of it.
+        $this->showBulkValidateResults = false;
+        $this->bulkValidateResults = [];
+        $this->bulkValidateBusy = false;
+
+        $this->showBulkValidateModal = true;
+    }
+
+    public function closeBulkValidateModal(): void
+    {
+        $this->showBulkValidateModal = false;
+        $this->bulkValidateBusy = false;
+    }
+
+    public function closeBulkValidateResults(): void
+    {
+        $this->showBulkValidateResults = false;
+        $this->bulkValidateResults = [];
+    }
+
+    /**
+     * Bulk bar entry: validate the selected shipments directly, then surface a
+     * per-shipment outcome popup (every order + its tracking + success / reason).
+     */
+    public function runBulkValidate(): void
+    {
+        if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+
+            return;
+        }
+
+        $orderIds = $this->selectedShipments;
 
         if ($orderIds === []) {
-            $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('order_flow.bulk_validate_confirm_none')]);
-
             return;
         }
 
+        $analysis = $this->buildValidateAnalysis($orderIds);
+
+        $this->showBulkValidateModal = false;
+        $this->showBulkValidateResults = true;
+        $this->bulkValidateResults = [];
+        $this->bulkValidateBusy = true;
+
+        try {
+            $this->bulkValidateResults = $this->executeBulkValidation($analysis);
+
+            $this->loadShipments();
+            $this->clearSelection();
+
+            $results = $this->bulkValidateResults;
+            $done = count(array_filter($results, fn (array $row) => (bool) $row['ok']));
+            $failed = count($results) - $done;
+
+            $this->dispatch('swal:toast', [
+                'icon' => $failed === 0 ? 'success' : ($done > 0 ? 'warning' : 'error'),
+                'title' => $failed === 0
+                    ? __('order_flow.bulk_validate_done', ['done' => $done])
+                    : __('order_flow.bulk_validate_failed', ['done' => $done, 'failed' => $failed]),
+            ]);
+        } finally {
+            $this->bulkValidateBusy = false;
+        }
+    }
+
+    /**
+     * Classify the given orders as ready / skipped for carrier validation.
+     *
+     * @param  array<int, string>  $orderIds
+     * @return array<int, array{order_id: string, number: string|null, tracking_number: string|null, ready: bool, reasons: array<int, string>}>
+     */
+    protected function buildValidateAnalysis(array $orderIds): array
+    {
         $orders = Order::with(['shippingProvider.carrier'])
             ->where('store_id', currentStoreId())
             ->whereIn('id', $orderIds)
@@ -46,17 +124,18 @@ trait TrackingBulkValidateConcern
         foreach ($orders as $order) {
             $reasons = [];
 
-            if (! $order->shipping_provider_id || ! $order->shippingProvider?->carrier) {
-                $reasons[] = __('order_flow.validation_carrier_required');
-            } else {
-                $adapterClass = config(
+            $adapterClass = $order->shippingProvider?->carrier
+                ? config(
                     "delivery.carrier_integrations.{$order->shippingProvider->carrier->code}",
                     config('delivery.carrier_integrations.*'),
-                );
+                )
+                : null;
 
-                if (! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrder')) {
-                    $reasons[] = __('order_flow.carrier_validation_not_supported');
-                }
+            if (! $order->shipping_provider_id || ! $order->shippingProvider?->carrier) {
+                $reasons[] = __('order_flow.validation_carrier_required');
+            } elseif (! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass)
+                || (! method_exists($adapterClass, 'validateOrder') && ! method_exists($adapterClass, 'validateOrders'))) {
+                $reasons[] = __('order_flow.carrier_validation_not_supported');
             }
 
             $tracking = $trackingService->currentTracking($order);
@@ -70,136 +149,152 @@ trait TrackingBulkValidateConcern
             $analysis[] = [
                 'order_id' => (string) $order->id,
                 'number' => $order->number,
-                'provider' => $order->shippingProvider?->name ?? '—',
                 'tracking_number' => $tracking?->tracking_number,
                 'ready' => $reasons === [],
                 'reasons' => $reasons,
             ];
         }
 
-        $this->bulkValidateAnalysis = $analysis;
-        $this->bulkValidateReadyCount = collect($analysis)->where('ready', true)->count();
-        $this->bulkValidateSkipCount = count($analysis) - $this->bulkValidateReadyCount;
-
-        $this->showBulkValidateModal = true;
+        return $analysis;
     }
 
-    public function closeBulkValidateModal(): void
+    /**
+     * Run the carrier handover for the ready rows of an analysis and return one
+     * outcome row per analyzed shipment (success / carrier reason / skip reason),
+     * preserving the analysis order.
+     *
+     * @param  array<int, array{order_id: string, number: string|null, tracking_number: string|null, ready: bool, reasons: array<int, string>}>  $analysis
+     * @return array<int, array{order_id: string, number: string|null, tracking_number: string|null, ok: bool, message: string}>
+     */
+    protected function executeBulkValidation(array $analysis): array
     {
-        $this->showBulkValidateModal = false;
-        $this->bulkValidateAnalysis = [];
-        $this->bulkValidateReadyCount = 0;
-        $this->bulkValidateSkipCount = 0;
-        $this->bulkValidateBusy = false;
-    }
+        $rows = collect($analysis);
+        $outcomes = [];
 
-    public function confirmBulkValidate(): void
-    {
-        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value), 403);
+        $orders = Order::with(['shippingProvider.carrier'])
+            ->where('store_id', currentStoreId())
+            ->whereIn(
+                'id',
+                $rows->where('ready', true)->pluck('order_id')->filter()->values()->all(),
+            )
+            ->get()
+            ->keyBy(fn (Order $order) => (string) $order->id);
 
-        $analysis = $this->bulkValidateAnalysis;
-        $this->bulkValidateAnalysis = [];
-        $this->bulkValidateReadyCount = 0;
-        $this->bulkValidateSkipCount = 0;
-        $this->showBulkValidateModal = false;
+        $gateway = app(OrderShippingGateway::class);
+        $membership = currentMembership();
 
-        $ready = collect($analysis)->where('ready', true)->values();
+        $byProvider = $rows->where('ready', true)->groupBy(
+            fn (array $row) => (string) ($orders[$row['order_id']]->shipping_provider_id ?? ''),
+        );
 
-        if ($ready->isEmpty()) {
-            return;
-        }
+        foreach ($byProvider as $providerRows) {
+            $provider = $orders[$providerRows->first()['order_id']]->shippingProvider;
 
-        $this->bulkValidateBusy = true;
+            $adapterClass = $provider?->carrier
+                ? config(
+                    "delivery.carrier_integrations.{$provider->carrier->code}",
+                    config('delivery.carrier_integrations.*'),
+                )
+                : null;
 
-        try {
-            $orderIds = $ready->pluck('order_id')->filter()->values()->toArray();
-
-            if ($orderIds === []) {
-                return;
-            }
-
-            $orders = Order::with(['shippingProvider.carrier'])
-                ->where('store_id', currentStoreId())
-                ->whereIn('id', $orderIds)
-                ->get()
-                ->keyBy(fn ($order) => (string) $order->id);
-
-            $gateway = app(OrderShippingGateway::class);
-            $membership = currentMembership();
-
-            $done = 0;
-            $failed = 0;
-
-            $byProvider = $ready->groupBy(fn ($row) => (string) $orders[$row['order_id']]->shipping_provider_id);
-
-            foreach ($byProvider as $rows) {
-                $first = $orders[$rows->first()['order_id']];
-                $provider = $first->shippingProvider;
-
-                $adapterClass = $provider?->carrier
-                    ? config(
-                        "delivery.carrier_integrations.{$provider->carrier->code}",
-                        config('delivery.carrier_integrations.*'),
-                    )
-                    : null;
-
-                if (! $provider || ! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrders')) {
-                    foreach ($rows as $row) {
-                        $gateway->recordValidationFailure($orders[$row['order_id']], __('order_flow.carrier_validation_not_supported'));
-                        $failed++;
-                    }
-
-                    continue;
+            if (! $provider || ! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass)) {
+                foreach ($providerRows as $row) {
+                    $order = $orders[$row['order_id']];
+                    $gateway->recordValidationFailure($order, __('order_flow.carrier_validation_not_supported'));
+                    $outcomes[$row['order_id']] = ['ok' => false, 'message' => __('order_flow.carrier_validation_not_supported')];
                 }
 
-                $adapter = app($adapterClass);
+                continue;
+            }
 
+            $adapter = app($adapterClass);
+
+            if (method_exists($adapterClass, 'validateOrders')) {
                 // Chunked /valid/orders — NOEST caps each call at 100 trackings.
-                foreach (array_chunk($rows->pluck('tracking_number')->map('strval')->values()->toArray(), 100, true) as $chunk) {
-                    $result = $adapter->validateOrders($provider, $chunk);
+                // Each chunk is matched back to ITS OWN rows, so a later chunk
+                // never re-flags an earlier one (compare orders confirmBulkValidate).
+                foreach ($providerRows->values()->chunk(100) as $chunkRows) {
+                    $chunkTrackings = $chunkRows
+                        ->pluck('tracking_number')
+                        ->map('strval')
+                        ->values()
+                        ->toArray();
+
+                    $result = $adapter->validateOrders($provider, $chunkTrackings);
 
                     $rejected = $result['failed'] ?? [];
                     $validated = array_fill_keys(array_map('strval', $result['validated'] ?? []), true);
 
-                    foreach ($rows as $row) {
+                    foreach ($chunkRows as $row) {
                         $trackingNumber = (string) $row['tracking_number'];
+                        $order = $orders[$row['order_id']];
 
                         if (isset($validated[$trackingNumber])) {
                             try {
-                                $gateway->markValidated($orders[$row['order_id']], $membership);
-                                $done++;
+                                $gateway->markValidated($order, $membership);
+                                $outcomes[$row['order_id']] = ['ok' => true, 'message' => __('order_flow.shipment_validated')];
                             } catch (\Throwable $e) {
-                                \Illuminate\Support\Facades\Log::warning(
-                                    "bulk validate persist failed for order [{$row['number']}]: {$e->getMessage()}"
+                                Log::warning(
+                                    "bulk validate persist failed for order [{$row['number']}]: {$e->getMessage()}",
                                 );
-                                $failed++;
+                                $outcomes[$row['order_id']] = ['ok' => false, 'message' => $e->getMessage()];
                             }
                         } elseif (isset($rejected[$trackingNumber])) {
-                            $gateway->recordValidationFailure($orders[$row['order_id']], (string) $rejected[$trackingNumber]);
-                            $failed++;
+                            $gateway->recordValidationFailure($order, (string) $rejected[$trackingNumber]);
+                            $outcomes[$row['order_id']] = ['ok' => false, 'message' => (string) $rejected[$trackingNumber]];
+                        } else {
+                            $outcomes[$row['order_id']] = ['ok' => false, 'message' => __('order_flow.shipment_validation_failed')];
                         }
                     }
                 }
-            }
+            } elseif (method_exists($adapterClass, 'validateOrder')) {
+                foreach ($providerRows as $row) {
+                    $result = $gateway->validate($orders[$row['order_id']], $membership);
 
-            $this->loadShipments();
+                    $ok = (bool) ($result['ok'] ?? false);
 
-            if ($done > 0 || $failed > 0) {
-                $this->dispatch('swal:toast', [
-                    'icon' => $failed === 0 ? 'success' : 'warning',
-                    'title' => $failed === 0
-                        ? __('order_flow.bulk_validate_done', ['done' => $done])
-                        : __('order_flow.bulk_validate_failed', ['done' => $done, 'failed' => $failed]),
-                ]);
+                    $outcomes[$row['order_id']] = [
+                        'ok' => $ok,
+                        'message' => $ok
+                            ? (($result['message'] ?? '') ?: __('order_flow.shipment_validated'))
+                            : ((string) ($result['message'] ?? $result['error'] ?? __('order_flow.shipment_validation_failed'))),
+                    ];
+                }
+            } else {
+                foreach ($providerRows as $row) {
+                    $order = $orders[$row['order_id']];
+                    $gateway->recordValidationFailure($order, __('order_flow.carrier_validation_not_supported'));
+                    $outcomes[$row['order_id']] = ['ok' => false, 'message' => __('order_flow.carrier_validation_not_supported')];
+                }
             }
-        } finally {
-            $this->bulkValidateBusy = false;
         }
+
+        // Map back over the analysis so skipped rows read naturally in order.
+        return $rows->map(function (array $row) use ($outcomes) {
+            $outcome = $outcomes[$row['order_id']] ?? null;
+            $fallback = implode('، ', $row['reasons'] ?: [__('order_flow.shipment_validation_failed')]);
+
+            return [
+                'order_id' => $row['order_id'],
+                'number' => $row['number'],
+                'tracking_number' => $row['tracking_number'],
+                'ok' => $outcome ? (bool) $outcome['ok'] : false,
+                'message' => $outcome['message'] ?? $fallback,
+            ];
+        })->values()->all();
     }
 
+    /**
+     * A barcode scan validates immediately through the single-order flow and
+     * appends its own outcome to the in-modal results list.
+     */
     public function bulkValidateFromBarcode(string $trackingNumber): void
     {
-        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value), 403);
+        if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+
+            return;
+        }
 
         $number = trim($trackingNumber);
 
@@ -215,6 +310,7 @@ trait TrackingBulkValidateConcern
             ->first();
 
         if (! $tracking) {
+            $this->appendScanResult(null, $number, false, __('order_flow.shipment_validation_failed'));
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.shipment_validation_failed')]);
 
             return;
@@ -225,37 +321,39 @@ trait TrackingBulkValidateConcern
             ->find($tracking->order_id);
 
         if (! $order) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('order_flow.shipment_validation_failed')]);
+
             return;
         }
 
         $result = app(OrderShippingGateway::class)->validate($order, currentMembership());
 
-        if (! ($result['ok'] ?? false)) {
-            $this->dispatch('swal:toast', [
-                'icon' => 'error',
-                'title' => ($result['message'] ?? $result['error'] ?? __('order_flow.shipment_validation_failed')),
-            ]);
+        $ok = (bool) ($result['ok'] ?? false);
+        $message = $ok
+            ? (($result['message'] ?? '') ?: __('order_flow.shipment_validated'))
+            : ((string) ($result['message'] ?? $result['error'] ?? __('order_flow.shipment_validation_failed')));
 
-            return;
-        }
+        $this->appendScanResult($order->number, $number, $ok, $message);
 
-        $this->bulkValidateAnalysis = collect($this->bulkValidateAnalysis)
-            ->map(function (array $row) use ($order) {
-                if ($row['order_id'] === (string) $order->id) {
-                    $row['ready'] = false;
-                }
+        $this->loadShipments();
 
-                return $row;
-            })
+        $this->dispatch('swal:toast', ['icon' => $ok ? 'success' : 'error', 'title' => $message]);
+    }
+
+    /**
+     * Prepend one scanned outcome to the in-modal results list (newest first).
+     */
+    protected function appendScanResult(?string $number, ?string $trackingNumber, bool $ok, string $message): void
+    {
+        $this->bulkValidateResults = collect($this->bulkValidateResults)
+            ->prepend([
+                'order_id' => null,
+                'number' => $number ?? '—',
+                'tracking_number' => $trackingNumber ?? '—',
+                'ok' => $ok,
+                'message' => $message,
+            ])
             ->values()
-            ->toArray();
-
-        $this->bulkValidateReadyCount = collect($this->bulkValidateAnalysis)->where('ready', true)->count();
-        $this->bulkValidateSkipCount = count($this->bulkValidateAnalysis) - $this->bulkValidateReadyCount;
-
-        $this->dispatch('swal:toast', [
-            'icon' => 'success',
-            'title' => ($result['message'] ?: __('order_flow.shipment_validated')),
-        ]);
+            ->all();
     }
 }

@@ -25,6 +25,32 @@
         </div>
 
         @if (! $this->showTrash)
+            {{-- Carrier-validate scanner — sits beside the search field and only
+                 renders when the current (filtered) view still holds shipments
+                 that need validation; it is NOT tied to row selection. --}}
+            @if ($this->bulkValidateNeedsCount > 0
+                && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value))
+                <x-edz.tooltip label="{{ __('order_flow.bulk_validate_btn') }}">
+                    <button wire:click="openBulkValidateModal" type="button"
+                        class="edz-btn edz-btn--ghost edz-btn--sm text-accent-600 inline-flex items-center gap-1.5">
+                        <x-edz.icon name="shield-check" class="w-4 h-4" />
+                        <span class="hidden lg:inline">{{ __('order_flow.bulk_validate_btn') }}</span>
+                    </button>
+                </x-edz.tooltip>
+            @endif
+
+            {{-- Opt the selection actions into the global branded loader so every
+                 checkbox / select-all / clear round-trip shows "being processed"
+                 (the loader's 150 ms flicker guard keeps fast toggles quiet). --}}
+            <x-edz.loading-target action="toggleSelectOrder" :label="__('merchant.bulk_processing')" />
+            <x-edz.loading-target action="toggleSelectAll" :label="__('merchant.bulk_processing')" />
+            <x-edz.loading-target action="clearSelection" :label="__('merchant.bulk_processing')" />
+
+            @if (count($this->selectedShipments) > 0)
+                {{-- Bulk tasks — multi-select reassign / validate-at-carrier / soft delete --}}
+                @include('livewire.merchant.tracking.partials.tracking-bulk-actions-bar')
+            @endif
+
             {{-- Bulk status sync — refreshes every open adapter-backed tracking row. --}}
             <x-edz.tooltip label="{{ __('order_flow.sync_all_statuses') }}">
                 <button wire:click="syncAllTracking" type="button" wire:loading.attr="disabled"

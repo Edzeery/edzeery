@@ -80,6 +80,122 @@
 
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! $this->showTrash): ?>
             
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->bulkValidateNeedsCount > 0
+                && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)): ?>
+                <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.tooltip','data' => ['label' => ''.e(__('order_flow.bulk_validate_btn')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.tooltip'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['label' => ''.e(__('order_flow.bulk_validate_btn')).'']); ?>
+                    <button wire:click="openBulkValidateModal" type="button"
+                        class="edz-btn edz-btn--ghost edz-btn--sm text-accent-600 inline-flex items-center gap-1.5">
+                        <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'shield-check','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'shield-check','class' => 'w-4 h-4']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $attributes = $__attributesOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__attributesOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal78f5a7347bd00ba3623a459cd340078c)): ?>
+<?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
+<?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
+<?php endif; ?>
+                        <span class="hidden lg:inline"><?php echo e(__('order_flow.bulk_validate_btn')); ?></span>
+                    </button>
+                 <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginaldc6b8a3f696fa5e7823376deba19f536)): ?>
+<?php $attributes = $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536; ?>
+<?php unset($__attributesOriginaldc6b8a3f696fa5e7823376deba19f536); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginaldc6b8a3f696fa5e7823376deba19f536)): ?>
+<?php $component = $__componentOriginaldc6b8a3f696fa5e7823376deba19f536; ?>
+<?php unset($__componentOriginaldc6b8a3f696fa5e7823376deba19f536); ?>
+<?php endif; ?>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+            
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'toggleSelectOrder','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'toggleSelectOrder','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'toggleSelectAll','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'toggleSelectAll','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'clearSelection','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'clearSelection','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($this->selectedShipments) > 0): ?>
+                
+                <?php echo $__env->make('livewire.merchant.tracking.partials.tracking-bulk-actions-bar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+            
             <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.tooltip','data' => ['label' => ''.e(__('order_flow.sync_all_statuses')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

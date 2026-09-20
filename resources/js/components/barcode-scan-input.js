@@ -76,11 +76,23 @@ export default function barcodeScanInput(config = {}) {
         async closeCamera() {
             this._abortFlag = true;
             await this._stopScanner();
+            // Pop the camera modal out of the shared modal stack (set by
+            // <x-edz.modal> on open). On a successful scan the modal unmounts
+            // via x-if before its own open-watch runs, so the scroll-lock must
+            // be restored here while keeping any outer modal locked. X/backdrop/
+            // Escape closes already spliced it from the stack, so indexOf finds
+            // nothing and this becomes a no-op — never double-pops the level below.
+            const cameraEl = this.$el?.querySelector?.(".edz-modal[data-edz-camera]") ?? null;
+            const stack = window.__edzModalStack;
+            if (Array.isArray(stack)) {
+                const idx = stack.indexOf(cameraEl);
+                if (idx !== -1) {
+                    stack.splice(idx, 1);
+                    document.body.style.overflow = stack.length ? "hidden" : "unset";
+                }
+            }
             this.cameraOpen = false;
             this.scanning = false;
-            // On a successful scan the modal unmounts via x-if before its own
-            // open-watch runs, so restore the scroll-lock the modal set on open.
-            document.body.style.overflow = "unset";
         },
 
         /* ── camera picker (re-renders only the <select>) ───── */

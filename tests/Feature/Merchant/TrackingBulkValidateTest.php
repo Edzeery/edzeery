@@ -112,17 +112,42 @@ function tbvOrder(Store $store, ShippingProvider $provider, Customer $customer, 
     return $order->fresh();
 }
 
-test('the bulk-validate FAB is shown on the carrier tab with the permission', function () {
+/* ───────────────────── Toolbar scanner-button visibility ───────────────────── */
+
+test('the carrier-validate button appears beside the search when a shipment needs validation', function () {
     [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    tbvOrder($store, $provider, $customer, 'TBV-NEED');
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
+        ->assertSet('bulkValidateNeedsCount', 1)
         ->assertSeeHtml('wire:click="openBulkValidateModal"');
 });
 
-test('the bulk-validate FAB is hidden on the rider tab', function () {
+test('the carrier-validate button is hidden when nothing needs validation', function () {
     [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    tbvOrder($store, $provider, $customer, 'TBV-DONE', [
+        'carrier_validated_at' => now(),
+        'carrier_validated_by_membership_id' => null,
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->assertSet('bulkValidateNeedsCount', 0)
+        ->assertDontSeeHtml('wire:click="openBulkValidateModal"');
+});
+
+test('the carrier-validate button is hidden on the rider tab', function () {
+    [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    tbvOrder($store, $provider, $customer, 'TBV-RIDER');
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
@@ -131,8 +156,11 @@ test('the bulk-validate FAB is hidden on the rider tab', function () {
         ->assertDontSeeHtml('wire:click="openBulkValidateModal"');
 });
 
-test('the bulk-validate FAB is hidden in trash mode', function () {
+test('the carrier-validate button is hidden in trash mode', function () {
     [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    tbvOrder($store, $provider, $customer, 'TBV-TRASH');
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
@@ -141,8 +169,11 @@ test('the bulk-validate FAB is hidden in trash mode', function () {
         ->assertDontSeeHtml('wire:click="openBulkValidateModal"');
 });
 
-test('the bulk-validate FAB is hidden without the order.dispatch_validate permission', function () {
+test('the carrier-validate button is hidden without the order.dispatch_validate permission', function () {
     [$user, $store] = tbvUser(StoreRoleEnum::STAFF->value);
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    tbvOrder($store, $provider, $customer, 'TBV-STAFF');
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
@@ -150,27 +181,55 @@ test('the bulk-validate FAB is hidden without the order.dispatch_validate permis
         ->assertDontSeeHtml('wire:click="openBulkValidateModal"');
 });
 
-test('openBulkValidateModal analyzes the current page and counts ready/skipped', function () {
+/* ───────────────────────────── Scanner modal ───────────────────────────── */
+
+test('the scanner modal opens with the permission even on an empty page', function () {
     [$user, $store] = tbvUser();
-    $provider = tbvProvider($store);
-    $customer = tbvCustomer($store);
-    $ready = tbvOrder($store, $provider, $customer, 'TBV-READY');
-    $validated = tbvOrder($store, $provider, $customer, 'TBV-DONE', [
-        'carrier_validated_at' => now(),
-        'carrier_validated_by_membership_id' => null,
-    ]);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
     Volt::test('merchant.tracking.index')
         ->call('openBulkValidateModal')
         ->assertSet('showBulkValidateModal', true)
-        ->assertSet('bulkValidateReadyCount', 1)
-        ->assertSet('bulkValidateSkipCount', 1)
-        ->assertSee(__('order_flow.bulk_validate_ready_title'));
+        ->assertSee(__('order_flow.validate_shipment_title'));
 });
 
-test('confirmBulkValidate hands ready shipments over and audits the events', function () {
+test('bulkValidateFromBarcode validates the scan immediately and appends the result', function () {
+    [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    $order = tbvOrder($store, $provider, $customer, 'TBV-SCAN');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Http::fake(['noest.test/*' => Http::response(['success' => true])]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('bulkValidateFromBarcode', 'TBV-SCAN')
+        ->assertSet('bulkValidateResults', fn ($rows) => count($rows) === 1
+            && $rows[0]['tracking_number'] === 'TBV-SCAN'
+            && $rows[0]['ok'] === true)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success');
+
+    expect(app(OrderTrackingService::class)->currentTracking($order->fresh())->isCarrierValidated())->toBeTrue();
+});
+
+test('bulkValidateFromBarcode reports an unknown tracking number as a failure row', function () {
+    [$user, $store] = tbvUser();
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.tracking.index')
+        ->call('bulkValidateFromBarcode', 'NO-SUCH-TRACKING')
+        ->assertSet('bulkValidateResults', fn ($rows) => count($rows) === 1
+            && $rows[0]['tracking_number'] === 'NO-SUCH-TRACKING'
+            && $rows[0]['ok'] === false)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
+});
+
+/* ──────────────────────── Bulk bar direct validation ──────────────────────── */
+
+test('runBulkValidate validates the selection, reports per-shipment results, and audits', function () {
     [$user, $store] = tbvUser();
     $provider = tbvProvider($store);
     $customer = tbvCustomer($store);
@@ -182,10 +241,14 @@ test('confirmBulkValidate hands ready shipments over and audits the events', fun
     Http::fake(['noest.test/*' => Http::response(['success' => true])]);
 
     Volt::test('merchant.tracking.index')
-        ->call('openBulkValidateModal')
-        ->assertSet('bulkValidateReadyCount', 2)
-        ->call('confirmBulkValidate')
-        ->assertDispatched('swal:toast');
+        ->set('selectedShipments', [(string) $first->id, (string) $second->id])
+        ->call('runBulkValidate')
+        ->assertSet('showBulkValidateResults', true)
+        ->assertSet('showBulkValidateModal', false)
+        ->assertSet('selectedShipments', [])
+        ->assertSet('bulkValidateResults', fn ($rows) => count($rows) === 2
+            && collect($rows)->every(fn ($row) => $row['ok'] === true))
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'success');
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/valid/orders'));
 
@@ -198,7 +261,62 @@ test('confirmBulkValidate hands ready shipments over and audits the events', fun
     }
 });
 
-test('confirmBulkValidate chunks large batches into multiple /valid/orders calls', function () {
+test('runBulkValidate reports the carrier rejection reason per shipment', function () {
+    [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    $ok = tbvOrder($store, $provider, $customer, 'TBV-OK');
+    $bad = tbvOrder($store, $provider, $customer, 'TBV-BAD');
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Http::fake([
+        'noest.test/*' => Http::response([
+            'success' => true,
+            'passed' => ['TBV-OK' => true],
+            'failed' => ['TBV-BAD' => 'Stock insuffisant'],
+        ]),
+    ]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('selectedShipments', [(string) $ok->id, (string) $bad->id])
+        ->call('runBulkValidate')
+        ->assertSet('bulkValidateResults', fn ($rows) => count($rows) === 2
+            && collect($rows)->firstWhere('tracking_number', 'TBV-BAD')['ok'] === false
+            && collect($rows)->firstWhere('tracking_number', 'TBV-BAD')['message'] === 'Stock insuffisant')
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'warning');
+
+    $service = app(OrderTrackingService::class);
+
+    expect($service->currentTracking($ok->fresh())->isCarrierValidated())->toBeTrue()
+        ->and($service->currentTracking($bad->fresh())->isCarrierValidated())->toBeFalse()
+        ->and($service->currentTracking($bad->fresh())->carrier_validation_error)->toBe('Stock insuffisant');
+});
+
+test('runBulkValidate reports skipped shipments with their reason', function () {
+    [$user, $store] = tbvUser();
+    $provider = tbvProvider($store);
+    $customer = tbvCustomer($store);
+    $news = tbvOrder($store, $provider, $customer, 'TBV-NEW');
+    $already = tbvOrder($store, $provider, $customer, 'TBV-DONE', [
+        'carrier_validated_at' => now(),
+        'carrier_validated_by_membership_id' => null,
+    ]);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Http::fake(['noest.test/*' => Http::response(['success' => true])]);
+
+    Volt::test('merchant.tracking.index')
+        ->set('selectedShipments', [(string) $news->id, (string) $already->id])
+        ->call('runBulkValidate')
+        ->assertSet('bulkValidateResults', fn ($rows) => count($rows) === 2
+            && collect($rows)->firstWhere('tracking_number', 'TBV-NEW')['ok'] === true
+            && collect($rows)->firstWhere('tracking_number', 'TBV-DONE')['ok'] === false
+            && collect($rows)->firstWhere('tracking_number', 'TBV-DONE')['message'] === __('order_flow.shipment_already_validated'));
+});
+
+test('runBulkValidate chunks large batches into multiple /valid/orders calls', function () {
     [$user, $store] = tbvUser();
     $provider = tbvProvider($store);
     $customer = tbvCustomer($store);
@@ -221,11 +339,9 @@ test('confirmBulkValidate chunks large batches into multiple /valid/orders calls
     });
 
     Volt::test('merchant.tracking.index')
-        ->set('perPage', 150)
-        ->call('refresh')
-        ->call('openBulkValidateModal')
-        ->assertSet('bulkValidateReadyCount', 105)
-        ->call('confirmBulkValidate')
+        ->set('selectedShipments', $orders->pluck('id')->map('strval')->values()->toArray())
+        ->call('runBulkValidate')
+        ->assertSet('bulkValidateResults', fn ($rows) => collect($rows)->every(fn ($row) => $row['ok'] === true))
         ->assertDispatched('swal:toast');
 
     expect(count($bodies))->toBe(2)
@@ -237,38 +353,9 @@ test('confirmBulkValidate chunks large batches into multiple /valid/orders calls
     });
 });
 
-test('bulkValidateFromBarcode validates a scanned shipment and updates the analysis', function () {
-    [$user, $store] = tbvUser();
-    $provider = tbvProvider($store);
-    $customer = tbvCustomer($store);
-    $order = tbvOrder($store, $provider, $customer, 'TBV-SCAN');
+/* ────────────────────────────── Permissions ────────────────────────────── */
 
-    actingAs($user)->withSession(['current_store_id' => $store->id]);
-
-    Http::fake(['noest.test/*' => Http::response(['success' => true])]);
-
-    Volt::test('merchant.tracking.index')
-        ->call('openBulkValidateModal')
-        ->assertSet('bulkValidateReadyCount', 1)
-        ->call('bulkValidateFromBarcode', 'TBV-SCAN')
-        ->assertSet('bulkValidateReadyCount', 0)
-        ->assertDispatched('swal:toast');
-
-    expect(app(OrderTrackingService::class)->currentTracking($order->fresh())->isCarrierValidated())->toBeTrue();
-});
-
-test('openBulkValidateModal does nothing when the page has no shipments', function () {
-    [$user, $store] = tbvUser();
-
-    actingAs($user)->withSession(['current_store_id' => $store->id]);
-
-    Volt::test('merchant.tracking.index')
-        ->call('openBulkValidateModal')
-        ->assertSet('showBulkValidateModal', false)
-        ->assertDispatched('swal:toast');
-});
-
-test('bulk validation entry points are refused without the dispatch_validate permission', function () {
+test('openBulkValidateModal is refused without the dispatch_validate permission', function () {
     [$user, $store] = tbvUser(StoreRoleEnum::STAFF->value);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
@@ -277,19 +364,25 @@ test('bulk validation entry points are refused without the dispatch_validate per
 
     Volt::test('merchant.tracking.index')
         ->call('openBulkValidateModal')
-        ->assertStatus(403);
+        ->assertSet('showBulkValidateModal', false)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
     Http::assertNothingSent();
 });
 
-test('confirmBulkValidate is refused without the dispatch_validate permission', function () {
+test('runBulkValidate is refused without the dispatch_validate permission', function () {
     [$user, $store] = tbvUser(StoreRoleEnum::STAFF->value);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 
+    Http::fake();
+
     Volt::test('merchant.tracking.index')
-        ->call('confirmBulkValidate')
-        ->assertStatus(403);
+        ->call('runBulkValidate')
+        ->assertSet('showBulkValidateResults', false)
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
+
+    Http::assertNothingSent();
 });
 
 test('bulkValidateFromBarcode is refused without the dispatch_validate permission', function () {
@@ -301,7 +394,8 @@ test('bulkValidateFromBarcode is refused without the dispatch_validate permissio
 
     Volt::test('merchant.tracking.index')
         ->call('bulkValidateFromBarcode', 'TBV-ANY')
-        ->assertStatus(403);
+        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error')
+        ->assertSet('bulkValidateResults', []);
 
     Http::assertNothingSent();
 });

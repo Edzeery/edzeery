@@ -211,13 +211,6 @@ state([
     'bulkSendReadyCount' => 0,
     'bulkSendSkipCount' => 0,
 
-    // Bulk validate-at-carrier modal (Phase 36): per-order eligibility gated by
-    // carrier support + not-yet-validated. Mirrors bulkSend, one row per order.
-    'showBulkValidateModal' => false,
-    'bulkValidateAnalysis' => [],
-    'bulkValidateReadyCount' => 0,
-    'bulkValidateSkipCount' => 0,
-
     // Inline phone edit (customer phone + order secondary stacked in one cell)
     'phoneEditPhone' => '',
     'phoneEditSecondary' => '',
@@ -1147,14 +1140,16 @@ $clearFilters = function (): void {
 };
 
 // --- Bulk selection ---
-$toggleSelectAll = function (): void {
-    if ($this->selectAll) {
-        $this->selectedOrders = collect($this->orders['data'] ?? [])
-            ->pluck('id')
-            ->toArray();
-    } else {
-        $this->selectedOrders = [];
-    }
+// $checked carries the checkbox's new state on every click (wire:click passes
+// $event.target.checked), so the header toggle never reads stale state and no
+// doubled wire:model+wire:click round trip is issued per click.
+$toggleSelectAll = function (?bool $checked = null): void {
+    $this->selectAll = $checked ?? ! $this->selectAll;
+
+    $this->selectedOrders = $this->selectAll
+        ? collect($this->orders['data'] ?? [])->pluck('id')->toArray()
+        : [];
+
     $this->showBulkBar = count($this->selectedOrders) > 0;
 };
 
@@ -1405,175 +1400,6 @@ $confirmBulkSend = function (): void {
         $this->dispatch('swal:toast', [
             'icon' => ! empty($skipped) ? 'warning' : 'success',
             'title' => implode(' • ', $summaryLines),
-        ]);
-    }
-};
-
-// Phase 36 — bulk validate-at-carrier (dispatch handover). Gated by
-// order.dispatch_validate; only carrier-sent, not-yet-validated shipments with
-// a supporting adapter are offered.
-$openBulkValidateModal = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
-        return;
-    }
-
-    if (empty($this->selectedOrders)) {
-        $this->dispatch('swal:toast', ['icon' => 'warning', 'title' => __('merchant.no_orders_selected')]);
-        return;
-    }
-
-    $orders = Order::with(['shippingProvider.carrier'])
-        ->where('store_id', currentStoreId())
-        ->whereIn('id', $this->selectedOrders)
-        ->get();
-
-    $analysis = [];
-
-    $trackingService = app(\App\Domains\Order\Services\OrderTrackingService::class);
-
-    foreach ($orders as $order) {
-        $reasons = [];
-
-        if (! $order->shipping_provider_id || ! $order->shippingProvider?->carrier) {
-            $reasons[] = __('order_flow.validation_carrier_required');
-        } else {
-            $adapterClass = config(
-                "delivery.carrier_integrations.{$order->shippingProvider->carrier->code}",
-                config('delivery.carrier_integrations.*'),
-            );
-
-            if (! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrder')) {
-                $reasons[] = __('order_flow.carrier_validation_not_supported');
-            }
-        }
-
-        $tracking = $trackingService->currentTracking($order);
-
-        if (! $tracking?->tracking_number) {
-            $reasons[] = __('order_flow.validation_tracking_required');
-        } elseif ($tracking->isCarrierValidated()) {
-            $reasons[] = __('order_flow.shipment_already_validated');
-        }
-
-        $analysis[] = [
-            'order_id' => (string) $order->id,
-            'number' => $order->number,
-            'provider' => $order->shippingProvider?->name ?? '—',
-            'tracking_number' => $tracking?->tracking_number,
-            'ready' => $reasons === [],
-            'reasons' => $reasons,
-        ];
-    }
-
-    $this->bulkValidateAnalysis = $analysis;
-    $this->bulkValidateReadyCount = collect($analysis)->where('ready', true)->count();
-    $this->bulkValidateSkipCount = count($analysis) - $this->bulkValidateReadyCount;
-
-    $this->showBulkValidateModal = true;
-};
-
-$closeBulkValidateModal = function (): void {
-    $this->showBulkValidateModal = false;
-    $this->bulkValidateAnalysis = [];
-    $this->bulkValidateReadyCount = 0;
-    $this->bulkValidateSkipCount = 0;
-};
-
-$confirmBulkValidate = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value)) {
-        $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
-        return;
-    }
-
-    $analysis = $this->bulkValidateAnalysis;
-    $this->closeBulkValidateModal();
-
-    $ready = collect($analysis)->where('ready', true)->values();
-
-    if ($ready->isEmpty()) {
-        return;
-    }
-
-    $orderIds = $ready->pluck('order_id')->filter()->values()->toArray();
-
-    if ($orderIds === []) {
-        return;
-    }
-
-    $orders = Order::with(['shippingProvider.carrier'])
-        ->where('store_id', currentStoreId())
-        ->whereIn('id', $orderIds)
-        ->get()
-        ->keyBy(fn ($order) => (string) $order->id);
-
-    $gateway = app(\App\Domains\Shipping\Services\OrderShippingGateway::class);
-    $membership = $this->getCurrentMembership();
-
-    $done = 0;
-    $failed = 0;
-
-    $byProvider = $ready->groupBy(fn ($row) => (string) $orders[$row['order_id']]->shipping_provider_id);
-
-    foreach ($byProvider as $rows) {
-        $first = $orders[$rows->first()['order_id']];
-        $provider = $first->shippingProvider;
-
-        $adapterClass = $provider?->carrier
-            ? config(
-                "delivery.carrier_integrations.{$provider->carrier->code}",
-                config('delivery.carrier_integrations.*'),
-            )
-            : null;
-
-        if (! $provider || ! $adapterClass || ! is_string($adapterClass) || ! class_exists($adapterClass) || ! method_exists($adapterClass, 'validateOrders')) {
-            foreach ($rows as $row) {
-                $gateway->recordValidationFailure($orders[$row['order_id']], __('order_flow.carrier_validation_not_supported'));
-                $failed++;
-            }
-
-            continue;
-        }
-
-        $adapter = app($adapterClass);
-
-        // Chunked /valid/orders — NOEST caps each call at 100 trackings.
-        foreach (array_chunk($rows->pluck('tracking_number')->map('strval')->values()->toArray(), 100, true) as $chunk) {
-            $result = $adapter->validateOrders($provider, $chunk);
-
-            $rejected = $result['failed'] ?? [];
-            $validated = array_fill_keys(array_map('strval', $result['validated'] ?? []), true);
-
-            foreach ($rows as $row) {
-                $trackingNumber = (string) $row['tracking_number'];
-
-                if (isset($validated[$trackingNumber])) {
-                    try {
-                        $gateway->markValidated($orders[$row['order_id']], $membership);
-                        $done++;
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning(
-                            "bulk validate persist failed for order [{$row['number']}]: {$e->getMessage()}"
-                        );
-                        $failed++;
-                    }
-                } elseif (isset($rejected[$trackingNumber])) {
-                    $gateway->recordValidationFailure($orders[$row['order_id']], (string) $rejected[$trackingNumber]);
-                    $failed++;
-                }
-            }
-        }
-    }
-
-    $this->clearSelection();
-    $this->loadOrders();
-
-    if ($done > 0 || $failed > 0) {
-        $this->dispatch('swal:toast', [
-            'icon' => $failed === 0 ? 'success' : 'warning',
-            'title' => $failed === 0
-                ? __('order_flow.bulk_validate_done', ['done' => $done])
-                : __('order_flow.bulk_validate_failed', ['done' => $done, 'failed' => $failed]),
         ]);
     }
 };
@@ -4908,6 +4734,13 @@ $submitEdit = function (): void {
                 </button>
             </div>
 
+            {{-- Opt the selection toggles into the global branded loader so every
+                 checkbox / select-all / clear round-trip shows "being processed"
+                 (the loader's 150 ms flicker guard keeps fast toggles quiet). --}}
+            <x-edz.loading-target action="toggleSelectOrder" :label="__('merchant.bulk_processing')" />
+            <x-edz.loading-target action="toggleSelectAll" :label="__('merchant.bulk_processing')" />
+            <x-edz.loading-target action="clearSelection" :label="__('merchant.bulk_processing')" />
+
             {{-- Bulk Tasks (single dropdown trigger, shown once orders are selected) --}}
             @if (count($this->selectedOrders) > 0)
                 @include('livewire.merchant.orders.partials.bulk-actions-bar')
@@ -5289,12 +5122,20 @@ $submitEdit = function (): void {
 
             <div wire:loading.class="opacity-40 pointer-events-none" wire:target="search,filters">
                 @if (!empty($orders['data']))
-                    <div class="hidden lg:block overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
+                    <div class="hidden lg:block overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll"
+                        wire:loading.class="opacity-60 pointer-events-none"
+                        wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
                         <table class="w-full text-sm">
                             <thead class="bg-secondary">
                                 <tr>
                                     <th class="px-3 py-3 w-10">
-                                        <x-edz.checkbox size="sm" wire:model="selectAll" wire:click="toggleSelectAll" />
+                                        <span class="inline-flex items-center justify-center w-4 h-4"
+                                            wire:loading.remove wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
+                                            <x-edz.checkbox size="sm" :checked="$this->selectAll"
+                                                wire:click="toggleSelectAll($event.target.checked)" />
+                                        </span>
+                                        <x-edz.spinner class="w-4 h-4 text-accent-600" wire:loading
+                                            wire:target="toggleSelectOrder,toggleSelectAll,clearSelection" />
                                     </th>
                                     @foreach ($this->visibleColumns as $colKey)
                                         @include('livewire.merchant.orders.partials.orders-table-header', [
@@ -5354,7 +5195,9 @@ $submitEdit = function (): void {
                     {{-- Mobile/tablet cards (Apple Adaptive Layout): below lg only.
                        md puts tablets on a 2-column grid with gap + gutters. --}}
                     <div
-                        class="lg:hidden grid grid-cols-1 divide-y divide-surface-border md:grid-cols-2 md:gap-3 md:divide-y-0 md:p-3">
+                        class="lg:hidden grid grid-cols-1 divide-y divide-surface-border md:grid-cols-2 md:gap-3 md:divide-y-0 md:p-3"
+                        wire:loading.class="opacity-60 pointer-events-none"
+                        wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
                         @foreach ($orders['data'] as $order)
                             @php
                                 $orderId = $order['id'] ?? '';
@@ -5780,8 +5623,6 @@ $submitEdit = function (): void {
     @include('livewire.merchant.orders.partials.bulk-status-modal')
 
     @include('livewire.merchant.orders.partials.bulk-send-modal')
-
-    @include('livewire.merchant.orders.partials.bulk-validate-modal')
 
     @include('livewire.merchant.orders.partials.duplicate-scan-popup')
 

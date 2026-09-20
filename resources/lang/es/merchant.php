@@ -6,6 +6,7 @@ return [
     'assign_delivery_man' => 'Asignar repartidor',
     'bank_account' => 'Cuenta Bancaria',
     'bulk_assign_agent' => 'Asignar agente',
+    'bulk_reassign' => 'Reasignar selección',
     'bulk_clear' => 'Borrar selección',
     'bulk_delete' => 'Eliminar selección',
     'bulk_processing' => 'Procesando...',

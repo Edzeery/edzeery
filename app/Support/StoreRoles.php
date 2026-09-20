@@ -29,6 +29,7 @@ class StoreRoles
                     StorePermissionEnum::STORE_TRANSFER_OWNERSHIP->value,
                     StorePermissionEnum::STORE_BILLING_MANAGE->value,
                     StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value,
+                    StorePermissionEnum::ORDER_DELETE_FINAL->value,
                 ]))
                 ->values()
                 ->toArray(),

@@ -1,6 +1,6 @@
 {{-- Tracking-status popup (P29.4 + Phase 7 stepper): opened by clicking the tracking-status badge in the tracking table/cards. Shows the carrier-stage stepper, optional carrier-note composer, then the shared tracking-history timeline. edz-modal renders it as a centered card on sm+ and a bottom sheet on phones, so the sheet affordances (handle, tight padding) are mobile-only. --}}
 @if ($this->statusHistoryFor)
-    <x-edz.modal :is-open="$this->statusHistoryFor !== null" @close="$wire.closeStatusHistory()"
+    <x-edz.modal :is-open="$this->statusHistoryFor !== null" @edz-modal-closed="$event.target === $event.currentTarget && $wire.closeStatusHistory()"
         size="md" wire:key="tracking-status-popup-{{ $this->statusHistoryFor }}">
         <div class="p-4 pt-1 sm:p-6 sm:pt-5">
             <span class="edz-modal__handle" aria-hidden="true"></span>

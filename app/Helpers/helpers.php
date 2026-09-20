@@ -146,6 +146,48 @@ if (! function_exists('storeCan')) {
         return canStore($permission);
     }
 }
+
+// إعادة التكليف: محجوزة عن الموظف (STAFF) مهما مُنحت له أو مباشرة عبر العضوية.
+// المالك والأدمن مؤهلون دائمًا؛ أي دور آخر (مدير/عضوية مخصصة) عبر order.assign.
+if (! function_exists('canReassignOrders')) {
+    function canReassignOrders(?User $user = null): bool
+    {
+        $user ??= user();
+
+        if (! $user || ! hasStoreContext()) {
+            return false;
+        }
+
+        if (isStoreStaff($user)) {
+            return false;
+        }
+
+        if (isStoreOwner($user) || isStoreAdmin($user)) {
+            return true;
+        }
+
+        return canStore(\App\Enums\Store\StorePermissionEnum::ORDER_ASSIGN->value, $user);
+    }
+}
+
+// الحذف النهائي: المالك دائمًا، أو من يملك صلاحية order.delete.final صريحة
+// (لا يستمدها الأدمن/المدير/الموظف من دورهم).
+if (! function_exists('canFinalDeleteOrders')) {
+    function canFinalDeleteOrders(?User $user = null): bool
+    {
+        $user ??= user();
+
+        if (! $user || ! hasStoreContext()) {
+            return false;
+        }
+
+        if (isStoreOwner($user)) {
+            return true;
+        }
+
+        return canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE_FINAL->value, $user);
+    }
+}
 /**
  * 4️⃣ Helpers خاصة بالـ MANAGER (Scoped Team)
  * هنا نستغل invited_by كما ذكرت 👌

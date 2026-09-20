@@ -4,10 +4,36 @@
     $mobileStatusKit = $s['tracking_status']
         ? \Edzeery\MyStatusKit\Facades\Status::for('tracking', $s['tracking_status'])
         : null;
+    $mobileChecked = in_array($s['id'], $this->selectedShipments, true);
+    $bulkEligible = $bulkEligible ?? false;
 ?>
-<div class="edz-card p-4" wire:key="card-<?php echo e($s['id']); ?>">
+<div class="edz-card p-4 <?php echo e($mobileChecked ? 'bg-accent-surface-subtle' : ''); ?>" wire:key="card-<?php echo e($s['id']); ?>">
     <div class="flex items-center justify-between gap-2">
-        <div class="font-mono font-medium text-ink">#<?php echo e($s['number']); ?></div>
+        <div class="flex items-center gap-2 min-w-0">
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($bulkEligible): ?>
+                <?php if (isset($component)) { $__componentOriginal0283f82cff84f4c646f29d974f5967a4 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal0283f82cff84f4c646f29d974f5967a4 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.checkbox','data' => ['size' => 'sm','checked' => $mobileChecked,'value' => ''.e($s['id']).'','wire:click' => 'toggleSelectOrder(\''.e($s['id']).'\')']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.checkbox'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['size' => 'sm','checked' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($mobileChecked),'value' => ''.e($s['id']).'','wire:click' => 'toggleSelectOrder(\''.e($s['id']).'\')']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $attributes = $__attributesOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
+<?php $component = $__componentOriginal0283f82cff84f4c646f29d974f5967a4; ?>
+<?php unset($__componentOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            <div class="font-mono font-medium text-ink truncate">#<?php echo e($s['number']); ?></div>
+        </div>
         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($mobileStatusKit): ?>
             <?php if (isset($component)) { $__componentOriginaldc6b8a3f696fa5e7823376deba19f536 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginaldc6b8a3f696fa5e7823376deba19f536 = $attributes; } ?>
@@ -260,10 +286,11 @@
                                 <?php echo e(__('merchant.restore_order')); ?>
 
                             </button>
-                            <button type="button"
-                                x-on:click="EdzSwal.confirmAction('<?php echo e(__('order_flow.permanent_delete_title')); ?>', '<?php echo e(__('order_flow.permanent_delete_confirm')); ?>', { confirmText: '<?php echo e(__('merchant.delete_permanently')); ?>', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('<?php echo e($s['id']); ?>'); })"
-                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
-                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canFinalDeleteOrders()): ?>
+                                <button type="button"
+                                    x-on:click="EdzSwal.confirmAction('<?php echo e(__('order_flow.permanent_delete_title')); ?>', '<?php echo e(__('order_flow.permanent_delete_confirm')); ?>', { confirmText: '<?php echo e(__('merchant.delete_permanently')); ?>', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('<?php echo e($s['id']); ?>'); })"
+                                    class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
+                                    <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -283,9 +310,10 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                                <?php echo e(__('merchant.delete_permanently')); ?>
+                                    <?php echo e(__('merchant.delete_permanently')); ?>
 
-                            </button>
+                                </button>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php else: ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($s['can_edit_order'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                                 <button type="button" wire:click="openEditModal('<?php echo e($s['id']); ?>')"
@@ -345,7 +373,7 @@
                                 </button>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->trackingTab === 'carrier'): ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canReassignOrders() && $this->trackingTab === 'carrier'): ?>
                                 <button type="button" wire:click="openTrackingReassignModal('<?php echo e($s['id']); ?>')"
                                     @click="open = false"
                                     class="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-secondary">

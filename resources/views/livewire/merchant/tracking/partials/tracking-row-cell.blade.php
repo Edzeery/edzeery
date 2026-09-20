@@ -79,12 +79,14 @@
                             <x-edz.icon name="arrow-uturn-left" class="w-4 h-4" />
                             {{ __('merchant.restore_order') }}
                         </button>
-                        <button type="button"
-                            x-on:click="EdzSwal.confirmAction('{{ __('order_flow.permanent_delete_title') }}', '{{ __('order_flow.permanent_delete_confirm') }}', { confirmText: '{{ __('merchant.delete_permanently') }}', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('{{ $s['id'] }}'); })"
-                            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
-                            <x-edz.icon name="trash" class="w-4 h-4" />
-                            {{ __('merchant.delete_permanently') }}
-                        </button>
+                        @if (canFinalDeleteOrders())
+                            <button type="button"
+                                x-on:click="EdzSwal.confirmAction('{{ __('order_flow.permanent_delete_title') }}', '{{ __('order_flow.permanent_delete_confirm') }}', { confirmText: '{{ __('merchant.delete_permanently') }}', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('{{ $s['id'] }}'); })"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
+                                <x-edz.icon name="trash" class="w-4 h-4" />
+                                {{ __('merchant.delete_permanently') }}
+                            </button>
+                        @endif
                     @else
                         @if (($s['can_edit_order'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
                             <button type="button" wire:click="openEditModal('{{ $s['id'] }}')"
@@ -104,7 +106,7 @@
                             </button>
                         @endif
 
-                        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->trackingTab === 'carrier')
+                        @if (canReassignOrders() && $this->trackingTab === 'carrier')
                             <button type="button" wire:click="openTrackingReassignModal('{{ $s['id'] }}')"
                                 @click="open = false"
                                 class="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-secondary">

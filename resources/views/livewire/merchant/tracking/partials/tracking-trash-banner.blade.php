@@ -11,19 +11,23 @@
                     class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-danger-500 text-white leading-none">{{ $this->trashCount }}</span>
             @endif
         </div>
-        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value) && $this->trashCount > 0)
+        @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value) || canFinalDeleteOrders()) && $this->trashCount > 0)
             <div class="flex items-center gap-2">
-                <button wire:click="restoreAll" class="edz-btn edz-btn--ghost edz-btn--sm"
-                    wire:loading.attr="disabled">
-                    <x-edz.icon name="arrow-uturn-left" class="w-4 h-4" />
-                    {{ __('merchant.restore_all') }}
-                </button>
-                <button
-                    x-on:click="EdzSwal.confirmAction('{{ __('order_flow.empty_trash_title') }}', '{{ __('order_flow.empty_trash_confirm', ['count' => $this->trashCount]) }}', { confirmText: '{{ __('merchant.empty_trash') }}', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteAll(); })"
-                    class="edz-btn edz-btn--sm edz-btn--danger">
-                    <x-edz.icon name="trash" class="w-4 h-4" />
-                    {{ __('merchant.empty_trash') }}
-                </button>
+                @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DELETE->value))
+                    <button wire:click="restoreAll" class="edz-btn edz-btn--ghost edz-btn--sm"
+                        wire:loading.attr="disabled">
+                        <x-edz.icon name="arrow-uturn-left" class="w-4 h-4" />
+                        {{ __('merchant.restore_all') }}
+                    </button>
+                @endif
+                @if (canFinalDeleteOrders())
+                    <button
+                        x-on:click="EdzSwal.confirmAction('{{ __('order_flow.empty_trash_title') }}', '{{ __('order_flow.empty_trash_confirm', ['count' => $this->trashCount]) }}', { confirmText: '{{ __('merchant.empty_trash') }}', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteAll(); })"
+                        class="edz-btn edz-btn--sm edz-btn--danger">
+                        <x-edz.icon name="trash" class="w-4 h-4" />
+                        {{ __('merchant.empty_trash') }}
+                    </button>
+                @endif
             </div>
         @endif
     </div>

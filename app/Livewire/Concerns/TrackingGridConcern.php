@@ -285,6 +285,15 @@ trait TrackingGridConcern
 
         $this->filteredTotal = $paginated->total();
 
+        // The toolbar "اعتماد لدى الناقل" scanner button is only relevant when the
+        // current (filtered) carrier view still contains shipments that can be
+        // validated — i.e. have a tracking number and are not yet validated.
+        $this->bulkValidateNeedsCount = $this->showTrash || $this->trackingTab !== 'carrier'
+            ? 0
+            : (clone $this->baseTrackingQuery(true))
+                ->whereHas('latestTracking', fn ($q) => $q->whereNotNull('tracking_number')->whereNull('carrier_validated_at'))
+                ->count();
+
         $items = collect($paginated->items());
 
         // Single query for the latest carrier note per tracking row (avoids N+1
@@ -352,6 +361,7 @@ trait TrackingGridConcern
             ->count();
 
         $this->loadTrackingStats();
+        $this->syncBulkSelection();
     }
 
     public function refresh(): void

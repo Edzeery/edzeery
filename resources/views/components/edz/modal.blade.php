@@ -12,17 +12,33 @@
 <div x-data='{
     open: @js($isOpen),
     preventClose: @js($preventClose),
+    depth: 0,
     init() {
-        this.$watch("open", value => {
+        const stack = window.__edzModalStack ||= [];
+        if (this.open) {
+            if (!stack.includes(this.$el)) stack.push(this.$el);
+            this.depth = stack.indexOf(this.$el) + 1;
+            document.body.style.overflow = "hidden";
+        }
+        this.$watch("open", (value) => {
+            const stack = window.__edzModalStack ||= [];
             if (value) {
+                if (!stack.includes(this.$el)) stack.push(this.$el);
+                this.depth = stack.indexOf(this.$el) + 1;
                 document.body.style.overflow = "hidden";
             } else {
-                document.body.style.overflow = "unset";
+                const i = stack.indexOf(this.$el);
+                if (i !== -1) stack.splice(i, 1);
+                this.depth = 0;
+                document.body.style.overflow = stack.length ? "hidden" : "unset";
                 this.$dispatch("edz-modal-closed");
             }
         });
     }
-}' x-show="open" x-cloak @keydown.escape.window="if (!preventClose) open = false"
+}' x-show="open" x-cloak
+    @keydown.escape.window="if (!preventClose) { const s = window.__edzModalStack ||= []; if (s[s.length - 1] === $el) open = false }"
+    @edz-modal-closed="if ($event.target !== $event.currentTarget) $event.stopPropagation()"
+    :style="'--edz-modal-depth:' + depth"
     class="edz-modal"
     {{ $attributes->except('class') }}>
 

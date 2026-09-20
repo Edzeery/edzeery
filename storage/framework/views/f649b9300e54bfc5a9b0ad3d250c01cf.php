@@ -212,10 +212,11 @@
                             <?php echo e(__('merchant.restore_order')); ?>
 
                         </button>
-                        <button type="button"
-                            x-on:click="EdzSwal.confirmAction('<?php echo e(__('order_flow.permanent_delete_title')); ?>', '<?php echo e(__('order_flow.permanent_delete_confirm')); ?>', { confirmText: '<?php echo e(__('merchant.delete_permanently')); ?>', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('<?php echo e($s['id']); ?>'); })"
-                            class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
-                            <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canFinalDeleteOrders()): ?>
+                            <button type="button"
+                                x-on:click="EdzSwal.confirmAction('<?php echo e(__('order_flow.permanent_delete_title')); ?>', '<?php echo e(__('order_flow.permanent_delete_confirm')); ?>', { confirmText: '<?php echo e(__('merchant.delete_permanently')); ?>', confirmColor: '#ef4444' }).then((ok) => { if (ok) $wire.forceDeleteOrder('<?php echo e($s['id']); ?>'); })"
+                                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-600 hover:bg-surface-secondary">
+                                <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'trash','class' => 'w-4 h-4']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.icon'); ?>
@@ -235,9 +236,10 @@
 <?php $component = $__componentOriginal78f5a7347bd00ba3623a459cd340078c; ?>
 <?php unset($__componentOriginal78f5a7347bd00ba3623a459cd340078c); ?>
 <?php endif; ?>
-                            <?php echo e(__('merchant.delete_permanently')); ?>
+                                <?php echo e(__('merchant.delete_permanently')); ?>
 
-                        </button>
+                            </button>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <?php else: ?>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(($s['can_edit_order'] ?? false) && canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)): ?>
                             <button type="button" wire:click="openEditModal('<?php echo e($s['id']); ?>')"
@@ -297,7 +299,7 @@
                             </button>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->trackingTab === 'carrier'): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(canReassignOrders() && $this->trackingTab === 'carrier'): ?>
                             <button type="button" wire:click="openTrackingReassignModal('<?php echo e($s['id']); ?>')"
                                 @click="open = false"
                                 class="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-secondary">

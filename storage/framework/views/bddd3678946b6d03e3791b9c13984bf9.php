@@ -182,6 +182,68 @@ use Illuminate\Support\Facades\Validator;
             </div>
 
             
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'toggleSelectOrder','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'toggleSelectOrder','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'toggleSelectAll','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'toggleSelectAll','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+            <?php if (isset($component)) { $__componentOriginalf87f3db323d8b56174a8e5f280367253 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf87f3db323d8b56174a8e5f280367253 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.loading-target','data' => ['action' => 'clearSelection','label' => __('merchant.bulk_processing')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.loading-target'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['action' => 'clearSelection','label' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(__('merchant.bulk_processing'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $attributes = $__attributesOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__attributesOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf87f3db323d8b56174a8e5f280367253)): ?>
+<?php $component = $__componentOriginalf87f3db323d8b56174a8e5f280367253; ?>
+<?php unset($__componentOriginalf87f3db323d8b56174a8e5f280367253); ?>
+<?php endif; ?>
+
+            
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($this->selectedOrders) > 0): ?>
                 <?php echo $__env->make('livewire.merchant.orders.partials.bulk-actions-bar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -1359,21 +1421,25 @@ use Illuminate\Support\Facades\Validator;
 
             <div wire:loading.class="opacity-40 pointer-events-none" wire:target="search,filters">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($orders['data'])): ?>
-                    <div class="hidden lg:block overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll">
+                    <div class="hidden lg:block overflow-x-auto max-h-[calc(100vh-475px)] overflow-y-auto edz-scroll"
+                        wire:loading.class="opacity-60 pointer-events-none"
+                        wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
                         <table class="w-full text-sm">
                             <thead class="bg-secondary">
                                 <tr>
                                     <th class="px-3 py-3 w-10">
-                                        <?php if (isset($component)) { $__componentOriginal0283f82cff84f4c646f29d974f5967a4 = $component; } ?>
+                                        <span class="inline-flex items-center justify-center w-4 h-4"
+                                            wire:loading.remove wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
+                                            <?php if (isset($component)) { $__componentOriginal0283f82cff84f4c646f29d974f5967a4 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal0283f82cff84f4c646f29d974f5967a4 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.checkbox','data' => ['size' => 'sm','wire:model' => 'selectAll','wire:click' => 'toggleSelectAll']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.checkbox','data' => ['size' => 'sm','checked' => $this->selectAll,'wire:click' => 'toggleSelectAll($event.target.checked)']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.checkbox'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['size' => 'sm','wire:model' => 'selectAll','wire:click' => 'toggleSelectAll']); ?>
+<?php $component->withAttributes(['size' => 'sm','checked' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->selectAll),'wire:click' => 'toggleSelectAll($event.target.checked)']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
@@ -1383,6 +1449,27 @@ use Illuminate\Support\Facades\Validator;
 <?php if (isset($__componentOriginal0283f82cff84f4c646f29d974f5967a4)): ?>
 <?php $component = $__componentOriginal0283f82cff84f4c646f29d974f5967a4; ?>
 <?php unset($__componentOriginal0283f82cff84f4c646f29d974f5967a4); ?>
+<?php endif; ?>
+                                        </span>
+                                        <?php if (isset($component)) { $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.spinner','data' => ['class' => 'w-4 h-4 text-accent-600','wire:loading' => true,'wire:target' => 'toggleSelectOrder,toggleSelectAll,clearSelection']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.spinner'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['class' => 'w-4 h-4 text-accent-600','wire:loading' => true,'wire:target' => 'toggleSelectOrder,toggleSelectAll,clearSelection']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $attributes = $__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__attributesOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c)): ?>
+<?php $component = $__componentOriginalf4c9959d3f2732b60b7f028a5155a98c; ?>
+<?php unset($__componentOriginalf4c9959d3f2732b60b7f028a5155a98c); ?>
 <?php endif; ?>
                                     </th>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->visibleColumns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $colKey): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -1460,7 +1547,9 @@ use Illuminate\Support\Facades\Validator;
 
                     
                     <div
-                        class="lg:hidden grid grid-cols-1 divide-y divide-surface-border md:grid-cols-2 md:gap-3 md:divide-y-0 md:p-3">
+                        class="lg:hidden grid grid-cols-1 divide-y divide-surface-border md:grid-cols-2 md:gap-3 md:divide-y-0 md:p-3"
+                        wire:loading.class="opacity-60 pointer-events-none"
+                        wire:target="toggleSelectOrder,toggleSelectAll,clearSelection">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $orders['data']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <?php
                                 $orderId = $order['id'] ?? '';
@@ -2335,8 +2424,6 @@ use Illuminate\Support\Facades\Validator;
     <?php echo $__env->make('livewire.merchant.orders.partials.bulk-status-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <?php echo $__env->make('livewire.merchant.orders.partials.bulk-send-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-
-    <?php echo $__env->make('livewire.merchant.orders.partials.bulk-validate-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <?php echo $__env->make('livewire.merchant.orders.partials.duplicate-scan-popup', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 

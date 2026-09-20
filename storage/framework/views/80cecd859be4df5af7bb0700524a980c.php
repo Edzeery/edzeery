@@ -2,14 +2,14 @@
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->labelOpen && $this->labelData): ?>
     <?php if (isset($component)) { $__componentOriginal911d914fd97d5405d92c9a7521bf08ef = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal911d914fd97d5405d92c9a7521bf08ef = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $this->labelOpen,'@close' => '$wire.closeLabel()','size' => 'md','wire:key' => 'label-print-modal-'.e($this->labelOrderId).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.modal','data' => ['isOpen' => $this->labelOpen,'@edzModalClosed' => '$event.target === $event.currentTarget && $wire.closeLabel()','size' => 'md','wire:key' => 'label-print-modal-'.e($this->labelOrderId).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('edz.modal'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->labelOpen),'@close' => '$wire.closeLabel()','size' => 'md','wire:key' => 'label-print-modal-'.e($this->labelOrderId).'']); ?>
+<?php $component->withAttributes(['is-open' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->labelOpen),'@edz-modal-closed' => '$event.target === $event.currentTarget && $wire.closeLabel()','size' => 'md','wire:key' => 'label-print-modal-'.e($this->labelOrderId).'']); ?>
         <style>
             @media print {
                 body {

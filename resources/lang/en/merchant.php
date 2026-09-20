@@ -6,6 +6,7 @@ return [
     'assign_delivery_man' => 'Assign delivery man',
     'bank_account' => 'Bank Account',
     'bulk_assign_agent' => 'Assign to agent',
+    'bulk_reassign' => 'Reassign selected',
     'bulk_clear' => 'Clear selection',
     'bulk_delete' => 'Delete selected',
     'bulk_processing' => 'Processing...',
