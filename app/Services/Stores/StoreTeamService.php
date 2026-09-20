@@ -51,15 +51,16 @@ class StoreTeamService
                 throw new \Exception(__('teams.member_already_exists'));
             }
 
-            $member = StoreMembership::create([
-                'store_id'  => $store->id,
-                'user_id'   => $member_user->id,
-                'invited_by' => user()->id,
-                'is_active' => $data['is_active'] ?? true,
-                'role'      => StoreRoleEnum::from($data['store_role'])->value,
-            ]);
-
             $role = StoreRoleEnum::from($data['store_role']);
+
+            $member = StoreMembership::create([
+                'store_id'                 => $store->id,
+                'user_id'                  => $member_user->id,
+                'invited_by'               => user()->id,
+                'is_active'                => $data['is_active'] ?? true,
+                'role'                     => $role->value,
+                'supervisor_membership_id' => $this->resolveSupervisorId($store, $data),
+            ]);
 
             // Decision #6 — hybrid: keep the global merchant role for platform
             // compatibility, but store the scoped role + custom permissions on
@@ -120,11 +121,11 @@ class StoreTeamService
                 $membership->syncPermissions($data['permissions']);
             }
 
+            $this->applySupervisorOnUpdate($store, $membership, $data);
+
             return $membership->refresh();
         });
     }
-
-
 
     public function removeMember(StoreMembership $membership): void
     {
@@ -187,5 +188,62 @@ class StoreTeamService
         }
 
         app(FeatureUsageService::class)->consume($subscription, 'staff_limit');
+    }
+
+    protected function actorMembership(Store $store): ?StoreMembership
+    {
+        return StoreMembership::where('store_id', $store->id)
+            ->where('user_id', user()->id)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    protected function resolveSupervisorId(Store $store, array $data): ?string
+    {
+        $actor = $this->actorMembership($store);
+        if (($data['store_role'] ?? null) !== StoreRoleEnum::STAFF->value) {
+            return null;
+        }
+        $explicit = (string) ($data['supervisor_membership_id'] ?? '');
+        if ($explicit === '') {
+            return $actor?->isManager() ? $actor->id : null;
+        }
+        if (! $actor || (! $actor->isOwner() && ! $actor->isAdmin())) {
+            return null;
+        }
+        $this->assertValidSupervisor($store, $explicit);
+
+        return $explicit;
+    }
+
+    protected function assertValidSupervisor(Store $store, string $membershipId): void
+    {
+        $valid = StoreMembership::whereKey($membershipId)
+            ->where('store_id', $store->id)
+            ->where('is_active', true)
+            ->where('role', StoreRoleEnum::MANAGER->value)
+            ->exists();
+        if (! $valid) {
+            throw new \Exception(__('teams.invalid_supervisor'));
+        }
+    }
+
+    protected function applySupervisorOnUpdate(Store $store, StoreMembership $membership, array $data): void
+    {
+        if (($data['store_role'] ?? null) !== StoreRoleEnum::STAFF->value) {
+            $membership->update(['supervisor_membership_id' => null]);
+            return;
+        }
+        $actor = $this->actorMembership($store);
+        if (! $actor || (! $actor->isOwner() && ! $actor->isAdmin())) {
+            return;
+        }
+        $explicit = (string) ($data['supervisor_membership_id'] ?? '');
+        if ($explicit === '') {
+            $membership->update(['supervisor_membership_id' => null]);
+            return;
+        }
+        $this->assertValidSupervisor($store, $explicit);
+        $membership->update(['supervisor_membership_id' => $explicit]);
     }
 }

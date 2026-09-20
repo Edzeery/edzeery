@@ -44,6 +44,17 @@
             </div>
         </div>
 
+        @if ($store_role === 'staff' && (isStoreOwner() || isStoreAdmin()))
+            <div>
+                <label class="mb-1 block text-sm font-medium text-ink" for="tm-supervisor">{{ __('teams.reports_to') }}</label>
+                <x-edz.select
+                    wire:model="supervisor_membership_id"
+                    :options="$this->managers"
+                    placeholder="{{ __('teams.no_supervisor') }}"
+                />
+            </div>
+        @endif
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
                 <label class="mb-1 block text-sm font-medium text-ink" for="tm-country">{{ __('teams.country') }}</label>

@@ -27,6 +27,7 @@ class StoreMembership extends Model
         'accepted_at',
         'is_active',
         'role',
+        'supervisor_membership_id',
     ];
 
     protected $casts = [
@@ -145,6 +146,16 @@ class StoreMembership extends Model
     public function productAssignments(): HasMany
     {
         return $this->hasMany(\App\Domains\Order\Models\ConfirmationProductAssignment::class, 'membership_id');
+    }
+
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'supervisor_membership_id');
+    }
+
+    public function subordinates(): HasMany
+    {
+        return $this->hasMany(self::class, 'supervisor_membership_id');
     }
 
     public function isOnActiveShift(?\Carbon\Carbon $at = null, string $roleScope = 'confirm'): bool

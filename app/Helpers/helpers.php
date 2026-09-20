@@ -176,7 +176,7 @@ if (! function_exists('managesMember')) {
         // MANAGER فقط فريقه
         if (
             isStoreManager($actor) &&
-            $targetMembership->invited_by === $actor->id
+            $targetMembership->supervisor_membership_id === $actor->storeMembership(currentStore())?->id
         ) {
             return true;
         }

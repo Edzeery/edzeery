@@ -8,7 +8,6 @@ use App\Models\Locations\State;
 use App\Models\Stores\Team\StoreMembership;
 use App\Services\Stores\StoreTeamService;
 use App\Support\PermissionGroupMeta;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 

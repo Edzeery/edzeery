@@ -31,6 +31,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $store_role;
 
+    public $supervisor_membership_id;
+
     public $isActive;
 
     public $permissions;
@@ -50,6 +52,14 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         return (new Actions\CallMethod('members'))->execute(...$arguments);
+    }
+
+    #[\Livewire\Attributes\Computed()]
+    public function managers(): array
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('managers'))->execute(...$arguments);
     }
 
     public function canCreate()

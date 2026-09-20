@@ -8,7 +8,6 @@ use App\Models\Locations\State;
 use App\Models\Stores\Team\StoreMembership;
 use App\Services\Stores\StoreTeamService;
 use App\Support\PermissionGroupMeta;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use function Livewire\Volt\computed;
@@ -29,6 +28,7 @@ state([
     'state_id' => '',
     'city_id' => '',
     'store_role' => '',
+    'supervisor_membership_id' => null,
     'isActive' => true,
     'permissions' => [],
     'activePermissionGroup' => null,
@@ -42,6 +42,8 @@ mount(function (): void {
 $members = computed(function () {
     $user = user();
 
+    $actorMembershipId = $user?->storeMembership(currentStore())?->id;
+
     $query = StoreMembership::query()
         ->with('user')
         ->where('store_id', currentStoreId())
@@ -51,9 +53,9 @@ $members = computed(function () {
     if (isStoreOwner($user) || isStoreAdmin($user)) {
         // Owner & Admin see everyone
     } elseif (isStoreManager($user)) {
-        $query->where(function ($q) use ($user) {
+        $query->where(function ($q) use ($user, $actorMembershipId) {
             $q->where('user_id', $user->id)
-                ->orWhere('invited_by', $user->id);
+                ->orWhere('supervisor_membership_id', $actorMembershipId);
         });
     } else {
         $query->where('user_id', $user->id);
@@ -71,6 +73,19 @@ $members = computed(function () {
     return $query->paginate(15);
 });
 
+$managers = computed(function (): array {
+    return StoreMembership::where('store_id', currentStoreId())
+        ->where('is_active', true)
+        ->where('role', StoreRoleEnum::MANAGER->value)
+        ->with('user:id,name')
+        ->latest('created_at')
+        ->get()
+        ->map(fn (StoreMembership $m) => ['value' => $m->id, 'label' => $m->user?->name])
+        ->prepend(['value' => '', 'label' => __('teams.no_supervisor')])
+        ->values()
+        ->all();
+});
+
 $canCreate = fn () => canManageTeam();
 $canModify = fn (StoreMembership $membership) => canModifyMember($membership);
 $memberRoleName = function (StoreMembership $membership): string {
@@ -81,12 +96,12 @@ $memberRoleName = function (StoreMembership $membership): string {
 $openCreate = function (): void {
     abort_unless($this->canCreate(), 403);
 
-    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
     $this->creating = true;
 };
 
 $closeCreate = function (): void {
-    $this->reset('creating', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('creating', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
 };
 
 $openEdit = function (StoreMembership $membership): void {
@@ -103,6 +118,7 @@ $openEdit = function (StoreMembership $membership): void {
     $this->state_id = $user->state_id ?? '';
     $this->city_id = $user->city_id ?? '';
     $this->store_role = $role?->name ?? '';
+    $this->supervisor_membership_id = $membership->supervisor_membership_id;
     $this->isActive = (bool) $membership->is_active;
     $this->permissions = $membership->permissionNames()
         ?: \App\Support\StoreRoles::permissions(StoreRoleEnum::from($this->store_role));
@@ -111,7 +127,7 @@ $openEdit = function (StoreMembership $membership): void {
 };
 
 $closeEdit = function (): void {
-    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
 };
 
 $saveNew = function (): void {
@@ -136,6 +152,7 @@ $saveNew = function (): void {
             'state_id' => $this->state_id,
             'city_id' => $this->city_id,
             'store_role' => $this->store_role,
+            'supervisor_membership_id' => $this->supervisor_membership_id,
             'is_active' => $this->isActive,
             'permissions' => $this->permissions,
         ]);
@@ -170,6 +187,7 @@ $saveEdit = function (): void {
             'state_id' => $this->state_id,
             'city_id' => $this->city_id,
             'store_role' => $this->store_role,
+            'supervisor_membership_id' => $this->supervisor_membership_id,
             'is_active' => $this->isActive,
             'permissions' => $this->permissions,
         ]);

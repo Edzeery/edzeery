@@ -100,6 +100,32 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             </div>
         </div>
 
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($store_role === 'staff' && (isStoreOwner() || isStoreAdmin())): ?>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-ink" for="tm-supervisor"><?php echo e(__('teams.reports_to')); ?></label>
+                <?php if (isset($component)) { $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.select','data' => ['wire:model' => 'supervisor_membership_id','options' => $this->managers,'placeholder' => ''.e(__('teams.no_supervisor')).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.select'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['wire:model' => 'supervisor_membership_id','options' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($this->managers),'placeholder' => ''.e(__('teams.no_supervisor')).'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $attributes = $__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__attributesOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf)): ?>
+<?php $component = $__componentOriginal98f6a35728186ef8bbcf8d819e3363cf; ?>
+<?php unset($__componentOriginal98f6a35728186ef8bbcf8d819e3363cf); ?>
+<?php endif; ?>
+            </div>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
                 <label class="mb-1 block text-sm font-medium text-ink" for="tm-country"><?php echo e(__('teams.country')); ?></label>
