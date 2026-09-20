@@ -394,9 +394,6 @@ $clearAllPermissions = function (): void {
     {{-- Members Table --}}
     @include('livewire.merchant.teams.partials.members-table')
 
-    @if ($this->productScopeMembershipId)
-        <div @product-scope-closed.window="$wire.closeProductScope()">
-            @livewire('merchant.teams.partials.product-scope-modal', ['membershipId' => $this->productScopeMembershipId], key('scope-' . $this->productScopeMembershipId))
-        </div>
-    @endif
+    {{-- Product-scope modal mount (P36.3) --}}
+    @include('livewire.merchant.teams.partials.product-scope-mount')
 </div>
