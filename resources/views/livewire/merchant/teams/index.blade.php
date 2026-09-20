@@ -32,6 +32,7 @@ state([
     'isActive' => true,
     'permissions' => [],
     'activePermissionGroup' => null,
+    'productScopeMembershipId' => null,
 ]);
 
 mount(function (): void {
@@ -88,6 +89,7 @@ $managers = computed(function (): array {
 
 $canCreate = fn () => canManageTeam();
 $canModify = fn (StoreMembership $membership) => canModifyMember($membership);
+$canManageScope = fn (StoreMembership $membership) => canManageTeam() && $membership->isManager();
 $memberRoleName = function (StoreMembership $membership): string {
     $role = $membership->membershipRole();
     return $role?->name ?? 'staff';
@@ -128,6 +130,15 @@ $openEdit = function (StoreMembership $membership): void {
 
 $closeEdit = function (): void {
     $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
+};
+
+$openProductScope = function (StoreMembership $membership): void {
+    abort_unless($this->canManageScope($membership), 403);
+    $this->productScopeMembershipId = $membership->id;
+};
+
+$closeProductScope = function (): void {
+    $this->productScopeMembershipId = null;
 };
 
 $saveNew = function (): void {
@@ -217,13 +228,9 @@ $updatedCountryId = function (?string $value): void {
 $updatedStateId = function (?string $value): void {
     $this->city_id = '';
 };
-$states = computed(fn () => $this->country_id
-    ? State::where('country_id', $this->country_id)->orderedByCode()->get(['id', 'name', 'state_code'])->toArray()
-    : []);
+$states = computed(fn () => $this->country_id ? State::where('country_id', $this->country_id)->orderedByCode()->get(['id', 'name', 'state_code'])->toArray() : []);
 
-$cities = computed(fn () => $this->state_id
-    ? City::where('state_id', $this->state_id)->pluck('name', 'id')
-    : []);
+$cities = computed(fn () => $this->state_id ? City::where('state_id', $this->state_id)->pluck('name', 'id') : collect());
 
 $allPermissions = computed(function () {
     if (! $this->store_role) {
@@ -386,4 +393,10 @@ $clearAllPermissions = function (): void {
 
     {{-- Members Table --}}
     @include('livewire.merchant.teams.partials.members-table')
+
+    @if ($this->productScopeMembershipId)
+        <div @product-scope-closed.window="$wire.closeProductScope()">
+            @livewire('merchant.teams.partials.product-scope-modal', ['membershipId' => $this->productScopeMembershipId], key('scope-' . $this->productScopeMembershipId))
+        </div>
+    @endif
 </div>

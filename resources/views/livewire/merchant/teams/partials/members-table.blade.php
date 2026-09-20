@@ -43,6 +43,10 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
+                                @if ($this->canManageScope($membership))
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                            wire:click="openProductScope('{{ $membership->id }}')">{{ __('teams.product_scope') }}</button>
+                                @endif
                                 @if ($this->canModify($membership))
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="openEdit('{{ $membership->id }}')">{{ __('buttons.edit') }}</button>

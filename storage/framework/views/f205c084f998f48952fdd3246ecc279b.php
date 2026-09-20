@@ -39,6 +39,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $activePermissionGroup;
 
+    public $productScopeMembershipId;
+
     public function mount(): void
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
@@ -76,6 +78,13 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         return (new Actions\CallMethod('canModify'))->execute(...$arguments);
     }
 
+    public function canManageScope(\App\Models\Stores\Team\StoreMembership $membership)
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('canManageScope'))->execute(...$arguments);
+    }
+
     public function memberRoleName(\App\Models\Stores\Team\StoreMembership $membership): string
     {
         $arguments = [static::$__context, $this, func_get_args()];
@@ -109,6 +118,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('closeEdit'))->execute(...$arguments);
+    }
+
+    public function openProductScope(\App\Models\Stores\Team\StoreMembership $membership): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('openProductScope'))->execute(...$arguments);
+    }
+
+    public function closeProductScope(): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('closeProductScope'))->execute(...$arguments);
     }
 
     public function saveNew(): void

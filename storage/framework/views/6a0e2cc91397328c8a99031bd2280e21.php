@@ -82,6 +82,10 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canManageScope($membership)): ?>
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                            wire:click="openProductScope('<?php echo e($membership->id); ?>')"><?php echo e(__('teams.product_scope')); ?></button>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canModify($membership)): ?>
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="openEdit('<?php echo e($membership->id); ?>')"><?php echo e(__('buttons.edit')); ?></button>
