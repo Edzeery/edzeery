@@ -2,6 +2,7 @@
     'domain',
     'status',
     'storeId' => null,
+    'icon' => false,
 ])
 
 @php
@@ -13,5 +14,8 @@
 
 <span role="status" aria-label="{{ $result->label }}"
       {{ $attributes->merge(['class' => $classes]) }}>
+    @if (filter_var($icon, FILTER_VALIDATE_BOOLEAN))
+        {!! $result->renderIcon(null, 'w-3 h-3 shrink-0') !!}
+    @endif
     <span>{{ $result->label }}</span>
 </span>

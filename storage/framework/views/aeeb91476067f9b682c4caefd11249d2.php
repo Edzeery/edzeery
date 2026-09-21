@@ -5,6 +5,7 @@ $__propNames = \Illuminate\View\ComponentAttributeBag::extractPropNames(([
     'domain',
     'status',
     'storeId' => null,
+    'icon' => false,
 ]));
 
 foreach ($attributes->all() as $__key => $__value) {
@@ -24,6 +25,7 @@ foreach (array_filter(([
     'domain',
     'status',
     'storeId' => null,
+    'icon' => false,
 ]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 }
@@ -45,6 +47,10 @@ unset($__defined_vars, $__key, $__value); ?>
 
 <span role="status" aria-label="<?php echo e($result->label); ?>"
       <?php echo e($attributes->merge(['class' => $classes])); ?>>
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(filter_var($icon, FILTER_VALIDATE_BOOLEAN)): ?>
+        <?php echo $result->renderIcon(null, 'w-3 h-3 shrink-0'); ?>
+
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     <span><?php echo e($result->label); ?></span>
 </span>
 <?php /**PATH C:\laragon\www\edzeery\resources\views/components/merchant/status.blade.php ENDPATH**/ ?>

@@ -132,6 +132,7 @@ Découvrez les fonctionnalités avancées, augmentez votre productivité et avan
     'restored_successfully' => 'Restauré avec succès ♻️',
     'save' => 'Enregistrer',
     'search' => 'Rechercher',
+    'search_hint' => 'Tapez pour rechercher…',
     'search_placeholder' => 'Recherchez ici...',
     'security_alert' => 'Une activité suspecte a été détectée sur votre compte. Veuillez vérifier.',
     'security_incident' => 'Activité inhabituelle détectée sur le système. Vérification immédiate requise.',

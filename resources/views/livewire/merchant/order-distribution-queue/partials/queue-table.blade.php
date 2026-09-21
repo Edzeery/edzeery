@@ -8,13 +8,13 @@
 @endphp
 
 @if (empty($queueRows))
-    <div class="rounded-2xl border border-surface-border bg-white p-10 text-center">
+    <div class="rounded-2xl border border-surface-border bg-surface p-10 text-center">
         <x-edz.icon name="list-bullet" class="w-8 h-8 mx-auto mb-3 text-ink-muted" />
         <p class="text-sm text-ink">{{ $queueEmpty }}</p>
         <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.queue_empty_hint') }}</p>
     </div>
 @else
-    <div class="overflow-hidden rounded-2xl border border-surface-border bg-white">
+    <div class="overflow-hidden rounded-2xl border border-surface-border bg-surface">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
@@ -56,7 +56,7 @@
                                         <span class="font-medium text-ink">{{ __('merchant_panel.queue_unassigned') }}</span>
                                     @endif
                                     @if (! empty($queueRow['over_capacity']))
-                                        <span class="inline-flex items-center gap-1 rounded-full bg-warning-500/10 text-warning-700 text-[10px] font-semibold px-2 py-0.5">
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-warning-500/10 text-warning-700 dark:text-warning-400 text-[10px] font-semibold px-2 py-0.5">
                                             <x-edz.icon name="exclamation-triangle" class="w-3 h-3" />
                                             {{ __('merchant_panel.queue_over_capacity') }}
                                         </span>
@@ -66,7 +66,7 @@
                             <td class="px-4 py-3 text-xs text-ink-muted whitespace-nowrap">{{ $queueRow['created_ago'] }}</td>
                             <td class="px-4 py-3 text-end">
                                 <button type="button" wire:click="openReassignModal('{{ $queueRow['id'] }}')"
-                                    class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:text-brand-600">
+                                    class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">
                                     <x-edz.icon name="arrows-right-left" class="w-3.5 h-3.5" />
                                     {{ __('merchant_panel.reassign') }}
                                 </button>

@@ -132,6 +132,7 @@ return [
     'restored_successfully' => 'تم الاسترجاع بنجاح ♻️',
     'save' => 'حفظ',
     'search' => 'بحث',
+    'search_hint' => 'اكتب للبحث…',
     'search_placeholder' => 'ابحث هنا...',
     'security_alert' => 'تم رصد نشاط مشبوه على حسابك، يرجى التحقق.',
     'security_incident' => 'تم رصد نشاط غير معتاد على النظام. يرجى التحقيق فورًا.',
