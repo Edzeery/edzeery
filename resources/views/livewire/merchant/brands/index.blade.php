@@ -308,7 +308,7 @@ $deleteSelected = function (): void {
                                                 x-data
                                                 data-delete-name="{{ $brand->name }}"
                                                 data-delete-id="{{ $brand->id }}"
-                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete(Number($el.dataset.deleteId)) })()"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete($el.dataset.deleteId) })()"
                                                 >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>

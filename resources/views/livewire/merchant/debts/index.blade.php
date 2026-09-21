@@ -169,7 +169,7 @@ $formatAmount = function (float $amount): string {
                                         <button x-data
                                                 data-confirm-title="{{ __('finance.delete') }}"
                                                 data-confirm-text="{{ __('finance.confirm_delete') }}"
-                                                @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.delete(Number($el.dataset.deleteId)) })()"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.delete($el.dataset.deleteId) })()"
                                                 data-delete-id="{{ $debt->id }}"
                                                 class="edz-btn edz-btn--ghost edz-btn--sm text-danger-600 hover:text-danger-700">
                                             <x-edz.icon name="trash" class="edz-btn__icon" />

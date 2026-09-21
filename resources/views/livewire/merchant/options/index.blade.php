@@ -299,7 +299,7 @@ $deleteSelected = function (): void {
                                                 x-data
                                                 data-delete-name="{{ $option->name }}"
                                                 data-delete-id="{{ $option->id }}"
-                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete(Number($el.dataset.deleteId)) })()"
+                                                @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.delete($el.dataset.deleteId) })()"
                                                 >{{ __('buttons.delete') }}</button>
                                     @endif
                                 </div>
@@ -334,7 +334,7 @@ $deleteSelected = function (): void {
                                                             x-data
                                                             data-delete-name="{{ $value->value }}"
                                                             data-delete-id="{{ $value->id }}"
-                                                            @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.deleteValue(Number($el.dataset.deleteId)) })()"
+                                                            @click.prevent="(async () => { if (await EdzSwal.confirmDelete($el.dataset.deleteName)) await $wire.deleteValue($el.dataset.deleteId) })()"
                                                             ><x-edz.icon name="x-mark" class="w-3 h-3" /></button>
                                                 @endif
                                             </span>

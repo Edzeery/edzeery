@@ -59,7 +59,7 @@
                                             data-confirm-title="{{ __('teams.remove_member') }}"
                                             data-confirm-text="{{ __('messages.action_confirm_delete') }}"
                                             data-delete-id="{{ $membership->id }}"
-                                            @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.remove(Number($el.dataset.deleteId)) })()"
+                                            @click.prevent="(async () => { if (await EdzSwal.confirmAction($el.dataset.confirmTitle, $el.dataset.confirmText)) await $wire.remove($el.dataset.deleteId) })()"
                                             >{{ __('buttons.remove') }}</button>
                                 @endif
                             </div>

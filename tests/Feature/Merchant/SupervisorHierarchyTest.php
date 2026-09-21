@@ -220,19 +220,25 @@ it('grants a manager only the members supervised through memberships, not the in
         ->and(managesMember($directorMembership))->toBeFalse();
 });
 
-it('runs the supervisor migration cleanly with the demo seed and leaves demo staff unrouted by default', function () {
+it('runs the supervisor migration cleanly with the demo seed and routes demo staff to the active demo manager', function () {
     $this->seed(DemoStoreSeeder::class);
 
     $store = Store::where('slug', 'demo')->first();
 
     expect($store)->not->toBeNull();
 
+    $manager = StoreMembership::where('store_id', $store->id)
+        ->whereHas('user', fn ($q) => $q->where('email', 'demo.manager@edzeery.com'))
+        ->first();
+
+    expect($manager)->not->toBeNull();
+
     $staff = StoreMembership::where('store_id', $store->id)
         ->where('role', StoreRoleEnum::STAFF->value)
         ->get();
 
     expect($staff)->not->toBeEmpty()
-        ->and($staff->every(fn (StoreMembership $m) => $m->supervisor_membership_id === null))->toBeTrue()
+        ->and($staff->every(fn (StoreMembership $m) => $m->supervisor_membership_id === $manager?->id))->toBeTrue()
         ->and(Schema::hasColumn('store_memberships', 'supervisor_membership_id'))->toBeTrue();
 });
 
