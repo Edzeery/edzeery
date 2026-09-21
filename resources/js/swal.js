@@ -19,7 +19,7 @@ function isRTL() {
 }
 
 function toastPosition() {
-    return isRTL() ? "bottom-start" : "bottom-end";
+    return isRTL() ? "top-start" : "top-end";
 }
 
 const EdzSwal = {

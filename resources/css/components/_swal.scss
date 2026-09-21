@@ -28,6 +28,7 @@
   color: var(--color-ink, #101828);
   border: 1px solid var(--color-neutral-border, #e4e7ec);
   backdrop-filter: blur(12px);
+  top: 10%;
   width: 24rem;
   max-width: calc(100vw - 2rem);
 }
