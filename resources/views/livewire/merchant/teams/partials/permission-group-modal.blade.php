@@ -30,12 +30,13 @@
 
                 <ul class="mt-3 divide-y divide-surface-border rounded-lg border border-surface-border">
                     @foreach ($this->activeGroupMeta['rows'] as $row)
-                        <li class="flex items-start justify-between gap-3 px-3 py-2.5">
-                            <label class="flex min-w-0 items-start gap-2.5 cursor-pointer">
+                        <li class="flex items-start justify-between gap-3 px-3 py-2.5 {{ $row['coming_soon'] ? 'opacity-60' : '' }}">
+                            <label class="flex min-w-0 items-start gap-2.5 {{ $row['coming_soon'] ? 'cursor-not-allowed' : 'cursor-pointer' }}">
                                 <input type="checkbox"
                                     class="edz-checkbox mt-0.5 h-4 w-4 shrink-0"
                                     value="{{ $row['permission'] }}"
                                     @checked($row['checked'])
+                                    @disabled($row['coming_soon'])
                                     wire:click="togglePermission('{{ $row['permission'] }}', {{ $row['checked'] ? 'false' : 'true' }})"
                                     wire:key="perm-cb-{{ $row['permission'] }}"
                                 >
@@ -48,12 +49,18 @@
                                         @if ($row['dangerous'])
                                             <span class="edz-badge edz-badge--danger edz-badge--sm">{{ __('teams.dangerous_badge') }}</span>
                                         @endif
+                                        @if ($row['coming_soon'])
+                                            <span class="edz-badge edz-badge--neutral edz-badge--sm">{{ __('teams.soon_badge') }}</span>
+                                        @endif
                                     </span>
                                     @if (! empty($row['requires']))
                                         <span class="mt-0.5 block text-xs text-ink-muted">
                                             {{ __('teams.requires') }}:
                                             {{ collect($row['requires'])->map(fn ($r) => \App\Support\PermissionGroupMeta::label($r))->implode(', ') }}
                                         </span>
+                                    @endif
+                                    @if (! empty($row['description']))
+                                        <span class="mt-0.5 block text-xs text-ink-muted">{{ $row['description'] }}</span>
                                     @endif
                                 </span>
                             </label>

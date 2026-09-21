@@ -295,9 +295,11 @@ $activeGroupMeta = computed(function (): ?array {
             ->map(fn (string $p) => [
                 'permission' => $p,
                 'label' => PermissionGroupMeta::label($p),
+                'description' => PermissionGroupMeta::description($p),
                 'checked' => isset($selected[$p]),
                 'custom' => ! in_array($p, $template, true),
                 'dangerous' => PermissionGroupMeta::isDangerous($p),
+                'coming_soon' => PermissionGroupMeta::isComingSoon($p),
                 'requires' => PermissionGroupMeta::dependencies($p),
             ])
             ->values()
@@ -320,6 +322,10 @@ $savePermissionGroup = function (): void {
 };
 
 $togglePermission = function (string $permission, bool $checked): void {
+    if (PermissionGroupMeta::isComingSoon($permission)) {
+        return;
+    }
+
     $this->permissions ??= [];
 
     if ($checked) {

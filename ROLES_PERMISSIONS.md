@@ -306,3 +306,7 @@ $this->stores = $u->storesOwned()->with('payments')->get();
 - الالتزام بالنطاقات الأربعة (هرمية/منتجات/رؤية طلبيات/فوترة) عند أي تعديل قالب.
 - شهادة قبول: `grep` صفري لـ`CRM_ORDER_CONFIRMATION` و`crm.orders.confirm`؛ اختبارات Role/StoreRoles (`RoleScopingTest`, `StoreAuthorizationGatesTest`, `TrackingBulkActionsTest`, `BillingVisibilityScopingTest`) خضراء؛ `php -l` نظيف؛ جولة Merchant كاملة خضراء.
 - لا تعديل لإسراف خارج الجدول: مكتبات/خصم، Filament SuperAdmin والقوالب اليتيمة، نطاق الطلبيات أو تدفقات التتبع، الصياغة قبل اتجاه المصفوفة (قسم 3) يتطلب قرار المستخدم.
+
+---
+
+**Implemented: 2026-09-21** — نُفّذت الطبقة A (البند 1–6) كاملةً في مرحلة 36.7: مصفوفة StoreRoles (Manager `-5`، Staff `-3`)، إزالة `CRM_ORDER_CONFIRMATION` عبر قائمة القسم 4 (files أولًا ثم Enum — grep صفري في الكود والاختبارات)، إصلاح الترجمات الأربع + فرع المصفوفات في `PermissionGroupMeta::label()`، أوصاف صلاحيات جديدة (`permissions_descriptions.php×4` + `description()` + عرض في الـ Hub)، إصلاح الخصوصية في `account/billing.blade.php` عبر `storesOwned()`، وشارة «قريبًا» في الـ Hub (`COMING_SOON` + `isComingSoon()` + تعطيل التبديل) مع إزالة تعليقات (Soon) من الـ Enum. الشهادة: Merchant **628 ناجح (2711 تأكيد)**، Account+Auth **43 ناجح (112 تأكيد)**.

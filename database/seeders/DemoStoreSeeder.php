@@ -495,7 +495,6 @@ class DemoStoreSeeder extends Seeder
                 'perms' => [
                     StorePermissionEnum::ORDER_VIEW->value,
                     StorePermissionEnum::ORDER_CONFIRM->value,
-                    StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
                     StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,
                     StorePermissionEnum::RETURNS_PROCESS->value,
                     StorePermissionEnum::STATS_CONFIRMATION->value,
@@ -519,7 +518,6 @@ class DemoStoreSeeder extends Seeder
                     StorePermissionEnum::ORDER_VIEW->value,
                     StorePermissionEnum::ORDER_CONFIRM->value,
                     StorePermissionEnum::CRM_ORDER_TRACKING->value,
-                    StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
                     StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,
                     StorePermissionEnum::STATS_CONFIRMATION->value,
                     StorePermissionEnum::STATS_DELIVERY->value,

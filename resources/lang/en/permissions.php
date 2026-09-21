@@ -12,7 +12,6 @@ return [
             'track' => 'Track Inventory',
         ],
         'orders' => [
-            'confirm' => 'Confirm Orders in CRM',
             'track' => 'Track Orders',
         ],
     ],
@@ -34,9 +33,14 @@ return [
         'view' => 'Inventory View',
     ],
     'order' => [
+        'assign' => 'Assign Orders',
         'cancel' => 'Cancel Order',
         'confirm' => 'Confirm Order',
-        'delete' => 'Delete Order',
+        'delete' => [
+            'label' => 'Delete Order',
+            'final' => 'Delete Order (Final)',
+        ],
+        'dispatch_validate' => 'Validate Order Dispatch',
         'edit' => [
             'price' => 'Edit Order Product Prices',
         ],
@@ -99,6 +103,7 @@ return [
         'remove' => 'Remove Team Members',
         'view' => [
             'own' => 'View Own Team',
+            'label' => 'View Team',
         ],
     ],
     'users' => [

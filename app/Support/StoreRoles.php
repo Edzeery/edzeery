@@ -34,9 +34,10 @@ class StoreRoles
                 ->values()
                 ->toArray(),
 
-            /*
+/* 
             |--------------------------------------------------------------------------
-            | MANAGER – إدارة + فريقه فقط
+            | MANAGER – إدارة + فريقه فقط (بدون سيادة، بدون حذف المنتجات،
+            | تأكيد/تتبع الطلبات وكهرباء التوصيل تُمنح صراحةً عبر الـ Hub)
             |--------------------------------------------------------------------------
             */
             StoreRoleEnum::MANAGER => [
@@ -48,12 +49,10 @@ class StoreRoles
                 StorePermissionEnum::PRODUCT_VIEW->value,
                 StorePermissionEnum::PRODUCT_CREATE->value,
                 StorePermissionEnum::PRODUCT_UPDATE->value,
-                StorePermissionEnum::PRODUCT_DELETE->value,
 
                 // Orders
                 StorePermissionEnum::ORDER_VIEW->value,
                 StorePermissionEnum::ORDER_MANAGE->value,
-                StorePermissionEnum::ORDER_CONFIRM->value,
                 StorePermissionEnum::ORDER_CANCEL->value,
                 StorePermissionEnum::ORDER_ASSIGN->value,
 
@@ -65,9 +64,7 @@ class StoreRoles
                 StorePermissionEnum::TEAM_VIEW_OWN->value,
                 StorePermissionEnum::TEAM_MANAGE_OWN->value,
 
-                // CRM
-                StorePermissionEnum::CRM_ORDER_TRACKING->value,
-                StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
+                // CRM (Inventory)
                 StorePermissionEnum::CRM_INVENTORY_TRACKING->value,
                 StorePermissionEnum::CRM_INVENTORY_MANAGE->value,
 
@@ -75,8 +72,7 @@ class StoreRoles
                 StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,
                 StorePermissionEnum::RETURNS_PROCESS->value,
 
-                // Delivery & Accounting
-                StorePermissionEnum::DELIVERY_PRICING_MANAGE->value,
+                // Delivery
                 StorePermissionEnum::DELIVERY_RIDERS_VIEW->value,
                 StorePermissionEnum::DELIVERY_RIDERS_CREATE->value,
                 StorePermissionEnum::DELIVERY_RIDERS_UPDATE->value,
@@ -94,7 +90,7 @@ class StoreRoles
 
             /*
             |--------------------------------------------------------------------------
-            | STAFF – تأكيد + تتبع فقط (دون إدارة كاملة)
+            | STAFF – تأكيد فقط (دون إدارة)
             |--------------------------------------------------------------------------
             */
             StoreRoleEnum::STAFF => [
@@ -104,14 +100,9 @@ class StoreRoles
                 // Products
                 StorePermissionEnum::PRODUCT_VIEW->value,
 
-                // Orders (تأكيد/إلغاء فقط، بلا إدارة)
+                // Orders (تأكيد فقط، بلا إدارة)
                 StorePermissionEnum::ORDER_VIEW->value,
                 StorePermissionEnum::ORDER_CONFIRM->value,
-                StorePermissionEnum::ORDER_CANCEL->value,
-
-                // CRM / Operations
-                StorePermissionEnum::CRM_ORDER_CONFIRMATION->value,
-                StorePermissionEnum::CRM_ORDER_TRACKING->value,
 
                 // Returns
                 StorePermissionEnum::RETURNS_VERIFY_BARCODE->value,

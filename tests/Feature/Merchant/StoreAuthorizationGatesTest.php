@@ -136,9 +136,11 @@ it('keeps a confirm-only staff member locked out of the teams page (P2 negative)
 });
 
 it('renders the permission matrix for a role whose template includes team.view without crashing', function () {
-    // Regression: `permissions.team.view` resolves to the lang GROUP array
-    // (['own' => ...]), so the permission-label echo used to crash with
-    // "htmlspecialchars(): Argument #1 ... array given". The guard must render it.
+    // Regression: `permissions.team.view` used to resolve to the lang GROUP
+    // array (['own' => ...]), making the permission-label echo crash with
+    // "htmlspecialchars(): Argument #1 ... array given". Phase 36.7 gave the
+    // group a `label` leaf and PermissionGroupMeta::label() flattens it, so
+    // the hub render must stay crash-free.
     $owner = roleUser('merchant');
     $store = gateStore($owner, 'P2r');
     gateMembership($store, $owner, $owner, StoreRoleEnum::OWNER);

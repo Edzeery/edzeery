@@ -44,6 +44,7 @@ return [
     'select_country' => 'Select country…',
     'select_state' => 'Select state…',
     'selected_count' => ':count selected',
+    'soon_badge' => 'Coming soon',
     'staff_limit_reached' => 'You have reached the staff limit for your current plan. Please upgrade to add more members.',
     'state' => 'State / Wilaya',
     'status' => 'Status',

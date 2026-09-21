@@ -59,12 +59,13 @@
 
                 <ul class="mt-3 divide-y divide-surface-border rounded-lg border border-surface-border">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->activeGroupMeta['rows']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <li class="flex items-start justify-between gap-3 px-3 py-2.5">
-                            <label class="flex min-w-0 items-start gap-2.5 cursor-pointer">
+                        <li class="flex items-start justify-between gap-3 px-3 py-2.5 <?php echo e($row['coming_soon'] ? 'opacity-60' : ''); ?>">
+                            <label class="flex min-w-0 items-start gap-2.5 <?php echo e($row['coming_soon'] ? 'cursor-not-allowed' : 'cursor-pointer'); ?>">
                                 <input type="checkbox"
                                     class="edz-checkbox mt-0.5 h-4 w-4 shrink-0"
                                     value="<?php echo e($row['permission']); ?>"
                                     <?php if($row['checked']): echo 'checked'; endif; ?>
+                                    <?php if($row['coming_soon']): echo 'disabled'; endif; ?>
                                     wire:click="togglePermission('<?php echo e($row['permission']); ?>', <?php echo e($row['checked'] ? 'false' : 'true'); ?>)"
                                     wire:key="perm-cb-<?php echo e($row['permission']); ?>"
                                 >
@@ -77,6 +78,9 @@
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($row['dangerous']): ?>
                                             <span class="edz-badge edz-badge--danger edz-badge--sm"><?php echo e(__('teams.dangerous_badge')); ?></span>
                                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($row['coming_soon']): ?>
+                                            <span class="edz-badge edz-badge--neutral edz-badge--sm"><?php echo e(__('teams.soon_badge')); ?></span>
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </span>
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($row['requires'])): ?>
                                         <span class="mt-0.5 block text-xs text-ink-muted">
@@ -84,6 +88,9 @@
                                             <?php echo e(collect($row['requires'])->map(fn ($r) => \App\Support\PermissionGroupMeta::label($r))->implode(', ')); ?>
 
                                         </span>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(! empty($row['description'])): ?>
+                                        <span class="mt-0.5 block text-xs text-ink-muted"><?php echo e($row['description']); ?></span>
                                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </span>
                             </label>

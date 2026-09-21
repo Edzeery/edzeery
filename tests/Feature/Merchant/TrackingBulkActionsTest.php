@@ -283,7 +283,12 @@ test('a manager can bulk reassign the selected trackings to a colleague', functi
     $a = tbaOrder($store, $provider, 'TRK-BA-RB-1', 'shipped');
     $b = tbaOrder($store, $provider, 'TRK-BA-RB-2', 'shipped');
 
-    $managerPerms = StoreRoles::permissions(StoreRoleEnum::MANAGER);
+    // Phase 36.7: tracking is no longer a manager default — grant it
+    // explicitly so the two managers remain valid reassign candidates.
+    $managerPerms = [
+        ...StoreRoles::permissions(StoreRoleEnum::MANAGER),
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
+    ];
     [$manager] = tbaMember($store, 'manager', $managerPerms);
     [, $target] = tbaMember($store, 'manager', $managerPerms);
 

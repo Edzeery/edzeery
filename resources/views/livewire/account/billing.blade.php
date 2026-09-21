@@ -68,7 +68,7 @@ mount(function (): void {
         ->where('status->value', 'pending_review')
         ->values();
 
-    $this->stores = $u->stores()->with('payments')->distinct()->get();
+    $this->stores = $u->storesOwned()->with('payments')->get();
 });
 
 $changePlan = action(function (string $planId): void {

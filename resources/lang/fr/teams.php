@@ -44,6 +44,7 @@ return [
     'select_country' => 'Sélectionner un pays…',
     'select_state' => 'Sélectionner une wilaya…',
     'selected_count' => ':count sélectionné(s)',
+    'soon_badge' => 'Bientôt',
     'staff_limit_reached' => 'Vous avez atteint la limite de membres pour votre forfait actuel. Veuillez mettre à niveau pour ajouter plus de membres.',
     'state' => 'Wilaya / Région',
     'status' => 'Statut',

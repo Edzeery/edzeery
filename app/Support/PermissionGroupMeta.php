@@ -70,6 +70,17 @@ final class PermissionGroupMeta
     ];
 
     /**
+     * Permissions flagged as "coming soon" in the hub: they exist in the
+     * enum and the permission hub, but no consumer implements them yet, so
+     * the row is shown muted/disabled and toggling is ignored.
+     *
+     * @var array<int, string>
+     */
+    public const COMING_SOON = [
+        'accounting.confirm.team',
+    ];
+
+    /**
      * Prerequisite map: permission => permissions that must be granted first.
      * The hub resolves these transitively when enabling and cascades removals
      * through requiredBy() when disabling.
@@ -94,7 +105,6 @@ final class PermissionGroupMeta
         'team.remove' => ['team.view'],
         'team.manage.own' => ['team.view.own'],
         'crm.orders.track' => ['order.view'],
-        'crm.orders.confirm' => ['order.view'],
         'crm.inventory.track' => ['inventory.view'],
         'crm.inventory.manage' => ['crm.inventory.track', 'inventory.view'],
         'delivery.riders.create' => ['delivery.riders.view'],
@@ -121,6 +131,24 @@ final class PermissionGroupMeta
         return in_array($permission, self::DANGEROUS, true);
     }
 
+    public static function isComingSoon(string $permission): bool
+    {
+        return in_array($permission, self::COMING_SOON, true);
+    }
+
+    /**
+     * Optional per-permission description (Phase 36.7) rendered under the
+     * label in the hub. Strings live in permission_descriptions.php; null
+     * when the key is absent.
+     */
+    public static function description(string $permission): ?string
+    {
+        $key = "permissions_descriptions.{$permission}";
+        $translated = __($key);
+
+        return $translated === $key ? null : $translated;
+    }
+
     public static function dependencies(string $permission): array
     {
         return self::DEPENDENCIES[$permission] ?? [];
@@ -145,12 +173,18 @@ final class PermissionGroupMeta
 
     /**
      * Translated label for a permission value, falling back to the enum's
-     * title-cased label when the nested lang key is missing.
+     * title-cased label when the nested lang key is missing. Nested lang
+     * groups (e.g. `permissions.order.delete` → ['label', 'final']) are
+     * flattened to the plain label via the `label`/`own` leaf.
      */
     public static function label(string $permission): string
     {
         $key = "permissions.{$permission}";
         $translated = __($key);
+
+        if (is_array($translated)) {
+            return $translated['label'] ?? $translated['own'] ?? (string) reset($translated);
+        }
 
         if ($translated !== $key) {
             return $translated;

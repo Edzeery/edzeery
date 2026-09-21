@@ -13,7 +13,7 @@ $subscriptionGuard = app(SubscriptionGuardService::class);
 
 $canTopKpis     = canStore(StorePermissionEnum::STATS_TOP_KPIS->value);
 $canStatsDelivery = canStore(StorePermissionEnum::STATS_DELIVERY->value);
-$canConfirm     = canStore(StorePermissionEnum::ORDER_CONFIRM->value) || canStore(StorePermissionEnum::CRM_ORDER_CONFIRMATION->value);
+$canConfirm     = canStore(StorePermissionEnum::ORDER_CONFIRM->value);
 $canInventory   = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
 $canTopProducts = canStore(StorePermissionEnum::PRODUCT_VIEW->value);
 

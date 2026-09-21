@@ -44,6 +44,7 @@ return [
     'select_country' => 'Seleccionar país…',
     'select_state' => 'Seleccionar estado…',
     'selected_count' => ':count seleccionado(s)',
+    'soon_badge' => 'Próximamente',
     'staff_limit_reached' => 'Ha alcanzado el límite de miembros de su plan actual. Actualice para agregar más miembros.',
     'state' => 'Estado / Provincia',
     'status' => 'Estado',

@@ -12,7 +12,6 @@ return [
             'track' => 'Suivi de l\'inventaire',
         ],
         'orders' => [
-            'confirm' => 'Confirmer les commandes CRM',
             'track' => 'Suivi des commandes',
         ],
     ],
@@ -34,9 +33,14 @@ return [
         'view' => 'Voir l\'inventaire',
     ],
     'order' => [
+        'assign' => 'Attribuer des commandes',
         'cancel' => 'Annuler la commande',
         'confirm' => 'Confirmer la commande',
-        'delete' => 'Supprimer la commande',
+        'delete' => [
+            'label' => 'Supprimer la commande',
+            'final' => 'Supprimer la commande (final)',
+        ],
+        'dispatch_validate' => 'Valider l\'expédition des commandes',
         'edit' => [
             'price' => 'Modifier les prix des produits de la commande',
         ],
@@ -99,6 +103,7 @@ return [
         'remove' => 'Retirer des membres',
         'view' => [
             'own' => 'Voir sa propre équipe',
+            'label' => 'Voir l\'équipe',
         ],
     ],
     'users' => [
