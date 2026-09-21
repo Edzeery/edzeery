@@ -30,6 +30,7 @@ if ($store) {
     );
     $withData['operationsOpen'] = request()->routeIs(
         'merchant.orders.*',
+        'merchant.tracking.*',
         'merchant.returns.*',
         'merchant.order-settings',
         'merchant.order-distribution-queue',
@@ -58,6 +59,7 @@ if ($store) {
     $withData['canViewReturns'] = canStore(StorePermissionEnum::RETURNS_VERIFY_BARCODE->value);
     $withData['canViewTeam'] = canStore(StorePermissionEnum::TEAM_VIEW->value);
     $withData['canViewOrders'] = canStore(StorePermissionEnum::ORDER_VIEW->value);
+    $withData['canViewTracking'] = canStore(StorePermissionEnum::CRM_ORDER_TRACKING->value);
     $withData['canViewOrderSettings'] = canStore(StorePermissionEnum::STORE_UPDATE->value);
     $withData['canViewQueue'] = canStore(StorePermissionEnum::ORDER_MANAGE->value);
     $withData['canViewStoreSettings'] = canStore(StorePermissionEnum::STORE_SETTINGS_SENSITIVE->value);
@@ -261,7 +263,7 @@ with($withData);
                         </a>
                     @endif
 
-                    @if ($canViewOrders)
+                    @if ($canViewTracking)
                         <a href="{{ route('merchant.tracking.index', $store) }}" wire:navigate
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.tracking.*'))
                             edz-sidebar__sub-link--active @endif">
