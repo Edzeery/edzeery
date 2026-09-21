@@ -4,18 +4,21 @@ namespace App\Services\Stores;
 
 use App\Domains\Plan\Services\FeatureUsageService;
 use App\Enums\Store\StoreRoleEnum;
+use App\Mail\StoreMembershipCredentialsMail;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class StoreTeamService
 {
     public function addMember(Store $store, array $data): StoreMembership
     {
-        return DB::transaction(function () use ($store, $data) {
+        $member = DB::transaction(function () use ($store, $data) {
 
             $this->ensureUserIsNotPlatformStaff($data['email']);
             $this->ensureStaffLimitNotExceeded($store);
@@ -78,6 +81,12 @@ class StoreTeamService
 
             return $member;
         });
+
+        // Phase 36.8 — send the one-time credentials email AFTER the transaction
+        // commits, so a mail failure never rolls back the new member.
+        $this->dispatchMemberCredentialsMail($store, $member, $data);
+
+        return $member;
     }
 
     public function updateMember(Store $store, StoreMembership $membership, array $data): StoreMembership
@@ -225,6 +234,27 @@ class StoreTeamService
             ->exists();
         if (! $valid) {
             throw new \Exception(__('teams.invalid_supervisor'));
+        }
+    }
+
+    protected function dispatchMemberCredentialsMail(Store $store, StoreMembership $member, array $data): void
+    {
+        try {
+            Mail::to($data['email'])->send(new StoreMembershipCredentialsMail(
+                storeName: $store->name,
+                inviterName: user()->name,
+                memberName: $data['name'],
+                memberEmail: $data['email'],
+                password: $data['password'],
+                loginUrl: route('login'),
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send team member credentials email.', [
+                'store_membership_id' => $member->id,
+                'store_id'            => $store->id,
+                'member'              => $data['email'],
+                'error'               => $e->getMessage(),
+            ]);
         }
     }
 

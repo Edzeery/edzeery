@@ -9,6 +9,7 @@ use App\Support\StoreRoles;
 use Database\Seeders\DemoStoreSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Volt\Volt;
@@ -18,6 +19,7 @@ uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
+    Mail::fake();
 });
 
 function hierarchyStore(User $owner, string $suffix): Store
