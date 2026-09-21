@@ -174,7 +174,9 @@ test('the event-log dropdown button renders only for rows the manager can view',
     $rows = collect($component->get('orders')['data'] ?? [])->pluck('can_view_events', 'id')->all();
 
     expect($rows[$assigned->id] ?? null)->toBeTrue()
-        ->and($rows[$other->id] ?? null)->toBeFalse()
+        // A manager cannot view the event log of an unassigned order — and under
+        // visibility scoping such an order is not rendered in the list at all.
+        ->and($rows[$other->id] ?? null)->toBeNull()
         // The dropdown renders once in the desktop row actions and once in the mobile card.
         ->and(substr_count($component->html(), 'orderEventsMenu'))->toBe(2);
 });

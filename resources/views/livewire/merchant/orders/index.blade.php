@@ -794,6 +794,7 @@ $loadOrders = function (): void {
     $with = $this->orderEagerLoads();
 
     $query = Order::where('store_id', $storeId)->with($with);
+    $query->visibleTo(user()->storeMembership(currentStore()));
 
     if (!empty($this->search)) {
         $s = $this->search;
@@ -1031,6 +1032,7 @@ $refreshSingleOrder = function (string $orderId): void {
     $with = $this->orderEagerLoads();
 
     $query = Order::where('store_id', $storeId)->with($with);
+    $query->visibleTo(user()->storeMembership(currentStore()));
     if ($this->showTrash) {
         $query->onlyTrashed();
     } else {

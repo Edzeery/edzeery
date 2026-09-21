@@ -2683,3 +2683,25 @@ esolveCityId.
 - **ملاحظة بيئية لكتابة هامة:** `php artisan test` يعيد إطلاق PHP بحد ذاكرة 512MB (يرمى `Allowed memory size of 536870912 bytes exhausted` في `BladeCompiler`/`SortableIterator` بعد `StorefrontTemplatesTest` رغم `-d memory_limit=-1` على العملية الأم). **الاستعمال الصحيح على هذا الجهاز: `php -d memory_limit=-1 vendor/bin/pest` مباشرة** (يرث العلم فلا انقطاع). فحصٌ: `php artisan tinker -d` يطبع `string(-1)` لكن `php artisan test` لا.
 - **فشل واحد مسبق غير مرتبط بالتعديل:** `CarrierSyncObservabilityTest` («the carrier-sync:report…» — `expectsOutputToContain('8')` مقابل جدول CRLF) — يفشل منفردًا أيضًا كما في الجولات السابقة.
 - **التحقق البصري اليدوي المُتوقَّع (375/768/1440):** ① checkout بسلة فارغة يوجَّه فورًا للرئيسية؛ ② زبون عاد بعد طلب سابق يجد اسمه/هاتفه مملوءين في نفس المتجر (وليس في متجر آخر)؛ ③ 375px مكدّس بلا sticky، 768px الملخص 2/5، 1440px أعمدة أعرض؛ ④ متجر بألوان خضراء → سكرول الملخص أخضر، أرجواني → أرجواني؛ ⑤ عدة شركات مع افتراضية → تُسبَق تلقائيًا وقابلة للتغيير.
+
+---
+
+## Phase 36.3 — «Tiny fix»: فريق `teams/index.blade.php` تحت سقف 400 سطر ✅ (2026-09-21)
+
+طلب مباشر (لا تغيير وظيفي): الملف كان **402 سطرًا** (>400). استُخرج حرفيًا كتلة المودال الشرطي لمنتج-النطاق (`@if ($scopeProduct)` … `@endif`) إلى جزئية جديدة `resources/views/livewire/merchant/teams/partials/product-scope-mount.blade.php` (**6 أسطر**) وحُلّ محلها `@include`. النتيجة **399 سطرًا ≤ 400** — انخفاض 3 أسطر فقط بلا أي تغيير في المنطق/القوالب/المفاتيح. `php -l` + `view:cache` سليمان.
+
+## Phase 36.4 — نطاق رؤية الطلبيات/التتبع حسب العضوية (`visibleTo`) ✅ (2026-09-21)
+
+**الطلب (مقبول البناء مع انحراف موقّع واحد):** إضافة حارس رؤية جداري اختياري على قائمة الطلبيات والتتبع: المالك/المدير/الموظف يرون نطاقًا متدرجًا، مع حماية `?StoreMembership` (nullable) بدل `StoreMembership` الصارم لأن `canStore()` يعبر فحص `super_admin/admin` قبل وجود عضوية — وإلا TypeError لموظفي المنصة.
+
+1. **`app/Models/Orders/Concerns/HasVisibilityScope.php`** (53 سطرًا، trait — إبقاء `Order.php` عند 226 الإجمالي +سطرين فقط بدل تضخيم النموذج): `scopeVisibleTo(?StoreMembership)` غير عام (يُستخدم صراحةً فقط ولا يُفعَّل ضمنيًا):
+   - `null`/بلا عضوية → no-op.
+   - `TEAM_VIEW` (owner/admin) → دون لمس الاستعلام.
+   - `TEAM_VIEW_OWN` (manager) → `assigned_to_membership_id IN [self + subordinates]`، وإذا كان لإدارة المحل نطاق منتجات (`StoreProductScopeService::assignedProductIds`) يضيّق `whereHas('items', product_id IN …)`.
+   - غيره (staff) → `assigned_to_membership_id = self`.
+2. **نقاط الربط (5 — عدد أدنى، سطر واحد لكلٍّ):** قائمة الطلبيات `orders/index.blade.php` (مسار loading ~798 ومسار trash ~1035) عبر `user()->storeMembership(currentStore())`؛ وشبكة التتبع `app/Livewire/Concerns/TrackingGridConcern.php` (القائمة الرئيسية ~72، المهملة ~25، وعدّاد المهملة `trashCount` ~357) عبر `$this->getMembership()` (من `TrackingColumnConcern`).
+3. **الضمانات:** صفحة طابور التوزيع **لا** تسلسل `visibleTo` (قاعدة صفّه بالتقاطع: غير مُسندة/over_capacity — أثبته اختبار 6 أدناه)؛ لا لمس لأي service/AdminsAssignment إلخ.
+4. **`tests/Feature/Merchant/OrderVisibilityScopingTest.php`** (6 اختبارات/13 تأكيد): ① owner يرى كل طلبية بأي إسناد ② staff يرى مُسنداته فقط (لا زميل/مدير/غير مُسند) ③ manager بلا نطاق منتجات: ذاتي + مُشرِفيهم فقط ④ manager بنطاق منتج: طلبات الفريق التي تحوي المنتج المعيّن فقط ⑤ التتبع: القائمة الرئيسية/المهملة/العدّاد لنفس النطاق (مع منح staff صلاحية `ORDER_DELETE` فقط لبلوغ سلة المهملة — الحارس «صلاحية» لا يعطي TEAM_VIEW) ⑥ طابور التوزيع: صفّ لا يتغيّر (بلا سلوك رؤية مكتسب أو مفقود).
+5. **تكييف 3 اختبارات قديمة مثّل السلوك السابق (كانت تفترض أن staff/manager يرى كل الطلبيات):** `OrderInlineItemsEditTest` (5 حالات staff — تمرير `assignee: $membership` للطلب)، `OrderEventLogVisibilityTest` (طلب آخر غير مُسند صار غير معروض للمدير → `toBeNull()` بدل `toBeFalse()`)، `OrdersMobileMoreMenuTest` (إسناد الطلب لعضو staff ليظهر الصف). **لا تغيير في الكود الخاضع للاختبار** — فقط إصلاح الفرضية.
+6. **الشهادة:** `php -l` نظيف على كل الملفات؛ **`tests/Feature/Merchant` كاملة = 614 ناجح (2618 تأكيد)** صفر انحدار (607 سابقة + 7)؛ `tests/Feature/Order` + `tests/Feature/Shipping` سليمان (باستثناء فشل `CarrierSyncObservabilityTest` المسبق الموثّق — `expectsOutputToContain('8')`/جدول CRLF). حجم `orders/index.blade.php` = **5,641 سطر < سقف 5,699** الموثّق. الذاكرة: التشغيل الصحيح على هذا الجهاز `php -d memory_limit=2048M vendor/bin/pest` (موثّق أدناه في ملاحظة 34.5 الجولة السابقة).
+7. **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px/768px/1440px على قائمة الطلبيات وشبكة التتبع بنطاقَي staff (عرض اسمه فقط) وmanager (ذاته + فرقه) وowner (الكل).

@@ -45,7 +45,7 @@ function moreUser(string $storeRole): array
     return [$user, $store, $membership];
 }
 
-function moreOrder(Store $store): Order
+function moreOrder(Store $store, ?StoreMembership $assignee = null): Order
 {
     $customer = Customer::create([
         'store_id' => $store->id,
@@ -66,6 +66,7 @@ function moreOrder(Store $store): Order
         'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
         'total_amount' => 400,
         'shipping_cost' => 0,
+        'assigned_to_membership_id' => $assignee?->id,
     ]);
 
     $product = Product::create([
@@ -119,7 +120,7 @@ test('the mobile card ships a more-popover with 44px touch rows for a manager', 
 
 test('the mobile more-popover renders no 44px rows for staff (manage/delete gated)', function () {
     [$user, $store, $membership] = moreUser(StoreRoleEnum::STAFF->value);
-    moreOrder($store);
+    moreOrder($store, $membership);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);
 

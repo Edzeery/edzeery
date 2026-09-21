@@ -11,6 +11,7 @@ use App\Models\Locations\State;
 use App\Models\Status;
 use App\Models\Stores\Store;
 use App\Models\User;
+use App\Models\Orders\Concerns\HasVisibilityScope;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 class Order extends Model
 {
     use HasUlids;
+    use HasVisibilityScope;
     use SoftDeletes;
 
     /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string, from_key: ?string}> */

@@ -103,7 +103,7 @@ function itemsVariant(Store $store, string $label, float $price = 500, int $stoc
     return [$product, $variant];
 }
 
-function itemsOrder(Store $store, State $state, City $city, array $items, string $statusKey = 'pending', string $phone = '0550000000'): Order
+function itemsOrder(Store $store, State $state, City $city, array $items, string $statusKey = 'pending', string $phone = '0550000000', ?StoreMembership $assignee = null): Order
 {
     $customer = Customer::create([
         'store_id' => $store->id,
@@ -125,6 +125,7 @@ function itemsOrder(Store $store, State $state, City $city, array $items, string
         'delivery_type' => 'home',
         'payment_method' => 'cod',
         'shipping_cost' => 0,
+        'assigned_to_membership_id' => $assignee?->id,
     ]);
 
     foreach ($items as $item) {
@@ -158,7 +159,7 @@ test('products and quantity cells open their per-column modals preloaded from th
     [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
     $order = itemsOrder($store, $state, $city, [
         ['variant' => $variantA, 'product' => $productA, 'quantity' => 2, 'price' => 450],
-    ]);
+    ], assignee: $membership);
 
     // Staff without FORM_EDITED (owner) or ORDER_EDIT_PRICE keep the static
     // price column even though allow_price_edit is enabled later by the store.
@@ -187,7 +188,7 @@ test('without the allow_price_edit setting the modal save forces the DB price ev
     [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
     $order = itemsOrder($store, $state, $city, [
         ['variant' => $variantA, 'product' => $productA, 'quantity' => 2, 'price' => 450],
-    ]);
+    ], assignee: $membership);
 
     itemsVolt([$staff, $store])
         ->call('openItemsModal', 'products', $order->id)
@@ -264,7 +265,7 @@ test('staff with a custom order.manage permission gets no price modal and prices
     [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
     $order = itemsOrder($store, $state, $city, [
         ['variant' => $variantA, 'product' => $productA, 'quantity' => 2, 'price' => 450],
-    ]);
+    ], assignee: $membership);
 
     $store->settings()->updateOrCreate([], ['allow_price_edit' => true]);
 
@@ -296,7 +297,7 @@ test('staff with both order.manage and order.edit.price sees and honors the pric
     [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
     $order = itemsOrder($store, $state, $city, [
         ['variant' => $variantA, 'product' => $productA, 'quantity' => 1, 'price' => 450],
-    ]);
+    ], assignee: $membership);
 
     $store->settings()->updateOrCreate([], ['allow_price_edit' => true]);
 
@@ -321,7 +322,7 @@ test('the price setting alone is not enough: staff with order.manage but no orde
     [$productA, $variantA] = itemsVariant($store, 'Alpha', 450);
     $order = itemsOrder($store, $state, $city, [
         ['variant' => $variantA, 'product' => $productA, 'quantity' => 1, 'price' => 450],
-    ]);
+    ], assignee: $membership);
 
     $store->settings()->updateOrCreate([], ['allow_price_edit' => true]);
 

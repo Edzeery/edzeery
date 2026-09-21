@@ -22,7 +22,9 @@ trait TrackingGridConcern
     public function baseTrackingQuery(bool $forAggregate = false): \Illuminate\Database\Eloquent\Builder
     {
         if ($this->showTrash) {
-            $query = Order::onlyTrashed()->where('store_id', currentStoreId());
+            $query = Order::onlyTrashed()
+                ->where('store_id', currentStoreId())
+                ->visibleTo($this->getMembership());
 
             // Per-tab trash bins: carrier trash keeps only orders sent via a shipping
             // company; rider trash keeps only orders handed to a delivery rider.
@@ -70,7 +72,8 @@ trait TrackingGridConcern
         $f = $this->filters;
 
         $query = Order::query()
-            ->where('store_id', currentStoreId());
+            ->where('store_id', currentStoreId())
+            ->visibleTo($this->getMembership());
 
         if (! $forAggregate) {
             $query->with([
@@ -355,6 +358,7 @@ trait TrackingGridConcern
             ->all();
 
         $this->trashCount = Order::where('store_id', currentStoreId())
+            ->visibleTo($this->getMembership())
             ->onlyTrashed()
             ->when($this->trackingTab === 'rider', fn ($q) => $q->whereNotNull('delivery_rider_id'))
             ->when($this->trackingTab === 'carrier', fn ($q) => $q->whereNotNull('shipping_provider_id'))
