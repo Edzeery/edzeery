@@ -5,8 +5,11 @@ namespace Database\Seeders;
 use App\Domains\Order\Models\ConfirmationProductAssignment;
 use App\Domains\Order\Models\ConfirmationShift;
 use App\Domains\Shipping\Models\Carrier;
+use App\Domains\Shipping\Models\DeliveryRate;
 use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Enums\Finance\DebtStatusEnum;
+use App\Enums\Finance\DebtTypeEnum;
 use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\LandingTemplateEnum;
 use App\Enums\Store\OrderTrackingStatus;
@@ -16,6 +19,8 @@ use App\Enums\Store\StoreStatusEnum;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\Finance\Debt;
+use App\Models\Finance\DebtPayment;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -36,6 +41,7 @@ use App\Models\User;
 use App\Support\StoreRoles;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -86,10 +92,24 @@ class DemoStoreSeeder extends Seeder
         $store->settings()->updateOrCreate(
             ['store_id' => $store->id],
             [
-                'currency'        => 'DZD',
-                'currency_symbol' => 'DA',
-                'language'        => 'ar',
-                'timezone'        => 'Africa/Algiers',
+                'currency'            => 'DZD',
+                'currency_symbol'     => 'DA',
+                'language'            => 'ar',
+                'supported_languages' => ['ar', 'fr', 'en'],
+                'timezone'            => 'Africa/Algiers',
+                'phone'               => '021 60 45 78',
+                'guest_checkout'      => true,
+                'inventory_tracking'  => true,
+                'show_out_of_stock'   => true,
+                'allow_backorder'     => false,
+                'min_order_qty'       => 1,
+                'max_order_qty'       => 50,
+                'payment_methods'     => ['cod'],
+                'contact_info'        => [
+                    'email'    => 'demo@edzeery.com',
+                    'phone'    => '021 60 45 78',
+                    'whatsapp' => '0550123456',
+                ],
             ]
         );
 
@@ -120,19 +140,37 @@ class DemoStoreSeeder extends Seeder
             ['email' => 'demo.staff@edzeery.com',   'name' => 'Demo Staff',   'role' => StoreRoleEnum::STAFF],
         ];
 
+        $managerMembership = null;
+
         foreach ($demoMembers as $member) {
             $memberUser = $this->createUser($member['email'], $member['name'], UserRoleEnum::MERCHANT, $member['role']);
 
             $memberMembership = StoreMembership::firstOrCreate(
                 ['store_id' => $store->id, 'user_id' => $memberUser->id],
                 [
-                    'invited_by' => $user->id,
-                    'is_active'  => true,
-                    'role'       => $member['role']->value,
+                    'invited_by'               => $user->id,
+                    'is_active'                => true,
+                    'role'                     => $member['role']->value,
+                    'supervisor_membership_id' => $member['role'] === StoreRoleEnum::MANAGER
+                        ? null
+                        : $managerMembership?->id,
                 ]
             );
 
+            if ($member['role'] === StoreRoleEnum::MANAGER) {
+                $managerMembership = $memberMembership;
+            }
+
             $memberMembership->syncPermissions(StoreRoles::permissions($member['role']));
+        }
+
+        // Supervisor hierarchy: staff report to the active manager — mirrors the
+        // backfill performed by the add_supervisor_membership_id migration.
+        if ($managerMembership) {
+            StoreMembership::where('store_id', $store->id)
+                ->where('role', StoreRoleEnum::STAFF->value)
+                ->whereNull('supervisor_membership_id')
+                ->update(['supervisor_membership_id' => $managerMembership->id]);
         }
 
         $this->seedDemoCustomer($user);
@@ -153,7 +191,9 @@ class DemoStoreSeeder extends Seeder
         $this->seedRiders($store);
 
         $this->seedDemoCustomers($store);
+        $this->seedShippingRates($store);
         $this->seedDemoOrders($store);
+        $this->seedFinanceData($store);
     }
 
     private function createUser(string $email, string $name, UserRoleEnum $platformRole, ?StoreRoleEnum $storeRole = null): User
@@ -253,9 +293,9 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'techvibe',
                 'category_slugs'    => ['demo-electronics', 'demo-accessories'],
                 'variants'          => [
-                    ['name' => 'Black', 'sku' => 'DEMO-EAR-001-BK', 'price' => 4500.00, 'stock' => 50, 'option_values' => [['Color', 'Black']]],
-                    ['name' => 'White', 'sku' => 'DEMO-EAR-001-WH', 'price' => 4500.00, 'stock' => 35, 'option_values' => [['Color', 'White']]],
-                    ['name' => 'Blue',  'sku' => 'DEMO-EAR-001-BL', 'price' => 4800.00, 'stock' => 20, 'option_values' => [['Color', 'Blue']]],
+                    ['name' => 'Black', 'sku' => 'DEMO-EAR-001-BK', 'price' => 4500.00, 'stock' => 50, 'weight' => 0.150, 'option_values' => [['Color', 'Black']]],
+                    ['name' => 'White', 'sku' => 'DEMO-EAR-001-WH', 'price' => 4500.00, 'stock' => 35, 'weight' => 0.150, 'option_values' => [['Color', 'White']]],
+                    ['name' => 'Blue',  'sku' => 'DEMO-EAR-001-BL', 'price' => 4800.00, 'stock' => 20, 'weight' => 0.150, 'option_values' => [['Color', 'Blue']]],
                 ],
             ],
             [
@@ -272,8 +312,8 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'techvibe',
                 'category_slugs'    => ['demo-electronics'],
                 'variants'          => [
-                    ['name' => '42mm - Silver', 'sku' => 'DEMO-WATCH-001-SV', 'price' => 8900.00, 'stock' => 15, 'option_values' => [['Size', '42mm'], ['Color', 'Silver']]],
-                    ['name' => '46mm - Black',  'sku' => 'DEMO-WATCH-001-BK', 'price' => 9500.00, 'stock' => 20, 'option_values' => [['Size', '46mm'], ['Color', 'Black']]],
+                    ['name' => '42mm - Silver', 'sku' => 'DEMO-WATCH-001-SV', 'price' => 8900.00, 'stock' => 15, 'weight' => 0.210, 'option_values' => [['Size', '42mm'], ['Color', 'Silver']]],
+                    ['name' => '46mm - Black',  'sku' => 'DEMO-WATCH-001-BK', 'price' => 9500.00, 'stock' => 20, 'weight' => 0.210, 'option_values' => [['Size', '46mm'], ['Color', 'Black']]],
                 ],
             ],
             [
@@ -290,11 +330,11 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'urbanedge',
                 'category_slugs'    => ['demo-clothing'],
                 'variants'          => [
-                    ['name' => 'Small - Black',  'sku' => 'DEMO-TSHIRT-001-SB', 'price' => 1800.00, 'stock' => 40, 'option_values' => [['Size', 'Small'], ['Color', 'Black']]],
-                    ['name' => 'Medium - Black', 'sku' => 'DEMO-TSHIRT-001-MB', 'price' => 1800.00, 'stock' => 60, 'option_values' => [['Size', 'Medium'], ['Color', 'Black']]],
-                    ['name' => 'Large - Black',  'sku' => 'DEMO-TSHIRT-001-LB', 'price' => 1800.00, 'stock' => 50, 'option_values' => [['Size', 'Large'], ['Color', 'Black']]],
-                    ['name' => 'Medium - White', 'sku' => 'DEMO-TSHIRT-001-MW', 'price' => 1800.00, 'stock' => 45, 'option_values' => [['Size', 'Medium'], ['Color', 'White']]],
-                    ['name' => 'Large - White',  'sku' => 'DEMO-TSHIRT-001-LW', 'price' => 1800.00, 'stock' => 30, 'option_values' => [['Size', 'Large'], ['Color', 'White']]],
+                    ['name' => 'Small - Black',  'sku' => 'DEMO-TSHIRT-001-SB', 'price' => 1800.00, 'stock' => 40, 'weight' => 0.250, 'option_values' => [['Size', 'Small'], ['Color', 'Black']]],
+                    ['name' => 'Medium - Black', 'sku' => 'DEMO-TSHIRT-001-MB', 'price' => 1800.00, 'stock' => 60, 'weight' => 0.250, 'option_values' => [['Size', 'Medium'], ['Color', 'Black']]],
+                    ['name' => 'Large - Black',  'sku' => 'DEMO-TSHIRT-001-LB', 'price' => 1800.00, 'stock' => 50, 'weight' => 0.250, 'option_values' => [['Size', 'Large'], ['Color', 'Black']]],
+                    ['name' => 'Medium - White', 'sku' => 'DEMO-TSHIRT-001-MW', 'price' => 1800.00, 'stock' => 45, 'weight' => 0.250, 'option_values' => [['Size', 'Medium'], ['Color', 'White']]],
+                    ['name' => 'Large - White',  'sku' => 'DEMO-TSHIRT-001-LW', 'price' => 1800.00, 'stock' => 30, 'weight' => 0.250, 'option_values' => [['Size', 'Large'], ['Color', 'White']]],
                 ],
             ],
             [
@@ -311,7 +351,7 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'urbanedge',
                 'category_slugs'    => ['demo-accessories'],
                 'variants'          => [
-                    ['name' => 'Default', 'sku' => 'DEMO-BAG-001-DF', 'price' => 5500.00, 'stock' => 25],
+                    ['name' => 'Default', 'sku' => 'DEMO-BAG-001-DF', 'price' => 5500.00, 'stock' => 25, 'weight' => 0.600],
                 ],
             ],
             [
@@ -328,7 +368,7 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'purenature',
                 'category_slugs'    => ['demo-accessories'],
                 'variants'          => [
-                    ['name' => 'Default', 'sku' => 'DEMO-SUN-001-DF', 'price' => 3200.00, 'stock' => 30],
+                    ['name' => 'Default', 'sku' => 'DEMO-SUN-001-DF', 'price' => 3200.00, 'stock' => 30, 'weight' => 0.050],
                 ],
             ],
             [
@@ -345,7 +385,7 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'techvibe',
                 'category_slugs'    => ['demo-electronics'],
                 'variants'          => [
-                    ['name' => 'Default', 'sku' => 'DEMO-SPK-001-DF', 'price' => 6200.00, 'stock' => 18],
+                    ['name' => 'Default', 'sku' => 'DEMO-SPK-001-DF', 'price' => 6200.00, 'stock' => 18, 'weight' => 0.700],
                 ],
             ],
             [
@@ -362,9 +402,9 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'urbanedge',
                 'category_slugs'    => ['demo-clothing'],
                 'variants'          => [
-                    ['name' => 'Medium - Beige',  'sku' => 'DEMO-SHIRT-001-MB', 'price' => 2800.00, 'stock' => 25, 'option_values' => [['Size', 'Medium'], ['Color', 'Beige']]],
-                    ['name' => 'Large - Beige',   'sku' => 'DEMO-SHIRT-001-LB', 'price' => 2800.00, 'stock' => 20, 'option_values' => [['Size', 'Large'], ['Color', 'Beige']]],
-                    ['name' => 'Medium - Green',  'sku' => 'DEMO-SHIRT-001-MG', 'price' => 2800.00, 'stock' => 15, 'option_values' => [['Size', 'Medium'], ['Color', 'Green']]],
+                    ['name' => 'Medium - Beige',  'sku' => 'DEMO-SHIRT-001-MB', 'price' => 2800.00, 'stock' => 25, 'weight' => 0.300, 'option_values' => [['Size', 'Medium'], ['Color', 'Beige']]],
+                    ['name' => 'Large - Beige',   'sku' => 'DEMO-SHIRT-001-LB', 'price' => 2800.00, 'stock' => 20, 'weight' => 0.300, 'option_values' => [['Size', 'Large'], ['Color', 'Beige']]],
+                    ['name' => 'Medium - Green',  'sku' => 'DEMO-SHIRT-001-MG', 'price' => 2800.00, 'stock' => 15, 'weight' => 0.300, 'option_values' => [['Size', 'Medium'], ['Color', 'Green']]],
                 ],
             ],
             [
@@ -381,7 +421,7 @@ class DemoStoreSeeder extends Seeder
                 'brand_slug'        => 'purenature',
                 'category_slugs'    => ['demo-accessories'],
                 'variants'          => [
-                    ['name' => 'Default', 'sku' => 'DEMO-TEA-001-DF', 'price' => 3800.00, 'stock' => 40],
+                    ['name' => 'Default', 'sku' => 'DEMO-TEA-001-DF', 'price' => 3800.00, 'stock' => 40, 'weight' => 0.400],
                 ],
             ],
         ];
@@ -425,10 +465,16 @@ class DemoStoreSeeder extends Seeder
                         'name'       => $vData['name'],
                         'price'      => $vData['price'],
                         'stock'      => $vData['stock'],
+                        'weight'     => $vData['weight'] ?? null,
                         'is_active'  => true,
                         'is_default' => $i === 0,
                     ]
                 );
+
+                // Make re-runs idempotent on weight too (firstOrCreate only inserts).
+                if (array_key_exists('weight', $vData)) {
+                    $variant->forceFill(['weight' => $vData['weight']])->save();
+                }
 
                 if ($data['type'] === 'variable' && isset($vData['option_values'])) {
                     foreach ($vData['option_values'] as [$optionName, $optionValue]) {
@@ -526,15 +572,20 @@ class DemoStoreSeeder extends Seeder
             ],
         ];
 
+        $manager = StoreMembership::where('store_id', $store->id)
+            ->whereHas('user', fn ($q) => $q->where('email', 'demo.manager@edzeery.com'))
+            ->first();
+
         foreach ($scopedMembers as $email => $member) {
             $memberUser = $this->createUser($email, $member['name'], UserRoleEnum::MERCHANT);
 
             $membership = StoreMembership::firstOrCreate(
                 ['store_id' => $store->id, 'user_id' => $memberUser->id],
                 [
-                    'invited_by' => $store->user_id,
-                    'is_active'  => true,
-                    'role'       => StoreRoleEnum::STAFF->value,
+                    'invited_by'               => $store->user_id,
+                    'is_active'                => true,
+                    'role'                     => StoreRoleEnum::STAFF->value,
+                    'supervisor_membership_id' => $manager?->id,
                 ]
             );
 
@@ -543,6 +594,13 @@ class DemoStoreSeeder extends Seeder
             // confirm/track permission leaking through the global STAFF role).
             $membership->syncPermissions($member['perms']);
         }
+
+        // Keep the supervisor wired on pre-existing rows from older runs too.
+        StoreMembership::where('store_id', $store->id)
+            ->where('role', StoreRoleEnum::STAFF->value)
+            ->whereHas('user', fn ($q) => $q->whereIn('email', array_keys($scopedMembers)))
+            ->whereNull('supervisor_membership_id')
+            ->update(['supervisor_membership_id' => $manager?->id]);
     }
 
     private function enableFeatureSettings(Store $store): void
@@ -805,10 +863,11 @@ class DemoStoreSeeder extends Seeder
                     ['preparing', 'demo@edzeery.com', 'Handed to warehouse for packing', 40],
                 ],
             ],
-            [ // 21009 — shipped via Ecotrack (carrier tab)
+            [ // 21009 — shipped via Ecotrack, handed over at the carrier's warehouse
                 'number' => '21009', 'customer' => '0555555555', 'status' => 'shipped', 'days_ago' => 5, 'create_hour' => 9,
                 'items' => [['DEMO-SPK-001-DF', 1]],
                 'provider' => 'ecotrack',
+                'send_from_carrier_warehouse' => true,
                 'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'history' => [
                     ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed by phone', 10],
@@ -934,6 +993,141 @@ class DemoStoreSeeder extends Seeder
         }
     }
 
+    private function seedShippingRates(Store $store): void
+    {
+        // Per-wilaya home/office prices for the demo store's carriers — same
+        // base as the provider flat rates, except wilayas farther from Algiers
+        // cost a bit more (how Algerian COD carriers actually price). Keeps the
+        // delivery-rates editor populated with the exact rows the order-form
+        // cost calculator resolves for the seeded orders.
+        $prices = [
+            '16' => [450.00, 400.00], // Algiers
+            '09' => [400.00, 350.00], // Blida
+            '31' => [500.00, 450.00], // Oran
+            '25' => [500.00, 450.00], // Constantine
+        ];
+
+        $providers = ShippingProvider::where('store_id', $store->id)->get();
+
+        foreach ($prices as $stateCode => [$homeCost, $officeCost]) {
+            $state = State::where('state_code', $stateCode)->first();
+            if (! $state) {
+                continue;
+            }
+
+            foreach ($providers as $provider) {
+                DeliveryRate::updateOrCreate(
+                    [
+                        'store_id'             => $store->id,
+                        'shipping_provider_id' => $provider->id,
+                        'state_id'             => $state->id,
+                    ],
+                    [
+                        'label'       => "{$provider->name} — {$state->name}",
+                        'home_cost'   => $homeCost,
+                        'office_cost' => $officeCost,
+                        'source'      => 'seeded',
+                        'is_active'   => true,
+                    ]
+                );
+            }
+        }
+    }
+
+    private function seedFinanceData(Store $store): void
+    {
+        // Finance rows derived from the seeded orders — nothing invented:
+        //   • owing  → the shipping fees the carriers have invoiced for the
+        //     consignments actually sent (summed from the order_trackings rows);
+        //   • owed   → the COD of the delivered order 21011, collected in full.
+        $user = User::where('email', 'demo@edzeery.com')->first();
+
+        $feesByProvider = DB::table('order_trackings as t')
+            ->join('orders as o', 'o.id', '=', 't.order_id')
+            ->where('t.store_id', $store->id)
+            ->whereNotNull('t.shipping_provider_id')
+            ->groupBy('t.shipping_provider_id')
+            ->selectRaw('t.shipping_provider_id, SUM(o.shipping_cost) as fees')
+            ->get()
+            ->keyBy('shipping_provider_id');
+
+        foreach ($feesByProvider as $providerId => $row) {
+            $provider = ShippingProvider::where('id', $providerId)->first();
+            if (! $provider) {
+                continue;
+            }
+
+            $debt = Debt::updateOrCreate(
+                [
+                    'store_id'          => $store->id,
+                    'type'              => DebtTypeEnum::OWING,
+                    'counterparty_name' => $provider->name,
+                ],
+                [
+                    'user_id'        => $user?->id ?? $store->user_id,
+                    'total_amount'   => (float) $row->fees,
+                    'due_date'       => now()->addDays(7),
+                    'reminder_date'  => now()->addDays(3),
+                    'description'    => "Transport invoice — {$provider->name}",
+                    'notes'          => 'Total derived from the shipped demo orders.',
+                    'status'         => DebtStatusEnum::ACTIVE,
+                ]
+            );
+
+            $debt->payments()->delete();
+
+            // ZR Express gets a partial settlement (150 DA of 400 DA) so the
+            // finance screens show a progressing debt; Ecotrack stays open.
+            if ($provider->code === 'zrexpress_v2') {
+                DebtPayment::create([
+                    'debt_id'      => $debt->id,
+                    'store_id'     => $store->id,
+                    'amount'       => 150.00,
+                    'payment_date' => now()->subDays(3),
+                    'notes'        => 'Partial settlement',
+                ]);
+            }
+        }
+
+        $codOrder = Order::withoutGlobalScopes()
+            ->where('store_id', $store->id)
+            ->where('number', '21011')
+            ->first();
+
+        if ($codOrder) {
+            $deliveredAt = OrderTracking::query()
+                ->where('store_id', $store->id)
+                ->where('order_id', $codOrder->id)
+                ->value('delivered_at')
+                ?? $codOrder->created_at->copy()->addHours(160);
+
+            $owedDebt = Debt::updateOrCreate(
+                [
+                    'store_id'          => $store->id,
+                    'type'              => DebtTypeEnum::OWED,
+                    'counterparty_name' => 'Amine Bensaïd',
+                ],
+                [
+                    'user_id'       => $user?->id ?? $store->user_id,
+                    'total_amount'  => (float) $codOrder->total_amount,
+                    'due_date'      => $deliveredAt,
+                    'description'   => "COD collection — order {$codOrder->number}",
+                    'notes'         => 'Amount collected by the carrier on delivery.',
+                    'status'        => DebtStatusEnum::ACTIVE,
+                ]
+            );
+
+            $owedDebt->payments()->delete();
+            DebtPayment::create([
+                'debt_id'      => $owedDebt->id,
+                'store_id'     => $store->id,
+                'amount'       => (float) $codOrder->total_amount,
+                'payment_date' => $deliveredAt,
+                'notes'        => 'Full COD collection',
+            ]);
+        }
+    }
+
     private function seedOrder(Store $store, array $spec, array $ctx): void
     {
         // Always-fresh demo rows: if a previous run left a 210xx order behind
@@ -972,9 +1166,13 @@ class DemoStoreSeeder extends Seeder
         $assignTo = ! empty($spec['assign_to']) ? $ctx['members']->get($spec['assign_to']) : null;
         $assignBy = ! empty($spec['assign_by']) ? $ctx['members']->get($spec['assign_by']) : null;
 
-        // Items + totals (weight-free local home deliveries).
+        // Items + totals. Weights come from the seeded variant weights, shipping from
+        // the store's per-wilaya delivery rate when a carrier is on the order,
+        // and own-rider local drops stay free — the same numbers the cost
+        // calculator exposes on the order form.
         $itemsData = [];
         $subtotal = 0.0;
+        $weightKg = 0.0;
         foreach ($spec['items'] as [$sku, $qty]) {
             $variant = $ctx['variants']->get($sku);
             if (! $variant) {
@@ -983,6 +1181,19 @@ class DemoStoreSeeder extends Seeder
             $price = (float) $variant->price;
             $itemsData[] = [$variant, $qty, $price];
             $subtotal += $price * $qty;
+            $weightKg += (float) ($variant->weight ?? 0) * $qty;
+        }
+
+        $shippingCost = 0.0;
+        if ($provider) {
+            $rate = DeliveryRate::query()
+                ->where('store_id', $store->id)
+                ->where('shipping_provider_id', $provider->id)
+                ->where('state_id', $customer->state_id)
+                ->where('is_active', true)
+                ->first();
+
+            $shippingCost = (float) ($rate?->home_cost ?? $provider->flat_rate ?? 0);
         }
 
         $assignedAt = $assignTo ? $createdAt->copy()->addMinutes(25) : null;
@@ -993,8 +1204,9 @@ class DemoStoreSeeder extends Seeder
         $order->status_id = $status->id;
         $order->number = $spec['number'];
         $order->created_by_membership_id = $ctx['owner']?->id;
-        $order->total_amount = round($subtotal + (float) ($spec['shipping'] ?? 0), 2);
-        $order->shipping_cost = $spec['shipping'] ?? 0;
+        $order->total_amount = round($subtotal + $shippingCost, 2);
+        $order->shipping_cost = round($shippingCost, 2);
+        $order->weight_kg = round($weightKg, 2);
         $order->state_id = $customer->state_id;
         $order->city_id = $customer->city_id;
         $order->address = $customer->address;
@@ -1008,6 +1220,7 @@ class DemoStoreSeeder extends Seeder
         $order->assigned_at = $assignedAt;
         $order->assignment_method = $spec['assign_method'] ?? null;
         $order->over_capacity = (bool) ($spec['over_capacity'] ?? false);
+        $order->send_from_carrier_warehouse = (bool) ($spec['send_from_carrier_warehouse'] ?? false);
         $order->notes = $spec['notes'] ?? null;
         $order->phone_secondary = $spec['phone_secondary'] ?? null;
         $order->confirmation_attempts = (int) ($spec['attempts'] ?? 0);

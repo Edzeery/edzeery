@@ -37,8 +37,8 @@ return [
         'cancel' => 'Cancelar pedidos',
         'confirm' => 'Confirmar pedidos',
         'delete' => [
-            'label' => 'Eliminar pedidos',
             'final' => 'Eliminar pedidos (final)',
+            'label' => 'Eliminar pedidos',
         ],
         'dispatch_validate' => 'Validar despacho de pedidos',
         'edit' => [
@@ -102,8 +102,8 @@ return [
         ],
         'remove' => 'Eliminar miembros',
         'view' => [
-            'own' => 'Ver propio equipo',
             'label' => 'Ver equipo',
+            'own' => 'Ver propio equipo',
         ],
     ],
     'users' => [

@@ -37,8 +37,8 @@ return [
         'cancel' => 'Cancel Order',
         'confirm' => 'Confirm Order',
         'delete' => [
-            'label' => 'Delete Order',
             'final' => 'Delete Order (Final)',
+            'label' => 'Delete Order',
         ],
         'dispatch_validate' => 'Validate Order Dispatch',
         'edit' => [
@@ -102,8 +102,8 @@ return [
         ],
         'remove' => 'Remove Team Members',
         'view' => [
-            'own' => 'View Own Team',
             'label' => 'View Team',
+            'own' => 'View Own Team',
         ],
     ],
     'users' => [

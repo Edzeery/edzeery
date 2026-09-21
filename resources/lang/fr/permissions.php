@@ -37,8 +37,8 @@ return [
         'cancel' => 'Annuler la commande',
         'confirm' => 'Confirmer la commande',
         'delete' => [
-            'label' => 'Supprimer la commande',
             'final' => 'Supprimer la commande (final)',
+            'label' => 'Supprimer la commande',
         ],
         'dispatch_validate' => 'Valider l\'expédition des commandes',
         'edit' => [
@@ -102,8 +102,8 @@ return [
         ],
         'remove' => 'Retirer des membres',
         'view' => [
-            'own' => 'Voir sa propre équipe',
             'label' => 'Voir l\'équipe',
+            'own' => 'Voir sa propre équipe',
         ],
     ],
     'users' => [

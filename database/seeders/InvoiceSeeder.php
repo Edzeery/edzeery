@@ -16,19 +16,24 @@ class InvoiceSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        // Deterministic line-item counts — a fixed pattern per invoice, so
+        // re-seeding produces byte-identical data instead of random sizes.
+        $itemCounts = [2, 4, 3, 5, 2];
+
         Invoice::factory()
             ->count(5)
             ->for($user)
             ->create()
-            ->each(function (Invoice $invoice) {
-                $itemCount = rand(2, 5); 
+            ->values()
+            ->each(function (Invoice $invoice, int $index) use ($itemCounts) {
+                $itemCount = $itemCounts[$index % count($itemCounts)];
 
                 InvoiceItem::factory()
                     ->count($itemCount)
                     ->for($invoice)
                     ->create()
-                    ->each(function ($item, $index) {
-                        $item->update(['sort_order' => $index + 1]);
+                    ->each(function ($item, $itemIndex) {
+                        $item->update(['sort_order' => $itemIndex + 1]);
                     });
             });
     }
