@@ -7,7 +7,9 @@ use App\Models\Orders\OrderEvent;
 use App\Models\Status;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
+use App\Enums\Store\StorePermissionEnum;
 use App\Support\StoreOrderPermissions;
+use App\Support\StoreRoles;
 use Livewire\Volt\Volt;
 use Spatie\Permission\Models\Role;
 
@@ -194,6 +196,13 @@ test('the event-log dropdown button is hidden for staff rows entirely', function
 
 test('tracking drawer hides the audit log from staff', function () {
     [$user, $store, $membership] = evUser(StoreRoleEnum::STAFF->value);
+
+    // Phase 36.9 — reach the tracking page with the explicit tracking capability.
+    $membership->syncPermissions(array_merge(
+        StoreRoles::permissions(StoreRoleEnum::STAFF),
+        [StorePermissionEnum::CRM_ORDER_TRACKING->value],
+    ));
+
     $order = evOrder($store, null, $membership->id);
 
     actingAs($user)->withSession(['current_store_id' => $store->id]);

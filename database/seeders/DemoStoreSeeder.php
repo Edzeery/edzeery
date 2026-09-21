@@ -577,7 +577,10 @@ class DemoStoreSeeder extends Seeder
             ->first();
 
         foreach ($scopedMembers as $email => $member) {
-            $memberUser = $this->createUser($email, $member['name'], UserRoleEnum::MERCHANT);
+            // Merchant-guard 'staff' role too (like demo.staff), so the
+            // EnsureHasStoreRole middleware lets them open store pages; the
+            // membership-scoped perms below stay the authoritative scope.
+            $memberUser = $this->createUser($email, $member['name'], UserRoleEnum::MERCHANT, StoreRoleEnum::STAFF);
 
             $membership = StoreMembership::firstOrCreate(
                 ['store_id' => $store->id, 'user_id' => $memberUser->id],

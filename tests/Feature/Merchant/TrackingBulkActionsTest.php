@@ -238,6 +238,7 @@ test('bulkDeleteOrders is refused for staff without ORDER_DELETE and leaves the 
     [$staff] = tbaMember($store, 'staff', [
         StorePermissionEnum::ORDER_VIEW->value,
         StorePermissionEnum::ORDER_CONFIRM->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
     ]);
 
     $volt = tbaVolt([$staff, $store]);
@@ -259,6 +260,7 @@ test('staff stay blocked from reassigning even with an explicit ORDER_ASSIGN', f
     [$staff] = tbaMember($store, 'staff', [
         StorePermissionEnum::ORDER_VIEW->value,
         StorePermissionEnum::ORDER_ASSIGN->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
     ]);
 
     $volt = tbaVolt([$staff, $store]);

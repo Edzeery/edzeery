@@ -4,6 +4,7 @@ use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\CarrierPlatform;
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Customer;
 use App\Models\Orders\Order;
@@ -45,6 +46,16 @@ function tbvUser(string $role = StoreRoleEnum::OWNER->value): array
         'is_active' => true,
         'role' => $role,
     ]);
+
+    // Phase 36.9 — the tracking page requires CRM_ORDER_TRACKING (or
+    // ORDER_MANAGE), so a staff fixture that has to render the page gets the
+    // tracking capability on top of its staff template.
+    if ($role === StoreRoleEnum::STAFF->value) {
+        $membership->syncPermissions([
+            ...\App\Support\StoreRoles::permissions(StoreRoleEnum::STAFF),
+            StorePermissionEnum::CRM_ORDER_TRACKING->value,
+        ]);
+    }
 
     return [$user, $store, $membership];
 }

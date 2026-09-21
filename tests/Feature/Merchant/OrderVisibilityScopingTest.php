@@ -273,9 +273,13 @@ it('scopes the tracking grid main listing, trash listing and trash count for a s
     // toggleTrash() gates on ORDER_DELETE; grant it so the staff member can
     // actually reach the trash bin — the scoping under test is visibility,
     // which ORDER_DELETE does not loosen (staff still lacks TEAM_VIEW*).
+    // Phase 36.9 — the tracking page also requires CRM_ORDER_TRACKING now.
     $staff->syncPermissions(array_merge(
         StoreRoles::permissions(StoreRoleEnum::STAFF),
-        [StorePermissionEnum::ORDER_DELETE->value],
+        [
+            StorePermissionEnum::ORDER_DELETE->value,
+            StorePermissionEnum::CRM_ORDER_TRACKING->value,
+        ],
     ));
 
     $provider = vsShipmentProvider($store);

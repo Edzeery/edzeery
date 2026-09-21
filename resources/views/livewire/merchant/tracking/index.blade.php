@@ -240,7 +240,10 @@ updated([
 ]);
 
 mount(function (): void {
-    abort_unless(canStore(StorePermissionEnum::ORDER_VIEW->value), 403);
+    // Phase 36.9 — tracking is no longer reachable with ORDER_VIEW alone:
+    // owner/admin/manager keep it via ORDER_MANAGE, any other member needs the
+    // explicit CRM_ORDER_TRACKING capability (e.g. demo.tracker / demo.dual).
+    abort_unless(canStore(StorePermissionEnum::CRM_ORDER_TRACKING->value) || canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
 
     $storeId = currentStoreId();
 

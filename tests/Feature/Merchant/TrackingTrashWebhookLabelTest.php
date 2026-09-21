@@ -411,6 +411,7 @@ test('force delete and soft delete are refused for members without ORDER_DELETE'
     $membership->syncPermissions([
         StorePermissionEnum::ORDER_VIEW->value,
         StorePermissionEnum::ORDER_CONFIRM->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
     ]);
 
     $volt = twlVolt([$staff, $store]);
