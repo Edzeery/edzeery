@@ -69,10 +69,12 @@ mount(function (GetStoreCardsAction $action): void {
                                 <p class="text-xs text-ink-muted font-medium">{{ __('dashboard.total_memberships') }}</p>
                                 <p class="mt-1 text-lg font-bold text-ink">{{ $store['members_count'] }}</p>
                             </div>
-                            <div class="rounded-xl bg-surface-secondary p-3">
-                                <p class="text-xs text-ink-muted font-medium">{{ __('titles.plan') }}</p>
-                                <p class="mt-1 text-sm font-semibold text-ink">{{ $store['plan_name'] }}</p>
-                            </div>
+                            @if ($store['billing_visible'])
+                                <div class="rounded-xl bg-surface-secondary p-3">
+                                    <p class="text-xs text-ink-muted font-medium">{{ __('titles.plan') }}</p>
+                                    <p class="mt-1 text-sm font-semibold text-ink">{{ $store['plan_name'] }}</p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </button>

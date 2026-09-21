@@ -243,6 +243,24 @@ if (! function_exists('canManageTeam')) {
     }
 }
 
+// 🔹 رؤية معلومات الاشتراك/الفوترة لمتجر محدد (المالك أو من يملك إدارة الفوترة)
+if (! function_exists('canViewStoreBilling')) {
+    function canViewStoreBilling(Store $store, ?User $user = null): bool
+    {
+        $user ??= user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($store->user_id === $user->id) {
+            return true;
+        }
+
+        return (bool) $user->storeMembership($store)?->can(\App\Enums\Store\StorePermissionEnum::STORE_BILLING_MANAGE->value);
+    }
+}
+
 // 🔹 حذف / تعديل عضو
 if (! function_exists('canModifyMember')) {
     function canModifyMember(StoreMembership $membership): bool

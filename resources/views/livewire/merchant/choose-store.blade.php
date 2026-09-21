@@ -19,6 +19,7 @@ state([
     'maxStores' => null,
     'storeCount' => 0,
     'canCreate' => false,
+    'canViewBilling' => false,
     'effectiveUsage' => 0,
     'isUnlimited' => false,
 ]);
@@ -75,6 +76,7 @@ mount(function (): void {
             ->map(function (Store $store) use ($user, $memberStoreIds, $palette) {
                 $isOwner = $store->user_id === $user->id;
                 $isMember = $memberStoreIds->contains($store->id);
+                $billingVisible = canViewStoreBilling($store, $user);
 
                 // Determine role: owner takes priority
                 $role = $isOwner
@@ -95,8 +97,9 @@ mount(function (): void {
                     'is_owner' => $isOwner,
                     'initial' => mb_strtoupper(mb_substr(trim($store->name), 0, 1)),
                     'color' => $palette[abs(crc32($store->name)) % count($palette)],
-                    'plan_name' => $ownerSubscription?->plan?->name,
-                    'plan_status' => ($ownerSubscription?->status ?? StatusSubscriptionEnum::PENDING)->value,
+                    'billing_visible' => $billingVisible,
+                    'plan_name' => $billingVisible ? $ownerSubscription?->plan?->name : null,
+                    'plan_status' => $billingVisible ? ($ownerSubscription?->status ?? StatusSubscriptionEnum::PENDING)->value : null,
                     'products_count' => (int) $store->products_count,
                     'orders_count' => (int) $store->orders_count,
                     'members_count' => (int) $store->members_count,
@@ -107,6 +110,15 @@ mount(function (): void {
     }
 
     $this->storeCount = count($this->stores);
+    $this->canViewBilling = collect($this->stores)->contains('billing_visible', true);
+
+    // عدم كشف أي بيانات اشتراك/فوترة لمن لا يملك الصلاحية (بما فيها حالة السيريالايز)
+    if (! $this->canViewBilling) {
+        $this->subscription = null;
+        $this->maxStores = null;
+        $this->isUnlimited = false;
+    }
+
     $this->effectiveUsage = max($consumption, $this->storeCount);
 });
 
@@ -173,7 +185,7 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
                 <p class="font-bold text-ink truncate">{{ $this->user['name'] }}</p>
-                @if (!empty($this->subscription['plan_name']))
+                @if ($this->canViewBilling && !empty($this->subscription['plan_name']))
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning-surface text-warning-fg-strong text-xs font-semibold">
                         <ion-icon name="star" class="text-xs"></ion-icon>
                         {{ $this->subscription['plan_name'] }}
@@ -191,11 +203,13 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
             <ion-icon name="person-outline" class="text-lg"></ion-icon>
             {{ __('buttons.profile') }}
         </a>
-        <a href="{{ route('account.billing') }}"
-           class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-surface-border bg-surface text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition-all duration-200">
-            <ion-icon name="card-outline" class="text-lg"></ion-icon>
-            {{ __('buttons.billing') }}
-        </a>
+        @if ($this->canViewBilling)
+            <a href="{{ route('account.billing') }}"
+               class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-surface-border bg-surface text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition-all duration-200">
+                <ion-icon name="card-outline" class="text-lg"></ion-icon>
+                {{ __('buttons.billing') }}
+            </a>
+        @endif
         @if ($this->canCreate)
             <a href="{{ route('merchant.create-store') }}"
                class="flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border border-success-border bg-success-surface text-xs font-semibold text-success-fg-strong hover:bg-success-surface transition-all duration-200">
@@ -206,55 +220,57 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
     </div>
 
     {{-- 3. Subscription usage card --}}
-    @if (!empty($this->subscription))
-        @php
-            $maxInt = is_numeric($this->maxStores) ? (int) $this->maxStores : 0;
-            $usagePercent = (!$this->isUnlimited && $maxInt > 0) ? min(100, round(($this->effectiveUsage / $maxInt) * 100)) : 100;
-            $atLimit = !$this->isUnlimited && $maxInt > 0 && $this->effectiveUsage >= $maxInt;
-        @endphp
+    @if ($this->canViewBilling)
+        @if (!empty($this->subscription))
+            @php
+                $maxInt = is_numeric($this->maxStores) ? (int) $this->maxStores : 0;
+                $usagePercent = (!$this->isUnlimited && $maxInt > 0) ? min(100, round(($this->effectiveUsage / $maxInt) * 100)) : 100;
+                $atLimit = !$this->isUnlimited && $maxInt > 0 && $this->effectiveUsage >= $maxInt;
+            @endphp
 
-        <div class="rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
-             style="animation-delay: 0.15s">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <p class="text-sm font-semibold text-ink">
-                        {{ __('stores.stores_used', ['used' => $this->effectiveUsage, 'max' => $this->isUnlimited ? '∞' : $this->maxStores]) }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-ink-muted">
-                        {{ __('plans.max_stores') }}: {{ $this->subscription['plan_name'] ?? '—' }}
-                    </p>
+            <div class="rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
+                 style="animation-delay: 0.15s">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-ink">
+                            {{ __('stores.stores_used', ['used' => $this->effectiveUsage, 'max' => $this->isUnlimited ? '∞' : $this->maxStores]) }}
+                        </p>
+                        <p class="mt-0.5 text-xs text-ink-muted">
+                            {{ __('plans.max_stores') }}: {{ $this->subscription['plan_name'] ?? '—' }}
+                        </p>
+                    </div>
+                    @if ($atLimit)
+                        <a href="{{ route('account.billing') }}"
+                           class="inline-flex items-center gap-1.5 px-4 py-2 shrink-0 bg-brand-600 text-white text-xs font-semibold rounded-xl hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
+                            {{ __('stores.upgrade_plan') }}
+                        </a>
+                    @endif
                 </div>
-                @if ($atLimit)
-                    <a href="{{ route('account.billing') }}"
-                       class="inline-flex items-center gap-1.5 px-4 py-2 shrink-0 bg-brand-600 text-white text-xs font-semibold rounded-xl hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
-                        {{ __('stores.upgrade_plan') }}
-                    </a>
+                @if (!$this->isUnlimited && $maxInt > 0)
+                    <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-border">
+                        <div class="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out"
+                             style="width: {{ $usagePercent }}%"></div>
+                    </div>
                 @endif
             </div>
-            @if (!$this->isUnlimited && $maxInt > 0)
-                <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-border">
-                    <div class="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out"
-                         style="width: {{ $usagePercent }}%"></div>
+        @else
+            <div class="flex items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
+                 style="animation-delay: 0.15s">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 shrink-0 rounded-lg bg-warning-surface flex items-center justify-center">
+                        <ion-icon name="star" class="text-lg text-warning-500"></ion-icon>
+                    </div>
+                    <p class="text-sm font-semibold text-ink truncate">
+                        {{ __('merchant_panel.no_active_subscription') }}
+                    </p>
                 </div>
-            @endif
-        </div>
-    @else
-        <div class="flex items-center justify-between gap-3 rounded-xl border border-surface-border bg-surface-secondary p-4 animate-fade-up"
-             style="animation-delay: 0.15s">
-            <div class="flex items-center gap-3 min-w-0">
-                <div class="w-9 h-9 shrink-0 rounded-lg bg-warning-surface flex items-center justify-center">
-                    <ion-icon name="star" class="text-lg text-warning-500"></ion-icon>
-                </div>
-                <p class="text-sm font-semibold text-ink truncate">
-                    {{ __('merchant_panel.no_active_subscription') }}
-                </p>
+                <a href="{{ route('landing') }}"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 shrink-0 bg-brand-600 text-white text-xs font-semibold rounded-xl hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
+                    <ion-icon name="add-circle-outline" class="text-base"></ion-icon>
+                    {{ __('landing.subscribe_now') }}
+                </a>
             </div>
-            <a href="{{ route('landing') }}"
-               class="inline-flex items-center gap-1.5 px-4 py-2 shrink-0 bg-brand-600 text-white text-xs font-semibold rounded-xl hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
-                <ion-icon name="add-circle-outline" class="text-base"></ion-icon>
-                {{ __('landing.subscribe_now') }}
-            </a>
-        </div>
+        @endif
     @endif
 
     {{-- 4. Stores grid --}}
@@ -327,12 +343,14 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
                     </div>
 
                     {{-- Store owner subscription --}}
-                    <div class="flex items-center justify-between gap-2 text-xs">
-                        <span class="truncate text-ink-muted">
-                            {{ __('plans.max_stores') }}: <span class="font-semibold text-ink">{{ $store['plan_name'] ?? '—' }}</span>
-                        </span>
-                        <x-status-badge domain="general" :status="$subStatus->value" />
-                    </div>
+                    @if ($store['billing_visible'])
+                        <div class="flex items-center justify-between gap-2 text-xs">
+                            <span class="truncate text-ink-muted">
+                                {{ __('plans.max_stores') }}: <span class="font-semibold text-ink">{{ $store['plan_name'] ?? '—' }}</span>
+                            </span>
+                            <x-status-badge domain="general" :status="$subStatus->value" />
+                        </div>
+                    @endif
 
                     {{-- Actions --}}
                     <div class="flex items-center gap-2 mt-auto pt-1">

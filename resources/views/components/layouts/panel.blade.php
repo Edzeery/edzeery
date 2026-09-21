@@ -66,10 +66,12 @@
 
             <main class="edz-shell__content">
                 <div class="edz-shell__inner">
-                    @if (
-                        $context === 'store' &&
-                            user() &&
-                            !app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription())
+@if (
+    $context === 'store' &&
+        user() &&
+        hasStoreContext() &&
+        canViewStoreBilling(currentStore()) &&
+        !app(\App\Domains\User\Services\SubscriptionGuardService::class)->hasActiveSubscription())
                         <div
                             class="mb-6 rounded-lg border border-warning-200 bg-warning-50 px-5 py-3 text-sm text-warning-800 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-300">
                             <div class="flex items-center gap-3">

@@ -18,6 +18,7 @@ final class StoreCardData
         public readonly StoreStatusEnum  $storeStatus,
         public readonly int $membersCount,
         public readonly bool $canEnter,
+        public readonly bool $billingVisible,
     ) {}
 
     public function toArray(): array
@@ -32,6 +33,7 @@ final class StoreCardData
             'store_status' => $this->storeStatus,
             'members_count' => $this->membersCount,
             'can_enter' => $this->canEnter,
+            'billing_visible' => $this->billingVisible,
         ];
     }
 }

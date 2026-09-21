@@ -48,6 +48,7 @@ class GetStoreCardsAction
                 // Subscription from the store OWNER
                 $subscription = $store->owner?->subscriptions()?->first();
                 $status = $store->currentStatus();
+                $billingVisible = canViewStoreBilling($store, $user);
 
                 return new StoreCardData(
                     storeId: $store->id,
@@ -55,7 +56,7 @@ class GetStoreCardsAction
                     membershipRole: $role,
                     storeName: $store->name,
                     storeLogo: $store->logo,
-                    planName: $subscription?->plan?->name ?? 'No Plan',
+                    planName: $billingVisible ? ($subscription?->plan?->name ?? 'No Plan') : '',
                     storeStatus: $status,
                     membersCount: $store->memberships()
                         ->where('is_active', true)
@@ -63,6 +64,7 @@ class GetStoreCardsAction
                         ->distinct()
                         ->count('user_id'),
                     canEnter: true,
+                    billingVisible: $billingVisible,
                 );
             })
             ->map->toArray()
