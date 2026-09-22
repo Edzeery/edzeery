@@ -1,5 +1,7 @@
 import "./bootstrap";
 import "./swal";
+import "@fortawesome/fontawesome-free/css/all.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import storefrontSelect from "./components/storefront-select.js";
 
 // Searchable dropdowns on public storefront pages (checkout cascade): the

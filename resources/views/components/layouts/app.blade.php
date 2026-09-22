@@ -20,8 +20,9 @@ $watch('dark', val => {
         {{ isset($title) ? config('app.name', 'Edzeery') . ' | ' . $title : config('app.name', 'Edzeery') }}
     </title>
   <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/edz-loader.js'])
+    @vite(['resources/css/app.css', 'resources/js/landing.js', 'resources/js/edz-loader.js'])
     <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
+    <x-edz.fonts />
 </head>
 
 <body

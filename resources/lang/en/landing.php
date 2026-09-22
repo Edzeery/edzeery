@@ -3,6 +3,23 @@
 return [
     'about_us' => 'About Us',
     'all_rights_reserved' => 'All rights reserved.',
+
+    'best_for_starters' => 'Best for Starters to try out the platform and explore its features.',
+    'best_for_starters_title' => 'Starter Plan',
+    'best_for_starters_desc' => 'Ideal for small businesses and individuals looking to get started with Edzeery. Includes essential features to manage your store effectively.',
+    'best_for_growing_businesses' => 'Best for Growing Businesses that need advanced features and support.',
+    'best_for_growing_businesses_title' => 'Pro Plan',
+    'best_for_growing_businesses_desc' => 'Designed for businesses that are expanding and require more advanced tools, integrations, and priority support to manage their operations efficiently.',
+    'best_for_enterprise' => 'Best for Enterprises that require custom solutions and dedicated support.',
+    'best_for_enterprise_title' => 'Enterprise Plan',
+    'best_for_enterprise_desc' => 'Tailored for large organizations with complex needs. Includes custom features, dedicated account management, and enterprise-level support to ensure your business runs smoothly.',
+
+    'monthly' => 'Monthly',
+    'monthly_abbreviation' => 'mo',
+    'yearly' => 'Yearly',
+    'yearly_abbreviation' => 'yr',
+    'go_to_dashboard' => 'Go to Dashboard',
+
     'cancel_anytime' => 'Cancel anytime',
     'company' => 'Company',
     'contact_address' => '123 Business Ave, Suite 100',
@@ -41,6 +58,7 @@ return [
     'faq_title' => 'Frequently Asked Questions',
     'footer_desc' => 'An all-in-one platform for store management, e-commerce, CRM, and business operations. Built for the Arab market.',
     'free_trial' => 'Free trial included',
+    'get_started' => 'Get Started',
     'hero_subtitle' => 'An all-in-one SaaS platform for store management, e-commerce, CRM, and more. Built for Arab merchants.',
     'hero_title' => 'Manage Your Store Smarter with Edzeery',
     'home' => 'Home',

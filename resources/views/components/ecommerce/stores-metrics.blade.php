@@ -6,9 +6,9 @@
             @csrf
 
             <button type="submit"
-                class="group w-full rounded-2xl border border-neutral-border
+                class="group w-full rounded-2xl border border-surface-border
                  bg-white p-5 text-left transition-all duration-300
-                  hover:-translate-y-1 hover:shadow-lg dark:border-dark-border
+                  hover:-translate-y-1 hover:shadow-lg border-surface-border
                    dark:bg-white/[0.03]">
 
                 {{-- Header --}}
@@ -17,7 +17,7 @@
                     <div
                         class="flex items-center justify-center w-12 h-12
                   text-ink
-                   bg-gray-100 rounded-xl dark:bg-gray-800">
+                   bg-surface-secondary rounded-xl bg-surface-secondary">
                         @if (isset($store['store_logo']))
                             <img src="{{ asset('storage/' . $store['store_logo']) }}" alt="User" />
                         @else
@@ -35,7 +35,7 @@
                             {{ $store['store_name'] }}
                         </div>
                         <div class="flex justify-between gap-2 ">
-                            <div class="text-xs text-neutral-soft dark:text-dark-soft">
+                            <div class="text-xs text-ink-soft">
 
                                 <x-role-badge :role="$store['membership_role']" />
 
@@ -46,7 +46,7 @@
                     </div>
 
                     <svg xmlns="http://www.w3.org/2000/svg"
-                        class="h-5 w-5 text-neutral-soft transition group-hover:translate-x-1" fill="none"
+                        class="h-5 w-5 text-ink-soft transition group-hover:translate-x-1" fill="none"
                         viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                     </svg>
@@ -54,8 +54,8 @@
 
                 {{-- Metrics --}}
                 <div class="mt-6 grid grid-cols-2 gap-4">
-                    <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
-                        <p class="text-xs text-neutral-soft">
+                    <div class="rounded-xl bg-surface-secondary p-4">
+                        <p class="text-xs text-ink-soft">
                             {{ __('dashboard.total_memberships') }}
                         </p>
                         <h4 class="mt-1 text-lg font-bold text-ink">
@@ -63,8 +63,8 @@
                         </h4>
                     </div>
 
-                    <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
-                        <p class="text-xs text-neutral-soft">
+                    <div class="rounded-xl bg-surface-secondary p-4">
+                        <p class="text-xs text-ink-soft">
                             {{ __('titles.plan') }}
                         </p>
                         <h4 class="mt-1 text-sm font-semibold text-ink">

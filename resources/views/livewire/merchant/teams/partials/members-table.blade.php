@@ -36,7 +36,8 @@
                             <x-merchant.status domain="role" :status="$roleName" icon />
                         </td>
                         <td class="px-4 py-3 text-xs text-ink-muted">
-                            {{ $membership->user?->city?->name }}, {{ $membership->user?->state?->name }}
+
+                            {{ $membership->user?->state ? $membership->user?->state?->name . " , " . $membership->user?->city?->name : __('teams.no_address') }}
                         </td>
                         <td class="px-4 py-3">
                             <x-merchant.status domain="general" :status="$membership->is_active ? 'active' : 'inactive'" />
@@ -44,11 +45,11 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
                                 @if ($this->canManageScope($membership))
-                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" data-edz-loading="off"
                                             wire:click="openProductScope('{{ $membership->id }}')">{{ __('teams.product_scope') }}</button>
                                 @endif
                                 @if ($this->canModify($membership))
-                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" data-edz-loading="off"
                                             wire:click="openEdit('{{ $membership->id }}')">{{ __('buttons.edit') }}</button>
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="toggleActive('{{ $membership->id }}')">

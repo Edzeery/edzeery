@@ -27,7 +27,7 @@
 
         <div class="relative">
             <div
-                class="edz-label-no-print sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-line-200 bg-white px-4 py-3">
+                class="edz-label-no-print sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-surface-border bg-white px-4 py-3">
                 <p class="text-sm font-bold text-ink">{{ __('order_flow.label_store_title') }}</p>
                 <div class="flex items-center gap-2">
                     <button wire:click="closeLabel" class="edz-btn edz-btn--ghost edz-btn--sm">
@@ -42,8 +42,8 @@
             </div>
 
             <div id="edz-label-sheet"
-                class="mx-auto my-4 w-full max-w-[360px] overflow-hidden rounded-lg border border-line-200 bg-white text-ink shadow-sm">
-                <div class="border-b-2 border-ink bg-neutral-50 px-4 py-2.5">
+                class="mx-auto my-4 w-full max-w-[360px] overflow-hidden rounded-lg border border-surface-border bg-white text-ink shadow-sm">
+                <div class="border-b-2 border-ink bg-surface-secondary px-4 py-2.5">
                     <div class="flex items-center justify-between gap-2">
                         <p class="text-base font-extrabold">{{ $this->labelData['provider'] ?? $this->labelData['rider'] ?? '—' }}</p>
                         <p class="text-sm font-bold tabular-nums">#{{ $this->labelData['number'] }}</p>
@@ -71,7 +71,7 @@
                     </div>
 
                     @if (! empty($this->labelData['items']))
-                        <div class="break-words border-t border-dashed border-line-200 pt-2 text-xs leading-snug text-ink-muted whitespace-pre-line">
+                        <div class="break-words border-t border-dashed border-surface-border pt-2 text-xs leading-snug text-ink-muted whitespace-pre-line">
                             @foreach ($this->labelData['items'] as $line)
                                 <p class="mb-0.5 last:mb-0">{{ $line }}</p>
                             @endforeach
@@ -84,7 +84,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col items-center border-t border-line-200 bg-neutral-50 px-4 py-3">
+                <div class="flex flex-col items-center border-t border-surface-border bg-surface-secondary px-4 py-3">
                     <x-edz.barcode :value="$this->labelData['barcode']" :height="64" :show-text="true" />
                     @if (! empty($this->labelData['tracking_number']))
                         <p class="mt-1 text-[11px] font-semibold text-ink">

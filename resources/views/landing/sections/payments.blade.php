@@ -11,7 +11,7 @@
         <p
             data-aos="fade-up"
             data-aos-delay="100"
-            class="mt-4 text-theme-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto"
+            class="mt-4 text-theme-xl text-ink-muted max-w-2xl mx-auto"
         >
             {{ __('landing.payments_subtitle') }}
         </p>
@@ -51,7 +51,7 @@
                 <div class="text-center">
                     <ion-icon name="{{ $item['icon'] }}" class="text-brand-600 dark:text-brand-400 text-3xl mb-3"></ion-icon>
                     <h4 class="text-sm font-semibold text-ink">{{ $item['title'] }}</h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $item['desc'] }}</p>
+                    <p class="text-xs text-ink-muted mt-1">{{ $item['desc'] }}</p>
                 </div>
             @endforeach
         </div>

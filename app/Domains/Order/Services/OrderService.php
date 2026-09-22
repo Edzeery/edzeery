@@ -85,12 +85,22 @@ public function availableTransitions(Order $order): array
 
         // A store-custom confirmation status is a functional branch of its
         // linked original: its place in the workflow is the origin's place.
+        // Branch lookups are memoized per store+key because `availableTransitions`
+        // runs once per row on the orders grid.
         if ($currentKey && $order->store_id) {
-            $branch = Status::where('store_id', $order->store_id)
-                ->where('type', 'order')
-                ->where('key', $currentKey)
-                ->whereNotNull('linked_to')
-                ->first();
+            static $branchCache = [];
+
+            $cacheKey = $order->store_id . '|' . $currentKey;
+
+            if (! array_key_exists($cacheKey, $branchCache)) {
+                $branchCache[$cacheKey] = Status::where('store_id', $order->store_id)
+                    ->where('type', 'order')
+                    ->where('key', $currentKey)
+                    ->whereNotNull('linked_to')
+                    ->first();
+            }
+
+            $branch = $branchCache[$cacheKey];
 
             if ($branch?->linked_to) {
                 $currentKey = $branch->linked_to;

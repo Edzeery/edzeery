@@ -3,6 +3,23 @@
 return [
     'about_us' => 'Sobre nosotros',
     'all_rights_reserved' => 'Todos los derechos reservados.',
+
+    'best_for_starters' => 'Lo mejor para principiantes para probar la plataforma y explorar sus características.',
+    'best_for_starters_title' => 'Plan Inicial',
+    'best_for_starters_desc' => 'Ideal para pequeñas empresas e individuos que buscan comenzar con Edzeery. Incluye características esenciales para gestionar tu tienda de manera efectiva.',
+    'best_for_growing_businesses' => 'Lo mejor para empresas en crecimiento que necesitan características avanzadas y soporte.',
+    'best_for_growing_businesses_title' => 'Plan Profesional',
+    'best_for_growing_businesses_desc' => 'Diseñado para empresas que están expandiéndose y requieren herramientas más avanzadas, integraciones y soporte prioritario para gestionar sus operaciones de manera eficiente.',
+    'best_for_enterprise' => 'Lo mejor para empresas que necesitan soluciones personalizadas y soporte dedicado.',
+    'best_for_enterprise_title' => 'Plan Empresarial',
+    'best_for_enterprise_desc' => 'Diseñado para organizaciones grandes con necesidades complejas. Incluye características personalizadas, gestión dedicada de cuentas y soporte a nivel empresarial para garantizar que tu negocio funcione de manera eficiente.',
+
+    'monthly' => 'Mensual',
+    'monthly_abbreviation' => 'mo',
+    'yearly' => 'Anual',
+    'yearly_abbreviation' => 'yr',
+    'go_to_dashboard' => 'Ir al Panel de Control',
+
     'cancel_anytime' => 'Cancela cuando quieras',
     'company' => 'Empresa',
     'contact_address' => '123 Calle de los Negocios, Oficina 100',

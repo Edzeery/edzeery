@@ -8,8 +8,7 @@
             ($active
                 ? 'bg-brand text-white '
                 : 'text-ink
-                            hover:bg-neutral-secondary
-                            dark:hover:bg-dark-secondary'),
+                            hover:bg-surface-secondary'),
     ]) }}>
 
     {{ $slot }}

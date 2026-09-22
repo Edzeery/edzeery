@@ -1,10 +1,10 @@
 // ============================================================
 //  EDZEERY — BASE / TYPOGRAPHY
-//  Inter (Latin) + IBM Plex Sans Arabic via Google Fonts.
-//  Apple HIG-inspired: negative letter-spacing on headings,
-//  refined weight stepping, system font fallbacks.
-// ============================================================
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;590;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+// Inter (Latin) + IBM Plex Sans Arabic via Google Fonts.
+// Apple HIG-inspired: negative letter-spacing on headings,
+// refined weight stepping, system font fallbacks.
+// The @import block was removed — fonts load async via
+// <x-edz.fonts /> in the panel shell (non-render-blocking).
 
 html,
 body {

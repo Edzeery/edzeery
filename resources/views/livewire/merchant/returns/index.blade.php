@@ -15,6 +15,9 @@ layout('components.layouts.store');
 state([
     'returnTab' => 'awaiting_verification',
     'trackings' => [],
+    'tabCounts' => ['awaiting_verification' => 0, 'awaiting_processing' => 0, 'processed' => 0],
+    'page' => 1,
+    'perPage' => 25,
     'scanCode' => '',
     'processTrackingId' => '',
     'processResult' => 'good',
@@ -34,30 +37,59 @@ mount(function (): void {
 $loadTrackings = function (): void {
     $storeId = currentStoreId();
 
-    $this->trackings = OrderTracking::where('store_id', $storeId)
-        ->whereNotNull('returned_at')
+    // Per-tab COUNTs stay cheap; only the active tab's rows are hydrated, and
+    // paginated — instead of loading the store's entire returned history on
+    // every mount/navigation.
+    $base = fn () => OrderTracking::where('store_id', $storeId)->whereNotNull('returned_at');
+
+    $this->tabCounts = [
+        'awaiting_verification' => (clone $base())->whereNull('verified_at')->count(),
+        'awaiting_processing' => (clone $base())->whereNotNull('verified_at')->whereNull('processed_at')->count(),
+        'processed' => (clone $base())->whereNotNull('processed_at')->count(),
+    ];
+
+    $query = (clone $base())
         ->with(['order.customer', 'order.status', 'order.latestTracking.shippingProvider'])
-        ->orderByDesc('returned_at')
-        ->get()
+        ->orderByDesc('returned_at');
+
+    $query = match ($this->returnTab) {
+        'awaiting_verification' => $query->whereNull('verified_at'),
+        'awaiting_processing' => $query->whereNotNull('verified_at')->whereNull('processed_at'),
+        'processed' => $query->whereNotNull('processed_at'),
+        default => $query,
+    };
+
+    $this->trackings = $query
+        ->simplePaginate($this->perPage, ['*'], 'page', $this->page)
+        ->getCollection()
+        ->values()
         ->toArray();
 };
 
+$nextPage = function (): void {
+    $this->page++;
+    $this->loadTrackings();
+};
+
+$previousPage = function (): void {
+    if ($this->page > 1) {
+        $this->page--;
+        $this->loadTrackings();
+    }
+};
+
+$changeTab = function (string $tab): void {
+    if (! in_array($tab, ['awaiting_verification', 'awaiting_processing', 'processed'], true)) {
+        return;
+    }
+
+    $this->returnTab = $tab;
+    $this->page = 1;
+    $this->loadTrackings();
+};
+
 $filteredTrackings = function (): array {
-    return match ($this->returnTab) {
-        'awaiting_verification' => array_filter(
-            $this->trackings,
-            fn ($t) => empty($t['verified_at'])
-        ),
-        'awaiting_processing' => array_filter(
-            $this->trackings,
-            fn ($t) => ! empty($t['verified_at']) && empty($t['processed_at'])
-        ),
-        'processed' => array_filter(
-            $this->trackings,
-            fn ($t) => ! empty($t['processed_at'])
-        ),
-        default => [],
-    };
+    return $this->trackings;
 };
 
 $verifyScan = function (string $code): void {
@@ -171,30 +203,30 @@ $requeue = function (string $trackingId): void {
     {{-- Tabs --}}
     <div class="mb-4 flex gap-2">
         <button
-            wire:click="$set('returnTab', 'awaiting_verification')"
+            wire:click="changeTab('awaiting_verification')"
             class="edz-btn {{ $returnTab === 'awaiting_verification' ? 'edz-btn--primary' : 'edz-btn--ghost' }}"
         >
             {{ __('merchant_panel.awaiting_verification') }}
             <span class="ml-1 text-xs opacity-60">
-                ({{ count(array_filter($trackings, fn ($t) => empty($t['verified_at']))) }})
+                ({{ $tabCounts['awaiting_verification'] }})
             </span>
         </button>
         <button
-            wire:click="$set('returnTab', 'awaiting_processing')"
+            wire:click="changeTab('awaiting_processing')"
             class="edz-btn {{ $returnTab === 'awaiting_processing' ? 'edz-btn--primary' : 'edz-btn--ghost' }}"
         >
             {{ __('merchant_panel.awaiting_processing') }}
             <span class="ml-1 text-xs opacity-60">
-                ({{ count(array_filter($trackings, fn ($t) => ! empty($t['verified_at']) && empty($t['processed_at']))) }})
+                ({{ $tabCounts['awaiting_processing'] }})
             </span>
         </button>
         <button
-            wire:click="$set('returnTab', 'processed')"
+            wire:click="changeTab('processed')"
             class="edz-btn {{ $returnTab === 'processed' ? 'edz-btn--primary' : 'edz-btn--ghost' }}"
         >
             {{ __('merchant_panel.processed') }}
             <span class="ml-1 text-xs opacity-60">
-                ({{ count(array_filter($trackings, fn ($t) => ! empty($t['processed_at']))) }})
+                ({{ $tabCounts['processed'] }})
             </span>
         </button>
     </div>
@@ -279,6 +311,28 @@ $requeue = function (string $trackingId): void {
                             </div>
                         </div>
                     @endforeach
+                </div>
+            @endif
+
+            {{-- Pagination --}}
+            @if (count($this->trackings) >= $perPage)
+                <div class="flex items-center justify-end gap-2 p-4 border-t">
+                    <button
+                        wire:click="previousPage"
+                        {{ $page <= 1 ? 'disabled' : '' }}
+                        class="edz-btn edz-btn--ghost edz-btn--sm"
+                    >
+                        {{ __('buttons.previous') }}
+                    </button>
+                    <span class="text-sm text-gray-500">
+                        {{ __('titles.page') }} {{ $page }}
+                    </span>
+                    <button
+                        wire:click="nextPage"
+                        class="edz-btn edz-btn--primary edz-btn--sm"
+                    >
+                        {{ __('buttons.next') }}
+                    </button>
                 </div>
             @endif
         </div>

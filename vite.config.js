@@ -7,7 +7,10 @@ export default defineConfig({
             input: [
                 // Legacy (untouched) — TailAdmin pages.
                 "resources/css/app.css",
-                "resources/js/app.js",
+                // Public/guest pages — lean bundle (edzDirty only).
+                "resources/js/guest.js",
+                // Landing/marketing pages — swal + iconify + AOS.
+                "resources/js/landing.js",
                 // New design system — panel bundle (Tailwind + SCSS 7-1).
                 "resources/css/app.scss",
                 "resources/js/panel.js",

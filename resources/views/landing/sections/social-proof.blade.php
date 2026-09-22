@@ -1,4 +1,4 @@
-<section class="py-16 border-y border-gray-100 dark:border-gray-800">
+<section class="py-16 border-y border-surface-border">
     <div class="max-w-7xl mx-auto px-6">
 
         {{-- Stats --}}
@@ -21,7 +21,7 @@
                         <ion-icon name="{{ $stat['icon'] }}" class="text-brand-600 dark:text-brand-400 text-xl"></ion-icon>
                     </div>
                     <div class="text-title-md lg:text-title-lg font-bold text-ink">{{ $stat['value'] }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $stat['label'] }}</div>
+                    <div class="text-sm text-ink-muted mt-1">{{ $stat['label'] }}</div>
                 </div>
             @endforeach
         </div>
@@ -31,10 +31,10 @@
             data-aos="fade-up"
             class="text-center"
         >
-            <p class="text-sm text-gray-400 dark:text-gray-500 mb-6">{{ __('landing.trusted_by') }}</p>
+            <p class="text-sm text-ink-soft mb-6">{{ __('landing.trusted_by') }}</p>
             <div class="flex flex-wrap justify-center items-center gap-x-10 gap-y-4 opacity-40">
                 @foreach (['Company A', 'Company B', 'Company C', 'Company D', 'Company E'] as $name)
-                    <span class="text-lg font-bold text-gray-400 dark:text-gray-600">{{ $name }}</span>
+                    <span class="text-lg font-bold text-ink-soft">{{ $name }}</span>
                 @endforeach
             </div>
         </div>

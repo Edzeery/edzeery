@@ -2753,3 +2753,80 @@ esolveCityId.
 2. **CSS بالتوازي في `resources/css/components/_swal.scss` و`resources/css/app.css`:** الشارة قرص مطفأ بلا حدود (بدل تأطير 2px) — 48px في المودال / 32px في التوست، `rounded-full`، `flex` توسيط، `svg 1.5rem`/`1.125rem`، ألوان per-type light (`#dcfce7/#16a34a`, `#fee2e2/#dc2626`, `#fef3c7/#d97706`, `#dbeafe/#2563eb`, `#e0e7ff/#6366f1`) وdark (ألفا 900/35 مع نص 400-scale)؛ التوست `padding:0.75rem 1rem` + `gap:0.75rem` + `max-width:360px` (وعند ≤639px `calc(100vw - 1.5rem)`) + العنوان/النص `margin:0` + `min-width:0` + `max-height:40vh; overflow-y:auto` للقوائم النصية (توست `syncAllTracking`); شريط المدة بنصف قطر الكبسولة؛ حُذفت قواعد ميتة (تصغير `success-line`, خدعة `[dir=rtl] .swal2-icon`, مُحدد `swal2-timerprogress-bar` الوهمي) واستُبدل `margin:0!important` بـ`margin:0 auto` لتوسيط أيقونة المودال أفقيًا.
 3. **الشهادة:** `npm run build` ناجح (تحذيرات Sass)؛ فحص `public/build` مباشرة (الملفات المبنية app-BIaEA5q4.css للوحة + app-iEjkz8ke.css للمتجر): `swal2-icon svg {1.5rem/1.125rem}` حاضرة، toast base `padding:.75rem 1rem;gap:.75rem;align-items:center`، `max-width:calc(100vw - 1.5rem)`، timer `border-radius:0 0 .875rem .875rem`، dark `background:#14532d59` (=rgba(20,83,45,.35))، وصفر من `swal2-success-line`/`swal2-timerprogress-bar`/`border-width:1.5px` (بقيت .border-[1.5px] الخاصة بـTailwind فقط). شريحة `swal-*.js`: الأيقونات الخمس (علامات `9 12.75 11.25 15 15 9.75`, `9.303`, `1.063.852`, `9.879 7.519`) + `bottom-start`. عدّاد البث دون تغيير (`swal`=81، `swal:toast`=199) — اختبارات Feature تفحص payloads فقط.
 4. **يتطلب تحققًا بصريًا يدويًا من المستخدم (لا يمكن عبر CLI):** 375px/768px/1440px — توست نجاح أسفل الزاوية بشعار دائري أخضر مطفأ، توست خطأ (تحقق فضلي + قائمة html) يبقى كبسولة بلا أزرار، توست warning/بإبطال مكتب بتوست، مودال تأكيد (question) أيقونته مركزة بشعار indigo، والوضع الداكن في لوحتين اللوحة والمتجر.
+
+---
+
+## Phase 38 — الأداء: فصل حزم Landing/Guest (المرحلة 1) ✅ (2026-09-22)
+
+**الهدف المعتمد:** إزالة ~1.9MB من الجافاسكربت المنقول على صفحات الهبوط والدخول وضغط CSS، عبر حذف الحزم القديمة وإبقاء خطوط الأيقونات حية على المتجر فقط.
+
+**الحقائق المؤكدة بفحص فعل:** `landing-layout:30` و`guest:23` كانا يحملان `app.js` (1,168KB: axios+swal+iconify+ApexCharts+flatpickr+FullCalendar+lucide+edzDirty) و`guest:23` إضافة إلى `panel.js` (241KB مكوّنات اللوحة الـ16 بلا استخدام). grep صفري لاستخدام ApexCharts/flatpickr/FullCalendar/lucide/axios في blades الصفحات العامة، ولا `#chartOne/#mapOne/#calendar` في أي view، prism بلا استخدام، FA/bi مستخدمان فقط في storefront (`product-detail:199/257/522`, `single-product:123`, `catalog:198`, `order-form:652/659` عبر `IconManager::render`)، `edzDirty` مسجّل مكررًا (app.js:17+panel.js:301) و`confirmLeave` بلا استدعاء.
+
+**ما نُفِّذ:**
+1. **`vite.config.js`** — إضافة `guest.js`+`landing.js`؛ حذف `app.js` (أصبح ميتًا — آخر مرجعاته التعليقات/التوثيق).
+2. **`resources/js/guest.js`** (1KB) — `edzDirty` فقط.
+3. **`resources/js/landing.js`** (38.8KB + swal 83.5KB مشترك) — swal+iconify+AOS بنفس خيارات `AOS.init` السابقة.
+4. **`resources/js/storefront.js`** — استيراد FA + bootstrap-icons (خطوط الأيقونات تخرج chunk CSS تلقائي `storefront-dqBiEyH7.css` 163KB). **درس معماري:** مدخل CSS بـ `@import "pkg/css"` فشل في Vite على ويندوز ("Unclosed string") — الحل عبر استيراد JS.
+5. **`resources/css/app.css`** — حذف @importات الأسطر 1-5 (خطوط×2 بلوكية، prism، FA، bi).
+6. **`resources/css/base/_typography.scss:7`** — حذف @import الخطوط (كان يحوي وزن `590` غير صالح).
+7. **`components/edz/fonts.blade.php`** (جديد) — خطوط غير بلوكية (preconnect+`media="print" onload`). **درس Blade:** `wght@{{ }}` تُطبع حرفيًا لأن `@{{` escape → أُصلح ببناء URL عبر `@php` ثم `{{ $fontsUrl }}`.
+8. **layouts:** guest:23 → `app.css+guest.js+edz-loader` (حذف panel.js)؛ landing:30 → `landing.js`؛ app.blade:23 (ميت) → `landing.js`؛ panel→`<x-edz.fonts weights="400;500;600;700" />`؛ storefront دون تغيير مراجع + fonts عبر partial.
+9. **`package.json`** — حذف `prismjs`.
+
+**الأثر المقيس (public/build، `npm run build` ناجح):** Guest: JS ~1950KB→~4KB، CSS 292→128KB. Landing: JS ~1291KB→~125KB. Storefront: FA/bi في chunk مستقل بنفس الحجم تقريبًا + خطوط async. فحص MStestal: `/` (landing) 200 يحمل landing.js لا app.js/panel.js؛ `/login` 200 يحمل guest.js فقط؛ storefront عبر Host `default-store.edzeery.com` 200 يحمل icons chunk+swal+fonts async. `app-DxMIUNTW.css` بلا `.fa-`/`.bi`/`@import url(`. public/build بلا أصول stale.
+
+**يتطلب تحققًا بصريًا يدويًا (قاعدة المستخدم #2):** 375/768/1440 — landing (AOS + iconify + ionicons)، login/register/create-store (edzDirty + شارات heroicon)، صفحة منتج storefront (شارات `bi-*` مثل `bi-star-fill` وأيقونات order-form). إزالة الخطوط البلوكية تحسّن LCP وقد تُحدث FOIT طفيف مؤقت — راجعها بصريًا.
+
+**مقترحات المرحلة القادمة (لم تُلمس):** استبدال `set="fa"|"bi"` في storefront بـ heroicon/ion (—~380KB خطوط أيقونات من critical path)، تحويل html5-qrcode (366.7KB مع كل صفحة لوحة) إلى dynamic-import، إسقاط axios من storefront.js، flatpickr حسب الطلب.
+---
+
+## Phase 39 - إصلاحات الفحص البصري: Alpine + الأيقونات + التوحيد اللوني + السبينر (2026-09-22)
+
+**الهدف:** إصلاح ما أبلغ عنه المستخدم بعد الفحص البصري: (1) Alpine معطّل في landing (FAQ collapse، تبديل billing، قائمة الموبايل، فورم التواصل - وافق: تثبيت collapse)، (2) أيقونات ناقصة في بعض الأزرار، (3) ألوان غير متناسقة dark/light من كلاسات غير معرّفة، (4) توحيد سبينر الحمل على كل أزرار login/create-store/landing.
+
+**اكتشاف جذري:** pp.js القديمة لم تستورد Alpine أصلًا (bootstrap.js فيها axios فقط) وlanding-layout بلا Livewire/CDN => x-data كانت معطلة سابقًا أيضًا؛ الحل في landing.js.
+
+**تم تنفيذه:**
+1. **
+pm install @alpinejs/collapse@^3.15.6** + esources/js/landing.js: استيراد Alpine + collapse + Alpine.start() + initNativeButtonLoading().
+2. **esources/js/native-button-loading.js** (جديد): سبينر على النماذج النطبية orm:not([x-data]) وروابط [data-edz-loading] (فلتر flicker 150ms + .edz-btn--loading/__ring/__hide). مُستورد في guest.js وlanding.js (chunk مشترك ~1.9KB فقط).
+3. **_buttons.scss**: قواعد عامة .edz-btn__ring/.edz-spinner خارج .edz-btn.
+4. **الأيقونات**: plans CTA (rrow-forward-outline + data-edz-loading)، hero register/dashboard + final-cta register/contact (data-edz-loading)، navbar logout ×2 (log-out-outline + inline-flex gap)، choose-store upgrade (rrow-up + data-edz-loading) وcreate-new (data-edz-loading).
+5. **سبينر التواصل**: استبدال SVG اليدوي بـ .edz-spinner في landing/contact.blade.php.
+6. **توحيد الألوان (27 ملفًا + يدوي):** تسوية كل كلاسات الـ tokens (g-surface*/	ext-ink*/order-surface-border) بلا بادئة dark: (tokens تتبدل تلقائيًا تحت .dark) في Landing+sections وauth/* وcomponents (auth/layouts/header/ecommerce/dropdown/nav-link/responsive-nav-link/secondary-button/sidebar-link/text-input/edz) وfooter + بقايا storefront خارج النطاق (store-settings:455 + label-print-modal). توليد خريطة استبدال كاملة ({light dark:}→token ثم الفردية)، **النتيجة: صفر كلاسات غير معرّفة** في esources/views.
+7. تنظيف: lang-switcher (indigo→brand، توكن الألوان)، dark-toggle (توكن)، choose-store usage-bar، footer (gray→tokens).
+
+**النتائج/التحقق (public/build بعد 
+pm run build):** landing.js 87KB (يحتوي Alpine+start+collapse) ✓، guest.js ~1KB + shared native-button-loading 1.9KB ✓، pp-DAlgERXa.css يحتوي .edz-btn__ring+.edz-spinner ✓. فحص ميداني: / (landing) 200، /login 200، storefront (Host default-store.edzeery.com) 200.
+
+**بقي للتحقق بصريًا (375/768/1440):** landing (collapse، تبديل billing، قائمة الموبايل المنزلقة، أيقونات، ألوان dark/light، سبينر الأزرار) + login/register/create-store (سبينر + ألوان) + storefront (خارج نطاق التوحيد اللوني - خلفياته الرمادية معرّفة ورسمية).
+**إصلاح لاحق (استكمال Phase 39):**
+- الكونسول أظهر أخطاء Alpine على اللاندينغ: edzLoader is not defined + overlay is not defined + label is not defined عند Alpine.start().
+- **السبب:** <x-edz.global-loader> (مستدعى في landing-layout/guest/app) يستخدم x-data="edzLoader()"، والمكوّن كان يُسجّل عبر evento lpine:init في حزمة منفصلة edz-loader.js — لاحقًا بعد تشغيل landing.js لألباين (سياق تسجيل الـ listener لا يلحق ببدء Alpine). قبل Phase 38 لم يكن ألباين يعمل على اللاندينغ أصلًا فبقيت معطلةً بصمت.
+- **الحل:** landing.js تستورد الآن ./components/edz-loader.js وتستدعي Alpine.data("edzLoader", edzLoader) قبل Alpine.start() (تأكيد بالحزمة المبنية: .data("edzLoader",...);Ce.start();). edz-loader.js يبقى للتسجيل في اللوحة/storefront (ألباين من Livewire) وللـ CSS، والتسجيل مكرر idempotent.
+- النتيجة: boot overlay للعالمية يتحرر الآن على اللاندينغ (BOOT_MIN_MS + fonts) والأخطاء تختفي؛ القياسات: landing.js 85.2KB، والفحص الميداني /, /login, /register, storefront = 200.
+**مراجعة نهائية (استكمال Phase 39):**
+- مراجعة git diff لكل الملفات المعدلة: المسح اللوني وadd icon والسبينر سليمة؛ لا تغييرات دلالية خاطئة.
+- تنظيف كلاسات مكررة نتجت عن المسح (استبدال أزواج متقاطعة على أسطر): hero (border-surface-border ×2)، footer (hover ×2)، user-dropdown (text-ink-muted ×2)، stores-metrics (bg ×2)، landing-layout body.
+- تصحيح landing-layout body إلى g-surface-bg text-ink (نمط guest) بدل g-surface-bg bg-surface المزدوج.
+- التحقق النهائي: 
+pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loading 1.9KB، edz-loader 2.8KB)؛ فحص الصفحات: /, /login, /register, /forgot-password, /contact-us, storefront = 200 (المسار الصحيح للتواصل /contact-us وليس /contact).
+**إصلاح RTL (استكمال Phase 39):** landing/sections/how-it-works.blade.php:58 — الخطوط المتقطعة بين المراحل كانت left-[60%] w-[80%] (اتجاه فيزيائي ثابت): تعمل في LTR، لكن في RTL عند كل خطوة تشير يمينًا بينما التدفق من اليمين لليسار (step01 لا يعرف خطًا يمتد خارج الحاوية). الحل: start-[60%] (inset-inline-start) — في LTR = left:60% (نفس الشكل تمامًا)، وفي RTL = ight:60% فيشير الخط نحو الخطوة التالية يسارًا. مؤكَّد في CSS المبني: .start-\[60\%\]{inset-inline-start:60%}. الفحص: / و/?lang=ar = 200.
+**تكملة إصلاحات RTL (استكمال Phase 39):**
+- how-it-works.blade.php:64: شارة رقم الخطوة -right-2 -> -end-2 (تنعكس للزاوية المعكوسة في RTL).
+- hero.blade.php:116: شارة النمو العائمة -left-4 -> -start-4 (تنتقل للزاوية المعكوسة في RTL).
+- فحص شامل: لا space-x-* في landing/auth/layouts (المشروع يستخدم gap-* المتوافق مع الاتجاه)؛ guest.blade.php:36-37 فقاعات خلفية متماثلة تُترك؛ storefront:171 ml-3 فاصل فقط ويبقى خارج النطاق.
+- مؤكَّد في CSS المبني: inset-inline-start:-1rem (من -start-4) وinset-inline-end:-.5rem (من -end-2). الفحص: LTR/RTL = 200.
+**تحسين الأداء P1-P4 (Phase 40):**
+- **P1** pp/Helpers/Language_Translation.php: إضافة ctiveLanguages() بكاش static لكل طلب؛ getLanguages/getLanguageCodes/getLanguageNames تبني منه. أثبت الاختبار: 3 استدعاءات = استعلام واحد (كان 3+)، والرابع = صفر. يُلغي مئات استعلامات languages من View::composer('*').
+- **P2** pp/Helpers/helpers.php: currentMembership() يقرأ ربط pp('currentMembership') من EnsureStoreMembership قبل أي استعلام (مطابقة store_id+user_id فقط). canStore() بكاش لكل طلب keyed بـ user id + permission (تحقق super-admin مرة، membership/permissions مرة). pp/Models/Stores/Team/StoreMembership.php: permissionNames() memoized لكل instance (أثبت الاختبار: دعوتان = استعلام واحد).
+- **P3** pp/Domains/Order/Services/OrderDuplicateService.php::countsBySiblings: أُعيدت كاستعلامات مُجمعة/محدودة (targets فقط + COUNT مجمع + overlap عبر join bounded بالعملاء) بدل سحب كامل حمولة 30 يوم + items للبيئة. مخرجات مطابقة تمامًا للخوارزمية القديمة (تحقق بمقارنة على بيانات فعلية: 5/5 صفوف متطابقة) مع تصحيح استثناء الذات فقط (وليس كل الصفحة).
+- **P4** pp/Domains/Order/Services/OrderService.php::availableTransitions: كاش Static للبحث عن status الفرعي لكل store+key (يسقط استعلامًا لكل صف). pp/Domains/Order/Services/OrderCompleteness.php::storeReadyForDispatch: كاش static لكل store id (يسقط استعلامي exists لكل صف confirmed/preparing). صفحة الطلبات: getCurrentMembership() وisibleTo(currentMembership()) بدل الاستعلام المتكرر.
+- التحقق: php -l سليم لكل الملفات (7/7)، tinker أثبت تقليل الاستعلامات، iew:clear نظيف، / و/login = 200 وorders/tracking = 302 → login (المتوقع دون جلسة). لا تغييرات JS/CSS → لا build.
+**تحسين الأداء P5-P8 (مواصلة Phase 40) — يستهدف ثقل تنقل wire:navigate:**
+- **P5** esources/views/livewire/merchant/tracking/index.blade.php: فلتر المنتجات في mount مقصور على آخر 180 يوم + حد 2000 (بدل فحص كامل التاريخ عبر join order_items)، وناقلون على نافذة سنة. pp/Livewire/Concerns/TrackingColumnConcern.php::getMembership() يستخدم currentMembership() (الربط من middleware) بدل استعلام membership في كل baseTrackingQuery (كان ~6-10 استعلامات/صفحة).
+- **P6** pp/Livewire/Concerns/TrackingGridConcern.php::loadTrackingStats: عدادات الصفحة (active/delivered_today/returned_today) + عدّاد "اعتماد لدى الناقل" في **استعلام SUM واحد** بدل 4 فحوص EXISTS منفصلة (مع الحفاظ على دلالة latestOfMany عبر subquery created_at=MAX). حصيلة السائقين من **تجميع واحد** (count+sum+distinct → groupBy) بدل 4 استعلامات. DeliveryRiderService::listForStore بكاش لكل طلب (كان يُستدعى 2-3 مرات مع withCount). إجمالي فحوص صفحة التتبع من ~12 إلى ~6.
+- **P7** pp/Livewire/Concerns/DistributionQueueConcern.php: صفوف الطابور محدودة بـ 500 مع عدّادات COUNT دقيقة منفصلة. esources/views/livewire/merchant/returns/index.blade.php: تبويبات المرتجعات تُرشَّح في SQL (3 عدّادات سريعة + سطر الصفحة النشطة فقط) مع تقسيم صفحات 25/صفحة بدل تحميل كل تاريخ المرتجعات.
+- **P8** pp/Domains/Analytics/Services/StoreDashboardAnalyticsService.php: خريطة status_id→key تُحمَّل مرة/طلب (كان ~5 استعلامات statuses لكل رسم داشبورد).
+- **P3 إصلاح انحدار** pp/Domains/Order/Services/OrderDuplicateService.php: أُضيف whereNull(o.deleted_at) لاستعلام تداخل المنتجات (Query Builder يجتاز SoftDeletes — أظهره OrderDuplicateBadgeTest::soft-deleted siblings excluded).
+- التحقق: php -l نظيف لكل الملفات؛ view:cache يجمّع كل القوالب؛ اختبار ميزة مؤقت (تم حذفه) رفعت 4 صفحات كبيرة بـ 200؛ المجموعات القائمة خضراء: Tracking + Search + BulkValidate + Duplicates (15) + Queue + Returns + OrdersPageQueryCount (بلا N+1).

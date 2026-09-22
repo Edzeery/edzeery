@@ -15,6 +15,9 @@ class StoreDashboardAnalyticsService
 {
     private string $storeId;
 
+    /** @var array<string, string|null>|null key => id for type='order' statuses */
+    private static ?array $orderStatusIdMap = null;
+
     public function __construct(?string $storeId = null)
     {
         $this->storeId = $storeId ?? currentStoreId();
@@ -187,20 +190,38 @@ class StoreDashboardAnalyticsService
         return Order::query()->where('store_id', $this->storeId)->whereNull('deleted_at');
     }
 
+    private function statusIdsByKey(): array
+    {
+        // One lookup per request instead of one DB query per statusId() call
+        // (the service runs ~5 status lookups on every dashboard render).
+        if (self::$orderStatusIdMap === null) {
+            self::$orderStatusIdMap = DB::table('statuses')
+                ->where('type', 'order')
+                ->pluck('id', 'key')
+                ->all();
+        }
+
+        return self::$orderStatusIdMap;
+    }
+
     private function statusId(OrderStatus $status): ?string
     {
-        return DB::table('statuses')
-            ->where('key', $status->value)
-            ->where('type', 'order')
-            ->value('id');
+        return $this->statusIdsByKey()[$status->value] ?? null;
     }
 
     private function statusIds(array $statuses): array
     {
-        return DB::table('statuses')
-            ->whereIn('key', array_map(fn (OrderStatus $s) => $s->value, $statuses))
-            ->where('type', 'order')
-            ->pluck('id')
-            ->toArray();
+        $map = $this->statusIdsByKey();
+        $ids = [];
+
+        foreach ($statuses as $status) {
+            $id = $map[$status->value] ?? null;
+
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
     }
 }

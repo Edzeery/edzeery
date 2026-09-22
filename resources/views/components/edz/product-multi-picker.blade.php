@@ -80,7 +80,7 @@
                             @endif
                         </span>
                         <span class="w-4 h-4 rounded border flex items-center justify-center shrink-0
-                            {{ in_array($opt['id'], $selected, true) ? 'bg-brand-500 border-brand-500' : 'border-neutral-border dark:border-dark-border' }}">
+                            {{ in_array($opt['id'], $selected, true) ? 'bg-brand-500 border-brand-500' : 'border-surface-border' }}">
                             @if (in_array($opt['id'], $selected, true))
                                 <x-edz.icon name="check" class="w-3 h-3 text-white" />
                             @endif

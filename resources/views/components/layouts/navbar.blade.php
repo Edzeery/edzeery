@@ -1,4 +1,4 @@
-<header x-data="{ open: false }" class="fixed w-full z-30 top-0 bg-neutral-surface dark:bg-dark-surface shadow-md">
+<header x-data="{ open: false }" class="fixed w-full z-30 top-0 bg-surface shadow-md">
     <div class="max-w-7xl mx-auto px-6 flex justify-between items-center h-16">
 
         {{-- Logo --}}
@@ -40,7 +40,8 @@
                     </x-nav-link>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
+                        <button type="submit" class="inline-flex items-center gap-1.5 text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
+                            <ion-icon name="log-out-outline" class="text-base" aria-hidden="true"></ion-icon>
                             {{ __('buttons.logout') }}
                         </button>
                     </form>
@@ -49,7 +50,7 @@
 
             {{-- Mobile Menu Button --}}
             <button @click="open = !open" :aria-expanded="open" aria-label="Toggle menu"
-                class="md:hidden p-2 rounded-md hover:bg-neutral-secondary dark:hover:bg-dark-secondary transition">
+                class="md:hidden p-2 rounded-md hover:bg-surface-secondary transition">
                 <svg class="w-6 h-6 text-ink" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -60,7 +61,7 @@
 
     {{-- Mobile Menu --}}
     <div x-show="open" x-transition class="md:hidden mt-2">
-        <nav class="flex flex-col gap-2 bg-neutral-surface dark:bg-dark-surface p-4 rounded-md shadow-md">
+        <nav class="flex flex-col gap-2 bg-surface p-4 rounded-md shadow-md">
             {{-- Mobile Menu يظهر فقط Auth Links / Dashboard --}}
             @guest
                 <x-nav-link href="{{ route('login') }}">{{ __('buttons.login') }}</x-nav-link>
@@ -71,7 +72,8 @@
                 </x-nav-link>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
+                    <button type="submit" class="inline-flex items-center gap-1.5 text-error-500 dark:text-error-400 hover:text-error-600 dark:hover:text-error-300 transition px-3 py-1">
+                        <ion-icon name="log-out-outline" class="text-base" aria-hidden="true"></ion-icon>
                         {{ __('buttons.logout') }}
                     </button>
                 </form>

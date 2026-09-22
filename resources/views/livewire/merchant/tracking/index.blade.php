@@ -247,14 +247,17 @@ mount(function (): void {
 
     $storeId = currentStoreId();
 
+    $historicalCutoff = now()->subYear();
+
     $this->allProviders = \App\Domains\Shipping\Models\ShippingProvider::where('store_id', $storeId)
-        ->where(function ($q) use ($storeId) {
+        ->where(function ($q) use ($storeId, $historicalCutoff) {
             // Keep active providers for new filters, but also keep inactive
             // providers that still carry historical shipments so those rows
             // stay filterable (mirrors the allCities/allStates order-derived
             // sourcing instead of relying purely on the is_active flag).
             $q->where('is_active', true)
                 ->orWhereIn('id', Order::where('store_id', $storeId)
+                    ->where('created_at', '>=', $historicalCutoff)
                     ->whereNotNull('shipping_provider_id')
                     ->distinct()
                     ->pluck('shipping_provider_id'));
@@ -294,15 +297,19 @@ mount(function (): void {
         ->values()
         ->toArray();
 
-    // Distinct products sold across this store's orders (active + trashed): the
-    // multi-select source for the always-visible products header filter.
+    // Distinct products sold across this store's recent orders (active +
+    // trashed, 180-day window + cap): the multi-select source for the
+    // always-visible products header filter. Bounded so the mount never scans
+    // the store's entire order history.
     $this->allProducts = \App\Models\Products\Product::whereIn(
         'id',
         \App\Models\Orders\Order::withTrashed()
             ->where('orders.store_id', $storeId)
+            ->where('orders.created_at', '>=', now()->subDays(180))
             ->join('order_items', 'order_items.order_id', '=', 'orders.id')
             ->whereNotNull('order_items.product_id')
             ->distinct()
+            ->limit(2000)
             ->pluck('order_items.product_id'),
     )->orderBy('name')->get(['id', 'name'])->toArray();
 

@@ -24,7 +24,7 @@ Route::get('/merchant', function () {
 Route::get('/merchant/account', function () {
     return redirect()->route('account.profile');
 })->middleware(['auth', 'verified'])
-    ->name('redirect.merchant.account');
+    ->name('redirect.merchant.account.path');
 
 Route::prefix('merchant/account')
     ->middleware(['auth', 'verified'])

@@ -1,4 +1,4 @@
-<div class="grid grid-cols-2 mb-6 bg-neutral-secondary dark:bg-dark-secondary rounded-xl p-1">
+<div class="grid grid-cols-2 mb-6 bg-surface-secondary rounded-xl p-1">
 
     @foreach([
         'login' => __('buttons.login'),

@@ -11,7 +11,7 @@
             <p
                 data-aos="fade-up"
                 data-aos-delay="100"
-                class="mt-4 text-theme-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto"
+                class="mt-4 text-theme-xl text-ink-muted max-w-2xl mx-auto"
             >
                 {{ __('landing.how_it_works_subtitle') }}
             </p>
@@ -55,13 +55,13 @@
                 >
                     {{-- Connector line (hidden on last) --}}
                     @if (!$loop->last)
-                        <div class="hidden md:block absolute top-10 left-[60%] w-[80%] border-t-2 border-dashed border-gray-200 dark:border-gray-700"></div>
+                        <div class="hidden md:block absolute top-10 start-[66%] w-[80%] border-t-2 border-dashed border-surface-border"></div>
                     @endif
 
                     {{-- Step number --}}
                     <div class="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-brand-50 dark:bg-brand-950/40 mb-6">
                         <ion-icon name="{{ $step['icon'] }}" class="text-brand-600 dark:text-brand-400 text-3xl"></ion-icon>
-                        <span class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center">
+                        <span class="absolute -top-2 -end-2 w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center">
                             {{ $step['num'] }}
                         </span>
                     </div>
@@ -70,7 +70,7 @@
                         {{ $step['title'] }}
                     </h3>
 
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs mx-auto">
+                    <p class="text-sm text-ink-muted leading-relaxed max-w-xs mx-auto">
                         {{ $step['desc'] }}
                     </p>
                 </div>

@@ -20,9 +20,9 @@
     <title>{{ isset($title) ? config('app.name') . ' | ' . $title : config('app.name') }}</title>
   <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @livewireStyles
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/edz-loader.js', 'resources/js/panel.js'])
+    @vite(['resources/css/app.css', 'resources/js/guest.js', 'resources/js/edz-loader.js'])
     <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
-
+    <x-edz.fonts />
 </head>
 
 <body

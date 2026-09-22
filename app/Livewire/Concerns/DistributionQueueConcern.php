@@ -19,10 +19,10 @@ trait DistributionQueueConcern
     {
         $storeId = currentStoreId();
 
+        $this->confirmationCount = $this->confirmationRows($storeId, true);
         $this->confirmationQueue = $this->confirmationRows($storeId);
-        $this->confirmationCount = count($this->confirmationQueue);
+        $this->trackingCount = $this->trackingRows($storeId, true);
         $this->trackingQueue = $this->trackingRows($storeId);
-        $this->trackingCount = count($this->trackingQueue);
     }
 
     /**
@@ -42,9 +42,10 @@ trait DistributionQueueConcern
 
     /**
      * @param string $storeId
-     * @return array<int, array<string, mixed>>
+     * @param bool $countOnly
+     * @return array<int, array<string, mixed>>|int
      */
-    private function confirmationRows(string $storeId): array
+    private function confirmationRows(string $storeId, bool $countOnly = false): array|int
     {
         $orders = Order::query()
             ->where('store_id', $storeId)
@@ -54,8 +55,15 @@ trait DistributionQueueConcern
                     ->orWhere('over_capacity', true);
             })
             ->whereHas('status', fn ($q) => $q->whereNotIn('key', $this->terminalOrderStatusKeys()))
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
+
+        if ($countOnly) {
+            return $orders->count();
+        }
+
+        $orders = $orders
             ->with(['customer', 'status', 'assignedMembership.user'])
-            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC')
+            ->take(500)
             ->get();
 
         return $orders
@@ -77,9 +85,10 @@ trait DistributionQueueConcern
 
     /**
      * @param string $storeId
-     * @return array<int, array<string, mixed>>
+     * @param bool $countOnly
+     * @return array<int, array<string, mixed>>|int
      */
-    private function trackingRows(string $storeId): array
+    private function trackingRows(string $storeId, bool $countOnly = false): array|int
     {
         $openStatuses = collect(OrderTrackingStatus::open())
             ->map(fn (OrderTrackingStatus $status) => $status->value)
@@ -92,8 +101,15 @@ trait DistributionQueueConcern
                 $q->whereNull('assigned_to_membership_id')
                     ->orWhere('over_capacity', true);
             })
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
+
+        if ($countOnly) {
+            return $trackings->count();
+        }
+
+        $trackings = $trackings
             ->with(['order.customer', 'order.status', 'assignedTo.user'])
-            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC')
+            ->take(500)
             ->get();
 
         return $trackings

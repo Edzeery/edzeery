@@ -12,8 +12,10 @@ return [
     'dangerous_hint' => 'Permissions flagged as Sensitive can affect critical store data.',
     'email' => 'Email',
     'guest' => 'Guest',
+    'granted_count' => ':selected of :total',
     'group_clear' => 'Clear',
     'group_select_all' => 'Select all',
+    'hub_hint' => 'Grouped sets of related permissions.',
     'invalid_supervisor' => 'The selected supervisor is not valid for this store.',
     'invite_member' => 'Invite member',
     'joined' => 'Joined',
@@ -60,4 +62,27 @@ return [
     'title' => 'Team management',
     'try_adjusting' => 'Try adjusting your search.',
     'update_member' => 'Update member',
+
+
+    'view_all' => 'View all',
+    'view_all_permissions' => 'View all permissions',
+    'view_all_permissions_hint' => 'View all permissions granted or revoked for this member.',
+    'view_all_permissions_empty' => 'No permissions granted or revoked',
+    'no_address' => 'No address available',
+    'no_address_hint' => 'This member has not provided an address yet.',
+    'no_address_hint_2' => 'This member has not provided an address yet.
+    You can request them to update their profile with an address.',
+    'permissions' => 'Permissions',
+    'permissions_hint' => 'Permissions are granted based on the role assigned to the member.
+    You can also grant or revoke specific permissions for this member.',
+    'permissions_granted' => 'Permissions granted',
+    'permissions_revoked' => 'Permissions revoked',
+    'permissions_granted_count' => '{1} :count permission granted|[2,*] :count permissions granted',
+    'permissions_revoked_count' => '{1} :count permission revoked|[2,*] :count permissions revoked',
+    'permissions_granted_hint' => 'Permissions granted to this member.',
+    'permissions_revoked_hint' => 'Permissions revoked from this member.',
+    'permissions_granted_empty' => 'No permissions granted',
+    'permissions_revoked_empty' => 'No permissions revoked',
+    'permissions_granted_empty_hint' => 'This member has no permissions granted.',
+    'permissions_revoked_empty_hint' => 'This member has no permissions revoked.',
 ];

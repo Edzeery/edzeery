@@ -2,6 +2,31 @@
 //  EDZEERY — COMPONENTS / BUTTONS
 //  Base class: .edz-btn  +  tone: .edz-btn--primary (default)
 // ============================================================
+
+// --- Loading contract (top-level) ---
+// Shared by edz-button-loading.js (Livewire) and
+// native-button-loading.js (guest/landing native forms + data-edz-loading
+// links). Kept OUTSIDE .edz-btn so plain <button>/<a> elements get the
+// same ring/hide behaviour without inheriting the .edz-btn base styles.
+.edz-btn__ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edz-btn__ring .edz-spinner {
+  width: 1rem;
+  height: 1rem;
+}
+
+.edz-btn__hide {
+  display: none !important;
+}
+
+.edz-btn--loading {
+  cursor: wait;
+}
+
 .edz-btn {
   display: inline-flex;
   align-items: center;

@@ -119,9 +119,32 @@ if (! function_exists('canStore')) {
             return false;
         }
 
-        // Super Admin / Platform Admin bypass
-        if ($user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web')) {
-            return true;
+        // Per-request memoization: permission checks run per cell/row/sidebar
+        // item on grids, turning a simple check into hundreds of role +
+        // membership + permission queries. Results are keyed by the resolved
+        // user id so long-running processes (Octane/queue) never leak a result
+        // between users, and the memo resets as soon as a different user is
+        // resolved on the same worker.
+        static $memoUser = null;
+        static $memo = [];
+
+        $uid = (string) $user->getAuthIdentifier();
+
+        if ($memoUser !== $uid) {
+            $memoUser = $uid;
+            $memo = [];
+        }
+
+        if (array_key_exists($permission, $memo)) {
+            return $memo[$permission];
+        }
+
+        // Super Admin / Platform Admin bypass (resolved once per user+request).
+        if (! array_key_exists('__super_admin__', $memo)) {
+            $memo['__super_admin__'] = $user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web');
+        }
+        if ($memo['__super_admin__']) {
+            return $memo[$permission] = true;
         }
 
         $membership = currentMembership();
@@ -132,11 +155,11 @@ if (! function_exists('canStore')) {
         if ($membership) {
             $stored = $membership->permissionNames();
             if (! empty($stored)) {
-                return in_array($permission, $stored, true);
+                return $memo[$permission] = in_array($permission, $stored, true);
             }
         }
 
-        return $user->can($permission, 'merchant');
+        return $memo[$permission] = $user->can($permission, 'merchant');
     }
 }
 
@@ -302,10 +325,30 @@ if (! function_exists('currentStoreId')) {
 if (! function_exists('currentMembership')) {
     function currentMembership(): ?StoreMembership
     {
-        $store = currentStore();
         $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
 
-        return $user && $store ? $user->storeMembership($store) : null;
+        $store = currentStore();
+        if (! $store) {
+            return null;
+        }
+
+        // Reuse the membership already resolved by EnsureStoreMembership
+        // (bound to the container for store-scoped merchant routes) instead
+        // of re-querying it on every permission check. Same active membership
+        // is returned, so the per-instance permission cache kicks in.
+        if (app()->bound('currentMembership')) {
+            $bound = app('currentMembership');
+            if ($bound instanceof StoreMembership
+                && (string) $bound->store_id === (string) $store->id
+                && (int) $bound->user_id === (int) $user->id) {
+                return $bound;
+            }
+        }
+
+        return $user->storeMembership($store);
     }
 }
 

@@ -199,6 +199,7 @@ trait TrackingGridConcern
     {
         if ($this->showTrash) {
             $this->stats = ['active' => 0, 'delivered_today' => 0, 'returned_today' => 0];
+            $this->bulkValidateNeedsCount = 0;
             $this->riderRiders = [];
             $this->searchableRiders = [];
             $this->riderStatsActiveCount = 0;
@@ -210,17 +211,48 @@ trait TrackingGridConcern
 
         $agg = $this->baseTrackingQuery(true);
 
+        // Single aggregate scan replaces six separate COUNT/SUM scans: the three
+        // stat cards plus the toolbar "needs carrier validation" scanner count.
+        // Each SUM mirrors the original whereHas/whereDoesntHave on the LATEST
+        // tracking row (latestOfMany(created_at)) so counts stay identical.
+        $todayStr = \Carbon\Carbon::today()->toDateString();
+
+        $statsRow = (clone $agg)->selectRaw("
+            SUM(CASE WHEN NOT EXISTS (
+                SELECT 1 FROM order_trackings lt
+                WHERE lt.order_id = orders.id
+                  AND lt.created_at = (SELECT MAX(tt.created_at) FROM order_trackings tt WHERE tt.order_id = orders.id)
+                  AND (lt.delivered_at IS NOT NULL OR lt.returned_at IS NOT NULL)
+            ) THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM order_trackings lt
+                WHERE lt.order_id = orders.id
+                  AND lt.created_at = (SELECT MAX(tt.created_at) FROM order_trackings tt WHERE tt.order_id = orders.id)
+                  AND lt.delivered_at IS NOT NULL AND DATE(lt.delivered_at) = ?
+            ) THEN 1 ELSE 0 END) as delivered_today,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM order_trackings lt
+                WHERE lt.order_id = orders.id
+                  AND lt.created_at = (SELECT MAX(tt.created_at) FROM order_trackings tt WHERE tt.order_id = orders.id)
+                  AND lt.returned_at IS NOT NULL AND DATE(lt.returned_at) = ?
+            ) THEN 1 ELSE 0 END) as returned_today,
+            SUM(CASE WHEN EXISTS (
+                SELECT 1 FROM order_trackings lt
+                WHERE lt.order_id = orders.id
+                  AND lt.created_at = (SELECT MAX(tt.created_at) FROM order_trackings tt WHERE tt.order_id = orders.id)
+                  AND lt.tracking_number IS NOT NULL AND lt.carrier_validated_at IS NULL
+            ) THEN 1 ELSE 0 END) as bulk_validate
+        ")->addBinding([$todayStr, $todayStr], 'select')->first();
+
         $this->stats = [
-            'active' => (clone $agg)
-                ->whereDoesntHave('latestTracking', fn ($q) => $q->whereNotNull('delivered_at')->orWhereNotNull('returned_at'))
-                ->count(),
-            'delivered_today' => (clone $agg)
-                ->whereHas('latestTracking', fn ($q) => $q->whereNotNull('delivered_at')->whereDate('delivered_at', today()))
-                ->count(),
-            'returned_today' => (clone $agg)
-                ->whereHas('latestTracking', fn ($q) => $q->whereNotNull('returned_at')->whereDate('returned_at', today()))
-                ->count(),
+            'active' => (int) ($statsRow->active ?? 0),
+            'delivered_today' => (int) ($statsRow->delivered_today ?? 0),
+            'returned_today' => (int) ($statsRow->returned_today ?? 0),
         ];
+
+        $this->bulkValidateNeedsCount = $this->trackingTab === 'carrier'
+            ? (int) ($statsRow->bulk_validate ?? 0)
+            : 0;
 
         $this->riderRiders = [];
         $this->searchableRiders = [];
@@ -236,39 +268,48 @@ trait TrackingGridConcern
             ->whereNotNull('delivery_rider_id')
             ->whereDoesntHave('latestTracking', fn ($q) => $q->whereNotNull('delivered_at')->orWhereNotNull('returned_at'));
 
-        $this->riderStatsActiveShipments = (clone $openRiderQuery)->count();
-        $this->riderStatsCodDueToday = (float) (clone $openRiderQuery)->sum('total_amount');
-        $this->riderStatsActiveCount = (clone $openRiderQuery)->distinct()->count('delivery_rider_id');
+        // Open-shipment totals per rider derive from a single grouped scan (one
+        // query replaces the former count + sum + distinct-count trio).
+        $openGroups = (clone $openRiderQuery)
+            ->selectRaw('delivery_rider_id, COUNT(*) as c, SUM(total_amount) as s')
+            ->groupBy('delivery_rider_id')
+            ->get();
 
-        $grouped = (clone $agg)
+        $this->riderStatsActiveCount = $openGroups->count();
+        $this->riderStatsActiveShipments = (int) $openGroups->sum('c');
+        $this->riderStatsCodDueToday = (float) $openGroups->sum('s');
+
+        // Per-rider "total" counts ALL shipments handed to the rider within the
+        // active filters (open + closed), matching the original grouped query.
+        $allGroups = (clone $agg)
             ->whereNotNull('delivery_rider_id')
-            ->selectRaw('delivery_rider_id, count(*) as total_count')
+            ->selectRaw('delivery_rider_id, COUNT(*) as total_count')
             ->groupBy('delivery_rider_id')
             ->get()
             ->keyBy('delivery_rider_id');
 
-        if (! $grouped->isEmpty()) {
-            $this->riderRiders = app(DeliveryRiderService::class)->listForStore(currentStoreId())
-                ->filter(fn (DeliveryRider $rider) => $grouped->has($rider->id))
-                ->map(function (DeliveryRider $rider) use ($grouped) {
-                    return [
-                        'id' => $rider->id,
-                        'name' => $rider->name,
-                        'phone' => $rider->phone,
-                        'vehicle_label' => $rider->vehicle_label,
-                        'is_active' => (bool) $rider->is_active,
-                        'total' => (int) ($grouped->get($rider->id)?->total_count ?? 0),
-                    ];
-                })
-                ->values()
-                ->all();
-        }
+        $riders = app(DeliveryRiderService::class)->listForStore(currentStoreId());
+
+        $this->riderRiders = $riders
+            ->filter(fn (DeliveryRider $rider) => $allGroups->has($rider->id))
+            ->map(function (DeliveryRider $rider) use ($allGroups) {
+                return [
+                    'id' => $rider->id,
+                    'name' => $rider->name,
+                    'phone' => $rider->phone,
+                    'vehicle_label' => $rider->vehicle_label,
+                    'is_active' => (bool) $rider->is_active,
+                    'total' => (int) ($allGroups->get($rider->id)?->total_count ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
 
         // searchableRiders = ALL configured riders (not just those with
         // shipments) merged with their current filter totals — powers the
         // rider header-dropdown search list. @json stays single-line.
         $riderTotals = collect($this->riderRiders)->keyBy('id');
-        $this->searchableRiders = app(DeliveryRiderService::class)->listForStore(currentStoreId())
+        $this->searchableRiders = $riders
             ->map(fn (DeliveryRider $r) => [
                 'id' => $r->id,
                 'name' => $r->name,
@@ -287,15 +328,6 @@ trait TrackingGridConcern
             ->paginate($this->perPage, ['*'], 'page', $this->page);
 
         $this->filteredTotal = $paginated->total();
-
-        // The toolbar "اعتماد لدى الناقل" scanner button is only relevant when the
-        // current (filtered) carrier view still contains shipments that can be
-        // validated — i.e. have a tracking number and are not yet validated.
-        $this->bulkValidateNeedsCount = $this->showTrash || $this->trackingTab !== 'carrier'
-            ? 0
-            : (clone $this->baseTrackingQuery(true))
-                ->whereHas('latestTracking', fn ($q) => $q->whereNotNull('tracking_number')->whereNull('carrier_validated_at'))
-                ->count();
 
         $items = collect($paginated->items());
 

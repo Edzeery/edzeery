@@ -46,7 +46,7 @@ $members = computed(function () {
     $actorMembershipId = $user?->storeMembership(currentStore())?->id;
 
     $query = StoreMembership::query()
-        ->with('user')
+        ->with('user', 'user.city', 'user.state')
         ->where('store_id', currentStoreId())
         ->where('user_id', '!=', $user->id)
         ->latest('created_at');
@@ -375,7 +375,7 @@ $selectRoleTemplate = function (): void {
 };
 
 $clearAllPermissions = function (): void {
-    $this->permissions = $this->permissions ?? [];
+    $this->permissions = [];
 };
 ?>
 
@@ -386,7 +386,7 @@ $clearAllPermissions = function (): void {
             <p class="edz-page-head__subtitle">{{ __('teams.subtitle', ['store' => currentStore()?->name]) }}</p>
         </div>
         @if ($this->canCreate())
-            <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" wire:click="openCreate">
+            <button type="button" class="edz-btn edz-btn--primary edz-btn--sm" data-edz-loading="off" wire:click="openCreate">
                 <x-edz.icon name="plus" class="w-4 h-4" /> {{ __('teams.add_member') }}
             </button>
         @endif

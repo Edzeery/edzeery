@@ -92,11 +92,13 @@ function resolveButtons(methods) {
         if (!method) continue;
         const clicked =
             recent && lastClick.el && lastClick.el.isConnected ? lastClick.el : null;
-        if (clicked && methodOf(clicked) === method) {
+        if (clicked && clicked.dataset.edzLoading !== "off" && methodOf(clicked) === method) {
             targets.add(clicked);
             continue;
         }
-        const matches = allButtons().filter((el) => methodOf(el) === method);
+        const matches = allButtons().filter(
+            (el) => el.dataset.edzLoading !== "off" && methodOf(el) === method,
+        );
         if (matches.length === 1) targets.add(matches[0]);
     }
     return targets;
@@ -222,6 +224,10 @@ function interceptClick(event) {
             : null);
     if (!button) return;
     if (!methodOf(button)) return;
+    // Global opt-out: buttons that only open UI (modals, inline forms, …)
+    // carry `data-edz-loading="off"` so a lightweight round-trip never
+    // flashes a spinner ring on the trigger.
+    if (button.dataset.edzLoading === "off") return;
     if (button.dataset.edzPending) {
         event.preventDefault();
         event.stopImmediatePropagation();

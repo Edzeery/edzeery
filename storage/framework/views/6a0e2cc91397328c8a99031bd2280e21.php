@@ -55,7 +55,8 @@
 <?php endif; ?>
                         </td>
                         <td class="px-4 py-3 text-xs text-ink-muted">
-                            <?php echo e($membership->user?->city?->name); ?>, <?php echo e($membership->user?->state?->name); ?>
+
+                            <?php echo e($membership->user?->state ? $membership->user?->state?->name . " , " . $membership->user?->city?->name : __('teams.no_address')); ?>
 
                         </td>
                         <td class="px-4 py-3">
@@ -83,11 +84,11 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canManageScope($membership)): ?>
-                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" data-edz-loading="off"
                                             wire:click="openProductScope('<?php echo e($membership->id); ?>')"><?php echo e(__('teams.product_scope')); ?></button>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($this->canModify($membership)): ?>
-                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
+                                    <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm" data-edz-loading="off"
                                             wire:click="openEdit('<?php echo e($membership->id); ?>')"><?php echo e(__('buttons.edit')); ?></button>
                                     <button type="button" class="edz-btn edz-btn--ghost edz-btn--sm"
                                             wire:click="toggleActive('<?php echo e($membership->id); ?>')">
@@ -123,4 +124,5 @@
 
         </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-</div><?php /**PATH C:\laragon\www\edzeery\resources\views/livewire/merchant/teams/partials/members-table.blade.php ENDPATH**/ ?>
+</div>
+<?php /**PATH C:\laragon\www\edzeery\resources\views/livewire/merchant/teams/partials/members-table.blade.php ENDPATH**/ ?>

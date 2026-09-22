@@ -4,6 +4,7 @@ namespace App\Domains\Order\Services;
 
 use App\Models\Orders\Order;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * كشف الطلبيات المحتملة المكررة/المتكررة: عميل نفس رقم الهاتف + منتجات مشابهة خلال ٣٠ يومًا.
@@ -108,6 +109,11 @@ class OrderDuplicateService
      * كشرط findSimilar مع تجاهل الذات، بلا أي ترشيح للحالة. الهاتف فريد ضمن المتجر
      * (store+phone unique) لذا الأخوة على نفس الرقم == نفس customer_id.
      *
+     * Perf: the previous implementation hydrated the store's ENTIRE 30-day
+     * order pool (plus every item) into PHP on every load; this version pushes
+     * the counting into a grouped SQL query bounded by the targets' own
+     * customers, so it stays fast regardless of store lifetime.
+     *
      * @param  array<int, string>  $orderIds
      * @param  string  $storeId
      * @return array<string, array{same_phone: int, same_product: int}>
@@ -122,32 +128,8 @@ class OrderDuplicateService
 
         $since = Carbon::now()->subDays(self::WINDOW_DAYS);
 
-        $pool = Order::query()
-            ->where('store_id', $storeId)
-            ->where('created_at', '>=', $since)
-            ->with(['items:id,order_id,product_variant_id,product_id,quantity'])
-            ->get(['id', 'customer_id']);
-
-        $byCustomer = [];
-        $poolItems = [];
-
-        foreach ($pool as $order) {
-            $cid = (string) $order->customer_id;
-            $byCustomer[$cid][] = $order->id;
-
-            $variants = [];
-            $products = [];
-            foreach ($order->items as $item) {
-                if ($item->product_variant_id) {
-                    $variants[] = (string) $item->product_variant_id;
-                }
-                if ($item->product_id) {
-                    $products[] = (string) $item->product_id;
-                }
-            }
-            $poolItems[$order->id] = [$variants, $products];
-        }
-
+        // Only the visible rows are hydrated (their fingerprint comes from the
+        // eager-loaded items), never the whole pool.
         $targets = Order::query()
             ->whereIn('id', $orderIds)
             ->with(['items:id,order_id,product_variant_id,product_id,quantity'])
@@ -156,30 +138,128 @@ class OrderDuplicateService
         $counts = [];
 
         foreach ($targets as $target) {
-            $samePhone = 0;
+            $counts[$target->id] = ['same_phone' => 0, 'same_product' => 0];
+        }
+
+        $customerIds = $targets->pluck('customer_id')->filter()->map(fn ($id) => (string) $id)->unique()->values()->all();
+
+        if (empty($customerIds)) {
+            return $counts;
+        }
+
+        // Which of the targets fall inside the 30-day window themselves? Used
+        // to subtract the self row from the grouped sibling count (the pool
+        // includes every window order — targets included — minus self only).
+        $selfInPool = Order::query()
+            ->where('store_id', $storeId)
+            ->where('created_at', '>=', $since)
+            ->whereIn('id', $orderIds)
+            ->pluck('id')
+            ->flip();
+
+        // same_phone: siblings sharing the same customer (phone) within the
+        // window — one grouped count; self is subtracted below when present.
+        $samePhoneByCustomer = Order::query()
+            ->where('store_id', $storeId)
+            ->where('created_at', '>=', $since)
+            ->whereIn('customer_id', $customerIds)
+            ->selectRaw('customer_id, COUNT(*) as c')
+            ->groupBy('customer_id')
+            ->pluck('c', 'customer_id');
+
+        // Per-target fingerprint for the product-overlap part.
+        $targetSets = [];
+        $allVariants = [];
+        $allProducts = [];
+
+        foreach ($targets as $target) {
+            [$variants, $products] = $this->itemIds($target->items);
+            $targetSets[$target->id] = ['variants' => $variants, 'products' => $products];
+            $allVariants = array_values(array_unique([...$allVariants, ...$variants]));
+            $allProducts = array_values(array_unique([...$allProducts, ...$products]));
+        }
+
+        // Sibling items (same customers, same window) that share ANY target
+        // product/variant — a single bounded query instead of hydrating the
+        // pool's items. Targets themselves are part of the pool; each target
+        // skips only itself while counting. Trashed orders are excluded
+        // (matching the Eloquent SoftDeletes default of the former pool load).
+        $poolByCustomer = [];
+
+        if (! empty($allVariants) || ! empty($allProducts)) {
+            $rows = DB::table('order_items as i')
+                ->join('orders as o', 'o.id', '=', 'i.order_id')
+                ->where('o.store_id', $storeId)
+                ->whereNull('o.deleted_at')
+                ->where('o.created_at', '>=', $since)
+                ->whereIn('o.customer_id', $customerIds)
+                ->where(function ($q) use ($allVariants, $allProducts) {
+                    if (! empty($allVariants)) {
+                        $q->whereIn('i.product_variant_id', $allVariants);
+                    }
+                    if (! empty($allProducts)) {
+                        $q->orWhereIn('i.product_id', $allProducts);
+                    }
+                })
+                ->select(['o.id as order_id', 'o.customer_id', 'i.product_variant_id', 'i.product_id'])
+                ->get();
+
+            foreach ($rows as $row) {
+                $orderKey = (string) $row->order_id;
+                $customerKey = (string) $row->customer_id;
+
+                if (! isset($poolByCustomer[$customerKey])) {
+                    $poolByCustomer[$customerKey] = [];
+                }
+
+                $poolByCustomer[$customerKey][$orderKey] ??= ['order_id' => $orderKey, 'items' => []];
+
+                $poolByCustomer[$customerKey][$orderKey]['items'][] = [
+                    'product_variant_id' => $row->product_variant_id !== null ? (string) $row->product_variant_id : null,
+                    'product_id' => $row->product_id !== null ? (string) $row->product_id : null,
+                ];
+            }
+        }
+
+        foreach ($targets as $target) {
+            $targetId = (string) $target->id;
+            $customerKey = (string) $target->customer_id;
+
+            $samePhone = (int) ($samePhoneByCustomer[$customerKey] ?? 0);
+
+            // The grouped count includes the target itself when its order is
+            // inside the 30-day window — subtract exactly the self row.
+            if ($samePhone > 0 && isset($selfInPool[$targetId])) {
+                $samePhone--;
+            }
+
+            $counts[$targetId]['same_phone'] = max(0, $samePhone);
+
+            if (empty($poolByCustomer[$customerKey])) {
+                continue;
+            }
+
+            $set = $targetSets[$targetId];
             $sameProduct = 0;
 
-            $siblingIds = $byCustomer[(string) $target->customer_id] ?? [];
+            foreach ($poolByCustomer[$customerKey] as $siblingId => $sibling) {
+                if ($siblingId === $targetId) {
+                    continue;
+                }
 
-            if (! empty($siblingIds)) {
-                [$targetVariants, $targetProducts] = $this->itemIds($target->items);
-
-                foreach ($siblingIds as $siblingId) {
-                    if ($siblingId === $target->id) {
-                        continue;
-                    }
-
-                    $samePhone++;
-
-                    [$siblingVariants, $siblingProducts] = $poolItems[$siblingId] ?? [[], []];
-
-                    if (array_intersect($targetVariants, $siblingVariants) || array_intersect($targetProducts, $siblingProducts)) {
+                foreach ($sibling['items'] as $item) {
+                    if ($item['product_variant_id'] !== null && in_array($item['product_variant_id'], $set['variants'], true)) {
                         $sameProduct++;
+                        break;
+                    }
+                    if ($item['product_id'] !== null && in_array($item['product_id'], $set['products'], true)) {
+                        $sameProduct++;
+                        break;
                     }
                 }
             }
 
-            $counts[$target->id] = ['same_phone' => $samePhone, 'same_product' => $sameProduct];
+            $counts[$targetId]['same_product'] = $sameProduct;
         }
 
         return $counts;

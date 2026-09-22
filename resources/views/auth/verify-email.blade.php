@@ -17,7 +17,7 @@
             </x-primary-button>
         </form>
 
-        <div class="mt-5 pt-5 border-t border-neutral-border/50 dark:border-dark-border/50 text-center">
+        <div class="mt-5 pt-5 border-t border-surface-border/50 text-center">
             <form method="POST" action="{{ route('logout') }}" class="inline">
                 @csrf
                 <button type="submit"

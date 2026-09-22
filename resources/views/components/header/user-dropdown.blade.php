@@ -8,7 +8,7 @@
     }
 }" @click.away="closeDropdown()">
     <!-- User Button -->
-    <button class="flex items-center text-gray-700 dark:text-gray-400" @click.prevent="toggleDropdown()" type="button">
+    <button class="flex items-center text-ink-muted" @click.prevent="toggleDropdown()" type="button">
 
         <span class="mr-3 overflow-hidden rounded-full h-11 w-11">
             @if (auth()->user()->profile?->profile_picture)
@@ -36,24 +36,24 @@
         class="absolute {{ $alignment  }} mt-[17px]
         flex w-[260px] flex-col
         rounded-2xl
-         border border-neutral-border dark:border-dark-border
-        bg-neutral-surface dark:bg-dark-surface
+         border border-surface-border
+        bg-surface
          shadow-theme-lg p-3
         z-50"
         style="display: none;">
         <!-- User Info -->
         <div>
             <span class="block font-medium
-             text-gray-700 text-theme-sm dark:text-gray-400">
+             text-ink-muted text-theme-sm text-ink-muted">
                 {{ auth()->user()->name }}</span>
             <span class="mt-0.5 block text-theme-xs
-             text-gray-500 dark:text-gray-400">
+             text-ink-muted">
                 {{ auth()->user()->email }}</span>
         </div>
 
         <!-- Menu Items -->
         <ul class="flex flex-col gap-1 pt-4 pb-3
-        border-b border-neutral-border dark:border-dark-border">
+        border-b border-surface-border">
             @php
                 $menuItems = [
                     [
@@ -100,14 +100,14 @@
                 <li>
                     <a href="{{ $item['path'] }}"
                         class="flex items-center gap-3 px-3 py-2 font-medium
-                        text-gray-700 rounded-lg group text-theme-sm
-                         hover:bg-neutral-secondary-soft hover:text-gray-700
-                         dark:text-gray-400 dark:hover:bg-white/5
-                          dark:hover:bg-dark-secondary">
+                        text-ink-muted rounded-lg group text-theme-sm
+                         hover:bg-surface-tertiary hover:text-ink-muted
+                         text-ink-muted dark:hover:bg-white/5
+                          hover:bg-surface-secondary">
                         <span
-                            class="text-gray-500
-                         group-hover:text-gray-700
-                         dark:group-hover:text-gray-300">
+                            class="text-ink-muted
+                         group-hover:text-ink-muted
+                         dark:group-hover:text-ink-soft">
                             {!! $item['icon'] !!}
                         </span>
                         {{ $item['text'] }}
@@ -120,9 +120,9 @@
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button
-                class="flex items-center w-full gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                class="flex items-center w-full gap-3 px-3 py-2 mt-3 font-medium text-ink-muted rounded-lg group text-theme-sm hover:bg-surface-secondary hover:text-ink-muted dark:hover:bg-white/5 dark:hover:text-ink-soft"
                 @click="closeDropdown()">
-                <span class="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
+                <span class="text-ink-muted group-hover:text-ink-muted dark:group-hover:text-ink-soft">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">

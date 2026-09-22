@@ -36,6 +36,12 @@ class StoreMembership extends Model
         'accepted_at' => 'datetime',
     ];
 
+    /**
+     * Per-instance memo of permissionNames() to stop grids from re-querying the
+     * pivot on every permission check.
+     */
+    protected $permissionNamesMemo;
+
 
     public function store() : BelongsTo
     {
@@ -110,9 +116,23 @@ class StoreMembership extends Model
         return $this->hasMany(StoreMembershipPermission::class, 'membership_id');
     }
 
+    /**
+     * الصلاحيات المخصصة المخزنة على هذه العضوية (داخل متجر محدد).
+     *
+     * Memoized per instance: grids call permission checks dozens of times per
+     * row, and re-querying the pivot on every call multiplied the queries.
+     */
     public function permissionNames(): array
     {
-        return $this->permissions()->pluck('permission')->all();
+        if ($this->relationLoaded('permissions')) {
+            return $this->permissions->pluck('permission')->all();
+        }
+
+        if ($this->permissionNamesMemo === null) {
+            $this->permissionNamesMemo = $this->permissions()->pluck('permission')->all();
+        }
+
+        return $this->permissionNamesMemo;
     }
 
     public function hasPermission(string|StorePermissionEnum $permission): bool

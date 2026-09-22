@@ -452,7 +452,7 @@ $save = function (): void {
                                     @foreach (['ar' => __('merchant_panel.arabic'), 'fr' => __('merchant_panel.french'), 'en' => __('merchant_panel.english'), 'es' => __('merchant_panel.spanish')] as $code => $label)
                                         <label
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition"
-                                            :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-surface-subtle text-accent-fg font-semibold' : 'border-surface-border text-ink-muted hover:border-neutral-border'">
+                                            :class="$wire.supported_languages.includes('{{ $code }}') ? 'border-accent-500 bg-accent-surface-subtle text-accent-fg font-semibold' : 'border-surface-border text-ink-muted hover:border-surface-border'">
                                             <input type="checkbox" value="{{ $code }}"
                                                 wire:model.live="supported_languages" class="sr-only" />
                                             <span

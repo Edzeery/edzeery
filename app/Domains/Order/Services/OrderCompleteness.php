@@ -71,11 +71,20 @@ class OrderCompleteness
     /**
      * Store-level dispatch readiness: at least one active shipping company OR at
      * least one active delivery rider must exist before any order can be sent.
+     *
+     * Memoized per store id: `missing()` runs once per grid row and each run
+     * used to fire two exists() queries for the same store.
      */
     protected function storeReadyForDispatch(?string $storeId): bool
     {
         if (blank($storeId)) {
             return false;
+        }
+
+        static $cache = [];
+
+        if (array_key_exists($storeId, $cache)) {
+            return $cache[$storeId];
         }
 
         $hasActiveProvider = \App\Domains\Shipping\Models\ShippingProvider::query()
@@ -84,10 +93,10 @@ class OrderCompleteness
             ->exists();
 
         if ($hasActiveProvider) {
-            return true;
+            return $cache[$storeId] = true;
         }
 
-        return \App\Domains\Shipping\Models\DeliveryRider::query()
+        return $cache[$storeId] = \App\Domains\Shipping\Models\DeliveryRider::query()
             ->where('store_id', $storeId)
             ->where('is_active', true)
             ->exists();

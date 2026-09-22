@@ -156,6 +156,7 @@
     @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/storefront.js', 'resources/js/edz-loader.js'])
     <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
+    <x-edz.fonts />
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased min-h-screen flex flex-col">
@@ -292,7 +293,7 @@
                 <div class="flex items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
                     @if ($store->phone ?? null)
                         <a href="tel:{{ $store->phone }}"
-                            class="flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                            class="flex items-center gap-1 hover:text-gray-600 dark:hover:text-gray-300 transition" dir="ltr" >
                             <ion-icon name="call-outline"></ion-icon>
                             {{ $store->phone }}
                         </a>

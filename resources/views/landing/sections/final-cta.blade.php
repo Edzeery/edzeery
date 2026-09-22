@@ -16,16 +16,19 @@
             <div class="flex flex-wrap justify-center gap-4">
                 <a
                     href="{{ route('register') }}"
+                    data-edz-loading
                     class="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-brand-700 shadow-sm transition hover:bg-brand-50"
                 >
+                    <ion-icon name="arrow-forward-outline" class="text-lg" aria-hidden="true"></ion-icon>
                     {{ __('landing.start_now') }}
-                    <ion-icon name="arrow-forward-outline" class="text-lg"></ion-icon>
                 </a>
 
                 <a
                     href="{{ route('contact') }}"
+                    data-edz-loading
                     class="inline-flex items-center gap-2 rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
+                    <ion-icon name="chatbubble-ellipses-outline" class="text-lg" aria-hidden="true"></ion-icon>
                     {{ __('landing.contact_us') }}
                 </a>
             </div>

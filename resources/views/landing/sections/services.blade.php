@@ -1,4 +1,4 @@
-<section id="services" class="py-24 bg-gray-50 dark:bg-[#0a0a0a]">
+<section id="services" class="py-24 bg-surface-secondary">
     <div class="max-w-7xl mx-auto px-6">
 
         <div class="text-center mb-16">
@@ -11,7 +11,7 @@
             <p
                 data-aos="fade-up"
                 data-aos-delay="100"
-                class="mt-4 text-theme-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto"
+                class="mt-4 text-theme-xl text-ink-muted max-w-2xl mx-auto"
             >
                 {{ __('landing.services_subtitle') }}
             </p>
@@ -59,7 +59,7 @@
                 <div
                     data-aos="fade-up"
                     data-aos-delay="{{ $loop->index * 80 }}"
-                    class="group rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 transition hover:shadow-lg hover:border-brand-300 dark:hover:border-brand-700"
+                    class="group rounded-2xl border border-surface-border bg-surface p-8 transition hover:shadow-lg hover:border-brand-300 dark:hover:border-brand-700"
                 >
                     <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-{{ $feature['color'] }}-50 dark:bg-{{ $feature['color'] }}-950/40 mb-5">
                         <ion-icon name="{{ $feature['icon'] }}" class="text-{{ $feature['color'] }}-600 dark:text-{{ $feature['color'] }}-400 text-xl"></ion-icon>
@@ -69,7 +69,7 @@
                         {{ $feature['title'] }}
                     </h3>
 
-                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                    <p class="text-sm text-ink-muted leading-relaxed">
                         {{ $feature['desc'] }}
                     </p>
                 </div>

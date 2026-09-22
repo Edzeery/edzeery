@@ -1,4 +1,4 @@
-<section id="faq" class="py-24 bg-gray-50 dark:bg-dark-secondary">
+<section id="faq" class="py-24 bg-surface-secondary">
     <div class="max-w-3xl mx-auto px-6">
 
         <div class="text-center mb-14">
@@ -11,7 +11,7 @@
             <p
                 data-aos="fade-up"
                 data-aos-delay="100"
-                class="mt-4 text-theme-xl text-gray-500 dark:text-gray-400"
+                class="mt-4 text-theme-xl text-ink-muted"
             >
                 {{ __('landing.faq_subtitle') }}
             </p>
@@ -33,7 +33,7 @@
                 <div
                     data-aos="fade-up"
                     data-aos-delay="{{ $loop->index * 60 }}"
-                    class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden"
+                    class="rounded-xl border border-surface-border bg-surface overflow-hidden"
                 >
                     <button
                         @click="openFaq = openFaq === '{{ $faq['key'] }}' ? null : '{{ $faq['key'] }}'"
@@ -42,7 +42,7 @@
                         <span class="text-sm font-semibold text-ink">{{ $faq['question'] }}</span>
                         <ion-icon
                             name="chevron-down-outline"
-                            class="text-gray-400 text-lg transition-transform duration-200"
+                            class="text-ink-soft text-lg transition-transform duration-200"
                             :class="openFaq === '{{ $faq['key'] }}' ? 'rotate-180' : ''"
                         ></ion-icon>
                     </button>
@@ -52,7 +52,7 @@
                         x-collapse
                         class="px-6 pb-4"
                     >
-                        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                        <p class="text-sm text-ink-muted leading-relaxed">
                             {{ $faq['answer'] }}
                         </p>
                     </div>

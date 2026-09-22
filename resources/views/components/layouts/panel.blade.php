@@ -39,6 +39,7 @@
     </script>
     <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
     @vite(['resources/css/app.scss', 'resources/js/panel.js', 'resources/js/edz-loader.js'])
+    <x-edz.fonts weights="400;500;600;700" />
     @livewireStyles
 </head>
 

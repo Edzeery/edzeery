@@ -20,6 +20,7 @@
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($this->permissionGroups as $groupCard)
             <button type="button" wire:click="openPermissionGroup('{{ $groupCard['group'] }}')"
+                    data-edz-loading="off"
                     class="group rounded-xl border border-surface-border bg-surface-secondary p-4 text-start transition hover:shadow-card focus:outline-none">
                 <div class="flex items-start justify-between gap-3">
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-secondary text-ink-muted">

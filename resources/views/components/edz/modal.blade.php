@@ -34,6 +34,16 @@
                 this.$dispatch("edz-modal-closed");
             }
         });
+    },
+    // A parent re-render can remove this element while it is still "open"
+    // (e.g. a Volt action nulls the bound state directly). $watch never
+    // fires on destroy, so restore the body scroll here to keep the page
+    // usable.
+    destroy() {
+        const stack = window.__edzModalStack || [];
+        const i = stack.indexOf(this.$el);
+        if (i !== -1) stack.splice(i, 1);
+        document.body.style.overflow = stack.length ? "hidden" : "unset";
     }
 }' x-show="open" x-cloak
     @keydown.escape.window="if (!preventClose) { const s = window.__edzModalStack ||= []; if (s[s.length - 1] === $el) open = false }"

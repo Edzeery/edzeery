@@ -4,7 +4,7 @@
     'class' => 'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ' .
         ($active
             ? 'bg-brand-600 dark:bg-brand-500 text-white shadow-sm'
-            : 'text-ink hover:bg-neutral-secondary dark:hover:bg-dark-secondary hover:text-ink')
+            : 'text-ink hover:bg-surface-secondary hover:text-ink')
 ]) }}>
     {{ $slot }}
 </a>

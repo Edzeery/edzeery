@@ -74,12 +74,12 @@
                     </div>
 
                     {{-- Social Links --}}
-                    <div class="pt-4 border-t border-neutral-border dark:border-dark-border">
+                    <div class="pt-4 border-t border-surface-border">
                         <p class="text-sm font-semibold text-ink mb-4">{{ __('landing.social') ?? 'Follow Us' }}</p>
                         <div class="flex gap-3">
                             @foreach (['logo-twitter' => 'X', 'logo-facebook' => 'Facebook', 'logo-instagram' => 'Instagram', 'logo-linkedin' => 'LinkedIn'] as $icon => $label)
                                 <a href="#" aria-label="{{ $label }}"
-                                   class="w-10 h-10 rounded-xl bg-neutral-secondary dark:bg-dark-secondary flex items-center justify-center text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all duration-200">
+                                   class="w-10 h-10 rounded-xl bg-surface-secondary flex items-center justify-center text-ink-muted hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-all duration-200">
                                     <ion-icon name="{{ $icon }}" class="text-lg"></ion-icon>
                                 </a>
                             @endforeach
@@ -89,7 +89,7 @@
 
                 {{-- Right: Contact Form --}}
                 <div class="lg:col-span-3" data-aos="fade-up" data-aos-delay="200">
-                    <div class="bg-white dark:bg-dark-surface rounded-3xl border border-neutral-border dark:border-dark-border p-8 sm:p-10 shadow-sm">
+                    <div class="bg-surface rounded-3xl border border-surface-border p-8 sm:p-10 shadow-sm">
 
                         <h2 class="text-xl font-bold text-ink mb-8">{{ __('landing.contact_form_title') }}</h2>
 
@@ -101,8 +101,8 @@
                                     <label for="name" class="block text-sm font-medium text-ink mb-2">{{ __('landing.contact_name') }} *</label>
                                     <input type="text" id="name" name="name" required
                                         placeholder="{{ __('landing.contact_name') }}"
-                                        class="w-full px-4 py-3 rounded-xl border border-neutral-border dark:border-dark-border
-                                               bg-surface-bg dark:bg-dark-secondary text-ink
+                                        class="w-full px-4 py-3 rounded-xl border border-surface-border
+                                               bg-surface-bg text-ink
                                                placeholder:text-ink-soft
                                                focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
                                                transition-all duration-200" />
@@ -111,8 +111,8 @@
                                     <label for="email" class="block text-sm font-medium text-ink mb-2">{{ __('landing.contact_your_email') }} *</label>
                                     <input type="email" id="email" name="email" required
                                         placeholder="{{ __('landing.contact_your_email') }}"
-                                        class="w-full px-4 py-3 rounded-xl border border-neutral-border dark:border-dark-border
-                                               bg-surface-bg dark:bg-dark-secondary text-ink
+                                        class="w-full px-4 py-3 rounded-xl border border-surface-border
+                                               bg-surface-bg text-ink
                                                placeholder:text-ink-soft
                                                focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
                                                transition-all duration-200" />
@@ -125,8 +125,8 @@
                                     <label for="phone" class="block text-sm font-medium text-ink mb-2">{{ __('landing.contact_phone') }}</label>
                                     <input type="tel" id="phone" name="phone"
                                         placeholder="+966 5X XXX XXXX"
-                                        class="w-full px-4 py-3 rounded-xl border border-neutral-border dark:border-dark-border
-                                               bg-surface-bg dark:bg-dark-secondary text-ink
+                                        class="w-full px-4 py-3 rounded-xl border border-surface-border
+                                               bg-surface-bg text-ink
                                                placeholder:text-ink-soft
                                                focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
                                                transition-all duration-200" />
@@ -134,8 +134,8 @@
                                 <div>
                                     <label for="subject" class="block text-sm font-medium text-ink mb-2">{{ __('landing.contact_subject') }} *</label>
                                     <select id="subject" name="subject" required
-                                        class="w-full px-4 py-3 rounded-xl border border-neutral-border dark:border-dark-border
-                                               bg-surface-bg dark:bg-dark-secondary text-ink
+                                        class="w-full px-4 py-3 rounded-xl border border-surface-border
+                                               bg-surface-bg text-ink
                                                focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
                                                transition-all duration-200">
                                         <option value="">{{ __('landing.contact_subject') }}</option>
@@ -152,8 +152,8 @@
                                 <label for="message" class="block text-sm font-medium text-ink mb-2">{{ __('landing.contact_message') }} *</label>
                                 <textarea id="message" name="message" rows="5" required
                                     placeholder="{{ __('landing.contact_message') }}..."
-                                    class="w-full px-4 py-3 rounded-xl border border-neutral-border dark:border-dark-border
-                                           bg-surface-bg dark:bg-dark-secondary text-ink
+                                    class="w-full px-4 py-3 rounded-xl border border-surface-border
+                                           bg-surface-bg text-ink
                                            placeholder:text-ink-soft
                                            focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
                                            transition-all duration-200 resize-none"></textarea>
@@ -176,10 +176,7 @@
                                 </template>
                                 <template x-if="sending">
                                     <span class="flex items-center gap-2">
-                                        <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                        </svg>
+                                        <span class="edz-spinner" aria-hidden="true"></span>
                                         {{ __('buttons.sending') ?? 'Sending...' }}
                                     </span>
                                 </template>

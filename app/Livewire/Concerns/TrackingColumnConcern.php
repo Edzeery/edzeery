@@ -63,9 +63,10 @@ trait TrackingColumnConcern
 
     public function getMembership(): ?\App\Models\Stores\Team\StoreMembership
     {
-        return \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
-            ->where('user_id', auth()->id())
-            ->first();
+        // The store context middleware already resolved the membership and
+        // bound it on the container — reuse it instead of re-querying on every
+        // baseTrackingQuery()/preferences call.
+        return currentMembership();
     }
 
     public function loadTrackingTabPreferences(): void

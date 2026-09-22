@@ -1,4 +1,4 @@
-<section id="pricing" class="py-24 bg-gray-50 dark:bg-dark-surface" x-data="{ billing: 'monthly' }">
+<section id="pricing" class="py-24 bg-surface-secondary" x-data="{ billing: 'monthly' }">
     <div class="max-w-7xl mx-auto px-6">
 
         {{-- Title --}}
@@ -12,7 +12,7 @@
             <p
                 data-aos="fade-up"
                 data-aos-delay="100"
-                class="mt-4 text-theme-xl text-gray-500 dark:text-gray-400"
+                class="mt-4 text-theme-xl text-ink-muted"
             >
                 {{ __('landing.pricing_subtitle') }}
             </p>
@@ -24,17 +24,17 @@
             data-aos-delay="200"
             class="flex justify-center mb-14"
         >
-            <div class="flex border rounded-xl p-1 bg-gray-100 dark:bg-gray-800 shadow-sm">
+            <div class="flex border rounded-xl p-1 bg-surface-secondary shadow-sm">
                 <button
                     @click="billing = 'monthly'"
-                    :class="billing === 'monthly' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-700 dark:text-gray-300'"
+                    :class="billing === 'monthly' ? 'bg-brand-600 text-white shadow-sm' : 'text-ink-muted'"
                     class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"
                 >
                     {{ __('landing.monthly') }}
                 </button>
                 <button
                     @click="billing = 'yearly'"
-                    :class="billing === 'yearly' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-700 dark:text-gray-300'"
+                    :class="billing === 'yearly' ? 'bg-brand-600 text-white shadow-sm' : 'text-ink-muted'"
                     class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer"
                 >
                     {{ __('landing.yearly') }}
@@ -73,8 +73,8 @@
                     data-aos-delay="{{ $loop->index * 100 }}"
                     class="relative rounded-2xl border p-8 transition-all duration-300
                         {{ $isDefault
-                            ? 'border-brand-300 dark:border-brand-700 bg-white dark:bg-gray-900 shadow-lg ring-1 ring-brand-200 dark:ring-brand-800'
-                            : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
+                            ? 'border-brand-300 dark:border-brand-700 bg-surface shadow-lg ring-1 ring-brand-200 dark:ring-brand-800'
+                            : 'border-surface-border bg-surface'
                         }}"
                 >
                     {{-- Popular badge --}}
@@ -90,7 +90,7 @@
                     @if ($hasTrial)
                         <div x-show="billing === 'monthly'" x-transition class="mb-4 text-center">
                             <span class="inline-block rounded-full bg-green-100 dark:bg-green-900/40 px-3 py-1 text-xs font-semibold text-green-700 dark:text-green-300">
-                                {{ __('landing.free_plan') }}
+                                {{ __('landing.free_trial') }}
                             </span>
                         </div>
                     @endif
@@ -108,35 +108,35 @@
                     {{-- Trial description --}}
                     @if ($hasTrial)
                         <p x-show="billing === 'monthly'" x-transition class="mt-2 text-sm text-brand-600 dark:text-brand-400 text-center">
-                            {{ __('landing.best_for_start') }}
+                            {{ __('landing.best_for_starters') }}
                         </p>
                     @endif
 
                     {{-- Dynamic Price --}}
                     <div class="my-6 text-center">
                         <p class="flex items-baseline justify-center gap-x-2" x-show="billing === 'monthly'">
-                            <span class="text-4xl font-bold tracking-tight text-ink">
+                            <span class="text-2xl font-bold tracking-tight text-ink">
                                 @if ($monthly)
                                     {{ $formatPrice($monthly->price) }}
                                 @else
                                     —
                                 @endif
                             </span>
-                            <span class="text-sm text-gray-400">
-                                / {{ __('landing.monthly') }}
+                            <span class="text-sm text-ink-soft">
+                                / {{ __('landing.monthly_abbreviation') }}
                             </span>
                         </p>
 
                         <p class="flex items-baseline justify-center gap-x-2" x-show="billing === 'yearly'">
-                            <span class="text-4xl font-bold tracking-tight text-ink">
+                            <span class="text-2xl font-bold tracking-tight text-ink">
                                 @if ($yearly)
                                     {{ $formatPrice($yearly->price) }}
                                 @else
                                     —
                                 @endif
                             </span>
-                            <span class="text-sm text-gray-400">
-                                / {{ __('landing.yearly') }}
+                            <span class="text-sm text-ink-soft">
+                                / {{ __('landing.yearly_abbreviation') }}
                             </span>
                         </p>
 
@@ -152,7 +152,7 @@
                     <ul class="space-y-3 text-sm mb-8">
                         @foreach ($plan->features as $feature)
                             <li class="flex items-center justify-between">
-                                <span class="text-gray-600 dark:text-gray-400">{{ __($feature->name) }}</span>
+                                <span class="text-ink-muted">{{ __($feature->name) }}</span>
                                 <span class="font-semibold text-ink">
                                     @if ($feature->pivot->value === 'unlimited')
                                         ∞
@@ -160,7 +160,7 @@
                                         @if ($feature->pivot->value)
                                             <ion-icon name="checkmark-circle" class="text-green-500 text-lg"></ion-icon>
                                         @else
-                                            <ion-icon name="close-circle" class="text-gray-300 dark:text-gray-600 text-lg"></ion-icon>
+                                            <ion-icon name="close-circle" class="text-ink-soft text-lg"></ion-icon>
                                         @endif
                                     @else
                                         {{ $feature->pivot->value }}
@@ -173,12 +173,14 @@
                     {{-- CTA --}}
                     <a
                         x-bind:href="'{{ route('register') }}?plan={{ $plan->id }}&billing=' + billing"
-                        class="block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold transition
+                        data-edz-loading
+                        class="flex items-center justify-center gap-2 w-full rounded-lg px-4 py-3 text-center text-sm font-semibold transition
                             {{ $isDefault
                                 ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm'
-                                : 'bg-gray-100 dark:bg-gray-800 text-ink hover:bg-gray-200 dark:hover:bg-gray-700'
+                                : 'bg-surface-secondary text-ink hover:bg-surface-tertiary'
                             }}"
                     >
+                        <ion-icon name="arrow-forward-outline" class="text-lg" aria-hidden="true"></ion-icon>
                         <span x-show="billing === 'monthly' && {{ $hasTrial ? 'true' : 'false' }}">
                             {{ __('landing.start_now') }}
                         </span>

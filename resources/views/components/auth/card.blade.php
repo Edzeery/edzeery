@@ -4,9 +4,9 @@
 ])
 
 <div class="w-full max-w-lg
-            border border-neutral-border dark:border-dark-border
+            border border-surface-border
             rounded-2xl
-            bg-neutral-surface dark:bg-dark-surface
+            bg-surface
             shadow-card
             p-6 sm:p-8
             animate-scale-in mx-auto">
@@ -18,7 +18,7 @@
         </h2>
 
         @isset($subtitle)
-            <p class="text-sm text-neutral-soft dark:text-dark-soft mt-1.5">
+            <p class="text-sm text-ink-soft mt-1.5">
                 {{ $subtitle }}
             </p>
         @endisset

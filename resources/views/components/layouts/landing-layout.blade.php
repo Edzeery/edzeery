@@ -27,13 +27,14 @@
 
     <title>{{ isset($title) ? config('app.name') . ' | ' . $title : config('app.name') }}</title>
     <link rel="icon" href="{{ asset('img/icons/newlogo.ico') }}" type="image/x-icon" />
-    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/edz-loader.js'])
+    @vite(['resources/css/app.css', 'resources/js/landing.js', 'resources/js/edz-loader.js'])
     <script type="module" src="{{ asset('vendor/ionicons/ionicons.esm.js') }}"></script>
+    <x-edz.fonts />
 
 </head>
 
-<body class="bg-surface-bg dark:bg-dark-surface
-text-ink dark:text-gray-100
+<body class="bg-surface-bg
+text-ink
 antialiased">
 
     {{-- Navbar --}}

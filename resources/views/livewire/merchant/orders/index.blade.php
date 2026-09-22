@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 use App\Domains\Order\Models\UserColumnPreference;
 use App\Domains\Order\Support\AssignmentCandidateResolver;
 use App\Domains\Order\Services\OrderAssignmentService;
@@ -765,9 +765,7 @@ $saveColumnPreferences = function (): void {
 };
 
 $getCurrentMembership = function (): ?\App\Models\Stores\Team\StoreMembership {
-    return \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
-        ->where('user_id', auth()->id())
-        ->first();
+    return currentMembership();
 };
 
 // Single source of truth for the row eager-loads (shared by loadOrders and
@@ -794,7 +792,7 @@ $loadOrders = function (): void {
     $with = $this->orderEagerLoads();
 
     $query = Order::where('store_id', $storeId)->with($with);
-    $query->visibleTo(user()->storeMembership(currentStore()));
+    $query->visibleTo(currentMembership());
 
     if (!empty($this->search)) {
         $s = $this->search;
@@ -1032,7 +1030,7 @@ $refreshSingleOrder = function (string $orderId): void {
     $with = $this->orderEagerLoads();
 
     $query = Order::where('store_id', $storeId)->with($with);
-    $query->visibleTo(user()->storeMembership(currentStore()));
+    $query->visibleTo(currentMembership());
     if ($this->showTrash) {
         $query->onlyTrashed();
     } else {

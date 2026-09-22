@@ -72,6 +72,26 @@ unset($__defined_vars, $__key, $__value); ?>
     </script>
     <link rel="icon" href="<?php echo e(asset('img/icons/newlogo.ico')); ?>" type="image/x-icon" />
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.scss', 'resources/js/panel.js', 'resources/js/edz-loader.js']); ?>
+    <?php if (isset($component)) { $__componentOriginal5b26f6175aaa4d67d4bfc6484c606a82 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal5b26f6175aaa4d67d4bfc6484c606a82 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.fonts','data' => ['weights' => '400;500;600;700']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.fonts'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['weights' => '400;500;600;700']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal5b26f6175aaa4d67d4bfc6484c606a82)): ?>
+<?php $attributes = $__attributesOriginal5b26f6175aaa4d67d4bfc6484c606a82; ?>
+<?php unset($__attributesOriginal5b26f6175aaa4d67d4bfc6484c606a82); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal5b26f6175aaa4d67d4bfc6484c606a82)): ?>
+<?php $component = $__componentOriginal5b26f6175aaa4d67d4bfc6484c606a82; ?>
+<?php unset($__componentOriginal5b26f6175aaa4d67d4bfc6484c606a82); ?>
+<?php endif; ?>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
 
 </head>

@@ -31,8 +31,8 @@
                 <label class="flex items-center gap-2.5 cursor-pointer group">
                     <div class="relative">
                         <input id="remember_me" type="checkbox" name="remember" class="sr-only peer">
-                        <div class="w-5 h-5 rounded-md border-2 border-neutral-border dark:border-dark-border
-                                    bg-neutral-surface dark:bg-dark-surface peer-checked:bg-brand-600 peer-checked:border-brand-600 transition-all duration-200"></div>
+                        <div class="w-5 h-5 rounded-md border-2 border-surface-border
+                                    bg-surface peer-checked:bg-brand-600 peer-checked:border-brand-600 transition-all duration-200"></div>
                         <ion-icon name="checkmark-outline"
                                   class="absolute inset-0 m-auto w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity"></ion-icon>
                     </div>

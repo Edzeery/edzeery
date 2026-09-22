@@ -9,15 +9,23 @@ class DeliveryRiderService
     /**
      * List the active riders for a given store, ordered by name.
      */
+    private static array $listCache = [];
+
     public function listForStore(?string $storeId = null, bool $onlyActive = false)
     {
+        $key = ($storeId ?? currentStoreId()).'|'.($onlyActive ? '1' : '0');
+
+        if (isset(self::$listCache[$key])) {
+            return self::$listCache[$key];
+        }
+
         $query = DeliveryRider::query()->forStore($storeId);
 
         if ($onlyActive) {
             $query->active();
         }
 
-        return $query->withCount('orders')->orderBy('name')->get();
+        return self::$listCache[$key] = $query->withCount('orders')->orderBy('name')->get();
     }
 
     /**

@@ -12,8 +12,10 @@ return [
     'dangerous_hint' => 'Los permisos marcados como sensibles pueden afectar a datos críticos de la tienda.',
     'email' => 'Email',
     'guest' => 'Invitado',
+    'granted_count' => ':selected de :total',
     'group_clear' => 'Limpiar',
     'group_select_all' => 'Seleccionar todo',
+    'hub_hint' => 'Conjuntos de permisos relacionados.',
     'invalid_supervisor' => 'El supervisor seleccionado no es válido para esta tienda.',
     'invite_member' => 'Invitar miembro',
     'joined' => 'Se unió',
@@ -60,4 +62,27 @@ return [
     'title' => 'Gestión de equipo',
     'try_adjusting' => 'Intenta modificar tu búsqueda.',
     'update_member' => 'Actualizar miembro',
+
+
+    'view_all' => 'Ver todo',
+    'view_all_permissions' => 'Ver todas las permisos',
+    'view_all_permissions_hint' => 'Ver todos los permisos concedidos o revocados para este miembro.',
+    'view_all_permissions_empty' => 'No hay permisos concedidos o revocados',
+    'no_address' => 'No hay dirección disponible',
+    'no_address_hint' => 'Este miembro no ha proporcionado una dirección aún.',
+    'no_address_hint_2' => 'Este miembro no ha proporcionado una dirección aún.
+    Puede solicitarles que actualicen su perfil con una dirección.',
+    'permissions' => 'Permisos',
+    'permissions_hint' => 'Los permisos son concedidos basados en el rol asignado al miembro.
+    También puede otorgar o revocar permisos específicos para este miembro.',
+    'permissions_granted' => 'Permisos concedidos',
+    'permissions_revoked' => 'Permisos revocados',
+    'permissions_granted_count' => '{1} :count permission granted|[2,*] :count permissions granted',
+    'permissions_revoked_count' => '{1} :count permission revoked|[2,*] :count permissions revoked',
+    'permissions_granted_hint' => 'Permisos concedidos a este miembro.',
+    'permissions_revoked_hint' => 'Permisos revocados de este miembro.',
+    'permissions_granted_empty' => 'No hay permisos concedidos',
+    'permissions_revoked_empty' => 'No hay permisos revocados',
+    'permissions_granted_empty_hint' => 'Este miembro no tiene permisos concedidos.',
+    'permissions_revoked_empty_hint' => 'Este miembro no tiene permisos revocados.',
 ];

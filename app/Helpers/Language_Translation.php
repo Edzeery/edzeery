@@ -4,22 +4,44 @@ use Illuminate\Support\Str;
 use Outhebox\Translations\Models\Language;
 use Outhebox\Translations\Models\Translation;
 
+if (! function_exists('activeLanguages')) {
+    /**
+     * قائمة اللغات النشطة بذاكرة مؤقتة لكل طلب.
+     *
+     * The '*', view composer passes getLanguages() to every rendered view,
+     * so an uncached query here multiplies into hundreds of identical
+     * `languages` queries per page load. The static cache is per-request
+     * (PHP-FPM) and shares one collection across getLanguages(),
+     * getLanguageCodes() and getLanguageNames().
+     */
+    function activeLanguages(): \Illuminate\Support\Collection
+    {
+        static $cache = null;
+
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        return $cache = Language::where('active', true)->get();
+    }
+}
+
 if (! function_exists('getLanguages')) {
     function getLanguages(): array|object
     {
-        return Language::where('active', true)->get();
+        return activeLanguages();
     }
 }
 function getLanguageCodes(): array
 {
-    return Language::where('active', true)
+    return activeLanguages()
         ->pluck('code')
         ->toArray();
 }
 
 function getLanguageNames(): array
 {
-    return Language::where('active', true)
+    return activeLanguages()
         ->pluck('name')
         ->toArray();
 }
