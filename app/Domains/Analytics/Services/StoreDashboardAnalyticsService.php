@@ -87,7 +87,17 @@ class StoreDashboardAnalyticsService
             ->select('statuses.key', 'statuses.color', DB::raw('COUNT(*) as count'))
             ->groupBy('statuses.key', 'statuses.color')
             ->orderByDesc('count')
-            ->get();
+            ->get()
+            ->map(function ($row) {
+                $key = $row->key;
+
+                return (object) [
+                    'key'   => $key,
+                    'color' => $row->color,
+                    'count' => (int) $row->count,
+                    'label' => $key,
+                ];
+            });
     }
 
     public function salesByDay(): Collection

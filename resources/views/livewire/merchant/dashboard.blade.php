@@ -38,31 +38,7 @@ with([
 ]);
 ?>
 
-<div x-data="{
-    chartDays: {{ json_encode($salesByDay->pluck('date')->values()) }},
-    chartRevenue: {{ json_encode($salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
-    chartOrders: {{ json_encode($salesByDay->pluck('total')->values()->map(fn($v) => (int) $v)) }},
-    statusLabels: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
-    statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
-    statusColors: {{ json_encode($ordersByStatus->pluck('color')->values()) }},
-    stateLabels: {{ json_encode($ordersByState->pluck('name')->values()) }},
-    stateCounts: {{ json_encode($ordersByState->pluck('count')->values()->map(fn($v) => (int) $v)) }},
-    stateRevenues: {{ json_encode($ordersByState->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
-    deliveryLabels: {{ json_encode($deliveryTypeBreakdown->pluck('delivery_type')->values()) }},
-    deliveryCounts: {{ json_encode($deliveryTypeBreakdown->pluck('count')->values()->map(fn($v) => (int) $v)) }},
-    renderCharts() {
-        let tries = 0;
-        const attempt = () => {
-            if (window.Chart && typeof window.renderDashboardCharts === 'function') {
-                window.renderDashboardCharts(this);
-            } else if (tries < 20) {
-                tries++;
-                setTimeout(attempt, 50);
-            }
-        };
-        this.$nextTick(attempt);
-    }
-}" x-init="renderCharts()">
+<div>
 
     {{-- KPI Cards — Apple-style large numbers with negative tracking --}}
     @if ($canTopKpis)
@@ -179,29 +155,7 @@ with([
 
     {{-- Charts Row --}}
     @if ($canStatsDelivery)
-    <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
-        {{-- Sales Trend --}}
-        <div class="lg:col-span-2 edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">{{ __('dashboard.sales_trend') }}</h3>
-            <div class="h-64">
-                <canvas id="salesChart"></canvas>
-            </div>
-        </div>
-
-        {{-- Orders by Status --}}
-        <div class="edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">{{ __('dashboard.orders_by_status') }}</h3>
-            @if ($ordersByStatus->isNotEmpty())
-                <div class="h-64">
-                    <canvas id="statusChart"></canvas>
-                </div>
-            @else
-                <div class="h-64 flex items-center justify-center">
-                    <p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p>
-                </div>
-            @endif
-        </div>
-    </div>
+        @include('livewire.merchant.dashboard.partials.charts')
 
     {{-- Second Charts Row --}}
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
@@ -357,84 +311,5 @@ with([
         </div>
     @endif
 
-    {{-- Chart.js rendering --}}
-    <script>
-        window.renderDashboardCharts = function(data) {
-            const fontColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-color-text-soft') || '#6b7280';
-            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-color-border') || '#e5e7eb';
 
-            Chart.defaults.color = fontColor;
-            Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
-
-            if (data.chartDays.length > 0) {
-                new Chart(document.getElementById('salesChart'), {
-                    type: 'line',
-                    data: {
-                        labels: data.chartDays.map(d => { const dt = new Date(d); return dt.toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' }); }),
-                        datasets: [{
-                            label: '{{ __("dashboard.revenue") }}',
-                            data: data.chartRevenue,
-                            borderColor: '#6366f1',
-                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 5,
-                            pointHoverBackgroundColor: '#6366f1',
-                            yAxisID: 'y',
-                        }, {
-                            label: '{{ __("dashboard.total_orders") }}',
-                            data: data.chartOrders,
-                            borderColor: '#22c55e',
-                            backgroundColor: 'rgba(34, 197, 94, 0.05)',
-                            fill: false,
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 5,
-                            pointHoverBackgroundColor: '#22c55e',
-                            yAxisID: 'y1',
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { intersect: false, mode: 'index' },
-                        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, usePointStyle: true } } },
-                        scales: {
-                            x: { grid: { color: gridColor, drawBorder: false }, border: { display: false } },
-                            y: { position: 'left', grid: { color: gridColor, drawBorder: false }, border: { display: false }, title: { display: true, text: '{{ __("stores.currency_symbol") }}' } },
-                            y1: { position: 'right', grid: { drawOnChartArea: false }, border: { display: false }, title: { display: true, text: '{{ __("dashboard.orders") }}' } },
-                        }
-                    }
-                });
-            }
-
-            if (data.statusLabels.length > 0) {
-                const colorMap = {
-                    'pending': '#f59e0b', 'confirmed': '#3b82f6', 'preparing': '#8b5cf6',
-                    'shipped': '#6366f1', 'in_transit': '#06b6d4', 'out_for_delivery': '#14b8a6',
-                    'delivered': '#22c55e', 'completed': '#22c55e', 'cancelled': '#ef4444',
-                    'canceled': '#ef4444', 'returned': '#f97316', 'refunded': '#ec4899',
-                    'on_hold': '#64748b', 'paid': '#3b82f6', 'draft': '#9ca3af',
-                };
-                const colors = data.statusLabels.map((k, i) => data.statusColors[i] || colorMap[k] || '#6b7280');
-
-                new Chart(document.getElementById('statusChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.statusLabels,
-                        datasets: [{ data: data.statusCounts, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, usePointStyle: true } } },
-                        cutout: '68%',
-                    }
-                });
-            }
-        };
-    </script>
 </div>

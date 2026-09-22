@@ -25,7 +25,7 @@ class StoreStatusUpdater
             $status = StoreStatusEnum::PENDING;
         }
 
-        $store = $user->stores()->first();
+        $store = $user->storesOwned()->first();
 
         if (!$store) {
             return null;

@@ -6,31 +6,7 @@ use App\Enums\Store\StorePermissionEnum;
 
 ?>
 
-<div x-data="{
-    chartDays: <?php echo e(json_encode($salesByDay->pluck('date')->values())); ?>,
-    chartRevenue: <?php echo e(json_encode($salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v))); ?>,
-    chartOrders: <?php echo e(json_encode($salesByDay->pluck('total')->values()->map(fn($v) => (int) $v))); ?>,
-    statusLabels: <?php echo e(json_encode($ordersByStatus->pluck('key')->values())); ?>,
-    statusCounts: <?php echo e(json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v))); ?>,
-    statusColors: <?php echo e(json_encode($ordersByStatus->pluck('color')->values())); ?>,
-    stateLabels: <?php echo e(json_encode($ordersByState->pluck('name')->values())); ?>,
-    stateCounts: <?php echo e(json_encode($ordersByState->pluck('count')->values()->map(fn($v) => (int) $v))); ?>,
-    stateRevenues: <?php echo e(json_encode($ordersByState->pluck('revenue')->values()->map(fn($v) => (float) $v))); ?>,
-    deliveryLabels: <?php echo e(json_encode($deliveryTypeBreakdown->pluck('delivery_type')->values())); ?>,
-    deliveryCounts: <?php echo e(json_encode($deliveryTypeBreakdown->pluck('count')->values()->map(fn($v) => (int) $v))); ?>,
-    renderCharts() {
-        let tries = 0;
-        const attempt = () => {
-            if (window.Chart && typeof window.renderDashboardCharts === 'function') {
-                window.renderDashboardCharts(this);
-            } else if (tries < 20) {
-                tries++;
-                setTimeout(attempt, 50);
-            }
-        };
-        this.$nextTick(attempt);
-    }
-}" x-init="renderCharts()">
+<div>
 
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($canTopKpis): ?>
@@ -224,29 +200,7 @@ use App\Enums\Store\StorePermissionEnum;
 
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($canStatsDelivery): ?>
-    <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
-        
-        <div class="lg:col-span-2 edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4"><?php echo e(__('dashboard.sales_trend')); ?></h3>
-            <div class="h-64">
-                <canvas id="salesChart"></canvas>
-            </div>
-        </div>
-
-        
-        <div class="edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4"><?php echo e(__('dashboard.orders_by_status')); ?></h3>
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ordersByStatus->isNotEmpty()): ?>
-                <div class="h-64">
-                    <canvas id="statusChart"></canvas>
-                </div>
-            <?php else: ?>
-                <div class="h-64 flex items-center justify-center">
-                    <p class="text-sm text-ink-muted"><?php echo e(__('dashboard.no_data')); ?></p>
-                </div>
-            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-        </div>
-    </div>
+        <?php echo $__env->make('livewire.merchant.dashboard.partials.charts', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
@@ -444,84 +398,5 @@ use App\Enums\Store\StorePermissionEnum;
         </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    
-    <script>
-        window.renderDashboardCharts = function(data) {
-            const fontColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-color-text-soft') || '#6b7280';
-            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--edz-color-border') || '#e5e7eb';
 
-            Chart.defaults.color = fontColor;
-            Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
-
-            if (data.chartDays.length > 0) {
-                new Chart(document.getElementById('salesChart'), {
-                    type: 'line',
-                    data: {
-                        labels: data.chartDays.map(d => { const dt = new Date(d); return dt.toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' }); }),
-                        datasets: [{
-                            label: '<?php echo e(__("dashboard.revenue")); ?>',
-                            data: data.chartRevenue,
-                            borderColor: '#6366f1',
-                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                            fill: true,
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 5,
-                            pointHoverBackgroundColor: '#6366f1',
-                            yAxisID: 'y',
-                        }, {
-                            label: '<?php echo e(__("dashboard.total_orders")); ?>',
-                            data: data.chartOrders,
-                            borderColor: '#22c55e',
-                            backgroundColor: 'rgba(34, 197, 94, 0.05)',
-                            fill: false,
-                            tension: 0.4,
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            pointHoverRadius: 5,
-                            pointHoverBackgroundColor: '#22c55e',
-                            yAxisID: 'y1',
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { intersect: false, mode: 'index' },
-                        plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16, usePointStyle: true } } },
-                        scales: {
-                            x: { grid: { color: gridColor, drawBorder: false }, border: { display: false } },
-                            y: { position: 'left', grid: { color: gridColor, drawBorder: false }, border: { display: false }, title: { display: true, text: '<?php echo e(__("stores.currency_symbol")); ?>' } },
-                            y1: { position: 'right', grid: { drawOnChartArea: false }, border: { display: false }, title: { display: true, text: '<?php echo e(__("dashboard.orders")); ?>' } },
-                        }
-                    }
-                });
-            }
-
-            if (data.statusLabels.length > 0) {
-                const colorMap = {
-                    'pending': '#f59e0b', 'confirmed': '#3b82f6', 'preparing': '#8b5cf6',
-                    'shipped': '#6366f1', 'in_transit': '#06b6d4', 'out_for_delivery': '#14b8a6',
-                    'delivered': '#22c55e', 'completed': '#22c55e', 'cancelled': '#ef4444',
-                    'canceled': '#ef4444', 'returned': '#f97316', 'refunded': '#ec4899',
-                    'on_hold': '#64748b', 'paid': '#3b82f6', 'draft': '#9ca3af',
-                };
-                const colors = data.statusLabels.map((k, i) => data.statusColors[i] || colorMap[k] || '#6b7280');
-
-                new Chart(document.getElementById('statusChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: data.statusLabels,
-                        datasets: [{ data: data.statusCounts, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, usePointStyle: true } } },
-                        cutout: '68%',
-                    }
-                });
-            }
-        };
-    </script>
 </div><?php /**PATH C:\laragon\www\edzeery\resources\views\livewire\merchant\dashboard.blade.php ENDPATH**/ ?>

@@ -28,16 +28,20 @@ class EnsureStoreIsActive
         ) {
             if (! $request->routeIs('account.billing')) {
                 return redirect()->route('account.billing')
-                    ->with('warning', __('Your store is not active. Please check your subscription.'));
+
+                    ->with('warning',  __('subscription.store_not_active')
+                        ?: __('Your store is not active. Please check your subscription.'));
             }
         }
 
-        $subscription = user()?->latestSubscription();
+        $ownerSubscription = currentStore()->user?->latestSubscription();
 
-        if ($subscription && ! $subscription->isActive() && ! $subscription->onTrial()) {
+        if ($ownerSubscription && ! $ownerSubscription->isActive() && ! $ownerSubscription->onTrial()) {
             if (! $request->routeIs('account.billing')) {
                 return redirect()->route('account.billing')
-                    ->with('warning', __('Your subscription has expired.'));
+                    ->with('warning',
+                     __('subscription.subscription_expired')
+                        ?: __('Your subscription has expired.'));
             }
         }
 
