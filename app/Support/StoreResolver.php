@@ -25,12 +25,14 @@ class StoreResolver
             }
         }
 
-        if ($id = request()->header('X-Store-Id') ?: request()->query('store_id')) {
-            $store = Store::find($id);
+        if (request()->is('api/*')) {
+            if ($id = request()->header('X-Store-Id') ?: request()->query('store_id')) {
+                $store = Store::find($id);
 
-            if ($store && auth()->user()?->stores()->where('stores.id', $store->id)->exists()) {
-                app(StoreContext::class)->set($store);
-                return $store;
+                if ($store && auth()->user()?->stores()->where('stores.id', $store->id)->exists()) {
+                    app(StoreContext::class)->set($store);
+                    return $store;
+                }
             }
         }
 

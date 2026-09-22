@@ -10,55 +10,6 @@ use App\Support\StoreContext;
 
 class ChooseStoreController extends Controller
 {
-    public function index()
-    {
-        $user = auth()->user();
-
-        // 1) Stores owned by the user
-        $ownedStoreIds = Store::where('user_id', $user->id)
-            ->whereNull('deleted_at')
-            ->pluck('id');
-
-        // 2) Stores where user has an active membership (team member)
-        $memberStoreIds = StoreMembership::where('user_id', $user->id)
-            ->where('is_active', true)
-            ->pluck('store_id');
-
-        // 3) Merge + deduplicate
-        $storeIds = $ownedStoreIds->merge($memberStoreIds)->unique();
-
-        if ($storeIds->isEmpty()) {
-            return redirect()->route('merchant.create-store');
-        }
-
-        // 4) Build a clean collection: store + role + membership
-        $stores = Store::whereIn('id', $storeIds)
-            ->with(['owner', 'settings'])
-            ->get()
-            ->map(function (Store $store) use ($user, $memberStoreIds) {
-                $isOwner = $store->user_id === $user->id;
-                $isMember = $memberStoreIds->contains($store->id);
-
-                // Determine role: owner takes priority
-                $role = $isOwner
-                    ? StoreRoleEnum::OWNER
-                    : ($isMember
-                        ? $this->getMembershipRole($user, $store)
-                        : StoreRoleEnum::STAFF);
-
-                // Subscription comes from the store OWNER, not the current user
-                $subscription = $store->owner?->latestSubscription();
-
-                return (object) [
-                    'store' => $store,
-                    'role' => $role,
-                    'subscription' => $subscription,
-                ];
-            });
-
-        return view('auth.choose-store', ['stores' => $stores]);
-    }
-
     public function select(Store $store)
     {
         $user = auth()->user();

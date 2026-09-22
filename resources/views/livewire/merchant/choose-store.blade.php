@@ -5,7 +5,6 @@ use App\Enums\Store\StoreRoleEnum;
 use App\Enums\SubscriptionPayment\StatusSubscriptionEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
-use App\Support\StoreContext;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -121,29 +120,6 @@ mount(function (): void {
 
     $this->effectiveUsage = max($consumption, $this->storeCount);
 });
-
-$selectStore = function (string $slug): void {
-    $user = auth()->user();
-
-    $store = Store::where('slug', $slug)->first();
-
-    abort_unless($store !== null, 404);
-
-    // Must be owner OR active member
-    $isOwner = $store->user_id === $user->id;
-    $isMember = StoreMembership::where('store_id', $store->id)
-        ->where('user_id', $user->id)
-        ->where('is_active', true)
-        ->exists();
-
-    abort_unless($isOwner || $isMember, 403);
-
-    session(['current_store_id' => $store->id]);
-
-    app(StoreContext::class)->set($store);
-
-    $this->redirect(route('merchant.dashboard', ['store' => $store->slug]), navigate: true);
-};
 
 $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
     $user->guard_name = 'merchant';
@@ -354,15 +330,15 @@ $getMembershipRole = function ($user, Store $store): StoreRoleEnum {
 
                     {{-- Actions --}}
                     <div class="flex items-center gap-2 mt-auto pt-1">
-                        <button type="button"
-                                wire:click="selectStore('{{ $store['slug'] }}')"
-                                wire:loading.attr="disabled"
-                                wire:target="selectStore('{{ $store['slug'] }}')"
-                                class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                            <ion-icon name="storefront-outline" class="text-base"></ion-icon>
-                            {{ __('buttons.open') }}
-                            <ion-icon name="chevron-forward-outline" class="text-sm group-hover:translate-x-0.5 transition-transform"></ion-icon>
-                        </button>
+                        <form method="POST" action="{{ route('merchant.choose-store.select', $store['slug']) }}" class="contents">
+                            @csrf
+                            <button type="submit"
+                                    class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 shadow-sm shadow-brand-600/20 transition">
+                                <ion-icon name="storefront-outline" class="text-base"></ion-icon>
+                                {{ __('buttons.open') }}
+                                <ion-icon name="chevron-forward-outline" class="text-sm group-hover:translate-x-0.5 transition-transform"></ion-icon>
+                            </button>
+                        </form>
                         <a href="{{ $storefrontUrl }}" target="_blank" rel="noopener noreferrer"
                            title="{{ __('merchant_panel.visit_store') }}"
                            class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-surface-border text-xs font-semibold text-ink-muted hover:text-brand-fg hover:border-brand-border transition">

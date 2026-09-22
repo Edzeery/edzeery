@@ -182,22 +182,25 @@ it('renders the expired-subscription banner for the owner but hides it from staf
         ->assertDontSee(__('messages.subscription_expired_text'));
 });
 
-// ————— 4. Account stores list —————
+// ————— 4. account.stores removed — selection is POST-only —————
 
-it('hides the plan tile on the account stores list for staff and shows it for the owner', function () {
+it('no longer serves the account stores page and never selects a store via GET', function () {
     [$owner, $store] = bvsUser();
-    $plan = Plan::first();
-    bvsGrantActiveSubscription($owner, $plan);
     $staff = bvsMembership($store, StoreRoleEnum::STAFF);
 
     actingAs($staff->user)
         ->get('/merchant/account/stores')
-        ->assertOk()
-        ->assertSee($store->name)
-        ->assertDontSee($plan->name);
+        ->assertNotFound();
 
+    // A plain GET on choose-store must not touch the current store (no URL-driven selection)
     actingAs($owner)
-        ->get('/merchant/account/stores')
+        ->get('/merchant/choose-store')
         ->assertOk()
-        ->assertSee($plan->name);
+        ->assertSessionMissing('current_store_id');
+
+    // The ONLY way to set the current store is the POST selection route
+    actingAs($owner)
+        ->post(route('merchant.choose-store.select', $store->slug), ['_token' => csrf_token()])
+        ->assertRedirect(route('merchant.dashboard', $store->slug))
+        ->assertSessionHas('current_store_id', $store->id);
 });

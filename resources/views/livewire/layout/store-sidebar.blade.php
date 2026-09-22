@@ -98,7 +98,7 @@ with($withData);
             </div>
             <div class="edz-sidebar__store-meta">
                 <p class="edz-sidebar__store-name">{{ $store->name }}</p>
-                <a href="{{ route('account.stores') }}" wire:navigate class="edz-sidebar__store-switch">
+                <a href="{{ route('merchant.choose-store') }}" wire:navigate class="edz-sidebar__store-switch">
                     {{ __('merchant_panel.all_stores') }}
                 </a>
             </div>

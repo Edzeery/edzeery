@@ -31,7 +31,7 @@ use App\Models\Products\Product;
             </div>
             <div class="edz-sidebar__store-meta">
                 <p class="edz-sidebar__store-name"><?php echo e($store->name); ?></p>
-                <a href="<?php echo e(route('account.stores')); ?>" wire:navigate class="edz-sidebar__store-switch">
+                <a href="<?php echo e(route('merchant.choose-store')); ?>" wire:navigate class="edz-sidebar__store-switch">
                     <?php echo e(__('merchant_panel.all_stores')); ?>
 
                 </a>

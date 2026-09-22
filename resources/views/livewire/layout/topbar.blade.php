@@ -36,7 +36,7 @@ with([
 
     <div class="edz-topbar__actions">
         @if ($store)
-            <a href="{{ route('account.stores') }}" wire:navigate class="edz-topbar__store-link">
+            <a href="{{ route('merchant.choose-store') }}" wire:navigate class="edz-topbar__store-link">
                 <x-edz.icon name="grid" class="w-4 h-4" />
                 <span class="edz-topbar__store-name">{{ $store?->name }}</span>
             </a>

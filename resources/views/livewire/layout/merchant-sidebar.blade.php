@@ -31,8 +31,8 @@ with([
         <div class="edz-sidebar__group">
             <p class="edz-sidebar__group-title">{{ __('merchant_panel.account') }}</p>
 
-            <a href="{{ route('account.stores') }}" wire:navigate
-               class="edz-sidebar__link @if (request()->routeIs('account.stores')) edz-sidebar__link--active @endif">
+            <a href="{{ route('merchant.choose-store') }}" wire:navigate
+               class="edz-sidebar__link @if (request()->routeIs('merchant.choose-store')) edz-sidebar__link--active @endif">
                 <x-edz.icon name="grid" class="edz-sidebar__icon" />
                 <span class="edz-sidebar__label">{{ __('merchant_panel.my_stores') }}</span>
                 @if ($stores->isNotEmpty())

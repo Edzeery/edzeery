@@ -36,8 +36,8 @@
                 <span class="edz-sidebar__label"><?php echo e(__('merchant_panel.profile')); ?></span>
             </a>
 
-            <a href="<?php echo e(route('account.stores')); ?>" wire:navigate
-               class="edz-sidebar__link <?php if(request()->routeIs('account.stores')): ?> edz-sidebar__link--active <?php endif; ?>">
+            <a href="<?php echo e(route('merchant.choose-store')); ?>" wire:navigate
+               class="edz-sidebar__link <?php if(request()->routeIs('merchant.choose-store')): ?> edz-sidebar__link--active <?php endif; ?>">
                 <?php if (isset($component)) { $__componentOriginal78f5a7347bd00ba3623a459cd340078c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal78f5a7347bd00ba3623a459cd340078c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.icon','data' => ['name' => 'grid','class' => 'edz-sidebar__icon']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

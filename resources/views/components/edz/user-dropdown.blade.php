@@ -3,7 +3,7 @@
         [
             'text' => __('merchant_panel.my_stores'),
             'icon' => 'grid',
-            'path' => route('account.stores'),
+            'path' => route('merchant.choose-store'),
         ],
         [
             'text' => __('buttons.profile'),
