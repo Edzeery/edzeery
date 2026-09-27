@@ -310,3 +310,457 @@ $this->stores = $u->storesOwned()->with('payments')->get();
 ---
 
 **Implemented: 2026-09-21** — نُفّذت الطبقة A (البند 1–6) كاملةً في مرحلة 36.7: مصفوفة StoreRoles (Manager `-5`، Staff `-3`)، إزالة `CRM_ORDER_CONFIRMATION` عبر قائمة القسم 4 (files أولًا ثم Enum — grep صفري في الكود والاختبارات)، إصلاح الترجمات الأربع + فرع المصفوفات في `PermissionGroupMeta::label()`، أوصاف صلاحيات جديدة (`permissions_descriptions.php×4` + `description()` + عرض في الـ Hub)، إصلاح الخصوصية في `account/billing.blade.php` عبر `storesOwned()`، وشارة «قريبًا» في الـ Hub (`COMING_SOON` + `isComingSoon()` + تعطيل التبديل) مع إزالة تعليقات (Soon) من الـ Enum. الشهادة: Merchant **628 ناجح (2711 تأكيد)**، Account+Auth **43 ناجح (112 تأكيد)**.
+
+---
+
+## Phase 36.11 — Granular Order & Tracking Permissions (تصنيف دقيق لصلاحيات الطلبيات والتتبع)
+
+> **نطاق هذه المرحلة: توثيق فقط.** صفر تغيير في أي ملف تطبيق. لا حالة في `StorePermissionEnum`، لا تغيير في `StoreRoles.php`، لا سطر واحد يُمس في `orders/index.blade.php` (5639 سطرًا).
+> **Last re-verified: 2026-09-27** على `HEAD = cdc4402` (شجرة عمل نظيفة، `git status --porcelain` فارغ). كل `file:line` أدناه أُعيد جلبه حيًا من الملفات، لا من أي مراجعة سابقة.
+
+### 0. منهجية إعادة التحقق + الأرقام الحقيقية (كل رقم أُعيد قياسه)
+
+| # | الادّعاء الوارد في تخطيط الجلسة | ما الذي أُعيد قياسه حيًا اليوم | الحكم |
+|---|-------------------------------|----------------------|-------|
+| 1 | `orders/index.blade.php` فيه «~96 موضع فحص» | **51 سطر** يحوي `ORDER_MANAGE` | ❌ **خاطئ — الرقم 51** (مطابق للقسم 6 من هذا المستند؛ الرقم «96» يخصّ التطبيق كله لا هذا الملف) |
+| 2 | الملف 5639 سطرًا | **5639** | ✔ صحيح (ملاحظة: `Get-Content \| Measure-Object -Line` يُرجع 4854 لأنه لا يعدّ الأسطر الفارغة — خطأ قياس شائع) |
+| 3 | الأعمدة مُجمّعة في **ثلاث** مجموعات | **أربع** مجموعات: `identity`، `products_financial`، `geography`، **و`workflow`** | ❌ **ناقص** — راجع 0.2 |
+| 4 | `TrackingRiderFormConcern.php` + تقييد تبويب الراكب في `TrackingGridConcern.php` + `orders/index.blade.php` + `order-drawer.blade.php` = كل مواضع `ORDER_ASSIGN` | **لا وجود لأي فحص `ORDER_ASSIGN` في `TrackingGridConcern.php`** إطلاقًا | ❌ **مُختلق** — راجع 3.1 |
+| 5 | `ORDER_ASSIGN` في `orders/index.blade.php` | سطر **واحد فقط** (`:1177`، الإسناد الجماعي) | ✔ صحيح |
+| 6 | عدد حالات `StorePermissionEnum` | **46** (لا 47 — أُزيلت `CRM_ORDER_CONFIRMATION` فعلًا في 36.7) | ✔ متسق مع القسم 2 |
+
+**0.1 — عدّاد التطبيق كله:** `app/` + `resources/` (بدون tests/cache) = **99 سطرًا** يحوي `ORDER_MANAGE`. منها 3 ليست «مواضع فحص» بل: تعريف الـ Enum (`StorePermissionEnum.php:41`)، وإدراج القالب (`StoreRoles.php:55`)، والـ fallback غير المادي في `StoreOrderPermissions.php:61`. ⇒ **96 موضع فحص وظيفيًا** في التطبيق كله (51 منها في `orders/index.blade.php`).
+
+**0.2 — اكتشاف جوهري: مجموعات الأعمدة أربع لا ثلاث.** مصدر التجميع هو الدالة `$orderColumns` (مغلَّفة في الـ Livewire component نفسه) في `resources/views/livewire/merchant/orders/index.blade.php:581-630`، وليس config ولا enum مستقل. رأس كل مجموعة عند:
+
+| المجموعة | سطر رأسها | الأعمدة القابلة للتحرير فيها (`editable => true`) | صلاحيتها الحالية |
+|---------|-----------|---------------------------------------------------|-------------------|
+| `identity` | `:595` | `customer` (`:598`)، `phone` (`:599`)، `notes` (`:601`) | `ORDER_MANAGE` |
+| `products_financial` | `:604` | `products` (`:605`)، `quantity` (`:606`)، `price` (`:607`)، `weight` (`:610`)، `shipment_type` (`:611`)، `discount` (`:612`) | `ORDER_MANAGE` — عدا `price` فعليًا: `ORDER_EDIT_PRICE` + `store.settings.allow_price_edit` عبر `$itemsPriceEditable()` (`:299-310`) |
+| `geography` | `:614` | `wilaya` (`:615`)، `city` (`:616`)، `address` (`:617`)، `delivery_type` (`:618`)، `shipping_provider` (`:619`)، `stopdesk_point` (`:620`)، `send_from_carrier_warehouse` (`:621`) | `ORDER_MANAGE` |
+| **`workflow`** | **`:623`** | **`status` (`:624`)، `assigned_agent` (`:625`)** | `ORDER_MANAGE` |
+
+**الأثر على التصميم:** عمود `status` وعمود `assigned_agent` — وهما بالضبط العمودان الأكثر حساسية تشغيليًا — يقعان في `workflow`، **وليس** في المجموعات الثلاث. لذلك ثلاث صلاحيات `order.edit.*` لن تغطّي تعديل الحالة ولا إعادة إسناد الوكيل من الجدول. هذا قرار صريح لا نقص: `status` يذهب إلى `order.status.manage.own` (البند 2)، و`assigned_agent` **يبقى على `order.manage`** كـ ADMIN-OTHER لأنه فعل إسناد فريق حقيقي لا تحرير حقل (البند 1.2، المواضع 30–32).
+
+**0.3 — `visibleTo()` ليس دالة كائن بل نطاق استعلام (تصحيح صاغة).** القسم 1 من هذا المستند يكتب `Order::visibleTo(?StoreMembership)`؛ الصيغة الحقيقية هي نطاق builder من `HasVisibilityScope` (مستخدم في `app/Models/Orders/Order.php:14` import و`:26` use) — `app/Models/Orders/Concerns/HasVisibilityScope.php:26-52`:
+- `scopeVisibleTo(Builder $query, ?StoreMembership $membership)` (`:26`)
+- عضو بـ`TEAM_VIEW` (owner/admin) ⇒ الاستعلام بلا تغيير (`:32-34`)
+- عضو بـ`TEAM_VIEW_OWN` (manager) ⇒ `assigned_to_membership_id IN (فريقه + هو)` + تقييد المنتجات إن وُجد (`:36-49`)
+- غير ذلك (staff) ⇒ `assigned_to_membership_id = $membership->id` (`:51`)
+
+⇒ عمليًا: **مطابقة النطاق على مستوى صف واحد = `Order::query()->where('store_id', …)->whereKey($id)->visibleTo($membership)->exists()`** (أو `!== ` على `Order::find($id)`). هذه هي الصورة الوحيدة المعتمدة في المرحلة 36.12.
+
+---
+
+### 1. جرد وتصنيف كامل لمواضع `ORDER_MANAGE` داخل `orders/index.blade.php` — 51 موضعًا، 51 مُصنَّفة
+
+> **قاعدة honesty المُطبَّقة:** كل موضع في الجدول التالي يقع في **سلة واحدة بالضبط**، والمجموع = 51 = عدد الأسطر الفعلية. لا موضع غير مصنَّف، ولا موضع مصنَّف مرتين.
+
+#### 1.1 — خلاصة السلال (والتصحيح الصريح للتوقّع)
+
+| السلة | العدد | النسبة | مرشَّحة لـ |
+|-------|------:|-------:|-----------|
+| **EDIT-GEOGRAPHY** | 15 | 29% | `order.edit.geography` |
+| **ADMIN-OTHER** | 15 | 29% | تبقى على `order.manage` (بلا تغيير) |
+| **EDIT-PRODUCTS** | 10 | 20% | `order.edit.products` |
+| **EDIT-IDENTITY** | 9 | 18% | `order.edit.identity` |
+| **STATUS** | **2** | 4% | `order.status.manage.own` |
+| **المجموع** | **51** | 100% | |
+
+**تصحيح التوقّع الوارد في تخطيط الجلسة:** التوقّع كان أن ADMIN-OTHER «يبقى الأغلبية». **القياس الفعلي ينفي ذلك**: تحرير الحقول (34 موضعًا = 67%) هو الأغلبية، وADMIN-OTHER 29% فقط. سبب ذلك أن هذا الملف تفاعلي بالأساس (محرّر جدول بـ26 محرّرًا مستقلًا) وليس لوحة إجراءات. القسمة هذه هي التي تجعل المرحلة 36.12 مجدية فعلًا: 26 محرّرًا يمكن تضييقها بدقة إلى ثلاث صلاحيات بدل `order.manage` واحدة.
+
+**وقابل STATUS الصادم:** موضعان فقط (4%). والسبب أن مسار تغيير الحالة الأساسي **لا يستخدم `ORDER_MANAGE` حرفًا** — انظر 1.4. هذا يعني أن `order.status.manage.own` يجب أن يتداخل مع `StoreOrderPermissions::forStatus()` (خارج هذا الملف)، لا مع أي سطر `canStore(...)` داخله.
+
+#### 1.2 — جدول التصنيف الكامل (51/51)
+
+| # | file:line | الصيغة | العنصر / الإجراء | السلة | الصلاحية المقترحة (OR مع `order.manage`) |
+|--:|-----------|------|------------------|------|------------------------------------------|
+| 1 | `orders/index.blade.php:313` | `canStore` | `$openItemsModal` — نافذة تعديل أصناف/كميات/أسعار | EDIT-PRODUCTS | `order.edit.products` |
+| 2 | `:369` | `canStore` | `$addInlineItem` — إضافة صنف داخل النافذة | EDIT-PRODUCTS | `order.edit.products` |
+| 3 | `:377` | `canStore` | `$saveOrderItems` — حفظ أصناف/كميات/أسعار الطلبية | EDIT-PRODUCTS | `order.edit.products` |
+| 4 | `:1207` | `canStore` | `$openBulkSendModal` — فتح نافذة «إرسال جماعي للناقل» | ADMIN-OTHER | — (يبقى) |
+| 5 | `:1309` | `canStore` | `$confirmBulkSend` — تنفيذ الإرسال الجماعي فعليًا | ADMIN-OTHER | — (يبقى) |
+| 6 | `:1886` | `canStore` | `$submitConfirmAndSend` — تأكيد **+** إرسال للناقل في خطوة واحدة | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 1.3-أ |
+| 7 | `:2014` | `canStore` | `$sendConfirmedOrder` — تسليم طلبية مؤكَّدة بالفعل للناقل | ADMIN-OTHER | — (يبقى) |
+| 8 | `:2177` | `canStore` | `$markOrderDuplicate` — انتقال الحالة إلى `duplicate` | **STATUS** | `order.status.manage.own` |
+| 9 | `:2202` | `canStore` | `$openBulkStatusModal` — فتح نافذة تغيير الحالة الجماعي | ADMIN-OTHER | — (يبقى) |
+| 10 | `:2233` | `canStore` | `$submitBulkStatus` — **تنفيذ** انتقال الحالة على مجموعة طلبيات | **STATUS** ⚠️ | `order.status.manage.own` + تصفية لكل-طلبية (انظر 1.3) |
+| 11 | `:2285` | `canStore` | `$openReassignModal` — فتح نافذة إعادة الإسناد بين أعضاء الفريق | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 3.4 |
+| 12 | `:2298` | `canStore` | `$submitReassign` — تنفيذ إعادة الإسناد بين أعضاء الفريق | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 3.4 |
+| 13 | `:3044` | `canStore` | `$openDeliveryModal` — نافذة التوصيل السريعة (نقل/مكتب/ولاية/بلدية) | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 14 | `:3224` | `canStore` | `$startOrderPhoneEdit` — بدء تحرير الهاتف | EDIT-IDENTITY | `order.edit.identity` |
+| 15 | `:3248` | `canStore` | `$saveOrderPhone` — حفظ الهاتف + الهاتف الثانوي | EDIT-IDENTITY | `order.edit.identity` |
+| 16 | `:3301` | `canStore` | `$startOrderNameEdit` — بدء تحرير اسم العميل | EDIT-IDENTITY | `order.edit.identity` |
+| 17 | `:3323` | `canStore` | `$saveOrderName` — حفظ اسم العميل | EDIT-IDENTITY | `order.edit.identity` |
+| 18 | `:3410` | `canStore` | `$startOrderWilayaEdit` — بدء تحرير الولاية | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 19 | `:3419` | `canStore` | `$startOrderCityEdit` — بدء تحرير البلدية (مع نطاق المكاتب) | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 20 | `:3467` | `'permission' =>` | `$saveOrderWilaya` — حفظ الولاية | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 21 | `:3503` | `'permission' =>` | `$saveOrderCity` — حفظ البلدية | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 22 | `:3579` | `canStore` | `$startOrderProviderEdit` — بدء محرّر الناقل/الراكب | EDIT-GEOGRAPHY ⚠️ | `order.edit.geography` — انظر 1.3 |
+| 23 | `:3624` | `'permission' =>` | `$saveOrderProvider` — حفظ الناقل **أو** الراكب | EDIT-GEOGRAPHY ⚠️ | `order.edit.geography` — انظر 1.3 |
+| 24 | `:3700` | `canStore` | `$startOrderDeliveryTypeEdit` — بدء تحرير نوع التوصيل | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 25 | `:3725` | `'permission' =>` | `$saveOrderDeliveryType` — حفظ نوع التوصيل | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 26 | `:3748` | `canStore` | `$startOrderShipmentTypeEdit` — بدء تحرير نوع الشحن | EDIT-PRODUCTS | `order.edit.products` |
+| 27 | `:3776` | `'permission' =>` | `$saveOrderShipmentType` — حفظ نوع الشحن | EDIT-PRODUCTS | `order.edit.products` |
+| 28 | `:3788` | `canStore` | `$startOrderStopdeskEdit` — بدء تحرير مكتب التسليم | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 29 | `:3817` | `'permission' =>` | `$saveOrderStopdesk` — حفظ مكتب التسليم | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 30 | `:3850` | `canStore` | `$startOrderAgentEdit` — بدء تحرير الوكيل المسؤول | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 3.4 |
+| 31 | `:3863` | `canStore` | `$saveOrderAgent` — حفظ الوكيل المسؤول | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 3.4 |
+| 32 | `:3886` | `'permission' =>` | `$saveOrderAgent` — بوابة `saveEdit` (تستدعي `OrderAssignmentService::reassign`) | ADMIN-OTHER ⚠️ | — (يبقى) — انظر 3.4 |
+| 33 | `:3941` | `canStore` | `$startOrderAddressEdit` — بدء تحرير العنوان | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 34 | `:3962` | `'permission' =>` | `$saveOrderAddress` — حفظ العنوان | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 35 | `:3981` | `canStore` | `$startOrderWeightEdit` — بدء تحرير الوزن | EDIT-PRODUCTS | `order.edit.products` |
+| 36 | `:4008` | `'permission' =>` | `$saveOrderWeight` — حفظ الوزن (مع حدّ الناقل) | EDIT-PRODUCTS | `order.edit.products` |
+| 37 | `:4020` | `canStore` | `$startOrderNotesEdit` — بدء تحرير الملاحظات | EDIT-IDENTITY | `order.edit.identity` |
+| 38 | `:4045` | `'permission' =>` | `$saveOrderNotes` — حفظ الملاحظات | EDIT-IDENTITY | `order.edit.identity` |
+| 39 | `:4057` | `canStore` | `$startOrderDiscountEdit` — بدء تحرير الخصم | EDIT-PRODUCTS | `order.edit.products` |
+| 40 | `:4088` | `'permission' =>` | `$saveOrderDiscount` — حفظ الخصم (مالي) | EDIT-PRODUCTS | `order.edit.products` |
+| 41 | `:4126` | `canStore` | `$toggleSendFromWarehouse` — علم «الشحن من مستودع الناقل» | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 42 | `:4192` | `canStore` | `$openCreateModal` — فتح نافذة إنشاء طلبية | ADMIN-OTHER | — (يبقى) |
+| 43 | `:4238` | `canStore` | `$submitCreate` — إنشاء طلبية يدويًا (سلّم+مخزون) | ADMIN-OTHER | — (يبقى) |
+| 44 | `:4391` | `canStore` | `$openEditModal` — نافذة التحرير الكاملة | ADMIN-OTHER | — (يبقى) — غير قابلة للتجزئة، انظر 1.3 |
+| 45 | `:4476` | `canStore` | `$submitEdit` — حفظ النافذة الكاملة | ADMIN-OTHER | — (يبقى) — غير قابلة للتجزئة، انظر 1.3 |
+| 46 | `:4698` | `@if` | زر «طلبية جديدة» في رأس الصفحة | ADMIN-OTHER | — (يبقى) |
+| 47 | `:5264` | `@elseif` | بطاقة الجوال: زر تحرير الاسم | EDIT-IDENTITY | `order.edit.identity` |
+| 48 | `:5311` | `@elseif` | بطاقة الجوال: زر تحرير الهاتف | EDIT-IDENTITY | `order.edit.identity` |
+| 49 | `:5389` | `@elseif` | بطاقة الجوال: زر تحرير الملاحظات | EDIT-IDENTITY | `order.edit.identity` |
+| 50 | `:5445` | `@elseif` | بطاقة الجوال: زر تحرير الولاية | EDIT-GEOGRAPHY | `order.edit.geography` |
+| 51 | `:5494` | `@if` | بطاقة الجوال: قائمة «تعديل الأصناف» | EDIT-PRODUCTS | `order.edit.products` |
+
+**تحقّق الاكتمال:** 51 سطرًا مطابقًا لناتج البحث الحيّ بالضبط، وكل سطر في عنصر واحد لا في اثنين. لا تكرار ولا نقصان.
+
+**دور `saveEdit`'s `'permission' =>`:** المواضع 20, 21, 23, 25, 27, 29, 32, 34, 36, 38, 40 (11 موضعًا) ليست حارسًا مستقلًا — هي **بوابة الحفظ** التي يمرّرها `$this->saveEdit([...])` إلى `canStore($this->...)`. لذلك **كل** سطر من محرّري `start*` نظيره إلزامي في `save*`: لو أضيفت الصلاحية الجديدة إلى `start*` فقط، ظهر الزر للعضو الجديد ثم رُفض الحفظ. وكل مِحرِّر `start*` له نظير `save*`، و`writeInlineAudit` يمرّر نفس بوابة `permission`. هذا يفرض **ازواجًا إجباريًا** بين `start*` و`save*`.
+
+#### 1.3 — الأحكام التحليلية (نقاط لا يمكن تجزئتها — تُوثَّق صراحةً)
+
+| ⚠️ | الموضع | الحكم |
+|---|---------|-------|
+| **أ** | `:1886` `$submitConfirmAndSend` | **صُنِّف ADMIN-OTHER رغم أنه يؤكّد.** السبب: الإجراء المهيمن هو **الإرسال للناقل** (dispatch)، وهو ليس تغيير حالة. النصف التأكيدي متاح أصلًا تحت `order.confirm` عبر `$submitConfirmOnly` (`:1840-1883`، حارسه `ORDER_CONFIRM` في `:1841`). لو أعطيناه `order.status.manage.own` ل أصبح عضو يحمل `status.manage.own` فقط يرسل طلبياته للناقل دون `order.manage` — وهذا ترقية إدارية مقنَّعة، لا تدقيق حالة. **قرار مُوثَّق، قابل للمراجعة.** |
+| **ب** | `:2233` `$submitBulkStatus` | **STATUS رغم أنه جماعي.** يفرض التطبيق قاعدتين: (1) `order.status.manage.own` لا يُمنح إلا لأعضاء مرئيين، فالجملة `canStore(ORDER_STATUS_MANAGE_OWN)` وحدها تفتح نافذة Changes لمجموعة طلبيات خارج نطاق العضو؛ (2) الحل الصحيح: **تصفية على مستوى كل طلبية** داخل حلقة `each` الموجودة أصلًا في `:2259-2271` — تخطَّ أي طلبية لا يمر `visibleTo($membership)` واحسبها `skipped++` بدل `$done++`. أي: `done` يجب أن يبقى **مطابقًا للنطاق** لا للعدد الخام. |
+| **ج** | `:3579` + `:3624` | **تحرير الناقل هو أيضًا إسناد راكب.** `$saveOrderProvider` يكتب `delivery_rider_id` فعليًا في فرع `$isRider` (`:3646-3657`). أي أن هذا المحرّر — وهو في سلة `geography` — **يدمج فعلَين**: تبديل شركة التوصيل (جغرافيا) وإسناد الراكب (dispatch). القرار: يبقى **كاملًا** على `order.edit.geography`، لأن `order.edit.geography` تغطي أصلًا `shipping_provider`؛ و**لا** يُضاف إليه شرط `order.dispatch.rider` في هذه المرحلة (قاعدة «لا تشديد» — انظر 5). إن أراد المالك لاحقًا فصلًا حقيقيًا، فذلك قرار منفصل يتطلّب منفذَي كتابة. **موثَّق كحدّ معروف لا كحالة نسيان.** |
+| **د** | `:4391` + `:4476` | **النافذة الكاملة غير قابلة للتجزئة.** حقل واحد في `:4401-4434` يجمع `customer_name` + `customer_phone` + `notes` (هوية) + `weight_kg` + `discount` + `shipment_type` + `items` (منتجات) + `address` + `state_id` + `city_id` + `delivery_type` + الناقل/الراكب/المكتب (جغرافيا). أي تفصيل هنا = 7 تحويلات في مسار واحد. **تُبقي كاملةً على `order.manage`.** هذا يعني أن عضوًا بـ`order.edit.identity` فقط **لن يستطيع** استخدام نافذة التحرير الكاملة — سلوك مقصود وموثَّق (يُستخدم المحرّرات المستقلة بدلًا منها). |
+| **هـ** | `:3044` | `$openDeliveryModal` يفتح نافذة التوصيل فقط (لا هوية ولا منتجات) ⇒ قابل للتجزئة إلى `order.edit.geography` بأمان. |
+| **و** | `:2202` | فتّاحة النافذة فقط؛ **تأثيره على الواجهة فقط**. إن أُضيفت الصلاحية إلى `:2233` وحدها، تبقى النافذة مغلقة. يجب إضافتها إلى **الاثنين** `:2202` و`:2233` معًا. |
+
+#### 1.4 — فجوة STATUS الحقيقية: `transitionOrder` لا يستخدم `ORDER_MANAGE` إطلاقًا
+
+| file:line | الشاهد |
+|-----------|--------|
+| `orders/index.blade.php:1574-1602` | `$transitionOrder` — **المسار الوحيد** الذي ينقل الحالة من قائمة الحالة (قالب الجوال `:5354`) |
+| `orders/index.blade.php:1578` | `if (! canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey, (string) currentStoreId()))) {` — **لا `ORDER_MANAGE` مكتوب هنا** |
+| `orders/index.blade.php:1569-1573` | تعليق Phase P1 يشرح: التأكيد → `order.confirm`، الإلغاء → `order.cancel`، **«everything else … → order.manage»** |
+| `app/Support/StoreOrderPermissions.php:47-62` | `forStatus()` — `:53-55` تأكيد، `:57-59`إلغاء، **`:61` fallback = `ORDER_MANAGE->value`** |
+| `app/Support/StoreOrderPermissions.php:21-25` | `CONFIRM_STATUSES = ['confirmed','preparing','on_hold']` |
+| `app/Support/StoreOrderPermissions.php:30-41` | `CANCEL_STATUSES = ['cancelled','canceled','rejected','no_answer_1..3','wrong_number','out_of_stock','duplicate','postponed']` |
+
+**الاستنتاج التنفيذي:** الحالات التشغيلية الحقيقية (shipped / delivering / delivered / returned / follow-up …) تمرّ عبر `forStatus()` → `order.manage` **دون أي سطر في الـ blade**. لذلك:
+
+> **`order.status.manage.own` يجب أن يُنفَّذ داخل `StoreOrderPermissions::forStatus()` (أو في غلاف حوله) — لا داخل `orders/index.blade.php` إطلاقًا.**
+
+وهذا يعني أن المرحلة 36.12 **تتجاوز** نطاق `orders/index.blade.php` إلى `app/Support/StoreOrderPermissions.php`. ومنطق التنفيذ المقترح: يُرجع `forStatus()` قائمة/منطوق بدل نص واحد، أو يُضاف غلاف `canTransitionStatus($orderId, $statusKey, $membership)` في `StoreOrderPermissions` يعيد:
+
+```php
+canStore(StoreOrderPermissions::forStatus($statusKey, $storeId))
+|| (canStore(StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value)
+    && $membership !== null
+    && Order::where('store_id', $storeId)->whereKey($orderId)->visibleTo($membership)->exists())
+```
+
+ومن ثم **يُستبدل** الاستدعاء في `:1578` بالغلاف الجديد. وبما أن `forStatus()` يُعيد `order.confirm`/`order.cancel` للحالات المؤكَّدة/الملغاة، **فلا** تُمنح `order.status.manage.own` أي نفوذ هناك — النفوذ محصور في fallback السطر `:61`، أي الحالات غير المؤكَّدة وغير الملغاة فقط. هذا مقصود: لا تداخل مع أدوار أخرى.
+
+#### 1.5 — التوائم الإلزامية خارج `orders/index.blade.php` (45 موضعًا — خارج نطاق البند 1 لكن شرط لصحة التنفيذ)
+
+> **القاعدة:** كل سطر في الجدول 1.2 يُنتج **زرًّا** في العرض. مواقع العرض ليست في نفس الملف. **إن أُضيفت الصلاحية في `index.blade.php` ولم تُضَف في العرض، سيظهر الزر ثم يرفض الخادم الحفظ** (أو العكس: زر مخفي مع حق فعلي). القسم 6 يفرض تعديل التوائم في نفس الـ commit.
+
+| الملف | العدد | المواضع |
+|-------|------:|---------|
+| `orders/partials/orders-table-cell.blade.php` | 18 | `:65` customer · `:109` customer (شارة الحقول الناقصة) · `:147` phone · `:198` notes · `:256` wilaya · `:297` products · `:319` quantity · `:345` price · `:414` discount · `:475` weight · `:507` shipment_type · `:545` city · `:589` address · `:622` delivery_type · `:651` shipping_provider · `:704` stopdesk_point · `:735` send_from_carrier_warehouse · `:846` assigned_agent |
+| `orders/partials/orders-table-actions-column.blade.php` | 3 | `:61` · `:76` · `:93` |
+| `orders/partials/orders-mobile-fields.blade.php` | 1 | `:18` (`$canManage`) |
+| `orders/partials/bulk-actions-bar.blade.php` | 1 | `:79` |
+| `orders/partials/confirm-drawer.blade.php` | 1 | `:127` |
+| `order-settings.blade.php` | 6 | `:50 :90 :167 :212 :301 :348` (كلها `abort_unless` ⇒ إعدادات الطلبية) |
+| `order-distribution-queue.blade.php` | 3 | `:47 :72 :94` |
+| `tracking/index.blade.php` | 2 | `:244` (تعليق) · `:246` (حارس `CRM_ORDER_TRACKING \|\| ORDER_MANAGE`) |
+| `app/Livewire/Concerns/TrackingDrawerConcern.php` | 2 | `:364` · `:571` |
+| `app/Livewire/Concerns/TrackingRiderFormConcern.php` | 2 | `:754` (`openEditModal`) · `:829` (`submitEdit`) |
+| `app/Livewire/Concerns/CancelsShipmentFromOrdersTable.php` | 1 | `:12` |
+| `app/Policies/OrderPolicy.php` | 1 | `:43` (`hasPermission`) |
+| `tracking/partials/tracking-row-cell.blade.php` | 1 | `:91` |
+| `tracking/partials/tracking-mobile-card.blade.php` | 1 | `:107` |
+| `tracking/partials/carrier-note-composer.blade.php` | 1 | `:4` |
+| `layout/store-sidebar.blade.php` | 1 | `:64` (`canViewQueue`) |
+| **المجموع** | **45** | 51 + 45 = **96** ✓ مطابق لعدّاد 0.1 |
+
+---
+
+### 2. تعريفات الصلاحيات الجديدة — **خمس** لا أربع (العدّاد مُصحَّح)
+
+> **تصحيح العدّ:** نص التخطيط يذكر «الأربع الجديدة» وتعدادها فعليًا **خمس**: واحدة للحالة + ثلاث للتحرير + واحدة لتوزيع الراكبين (البند 3.1). الجدول التالي يعرّف الخمس. كلها في نفس بلوك الـ Enum ⇒ `group()` = **`order`** للجميع (`StorePermissionEnum.php:131-134`: `explode('.')[0]`)، فتظهر كلها في مجموعة `order` واحدة داخل الـ Hub بلا أي تعديل في `GROUP_ORDER`/`GROUP_ICON`.
+
+#### 2.1 — الجدول التعريفي
+
+| # | حالة الـ Enum | القيمة | `group()` | نوع النطاق | يتركّب مع `visibleTo()`؟ | الأسلوب الوظيفي |
+|--:|---------------|--------|-----------|-----------|-----------------------|------------------|
+| 1 | `ORDER_STATUS_MANAGE_OWN` | `order.status.manage.own` | `order` | **own-scoped** | **نعم — إلزامي** | `forStatus()` fallback (`:61`) + `markOrderDuplicate` + `submitBulkStatus` |
+| 2 | `ORDER_EDIT_IDENTITY` | `order.edit.identity` | `order` | **store-wide** | لا | 9 مواقع (الجدول 1.2) |
+| 3 | `ORDER_EDIT_PRODUCTS` | `order.edit.products` | `order` | **store-wide** | لا | 10 مواقع |
+| 4 | `ORDER_EDIT_GEOGRAPHY` | `order.edit.geography` | `order` | **store-wide** | لا | 15 موقعًا |
+| 5 | `ORDER_DISPATCH_RIDER` | `order.dispatch.rider` | `order` | **store-wide** | لا | موقعان من `ORDER_ASSIGN` (البند 3) |
+
+#### 2.2 — قرار النطاق: لماذا `status.manage.own` alone و`edit.*` store-wide (قرار مُثبَّت، ليس سؤالًا مفتوحًا)
+
+**القرار:** `order.status.manage.own` = **own-scoped** (مقيَّد بنطاق `visibleTo()`). الثلاث `order.edit.*` + `order.dispatch.rider` = **store-wide** على مستوى المتجر.
+
+**التبرير — الحالة (why own):**
+الحالة هي **نقل حالة تشغيلية عبر جدار التوصيل** (shipped/delivering/delivered/return). هيكل الرؤية (36.4) مبنيّ على «المالك/الأدمن يرى الكل، المدير يرى فريقه، الموظف يرى طلبياته». البوابة `ORDER_MANAGE` اليوم تُبقي كل مسارات التتبع **مفتوحة على مستوى المتجر كله**، وهو بالضبط ما يجعل `order.manage` خطيرًا إداريًا. منح عضو «يتقدّم بطلباتي» يجب ألّا يمنحه ضمنًا «يَرسل طلبيات زميلٍ آخر إلى الناقل». ⇒ `own` هو المعنى الحقيقي للاسم، **وعدم** إخفائه خلف `order.manage` يُفرغ الغرض منه.
+
+**التبرير — الحقول (why store-wide):**
+حرية الحقول **لا تُنتج أثرًا خارجيًا** في حد ذاتها: تعديل اسم عميل أو وزن أو عنوان لا ينقل مالًا ولا يغيّر من يقرأ الطلبية. نطاقاتُ المستوى الجزئي (مثلًا «عدّل الطلبات التي تراها فقط») تُنتج **رفيقًا مزعجًا** في هذا الملف تحديدًا، لأن: (1) محرّرات الجدول مربوطة بالصفوف لا بالاستعلام، (2) `$openEditModal`/`:4391` غير قابلة للتجزئة (حكم 1.3-د)، (3) `order.edit.price` القائم — المرجع التأسيسي — **store-wide أصلًا** وبلا `visibleTo` (يُتحقَّق منه عبر `$itemsPriceEditable()` في `:299-310`، وهو `ORDER_EDIT_PRICE` + `store.settings.allow_price_edit` فقط)، و(4) Lack of coherence أسوأ من التساهل: ثلاثة تصاريح متفاوتة النطاق على نفس الجدول تُربك المالك في الـ Hub.
+**الاستثناء المسجَّل:** إن أضاف مالك يومًا نطاقًا جزئيًا لحرية الحقول، فذلك **المرحلة 36.13+**، ويُتعارض مع `:4391` ويُحسم في قرار منفصل.
+
+**أثر التسعير — نقطة لا تُنسى:** `order.edit.products` **لا تلغي** `order.edit.price`. حقل `price` يبقى بوابته مزدوجة: `order.edit.products || order.manage` **و** `itemsPriceEditable()` (= owner أو (`allow_price_edit` + `order.edit.price`)). أي لمنح `order.edit.products` لأحد ما زال يحتاج `order.edit.price` ليغيّر السعر فعليًا. وهذا مقصود: تحرير المنتج ليس تحريك المال.
+
+#### 2.3 — الربط اللغوي والـ Hub (يُنفَّذ في 36.12، موثَّق هنا)
+
+| الملف | التغيير | التفصيل |
+|-------|---------|---------|
+| `resources/lang/{ar,en,fr,es}/permissions.php` | **إلزامي ×4** | `'order' => [` يضاف: `'status' => ['manage' => ['own' => '…']]`، `'identity'/'products'/'geography'` داخل `'edit'` القائم، `'dispatch' => ['rider' => '…']` |
+| `resources/lang/{ar,en,fr,es}/permissions_descriptions.php` | **إلزامي ×4** | انظر 2.4 — بنية التداخل Critical |
+| `app/Support/PermissionGroupMeta.php:90-117` (`DEPENDENCIES`) | **إلزامي** | الخمسة ← `['order.view']`، بنفس نمط `order.edit.price` (`:101`) و`order.assign` (`:100`) |
+| `app/Enums/Store/StorePermissionEnum.php:40-48` | إلزامي | إضافة الحالات الخمس داخل بلوك Orders |
+| `app/Support/StoreRoles.php` | **لا شيء** | انظر البند 7 |
+
+**فخّ التداخل الذي يجب تحنّبه (تحقّق حيًّا):** `PermissionGroupMeta::label()` (`:180-194`) تفكّ المصفوفات المتداخلة عبر `['label'] ?? ['own'] ?? reset()`. و`description()` (`:144-150`) تقرأ `permissions_descriptions.{$permission}` حرفيًّا. النتيجة:
+- `label('order.manage')` سيبقى **نصًّا** بعد إضافة `'status' => ['manage' => …]`، لأن `'manage'` و`'status'` **مفاتيح شقيقة** داخل `'order'` لا متداخلان. ✔
+- `label('order.edit.price')` يبقى يعمل مع إضافة `identity/products/geography` كإخوة. ✔
+- **لا** يوجد أي كود في `app/` أو `resources/` يقرأ مفاتيح على مستوى المجموعة (`permissions.order.edit` / `.status` / `.dispatch`) — بحث حيًّا = **صفر نتيجة**. ✔ فلا انحدار متوقّع.
+- قيم مثل `order.edit.price` لا وجود لقيمة `order.edit` ⇒ لن يُستدعى `label()` بمفتاح يُرجع مصفوفة لهذه العائلة. نفس الأمر لـ`order.status` و`order.dispatch`. ✔
+
+#### 2.4 — نصوص الأوصاف المقترحة (تُعتمد في 36.12 ×4 لغات)
+
+| المفتاح | الوصف (en — يُترجم لـar/fr/es) |
+|--------|--------------------------------|
+| `order.manage` (قائم، **يُوسَّع**) | «Move any order through the full workflow — prepare, ship, deliver and return — and edit any field on any order, plus bulk actions, the order settings panel and the distribution queue. Store-wide: it covers every order in the store. For a narrower grant see order.status.manage.own and the order.edit.* permissions.» |
+| `order.status.manage.own` | «Move the orders **you can see** through the full workflow — prepare, ship, deliver and return — without store-wide order management. Strictly limited to your visibility scope: your own assigned orders, plus your supervised staff's if you supervise anyone. This is the narrow alternative to order.manage for staff who handle their own order flow.» |
+| `order.edit.identity` | «Edit customer-identifying details on any order — customer name, phone numbers and internal notes. Store-wide: it covers every order in the store, not only the ones in your own visibility scope. This is the narrow alternative to order.manage for identity corrections.» |
+| `order.edit.products` | «Edit an order's products, quantities, weight, shipment type and discount on any order. Store-wide: it covers every order in the store. **Price is still governed separately by order.edit.price plus the store's allow_price_edit setting** — this permission does not by itself allow changing prices.» |
+| `order.edit.geography` | «Edit an order's delivery destination and carrier on any order — wilaya, commune, address, delivery type, shipping company, delivery rider, office and the ship-from-carrier-warehouse flag. Store-wide: it covers every order in the store. This is the narrow alternative to order.manage for fixing delivery details.» |
+| `order.dispatch.rider` | «Hand an order over to a delivery rider, or take it back from one, so the rider collects and delivers it. **Distinct from order.assign, which moves an order between your own team members** — grant this one when a member should place parcels with riders but not reassign work inside the team.» |
+| `order.dispatch_validate` (قائم، **جديد**) | «Check a shipment against the carrier's handover record before or after dispatch — parcel count, weight and cash-on-delivery amount. **This does not send the order to the carrier**; sending is covered by order.manage.» |
+
+---
+
+### 3. فصل `order.dispatch.rider` عن `order.assign`
+
+#### 3.1 — جرد `ORDER_ASSIGN` الكامل (أُعيد عدّه حيًّا عبر 1261 ملف PHP/blade في `app`+`resources`+`routes`+`config`+`database`)
+
+| # | file:line | النوع | الحكم |
+|--:|-----------|-------|-------|
+| 1 | `app/Enums/Store/StorePermissionEnum.php:46` | تعريف الحالة `case ORDER_ASSIGN = 'order.assign';` | ليس موضع فحص |
+| 2 | `app/Helpers/helpers.php:192` | فحص وظيفي داخل `canReassignOrders()` (`:176-193`) | **إسناد حقيقي — يبقى** |
+| 3 | `app/Livewire/Concerns/TrackingRiderFormConcern.php:29` | `abort_unless(canStore(ORDER_ASSIGN), 403)` في `assignRider()` (`:27-63`) | **توزيع راكب — ينتقل** |
+| 4 | `app/Support/StoreRoles.php:57` | إدراج في قالب MANAGER | **إسناد حقيقي — يبقى** (القالب بلا تغيير؛ و`dispatch.rider` بديل إضافي في `\|\|`، انظر 3.4) |
+| 5 | `resources/.../orders/index.blade.php:1177` | `canStore(ORDER_ASSIGN)` في `$bulkAssignAgent` (`:1176-1199`) | **إسناد حقيقي — يبقى** |
+| 6 | `resources/.../orders/index.blade.php:3932` | **إيجابية كاذبة** — نص `'audit_event' => 'order_assigned_agent_updated'` | ليس فحص صلاحية |
+| 7 | `resources/.../tracking/partials/order-drawer.blade.php:132` | `canStore(ORDER_ASSIGN) && ! $this->drawerTracking['has_provider']` — زر «إسناد/تغيير راكب» | **توزيع راكب — ينتقل** |
+
+**⇒ 5 مواضع فحص وظيفية فقط** (2، 3، 4، 5، 7)، لا 6 كما يوحي التخطيط. **وتصحيح صريح:** لا يوجد أي فحص `ORDER_ASSIGN` في `app/Livewire/Concerns/TrackingGridConcern.php` — بحث حيّ عن `ORDER_ASSIGN` في الملف = **صفر**. تبويب «الراكب» في `TrackingGridConcern.php` مقيَّد بـ**استعلام فقط** لا بصلاحية (`:31-32` و`:141-146` و`:155` و`:263` و`:395` و`:436` — كلها `whereNotNull('delivery_rider_id')`)، فوجود تبويب الراكبين عند دور ما **ليس** موضع `ORDER_ASSIGN` أصلًا، وإضافة `dispatch.rider` لا تغيّره.
+
+#### 3.2 — التصنيف: حقيقي-إسناد مقابل توزيع-راكب
+
+| الفعل | المعنى | الصلاحية **بعد** الفصل |
+|------|--------|------------------------|
+| نقل طلبية من عضو إلى **عضو آخر في الفريق** (إسناد داخلي) | إعادة توزيع العمل | `order.assign` — **بلا تغيير** |
+| تسليم طلبية إلى **راكب توصيل خارج الفريق** | لوجستيات ميدانية | `order.dispatch.rider` — **جديد**، بديل إضافي لـ`order.assign` (اتحاد `||`) |
+
+الدافع المفاهيمي: الإسناد يغيّر **من يملك** الطلبية ويؤثر على `visibleTo()` نفسه (لأن النطاق مبني على `assigned_to_membership_id` — `HasVisibilityScope.php:39` و`:51`)؛ **بينما** توزيع الراكب يغيّر **من يسلّم** فقط ولا يمس ملكية الطلبية إطلاقًا. خلطهما في صلاحية واحدة يعني أن أي عضو يستحق «أن يضع الطرود مع الراكبين» يُمنح ضمنًا «أن يعيد توزيع الطلبية على زميله» — وهذا تسريب إداري.
+
+#### 3.3 — الـ diff المطلوب لكل ملف (بالترتيب)
+
+| الملف | السطر | قبل | بعد |
+|------|-------|------|------|
+| `app/Enums/Store/StorePermissionEnum.php` | `:48` (بعد `ORDER_ASSIGN`) | — | `case ORDER_DISPATCH_RIDER = 'order.dispatch.rider';` |
+| `app/Livewire/Concerns/TrackingRiderFormConcern.php` | **`:29`** | `abort_unless(canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);` | `abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_RIDER->value) \|\| canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);` |
+| `resources/.../tracking/partials/order-drawer.blade.php` | **`:132`** | `canStore(\App\Enums\Store\StorePermissionEnum::ORDER_ASSIGN->value)` | `canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_RIDER->value) \|\| canStore(\App\Enums\Store\StorePermissionEnum::ORDER_ASSIGN->value)` |
+| `app/Helpers/helpers.php` | `:192` | `canStore(ORDER_ASSIGN->value, $user)` | **بلا تغيير** |
+| `resources/.../orders/index.blade.php` | `:1177` | `canStore(ORDER_ASSIGN->value)` | **بلا تغيير** |
+| `app/Support/StoreRoles.php` | `:57` | قائمة MANAGER | **بلا تغيير إطلاقًا** (البند 7) |
+| `resources/lang/{ar,en,fr,es}/permissions.php` | بلوك `'order'` | `'assign' => …` | **إضافة `'dispatch' => ['rider' => …]` فقط** — `'assign'` بلا تغيير |
+| `app/Support/PermissionGroupMeta.php` | `:90-117` | `order.assign => ['order.view']` | **إضافة** `'order.dispatch.rider' => ['order.view']` |
+
+**قابلية التطابق (اختبار القبول الإلزامي):** `order-drawer.blade.php:132` هو **العرض** و`TrackingRiderFormConcern.php:29` هو **الحارس**، ويجب أن يتغيّرا في نفس الـ commit. وطريقة الاتساق هنا **اتحاد** لا استبدال: كل سطر يقبل `ORDER_DISPATCH_RIDER` **أو** `ORDER_ASSIGN`. فعضو يملك `dispatch.rider` فقط يرى الزر ويسمح له الخادم، وعضو يملك `order.assign` فقط (القالب الحالي للمدير مثلًا) يرى الزر ويسمح له الخادم أيضًا، **وكلاهما يُرفض إذا لم يكن يملك أيًّا منهما**. الاختبار الحاسم: استدعاء `$wire.assignRider(...)` مباشرة من وحدة التحكّم بلا أيٍّ من `:29` و`:132` يتغيّرين ⇒ 403؛ وبانعكاسه، استدعاؤها بعضو يملك `order.assign` فقط ⇒ ينجح بلا 403 (اختبار عدم-التراجع).
+
+#### 3.4 — ✅ لا تحفّظ: الاتحاد في موضعي الراكب يجعل الوعد قائمًا بلا استثناء
+
+البند 5 يَعِد بأن **لا يُشدَّد شيء على أحد**. التحقّق من هذا الوعد في موضعي التوزيع-الراكب (`:29` و`:132`) مبدئيًا: هما يتحققان من `ORDER_ASSIGN`، **لا** من `ORDER_MANAGE`، فلا يمسّان وعد `order.manage`. لكن **المبادئ التي التزمت بها هذه المرحلة تمنع التسريب**: لا تشديد على من يملك `order.assign`، ولا تعديل على القوالب. الحل الذي يحترم الأمرين معًا هو **الاتحاد** بدل الاستبدال:
+
+
+2. **شذوذ لم يُطلب إصلاحه — لا يُصلَح في 36.12.** خمسة مواضع في `orders/index.blade.php` تفعل **إسنادًا حقيقيًا لفريق** لكنها محجوبة بـ`ORDER_MANAGE` بدل `ORDER_ASSIGN`: `:2285`، `:2298` (نافذة إعادة الإسناد)، `:3850`، `:3863`، `:3886` (محرّر الوكيل → `OrderAssignmentService::reassign`). تصحيحها **سيُشدِّد** على من يملك `order.manage` بلا `order.assign` — أي أنه يناقض صراحةً قسمي 5. **القرار: لا تغيير في 36.12**؛ يُسجَّل كبند دَين وظيفي (deferred) يُفحص في مرحلة منفصلة. نفس المعالجة للسطور `TrackingDrawerConcern.php:364`/`:571` و`TrackingRiderFormConcern.php:754`/`:829`.
+
+---
+
+### 4. إعادة تسمية/وصف `order.dispatch_validate` — إصلاح تسميقي فقط (بلا تغيير وظيفي)
+
+**الوظيفة سليمة اليوم ولا تحتاج أي تغيير في الكود.** التحقق من صلاحية واحدة: 6 مواضع في `app/Livewire/Concerns/TrackingBulkValidateConcern.php` (`:35`، `:68`، `:293` + تعليق `:15`) و2 في `app/Livewire/Concerns/TrackingDrawerConcern.php` (`:609`، `:648`)، و4 مواضع عرض في `tracking/partials/dispatch-validate.blade.php` (`:5`، `:42`)، `tracking-bulk-actions-bar.blade.php` (`:78` + تعليق `:7`)، `tracking-list.blade.php` (`:12`)، `tracking-toolbar.blade.php` (`:32`). ⇒ **12 موضعًا، كلها صحيحة.** المشكلة الوحيدة: **الاسم** لا يشرح ما يفعله، لا السلوك نفسه.
+
+| العنصر | الحالي | المقترح | الملف |
+|--------|--------|---------|------|
+| `permissions.order.dispatch_validate` (en) | «Validate Order Dispatch» | «Validate Carrier Handover» | `resources/lang/en/permissions.php` |
+| (ar) | «التحقق من إرسال الطلبات» | «التحقق من تسليم الطلبية للناقل» | `resources/lang/ar/permissions.php` |
+| (fr) | «Valider l'expédition des commandes» | «Valider la remise au transporteur» | `resources/lang/fr/permissions.php` |
+| (es) | «Validar despacho de pedidos» | «Validar la entrega al transportista» | `resources/lang/es/permissions.php` |
+| `permissions_descriptions.order.dispatch_validate` | **مفقود** (لا وجود لـ`dispatch_validate` في أي `permissions_descriptions.php` — منفَّذ في 36.7 للـ 4 غيرها فقط) | **يُضاف** — النص في 2.4 | `resources/lang/{ar,en,fr,es}/permissions_descriptions.php` |
+
+**بلا** تغيير في قيمة الـ Enum (تبقى `'order.dispatch_validate'` حرفًا بحرف — `StorePermissionEnum.php:48`) وبلا تغيير في `DEPENDENCIES` (السطر `:102` قائم وصحيح) وبلا أي `canStore` يُمس. **قائمة تحقق (§4):** (أ) `permissions.php` ×4، (ب) `permissions_descriptions.php` ×4، (ج) لا شيء غير ذلك. ونقطة دقيقة: `description()` تقرأ `permissions_descriptions.{$permission}` فالمفتاح المطلوب **`order.dispatch_validate` = عشّ تحت `order`** — أي `'order' => ['dispatch_validate' => '…']`، وليس `dispatch.rider` ولا `dispatch.validate` (وهم مفتاحان مختلفان تمامًا، انتبه لأحرف الواصلة).
+
+---
+
+### 5. استراتيجية الترحيل — **إضافية بالكامل** (لا كسر، لا تشديد، لا حذف)
+
+> هذا القسم هو **العقد** الذي يقرأه منفّذ 36.12. يُرجى قراءته حرفيًا.
+
+**5.1 — لا يُحذف شيء.** لا حالة `StorePermissionEnum` تُحذف. لا سطر `canStore(ORDER_MANAGE)` في `orders/index.blade.php` (51 سطرًا) أو في أي ملف آخر (45 موضعًا) **يُحذف أو يُستبدل أو يُعدَّل بنيويًّا**. **96 موضع فحص** تبقى عاملة كما هي.
+
+**5.2 — لا يُشدَّد شيء.** كل تحديد جديد **يُضاف كـ OR وليس كبديل**:
+```php
+// النمط الوحيد المعتمد في 36.12 — حرفيًّا:
+canStore(StorePermissionEnum::ORDER_MANAGE->value)                 // كما هو اليوم، أولًا
+|| (canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)      // الجديد
+    && $orderInScope)                                               // للسطر 1 فقط (المقيَّد بالنطاق)
+```
+لمن يملك `order.manage` اليوم، **`||` يُرجع `true` فورًا ويُطابق السلوك السابق بايتًا ببايت**. لا عضو واحد — لا مالك ولا أدمن ولا مدير ولا ذا صلاحيات مخصّصة — يرى أي فرق.
+
+**5.3 — الرؤساء يُبقَون وصولهم الكامل عبر `order.manage` كما هم.** OWNER = `StorePermissionEnum::values()` (`StoreRoles.php:19`) ⇒ يأخذ الحالات الخمس الجديدة **تلقائيًا بلا سطر**. ADMIN = `values()` ناقصًا السيادة (`:26-35`) ⇒ يأخذها كذلك. MANAGER (`:43-89`) وSTAFF (`:96-115`) **لا يُمسّان إطلاقًا** (البند 7). ⇒ **«المالكون والمديرون لهم وصول كامل عبر `order.manage` تمامًا كما اليوم»** — وهذا صحيح بالحرف، ولم يتغيّر.
+
+**5.4 — ما الذي تضيفه الصلاحيات الجديدة فعليًا:** **خيار أضيق جديد للمالك** لمنحها لموظف بدل `order.manage` الواسعة. الحالة المعروفة: موظف يحتاج «ينفّذ طلبياتي من التأكيد حتى التسليم» — اليوم هذا يستلزم `order.manage` أي «يعدّل أي حقل في أي طلبية + كل الإجراءات الجماعية + لوحة إعدادات الطلبيات + طابور التوزيع». بعد 36.11 يكفي `order.status.manage.own`. هذه هي **الVALUE**، وهي وحدها. **لا شيء يُنزع.**
+
+**5.5 — لا استثناء ولا تحفّظ واحد:** موضعا الراكب (3.4) اتُّخذا **باتحاد `||`** لا باستبدال، فلم يُشدَّد على أي حامل لـ`order.assign` ولا حامل لـ`order.manage`. هذه هي الحالة الوحيدة التي كان يمكن أن تُكسر فيها قاعدة «إضافي فقط»، وقد مُنعت بالتصميم لا بالحيلة ولا بالتنازل.
+
+**5.6 — لا تغيّر في `role templates` (البند 7)، ولا في `crm.orders.confirm` (حُذف في 36.7)، ولا في أي بند من الطبقة A في القسم 10.**
+
+**5.7 — خلاصة الجملة للاختيار:** «الصلاحيات الخمس **جديدة تمامًا وإضافية**. `order.manage` بكل مواضعه الـ 96 يبقى سليمًا ومبنيًا بطريقته القديمة. owner/admin/manager يبقون (وصولًا كاملًا عبر `order.manage`) تمامًا كاليوم. الجديد الوحيد: للمالك خيارٌ أضيق ليتنازل به — `order.status.manage.own` وحرّاسات الحقل وتوزيع الراكبين — بدل تنازل `order.manage` الواسعة. **لا شيء يُزال ولا يُشدَّد على أحد يملك `order.manage` اليوم.**»
+
+---
+
+### 6. قائمة تنفيذ مرتَّبة — النطاق الدقيق لمرحلة 36.12 (مبنية على جدول 1.2 لا على التخطيط)
+
+> **ترتيب تنفيذي إجباري** (سبب كل تجميعة مذكور). المجموعة **صفر** شرط مسبق للمجموعات 1–3.
+
+### 6.0 — المجموعة صفر: التأسيس (بلا تغيير سلوكي)
+1. `app/Enums/Store/StorePermissionEnum.php` — إضافة 5 حالات داخل بلوك Orders (`:40-48`).
+2. `app/Support/PermissionGroupMeta.php:90-117` — `DEPENDENCIES` += 5 مدخلات ← `['order.view']`.
+3. `resources/lang/{ar,en,fr,es}/permissions.php` — 5 تسميات (البنية المتداخلة في 2.3).
+4. `resources/lang/{ar,en,fr,es}/permissions_descriptions.php` — 6 أوصاف (2.4).
+5. `app/Support/StoreRoles.php` — **بلا تغيير** (لا سطر واحد).
+6. **اختبار سريع للـ Hub:** عضو يحمل إحدى الصلاحيات الجديدة فقط + بلا `order.manage` ⇒ يظهر الصف في المجموعة الصحيحة بتسمية مترجمة ووصف غير فارغ، ومفتاح الاعتماديات يُفعّل `order.view` تلقائيًا. **اكتمال المجموعة صفر دون تغيير أي موضع سلوكي.**
+
+### 6.1 — `order.status.manage.own` (2 موضعًا في الملف + 1 خارجه)
+| الترتيب | file:line | التعديل | تحقّق |
+|:---:|-----------|---------|-------|
+| 1 | **`app/Support/StoreOrderPermissions.php`** | غلاف جديد: `canTransitionStatus(string $orderId, string $statusKey, ?StoreMembership $membership): bool` يجمع `canStore(forStatus(...))` **أو** (`canStore(ORDER_STATUS_MANAGE_OWN)` **و** `Order::where('store_id',…)->whereKey($orderId)->visibleTo($membership)->exists()`) — انظر 1.4. **بلا تعديل في `forStatus()` نفسها** (تبقى `:61` كما هي) | عضو `status.manage.own` على طلبية **غير مرئية له** ⇒ `false`؛ على طلبيته ⇒ `true` |
+| 2 | `orders/index.blade.php:1578` | استبدال `canStore(forStatus(...))` بـ`canTransitionStatus($this->getCurrentMembership() …)` مع تمرير `$orderId` | ممرّ `/switch status` يعمل كاليوم لـ`order.manage` |
+| 3 | `orders/index.blade.php:2177` `$markOrderDuplicate` | `canStore(ORDER_MANAGE) \|\| (canStore(ORDER_STATUS_MANAGE_OWN) && $order->visibleTo($m))` — `findOrFail` في `:2182` يصبح **بعد** الفحص | طلبية موظف آخر ⇒ لا يمكن تعليمها duplicate |
+| 4 | `orders/index.blade.php:2202` `$openBulkStatusModal` | نفس OR (حكم 1.3-و) | لا نافذة لغير المخوَّل |
+| 5 | `orders/index.blade.php:2233` `$submitBulkStatus` | نفس OR **+ تصفية لكل-طلبية داخل حلقة `:2259-2271`**: تخطَّ ما لا يمر `visibleTo($m)` واحسبه `skipped++` | `done` محصور في نطاق العضو — **هذا هو الاختبار الحاسم** |
+| 6 | التوائم العرضية | **لا شيء** — `duplicate` وbulk status لا لهما عرض في partials التي تفحص `ORDER_MANAGE` | — |
+
+### 6.2 — `order.edit.identity` (9 مواضع)
+| file:line | العنصر | ملاحظة |
+|-----------|--------|--------|
+| `:3224` | `$startOrderPhoneEdit` | |
+| `:3248` | `$saveOrderPhone` | |
+| `:3301` | `$startOrderNameEdit` | |
+| `:3323` | `$saveOrderName` | |
+| `:4020` | `$startOrderNotesEdit` | |
+| `:4045` | `$saveOrderNotes` | `saveEdit` |
+| `:5264` | بطاقة الجوال — زر الاسم | **تويم عرض** |
+| `:5311` | بطاقة الجوال — زر الهاتف | **تويم عرض** |
+| `:5389` | بطاقة الجوال — زر الملاحظات | **تويم عرض** |
+| **`orders-table-cell.blade.php:65`** | customer (جدول سطح المكتب) | **تويم إلزامي** |
+| **`:147`** | phone | **تويم إلزامي** |
+| **`:198`** | notes | **تويم إلزامي** |
+| **`orders-mobile-fields.blade.php:18`** | `$canManage` المجمَّع | **تويم إلزامي** |
+
+> قيمة `order.edit.identity` **store-wide** ⇒ **لا** تُستخدم `visibleTo` في أي منها؛ الشرط `canStore(A) || canStore(B)` فقط. هذا التبسيط مقصود (2.2).
+
+### 6.3 — `order.edit.products` (10 مواضع)
+| file:line | العنصر | ملاحظة |
+|-----------|--------|--------|
+| `:313` `:369` `:377` | `$openItemsModal` / `$addInlineItem` / `$saveOrderItems` | `price` داخل النافذة يبقى محكومًا بـ`itemsPriceEditable()` (`:320`) — **لا** يُلمس |
+| `:3748` `:3776` | `$startOrderShipmentTypeEdit` / `$saveOrderShipmentType` | |
+| `:3981` `:4008` | `$startOrderWeightEdit` / `$saveOrderWeight` | |
+| `:4057` `:4088` | `$startOrderDiscountEdit` / `$saveOrderDiscount` | مالي |
+| `:5494` | بطاقة الجوال — قائمة «تعديل الأصناف» | **تويم عرض** |
+| **`orders-table-cell.blade.php:297 :319 :345 :414 :475 :507`** | products / quantity / price / discount / weight / shipment_type | **توائم إلزامية**؛ `:345` تُبقي `&& $this->itemsPriceEditable()` |
+
+> **تحذير التسعير الإلزامي:** لا تُبدَّل `ORDER_EDIT_PRICE` في `:345` ولا `itemsPriceEditable()` (`:299-310`) ولا `:320`. حقل السعر يحتاج `order.edit.products` **و** `order.edit.price` معًا.
+
+### 6.4 — `order.edit.geography` (15 موضعًا)
+| file:line | العنصر |
+|-----------|--------|
+| `:3044` | `$openDeliveryModal` |
+| `:3410` `:3467` | `$startOrderWilayaEdit` / `$saveOrderWilaya` |
+| `:3419` `:3503` | `$startOrderCityEdit` / `$saveOrderCity` |
+| `:3579` `:3624` | `$startOrderProviderEdit` / `$saveOrderProvider` — **بلا شرط `dispatch.rider`** (حكم 1.3-ج) |
+| `:3700` `:3725` | `$startOrderDeliveryTypeEdit` / `$saveOrderDeliveryType` |
+| `:3788` `:3817` | `$startOrderStopdeskEdit` / `$saveOrderStopdesk` |
+| `:3941` `:3962` | `$startOrderAddressEdit` / `$saveOrderAddress` |
+| `:4126` | `$toggleSendFromWarehouse` |
+| `:5445` | بطاقة الجوال — زر الولاية (**تويم عرض**) |
+| **`orders-table-cell.blade.php:256 :545 :589 :622 :651 :704 :735`** | wilaya / city / address / delivery_type / shipping_provider / stopdesk_point / send_from_carrier_warehouse — **توائم إلزامية** |
+
+> **لا تقني** `:4391`/`:4476` (النافذة الكاملة) — حكم 1.3-د. ولا `order-settings.blade.php` (6 مواضع) ولا `order-distribution-queue.blade.php` (3).
+
+### 6.5 — `order.dispatch.rider` (موضعان)
+1. `app/Livewire/Concerns/TrackingRiderFormConcern.php:29` — `canStore(ORDER_ASSIGN)` becomes `canStore(ORDER_DISPATCH_RIDER) || canStore(ORDER_ASSIGN)`.
+2. `resources/.../tracking/partials/order-drawer.blade.php:132` — نفس الاتحاد، حرفيًا نفس التعبير (عرض وحارس متطابقان).
+3. **بلا تغيير** في `helpers.php:192` و`orders/index.blade.php:1177` و`StoreRoles.php:57` — وبخاصة **لا إضافة** إلى قائمة MANAGER (البند 7).
+
+### 6.6 — `order.dispatch_validate` (تسميات فقط)
+قائمة 4 أ (§4): `permissions.php` ×4 + `permissions_descriptions.php` ×4. **صفر سطر وظيفي.**
+
+### 6.7 — الشهادة المطلوبة (بنفس أسلوب 36.7)
+- `grep` على `TrackingRiderFormConcern.php` و`order-drawer.blade.php`: `ORDER_ASSIGN` **لم يبقَ منفردًا** — صار بديلًا داخل `||` مع `ORDER_DISPATCH_RIDER` (بلا سطر يبقى بلا بديل).
+- `grep` ≥ 5 تعريفات جديدة في `StorePermissionEnum`، و≥ 5 مدخلات في `DEPENDENCIES`، و≥ 6 أوصاف في `permissions_descriptions.php` (لكل لغة).
+- **اختبار non-regression الأهم:** كل اختبارات Merchant خضراء بلا تعديل على التوقعات (مثل Phase 36.7: 628 ناجح / 2711 تأكيد؛ إعادة القياس مطلوبة).
+- **اختباران جديدان نَعلان:** (أ) عضو `status.manage.own` **لا** ينقل حالة طلبية زميله ويكنّي طلبيته؛ (ب) **اختبار عدم-التراجع للانقسام** — عضو `order.assign` عبر pivot **بلا** `dispatch.rider` ⇒ `assignRider` **تنجح** (لا 403) لأن `ORDER_ASSIGN` بديل باقٍ، بينما عضو بلا كليهما ⇒ 403. هذا هو الفرق بين Union وReplacement، وهو ما يمنع كسر قالب MANAGER.
+- `php -l` نظيف؛ جولة Merchant كاملة خضراء.
+
+---
+
+### 7. قوالب الأدوار — **قرار مُثبَّت، ليس سؤالًا مفتوحًا**
+
+> **القرار: لا تُضاف أي من الصلاحيات الخمس الجديدة إلى أي قالب افتراضي. قوالب MANAGER وSTAFF من 36.7 تبقى كما هي بلا مسّ واحد.**
+
+| القالب | القرار | السبب |
+|--------|--------|-------|
+| **OWNER** (`StoreRoles.php:19`) | **بلا سطر** | `StorePermissionEnum::values()` ⇒ يسحب الخمس **تلقائيًا**. الخيار الوحيد الممكن، والبلا سطر.
+| **ADMIN** (`:26-35`) | **بلا سطر** | `values()` ناقصًا السيادة ⇒ يسحب الخمس تلقائيًا. |
+| **MANAGER** (`:43-89`) | **بلا سطر** | **(1)** لا يحتاج: `order.manage` (`:55`) يغطي سلوكه الحالي بالكامل. **(2)** فلسفة 36.7: القوالب تُكتب للسلوك **الافتراضي**، والترقيات الصريحة تُمنح من الـ Hub. **(3)** إعطاؤه `status.manage.own` كان سيخلق تكرارًا بلا فائدة — `order.manage` يسبقها في OR دائمًا. |
+| **STAFF** (`:96-115`) | **بلا سطر** | أساس STAFF = «تأكيد فقط» (`order.confirm` في `:105`، بلا `order.manage`). و`status.manage.own` ليست «تأكيدًا فقط»: هي **جدولة حالة متقدمة** حتى التسليم والإرجاع، ولذلك لا تُكتب في القوالب الافتراضية. |
+
+
+
+**العبارة المعتمدة للنشر:** «الصلاحيات الخمس الجديدة **لا تُكتب في أي قالب افتراضي**. غرضها تحديدًا أن يمنحها المالك **فرديًا** من نافذة الـ Permission Hub لموظف يحتاج — مثلًا — «أدير حالة طلبياتي فقط» دون `order.manage` الواسعة. أي إضافتها إلى STAFF/MANAGER ستُلغي وجودها كخيار، وتُعيدنا إلى مشكلة 36.7 (ترقيات صريحة تُدفن في القوالب).»
+
+---
+
+### 8. أرقام الشهادة (كلها مقيسة في هذه الجلسة، 2026-09-27، `HEAD=cdc4402`)
+
+| المقياس | القيمة | كيف قِيست |
+|---------|--------|----------|
+| أسطر `orders/index.blade.php` | **5639** | `.Count` على `Get-Content` (لا `Measure-Object -Line`) |
+| `ORDER_MANAGE` في `orders/index.blade.php` | **51** | `Select-String -Pattern ORDER_MANAGE` |
+| `ORDER_MANAGE` في التطبيق كله (`app`+`resources`) | **99 سطرًا** | مسح متكرر |
+| مواضع فحص `ORDER_MANAGE` الوظيفية | **96** | 99 − (Enum `:41` + قالب `StoreRoles` `:55` + fallback `StoreOrderPermissions` `:61`) |
+| `ORDER_ASSIGN` — مواضع فحص وظيفية | **5** | من 7 إشارات (1 تعريف + 1 إيجابية كاذبة `:3932`) |
+| `ORDER_ASSIGN` في `TrackingGridConcern.php` | **0** | بحث حيّ = صفر (ادّعاء التخطيط مُلغى) |
+| `ORDER_DISPATCH_VALIDATE` — مواضع | **12** | 6 `TrackingBulkValidateConcern` + 2 `TrackingDrawerConcern` + 4 عرض |
+| حالات `StorePermissionEnum` | **46** | عدّ `^\s*case ` |
+| مجموعات أعمدة جدول الطلبيات | **4** (لا 3) | `:595 :604 :614 :623` |
+| سلال التصنيف | 15 / 15 / 10 / 9 / 2 = **51** | جدول 1.2 |
+
+---
+
+**Status: documented, awaiting implementation approval** — هذا إدخال **تخطيطي بحت**. لم تُنفَّذ أي صلاحية جديدة ولم يتغيّر أي سطر سلوكي. تالية مقترحة: **36.12** عبر قائمة القسم 6 أعلاه حرفيًّا. الملاحظات التي تحتاج قرارًا صريحًا قبل فتح 36.12: (أ) حكم 1.3-أ (`submitConfirmAndSend` يبقى ADMIN-OTHER)، (ب) تصفية bulk-نطاق في 1.3-ب، (ج) تغطية `order.edit.products` المالية في قائمة `DANGEROUS` — **تُترك خارج النطاق متسقةً مع `order.edit.price` غير المُدرج فيها**، (د) دَين «إسناد الفريق محجوب بـ`order.manage`» المُأجَّل في 3.4.
