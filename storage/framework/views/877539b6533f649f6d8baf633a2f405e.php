@@ -23,6 +23,14 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $trackingCount;
 
+    public $confirmationPagination;
+
+    public $trackingPagination;
+
+    public $confirmationPage;
+
+    public $trackingPage;
+
     public $reassignOpen;
 
     public $reassignKind;
@@ -52,6 +60,20 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         (new Actions\CallMethod('refresh'))->execute(...$arguments);
+    }
+
+    public function setConfirmationPage(int $page): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('setConfirmationPage'))->execute(...$arguments);
+    }
+
+    public function setTrackingPage(int $page): void
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        (new Actions\CallMethod('setTrackingPage'))->execute(...$arguments);
     }
 
     public function openReassignModal(string $id): void

@@ -89,7 +89,7 @@ function assignOrder(
         ['name' => 'Asg Land', 'is_active' => true]
     );
     $state = State::firstOrCreate(
-        ['state_code' => 'ASG-01'],
+        ['state_code' => 'AS'],
         [
             'country_id' => $country->id,
             'name' => 'Asg State',

@@ -2,6 +2,8 @@
      $kind: 'confirm' (Order rows) | 'track' (OrderTracking rows). --}}
 @php
     $queueRows = $kind === 'confirm' ? $confirmationQueue : $trackingQueue;
+    $queuePagination = $kind === 'confirm' ? $confirmationPagination : $trackingPagination;
+    $queuePaginationMethod = $kind === 'confirm' ? 'setConfirmationPage' : 'setTrackingPage';
     $queueEmpty = $kind === 'confirm'
         ? __('merchant_panel.queue_empty_confirmation')
         : __('merchant_panel.queue_empty_tracking');
@@ -76,5 +78,8 @@
                 </tbody>
             </table>
         </div>
+
+        <x-edz.pagination :paginator="$queuePagination" :method="$queuePaginationMethod" size="sm"
+            wire:key="queue-pagination-{{ $kind }}" />
     </div>
 @endif

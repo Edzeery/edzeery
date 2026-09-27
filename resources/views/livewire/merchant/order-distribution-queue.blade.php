@@ -28,6 +28,10 @@ state([
     'trackingQueue' => [],
     'confirmationCount' => 0,
     'trackingCount' => 0,
+    'confirmationPagination' => [],
+    'trackingPagination' => [],
+    'confirmationPage' => 1,
+    'trackingPage' => 1,
 
     // Reassign modal (P34.4) — one shared state set, driven by whichever tab
     // opened it (kind is snapshotted at open time so a tab switch mid-modal
@@ -54,6 +58,14 @@ $setTab = function (string $tab): void {
 
 $refresh = function (): void {
     $this->loadQueue();
+};
+
+$setConfirmationPage = function (int $page): void {
+    $this->goToTabPage('confirmation', $page);
+};
+
+$setTrackingPage = function (int $page): void {
+    $this->goToTabPage('tracking', $page);
 };
 
 $openReassignModal = function (string $id): void {

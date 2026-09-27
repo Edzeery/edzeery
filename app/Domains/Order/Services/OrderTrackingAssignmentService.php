@@ -8,7 +8,6 @@ use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\OrderTracking;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderTrackingAssignmentService
@@ -37,8 +36,8 @@ class OrderTrackingAssignmentService
             $candidates,
             $storeId,
             'track',
-            $this->openAssignmentCounts($storeId),
-            $this->lastAssignedAt($storeId),
+            $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues())),
+            $this->lastAssignedAt('order_trackings', $storeId),
             $this->overflowPercentage($store),
         );
 
@@ -59,7 +58,8 @@ class OrderTrackingAssignmentService
                 'over_capacity' => false,
             ]);
 
-            $this->notifyCapacityExhausted($store, 'track', $this->unassignedTrackingCount($storeId));
+            $this->notifyCapacityExhausted($store, 'track', $this->unassignedAssignmentCount(OrderTracking::class, $storeId, fn ($q) => $q
+                ->whereIn('tracking_status', $this->openTrackingStatusValues())));
 
             return $tracking;
         }
@@ -122,54 +122,13 @@ class OrderTrackingAssignmentService
     }
 
     /**
-     * Open trackings per assigned membership: only non-terminal tracking
-     * statuses count toward a member's capacity.
+     * Open tracking status values (terminal statuses come straight from the
+     * enum; tracking has no soft-deletes).
      */
-    private function openAssignmentCounts(string $storeId): array
+    private function openTrackingStatusValues(): array
     {
-        $openStatuses = collect(OrderTrackingStatus::open())
+        return collect(OrderTrackingStatus::open())
             ->map(fn ($status) => $status->value)
             ->all();
-
-        return DB::table('order_trackings')
-            ->where('store_id', $storeId)
-            ->whereNotNull('assigned_to_membership_id')
-            ->whereIn('tracking_status', $openStatuses)
-            ->selectRaw('assigned_to_membership_id, COUNT(*) as open_count')
-            ->groupBy('assigned_to_membership_id')
-            ->pluck('open_count', 'assigned_to_membership_id')
-            ->toArray();
-    }
-
-    /**
-     * Latest assigned_at per membership (order_trackings table).
-     */
-    private function lastAssignedAt(string $storeId): array
-    {
-        return DB::table('order_trackings')
-            ->where('store_id', $storeId)
-            ->whereNotNull('assigned_to_membership_id')
-            ->whereNotNull('assigned_at')
-            ->selectRaw('assigned_to_membership_id, MAX(assigned_at) as last_assigned')
-            ->groupBy('assigned_to_membership_id')
-            ->pluck('last_assigned', 'assigned_to_membership_id')
-            ->toArray();
-    }
-
-    /**
-     * Unassigned trackings in the state the dispatcher targets (used for
-     * the capacity-exhausted alert).
-     */
-    private function unassignedTrackingCount(string $storeId): int
-    {
-        $openStatuses = collect(OrderTrackingStatus::open())
-            ->map(fn ($status) => $status->value)
-            ->all();
-
-        return OrderTracking::where('store_id', $storeId)
-            ->whereNull('assigned_to_membership_id')
-            ->whereNull('assignment_method')
-            ->whereIn('tracking_status', $openStatuses)
-            ->count();
     }
 }

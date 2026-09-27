@@ -9,7 +9,6 @@ use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class OrderAssignmentService
@@ -58,7 +57,8 @@ class OrderAssignmentService
                 'assignment_method' => null,
             ]);
 
-            $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedConfirmationCount($storeId));
+            $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedAssignmentCount(Order::class, $storeId, fn ($q) => $q
+                ->whereHas('status', fn ($q) => $q->where('key', 'pending'))));
             return $order;
         }
 
@@ -108,11 +108,9 @@ class OrderAssignmentService
      */
     public function handleShiftHandover(Store $store): void
     {
-        $terminalStatuses = ['cancelled', 'delivered', 'returned', 'completed', 'refunded', 'canceled'];
-
         $openOrders = Order::where('store_id', $store->id)
             ->whereNotNull('assigned_to_membership_id')
-            ->whereHas('status', fn ($q) => $q->whereNotIn('key', $terminalStatuses))
+            ->whereHas('status', fn ($q) => $q->whereNotIn('key', $this->terminalStatusKeys()))
             ->with('store.settings')
             ->get();
 
@@ -167,48 +165,6 @@ class OrderAssignmentService
     }
 
     /**
-     * Status keys considered "terminal" (excluded from the open-order count).
-     */
-    private function terminalStatusKeys(): array
-    {
-        return ['cancelled', 'delivered', 'returned', 'completed', 'refunded', 'canceled'];
-    }
-
-    /**
-     * Open orders per assigned membership (orders table, joining the statuses
-     * table so terminal statuses are excluded).
-     */
-    private function openOrderCounts(string $storeId): array
-    {
-        return DB::table('orders')
-            ->join('statuses', 'orders.status_id', '=', 'statuses.id')
-            ->where('orders.store_id', $storeId)
-            ->whereNull('orders.deleted_at')
-            ->whereNotNull('orders.assigned_to_membership_id')
-            ->whereNotIn('statuses.key', $this->terminalStatusKeys())
-            ->select('orders.assigned_to_membership_id', DB::raw('COUNT(*) as open_count'))
-            ->groupBy('orders.assigned_to_membership_id')
-            ->pluck('open_count', 'assigned_to_membership_id')
-            ->toArray();
-    }
-
-    /**
-     * Latest assigned_at per membership (orders table).
-     */
-    private function lastAssignedAt(string $storeId): array
-    {
-        return DB::table('orders')
-            ->where('store_id', $storeId)
-            ->whereNull('deleted_at')
-            ->whereNotNull('assigned_to_membership_id')
-            ->whereNotNull('assigned_at')
-            ->select('assigned_to_membership_id', DB::raw('MAX(assigned_at) as last_assigned'))
-            ->groupBy('assigned_to_membership_id')
-            ->pluck('last_assigned', 'assigned_to_membership_id')
-            ->toArray();
-    }
-
-    /**
      * Select the best candidate following priority tiers:
      *  1. On-shift specialists (product-matched to the order)
      *  2. On-shift general confirmers
@@ -233,8 +189,10 @@ class OrderAssignmentService
 
         $overflowPercentage = $this->overflowPercentage($store);
         $specialistIds = $this->specialistMembershipIds($storeId, $productIds);
-        $openCounts = $this->openOrderCounts($storeId);
-        $lastAssigned = $this->lastAssignedAt($storeId);
+        $openCounts = $this->openAssignmentCounts('orders', $storeId, fn ($q) => $q
+            ->join('statuses', 'orders.status_id', '=', 'statuses.id')
+            ->whereNotIn('statuses.key', $this->terminalStatusKeys()));
+        $lastAssigned = $this->lastAssignedAt('orders', $storeId);
 
         // Specialists (product-matched) first, then general confirmers.
         foreach ([true, false] as $specialists) {
@@ -253,18 +211,5 @@ class OrderAssignmentService
         }
 
         return [null, false];
-    }
-
-    /**
-     * Unassigned orders in the state the confirm dispatcher targets (used for
-     * the capacity-exhausted alert).
-     */
-    private function unassignedConfirmationCount(string $storeId): int
-    {
-        return Order::where('store_id', $storeId)
-            ->whereNull('assigned_to_membership_id')
-            ->whereNull('assignment_method')
-            ->whereHas('status', fn ($q) => $q->where('key', 'pending'))
-            ->count();
     }
 }

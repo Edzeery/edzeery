@@ -11,18 +11,46 @@ use App\Models\Orders\OrderTracking;
  * Row sources for the merchant distribution queue (P34.5). Both tabs list only
  * items that need attention: unassigned (assigned_to_membership_id IS NULL) or
  * flagged over capacity — excluding closed/terminal records. Unassigned items
- * float to the top, oldest first, since they are the most urgent.
+ * float to the top, oldest first, since they are the most urgent. Each tab
+ * paginates independently (50 per page); the tab badge shows the TOTAL match
+ * count from a separate lightweight count query.
  */
 trait DistributionQueueConcern
 {
+    private const QUEUE_PAGE_SIZE = 50;
+
     public function loadQueue(): void
     {
         $storeId = currentStoreId();
 
         $this->confirmationCount = $this->confirmationRows($storeId, true);
-        $this->confirmationQueue = $this->confirmationRows($storeId);
+        $this->confirmationPage = $this->clampPage((int) $this->confirmationPage, $this->confirmationCount);
+
+        $confirmation = $this->confirmationRows($storeId);
+        $this->confirmationQueue = $confirmation['data'] ?? [];
+        $this->confirmationPagination = $this->pageMeta($confirmation);
+
         $this->trackingCount = $this->trackingRows($storeId, true);
-        $this->trackingQueue = $this->trackingRows($storeId);
+        $this->trackingPage = $this->clampPage((int) $this->trackingPage, $this->trackingCount);
+
+        $tracking = $this->trackingRows($storeId);
+        $this->trackingQueue = $tracking['data'] ?? [];
+        $this->trackingPagination = $this->pageMeta($tracking);
+    }
+
+    /**
+     * Jump to a page of the given tab, then reload both queues so the badges
+     * and per-tab pages stay in sync.
+     */
+    public function goToTabPage(string $tab, int $page): void
+    {
+        if ($tab === 'confirmation') {
+            $this->confirmationPage = $this->clampPage($page, $this->confirmationCount);
+        } else {
+            $this->trackingPage = $this->clampPage($page, $this->trackingCount);
+        }
+
+        $this->loadQueue();
     }
 
     /**
@@ -43,11 +71,11 @@ trait DistributionQueueConcern
     /**
      * @param string $storeId
      * @param bool $countOnly
-     * @return array<int, array<string, mixed>>|int
+     * @return array<string, mixed>|int
      */
     private function confirmationRows(string $storeId, bool $countOnly = false): array|int
     {
-        $orders = Order::query()
+        $query = Order::query()
             ->where('store_id', $storeId)
             ->whereNull('deleted_at')
             ->where(function ($q) {
@@ -58,16 +86,13 @@ trait DistributionQueueConcern
             ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
 
         if ($countOnly) {
-            return $orders->count();
+            return $query->count();
         }
 
-        $orders = $orders
+        return $query
             ->with(['customer', 'status', 'assignedMembership.user'])
-            ->take(500)
-            ->get();
-
-        return $orders
-            ->map(fn (Order $order) => [
+            ->paginate(self::QUEUE_PAGE_SIZE, ['*'], 'page', $this->confirmationPage)
+            ->through(fn (Order $order) => [
                 'id' => (string) $order->id,
                 'number' => $order->number,
                 'customer' => $order->customer?->name ?? '—',
@@ -79,14 +104,13 @@ trait DistributionQueueConcern
                 'over_capacity' => (bool) $order->over_capacity,
                 'created_ago' => $order->created_at?->diffForHumans() ?? '—',
             ])
-            ->values()
-            ->all();
+            ->toArray();
     }
 
     /**
      * @param string $storeId
      * @param bool $countOnly
-     * @return array<int, array<string, mixed>>|int
+     * @return array<string, mixed>|int
      */
     private function trackingRows(string $storeId, bool $countOnly = false): array|int
     {
@@ -94,7 +118,7 @@ trait DistributionQueueConcern
             ->map(fn (OrderTrackingStatus $status) => $status->value)
             ->all();
 
-        $trackings = OrderTracking::query()
+        $query = OrderTracking::query()
             ->where('store_id', $storeId)
             ->whereIn('tracking_status', $openStatuses)
             ->where(function ($q) {
@@ -104,16 +128,13 @@ trait DistributionQueueConcern
             ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
 
         if ($countOnly) {
-            return $trackings->count();
+            return $query->count();
         }
 
-        $trackings = $trackings
+        return $query
             ->with(['order.customer', 'order.status', 'assignedTo.user'])
-            ->take(500)
-            ->get();
-
-        return $trackings
-            ->map(function (OrderTracking $tracking) {
+            ->paginate(self::QUEUE_PAGE_SIZE, ['*'], 'page', $this->trackingPage)
+            ->through(function (OrderTracking $tracking) {
                 $order = $tracking->order;
 
                 return [
@@ -126,7 +147,31 @@ trait DistributionQueueConcern
                     'created_ago' => $order?->created_at?->diffForHumans() ?? '—',
                 ];
             })
-            ->values()
-            ->all();
+            ->toArray();
+    }
+
+    /**
+     * @param array<string, mixed> $pagination
+     * @return array<string, mixed>
+     */
+    private function pageMeta(array $pagination): array
+    {
+        unset(
+            $pagination['data'],
+            $pagination['links'],
+            $pagination['first_page_url'],
+            $pagination['next_page_url'],
+            $pagination['prev_page_url'],
+            $pagination['path'],
+        );
+
+        return $pagination;
+    }
+
+    private function clampPage(int $page, int $total): int
+    {
+        $lastPage = max(1, (int) ceil($total / self::QUEUE_PAGE_SIZE));
+
+        return max(1, min($page, $lastPage));
     }
 }

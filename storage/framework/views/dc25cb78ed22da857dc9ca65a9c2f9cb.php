@@ -1,6 +1,8 @@
 
 <?php
     $queueRows = $kind === 'confirm' ? $confirmationQueue : $trackingQueue;
+    $queuePagination = $kind === 'confirm' ? $confirmationPagination : $trackingPagination;
+    $queuePaginationMethod = $kind === 'confirm' ? 'setConfirmationPage' : 'setTrackingPage';
     $queueEmpty = $kind === 'confirm'
         ? __('merchant_panel.queue_empty_confirmation')
         : __('merchant_panel.queue_empty_tracking');
@@ -158,5 +160,26 @@
                 </tbody>
             </table>
         </div>
+
+        <?php if (isset($component)) { $__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalf239162d9a2508ccc8b117a4cfe51f2f = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.edz.pagination','data' => ['paginator' => $queuePagination,'method' => $queuePaginationMethod,'size' => 'sm','wire:key' => 'queue-pagination-'.e($kind).'']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('edz.pagination'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['paginator' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($queuePagination),'method' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($queuePaginationMethod),'size' => 'sm','wire:key' => 'queue-pagination-'.e($kind).'']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalf239162d9a2508ccc8b117a4cfe51f2f)): ?>
+<?php $attributes = $__attributesOriginalf239162d9a2508ccc8b117a4cfe51f2f; ?>
+<?php unset($__attributesOriginalf239162d9a2508ccc8b117a4cfe51f2f); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f)): ?>
+<?php $component = $__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f; ?>
+<?php unset($__componentOriginalf239162d9a2508ccc8b117a4cfe51f2f); ?>
+<?php endif; ?>
     </div>
 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?><?php /**PATH C:\laragon\www\edzeery\resources\views/livewire/merchant/order-distribution-queue/partials/queue-table.blade.php ENDPATH**/ ?>

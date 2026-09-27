@@ -24,7 +24,7 @@
 <?php endif; ?>
         <?php echo e(__('merchant_panel.queue_tab_confirmation')); ?>
 
-        <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[11px] font-semibold rounded-full tabular-nums <?php echo e($tab === 'confirmation' ? 'bg-brand-500/15 text-brand-700 dark:text-brand-400' : 'bg-surface-tertiary text-ink-muted'); ?>">
+        <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[11px] font-semibold rounded-full tabular-nums <?php echo e($tab === 'confirmation' ? 'bg-brand-surface text-brand-fg-strong' : 'bg-surface-tertiary text-ink-muted'); ?>">
             <?php echo e($confirmationCount); ?>
 
         </span>
@@ -54,7 +54,7 @@
 <?php endif; ?>
         <?php echo e(__('merchant_panel.queue_tab_tracking')); ?>
 
-        <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[11px] font-semibold rounded-full tabular-nums <?php echo e($tab === 'tracking' ? 'bg-brand-500/15 text-brand-700 dark:text-brand-400' : 'bg-surface-tertiary text-ink-muted'); ?>">
+        <span class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-[11px] font-semibold rounded-full tabular-nums <?php echo e($tab === 'tracking' ? 'bg-brand-surface text-brand-fg-strong' : 'bg-surface-tertiary text-ink-muted'); ?>">
             <?php echo e($trackingCount); ?>
 
         </span>

@@ -270,6 +270,77 @@ test('both tabs render an empty state when nothing needs attention', function ()
         ->assertSee('No tracking shipments need attention');
 });
 
+test('the queue paginates each tab independently, preserving each tab page and keeping total badges accurate', function () {
+    [$user, $store] = dqUser();
+
+    $confirmIds = collect();
+    foreach (range(1, 60) as $i) {
+        $confirmIds->push((string) dqOrder($store, 'pending', null, false, now()->subMinutes(61 - $i))->id);
+    }
+
+    $trackingIds = collect();
+    foreach (range(1, 60) as $i) {
+        $trackingIds->push((string) dqTracking(dqOrder($store, 'delivered'), OrderTrackingStatus::SHIPPED->value)->id);
+    }
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $component = Volt::test('merchant.order-distribution-queue')
+        ->assertSet('confirmationCount', 60)
+        ->assertSet('trackingCount', 60)
+        ->assertSet('confirmationPagination.total', 60)
+        ->assertSet('confirmationPagination.per_page', 50)
+        ->assertSet('confirmationPagination.last_page', 2);
+
+    $confirmationPage1 = collect($component->get('confirmationQueue'));
+
+    expect($confirmationPage1)->toHaveCount(50)
+        ->and($confirmationPage1[0]['id'])->toBe($confirmIds[0]);
+
+    // Confirmation page 2 shows the remaining rows, distinct from page 1.
+    $component->call('setConfirmationPage', 2)
+        ->assertSet('confirmationPage', 2)
+        ->assertSet('confirmationCount', 60)
+        ->assertSet('confirmationPagination.current_page', 2);
+
+    $confirmationPage2 = collect($component->get('confirmationQueue'));
+
+    expect($confirmationPage2)->toHaveCount(10)
+        ->and($confirmationPage2->pluck('id')->all())->toBe($confirmIds->slice(50)->values()->all())
+        ->and($confirmationPage2->pluck('id')->intersect($confirmationPage1->pluck('id')))->toBeEmpty();
+
+    // Switching to tracking preserves the confirmation page; tracking starts fresh.
+    $component->call('setTab', 'tracking')
+        ->assertSet('confirmationPage', 2)
+        ->assertSet('trackingPage', 1)
+        ->assertSet('trackingCount', 60)
+        ->assertSet('trackingPagination.last_page', 2);
+
+    $trackingPage1 = collect($component->get('trackingQueue'));
+
+    expect($trackingPage1)->toHaveCount(50);
+
+    $component->call('setTrackingPage', 2)
+        ->assertSet('trackingPage', 2)
+        ->assertSet('trackingCount', 60);
+
+    $trackingPage2 = collect($component->get('trackingQueue'));
+
+    expect($trackingPage2)->toHaveCount(10)
+        ->and($trackingPage2->pluck('id')->intersect($trackingPage1->pluck('id')))->toBeEmpty()
+        ->and($trackingPage1->pluck('id')->concat($trackingPage2->pluck('id'))->sort()->values()->all())
+        ->toBe($trackingIds->sort()->values()->all());
+
+    // Back to confirmation: each tab keeps its own page.
+    $component->call('setTab', 'confirmation')
+        ->assertSet('confirmationPage', 2)
+        ->assertSet('trackingPage', 2)
+        ->assertSet('confirmationCount', 60)
+        ->assertSet('confirmationPagination.current_page', 2);
+
+    expect(collect($component->get('confirmationQueue'))->pluck('id')->all())->toBe($confirmIds->slice(50)->values()->all());
+});
+
 test('the queue query stays flat as rows grow (no N+1)', function () {
     [$user, $store] = dqUser();
     $assignee = dqMember($store, [StorePermissionEnum::ORDER_CONFIRM->value]);
@@ -304,7 +375,7 @@ test('the queue query stays flat as rows grow (no N+1)', function () {
     Volt::test('merchant.order-distribution-queue')->html();
 
     $isDataQuery = fn (string $sql): bool => (bool) preg_match(
-        '/\b(?:from|into|update|delete)\s+"?(?:orders|order_trackings|customers|statuses)\b/i',
+        '/\b(?:from|into|update|delete)\s+["`]?(?:orders|order_trackings|customers|statuses)\b/i',
         $sql,
     );
 

@@ -6,8 +6,10 @@ use App\Domains\Order\Models\ConfirmationShift;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Notifications\AssignmentCapacityExhaustedNotification;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,8 +18,9 @@ use Illuminate\Support\Facades\Log;
  * balancing (fewest open assignments, then oldest last assignment), optional
  * soft overflow (store-configured % headroom above a member's base cap) and the
  * capacity-exhausted alert (throttled per store + role scope). The consumer
- * supplies the permission-filtered candidate pool plus source-specific
- * open-count and last-assigned maps (orders vs order_trackings).
+ * supplies the permission-filtered candidate pool; the shared query helpers
+ * build the source-specific open-count, last-assigned and unassigned maps for
+ * both orders and order_trackings.
  */
 trait ResolvesCapacityBalancedCandidates
 {
@@ -104,6 +107,57 @@ trait ResolvesCapacityBalancedCandidates
         }
 
         $store->owner?->notify(new AssignmentCapacityExhaustedNotification($store, $roleScope, $unassignedCount));
+    }
+
+    /**
+     * Status keys terminal to the confirmation pipeline; never counted as open.
+     */
+    protected function terminalStatusKeys(): array
+    {
+        return ['cancelled', 'canceled', 'delivered', 'returned', 'completed', 'refunded'];
+    }
+
+    protected function openAssignmentCounts(string $table, string $storeId, ?Closure $statusScope = null): array
+    {
+        $query = DB::table($table)
+            ->where("$table.store_id", $storeId)
+            ->whereNotNull("$table.assigned_to_membership_id");
+
+        if ($statusScope !== null) {
+            $statusScope($query);
+        }
+
+        return $query
+            ->when($table === 'orders', fn ($q) => $q->whereNull("$table.deleted_at"))
+            ->select("$table.assigned_to_membership_id", DB::raw("COUNT(*) as open_count"))
+            ->groupBy("$table.assigned_to_membership_id")
+            ->pluck('open_count', "$table.assigned_to_membership_id")
+            ->toArray();
+    }
+
+    protected function lastAssignedAt(string $table, string $storeId): array
+    {
+        return DB::table($table)
+            ->where("$table.store_id", $storeId)
+            ->when($table === 'orders', fn ($q) => $q->whereNull("$table.deleted_at"))
+            ->whereNotNull("$table.assigned_to_membership_id")
+            ->whereNotNull("$table.assigned_at")
+            ->select("$table.assigned_to_membership_id", DB::raw("MAX(assigned_at) as last_assigned"))
+            ->groupBy("$table.assigned_to_membership_id")
+            ->pluck('last_assigned', "$table.assigned_to_membership_id")
+            ->toArray();
+    }
+
+    /**
+     * Unassigned items left in the dispatcher's target state for the alert.
+     */
+    protected function unassignedAssignmentCount(string $model, string $storeId, Closure $statusScope): int
+    {
+        return $model::where('store_id', $storeId)
+            ->whereNull('assigned_to_membership_id')
+            ->whereNull('assignment_method')
+            ->where($statusScope)
+            ->count();
     }
 
     private function bestOnShiftWithinCaps(
