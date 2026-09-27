@@ -1,0 +1,1 @@
+<livewire:language-switch-component key='fls-in-panels' />
