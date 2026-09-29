@@ -10,6 +10,7 @@ use App\Support\StoreRoles;
 
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
+use Livewire\Volt\Volt;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
@@ -47,6 +48,24 @@ function groupZeroStore(User $owner): Store
     ]);
 }
 
+function groupZeroMembership(Store $store, User $user, User $inviter, StoreRoleEnum $role): StoreMembership
+{
+    return StoreMembership::create([
+        'store_id'   => $store->id,
+        'user_id'    => $user->id,
+        'invited_by' => $inviter->id,
+        'is_active'  => true,
+        'role'       => $role->value,
+    ]);
+}
+
+function groupZeroActAs(User $user, Store $store): void
+{
+    test()->actingAs($user);
+    test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->clear();
+}
+
 it('exposes exactly 52 store permissions, up from 46', function () {
     $values = StorePermissionEnum::values();
 
@@ -71,8 +90,8 @@ it('keeps the six new permissions out of the manager and staff templates', funct
 });
 
 it('lists the permission as a row of the order hub group', function (string $permission) {
-    // Mirrors teams/index.blade.php:240-241, which groups the whole enum by
-    // the first dot segment and hands each group to the hub card.
+    // Fast check on the hub's grouping rule, without paying for a full render.
+    // The round-trip below proves the row actually reaches the browser.
     $grouped = collect(StorePermissionEnum::values())
         ->groupBy(fn (string $p) => explode('.', $p)[0]);
 
@@ -82,7 +101,8 @@ it('lists the permission as a row of the order hub group', function (string $per
 })->with(groupZeroPermissions());
 
 it('renders the row with a translated label and a non-empty description', function (string $locale, string $permission) {
-    // The two cells the row is built from, per teams/index.blade.php:297-298.
+    // The round-trip only exercises the active locale, so this matrix keeps
+    // every locale honest about having a real string rather than a fallback.
     app()->setLocale($locale);
 
     $label = PermissionGroupMeta::label($permission);
@@ -142,23 +162,42 @@ it('grants the permission to a membership without leaking order.manage', functio
 
 it('auto-includes order.view when the row is toggled', function (string $permission) {
     // teams/index.blade.php:325 returns early for COMING_SOON rows, which would
-    // make the dependency below unreachable and the row untoggleable. Group zero
-    // must stay live even though no call site consumes the permission yet.
+    // make the row untoggleable and the dependency unreachable. Group zero must
+    // stay live even though no call site consumes the permission yet.
     expect(PermissionGroupMeta::isComingSoon($permission))->toBeFalse();
 
-    // teams/index.blade.php:331-340 pushes each dependency, then the permission.
-    $granted = [];
-    foreach (PermissionGroupMeta::dependencies($permission) as $required) {
-        if (! in_array($required, $granted, true)) {
-            $granted[] = $required;
-        }
-    }
-    $granted[] = $permission;
+    $owner = roleUser('merchant');
+    $store = groupZeroStore($owner);
+    $membership = groupZeroMembership($store, $owner, $owner, StoreRoleEnum::OWNER);
+    $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
+    groupZeroActAs($owner, $store);
 
-    expect(PermissionGroupMeta::dependencies($permission))->toBe(['order.view'])
-        ->and($granted)->toContain(StorePermissionEnum::ORDER_VIEW->value)
-        ->and($granted)->toContain($permission)
-        ->and($granted)->toHaveCount(2);
+    Volt::test('merchant.teams.index')
+        ->assertOk()
+        ->call('openCreate')
+        ->set('store_role', StoreRoleEnum::STAFF->value)
+        ->call('openPermissionGroup', 'order')
+        ->assertSee(PermissionGroupMeta::label($permission))
+        ->assertSee(PermissionGroupMeta::description($permission))
+        // Enabling pulls order.view in with it.
+        ->call('togglePermission', $permission, true)
+        ->assertSet('permissions', fn (array $granted) => in_array($permission, $granted, true)
+            && in_array(StorePermissionEnum::ORDER_VIEW->value, $granted, true))
+        // Disabling drops the permission but keeps order.view: the cascade at
+        // teams/index.blade.php:342 removes *dependents* of the permission, and
+        // nothing depends on any of the six — order.view is a prerequisite, and
+        // it may legitimately be shared with the rest of a real grant.
+        ->call('togglePermission', $permission, false)
+        ->assertSet('permissions', fn (array $granted) => ! in_array($permission, $granted, true)
+            && in_array(StorePermissionEnum::ORDER_VIEW->value, $granted, true));
+})->with(groupZeroPermissions());
+
+it('makes nothing depend on the six new permissions', function (string $permission) {
+    // Nothing lists them as a prerequisite, so disabling one cascades to
+    // nothing and leaves the shared order.view alone. This is what the toggle
+    // round-trip above observes on the way back down.
+    expect(PermissionGroupMeta::requiredBy($permission))->toBe([])
+        ->and(PermissionGroupMeta::dependencies($permission))->toBe(['order.view']);
 })->with(groupZeroPermissions());
 
 it('keeps the sibling order labels resolving to their own strings', function () {
@@ -228,4 +267,26 @@ it('expands the order.manage description in every locale', function (string $loc
     expect(trim($description))->not->toBe('')
         // The replaced one-liner was under 80 characters in every locale.
         ->and(strlen($description))->toBeGreaterThan(200);
+})->with(['ar', 'en', 'fr', 'es']);
+
+it('clarifies order.dispatch_validate in every locale', function (string $locale) {
+    // description() reads permissions_descriptions.{$permission} literally, so
+    // this permission needs 'order' => ['dispatch_validate' => …] — a flat
+    // sibling of the 'dispatch' group, and not 'dispatch'.'validate'. Reading
+    // the wrong shape would silently fall through to no description at all.
+    app()->setLocale($locale);
+
+    $description = (string) PermissionGroupMeta::description('order.dispatch_validate');
+
+    expect(trim($description))->not->toBe('')
+        ->and(strlen($description))->toBeGreaterThan(40)
+        ->and(__('permissions_descriptions.order.dispatch_validate'))->toBeString()
+        // The point of the text: validating does not send.
+        ->and(str_contains(strtolower($description), 'does not send')
+            || str_contains($description, 'لا ترسل')
+            || str_contains(strtolower($description), 'n\'envoie pas')
+            || str_contains($description, 'no envía'));
+
+    expect(__('permissions_descriptions.order.dispatch'))->toBeArray()
+        ->and(__('permissions_descriptions.order.dispatch.carrier'))->toBeString();
 })->with(['ar', 'en', 'fr', 'es']);

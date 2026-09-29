@@ -698,7 +698,7 @@ canStore(StorePermissionEnum::ORDER_MANAGE->value)                 // كما ه�
 1. `app/Enums/Store/StorePermissionEnum.php` — إضافة **6** حالات داخل بلوك Orders (`:40-48`): `ORDER_STATUS_MANAGE_OWN`، `ORDER_EDIT_IDENTITY`، `ORDER_EDIT_PRODUCTS`، `ORDER_EDIT_GEOGRAPHY`، `ORDER_DISPATCH_RIDER`، `ORDER_DISPATCH_CARRIER` (46 ⇒ **52**).
 2. `app/Support/PermissionGroupMeta.php:90-117` — `DEPENDENCIES` += **6** مدخلات ← `['order.view']`.
 3. `resources/lang/{ar,en,fr,es}/permissions.php` — **6** تسميات (البنية المتداخلة في 2.3)، و`'dispatch'` يحمل الآن `rider` **و** `carrier` كشقيقتين.
-4. `resources/lang/{ar,en,fr,es}/permissions_descriptions.php` — **7** أوصاف (2.4): الستّ الجديدة + توسيع `order.manage` القائم.
+4. `resources/lang/{ar,en,fr,es}/permissions_descriptions.php` — **8** أوصاف (2.4): الستّ الجديدة + توسيع `order.manage` القائم + توضيح `order.dispatch_validate`.
 5. `app/Support/StoreRoles.php` — **بلا تغيير** (لا سطر واحد).
 6. **اختبار سريع للـ Hub:** عضو يحمل إحدى الصلاحيات الجديدة فقط + بلا `order.manage` ⇒ يظهر الصف في المجموعة الصحيحة بتسمية مترجمة ووصف غير فارغ، ومفتاح الاعتماديات يُفعّل `order.view` تلقائيًا. **اكتمال المجموعة صفر دون تغيير أي موضع سلوكي.**
 
