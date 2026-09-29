@@ -1575,7 +1575,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
     $order = Order::where('store_id', currentStoreId())->findOrFail($orderId);
     $membership = $this->getCurrentMembership();
 
-    if (! canStore(\App\Support\StoreOrderPermissions::forStatus($statusKey, (string) currentStoreId()))) {
+    if (! \App\Support\StoreOrderPermissions::canTransitionStatus($orderId, $statusKey, $membership, (string) currentStoreId())) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2174,7 +2174,21 @@ $refreshFormDuplicateWarnings = function (): void {
 };
 
 $markOrderDuplicate = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    $membership = $this->getCurrentMembership();
+
+    // Phase 36.12.1 — order.manage, or order.status.manage.own limited to an
+    // order inside this member's visibleTo() scope. The permission check now
+    // runs BEFORE the lookup, so a denied member gets the same denial whether
+    // or not the order id exists and cannot probe for it via a 404.
+    $allowed = canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        || (canStore(StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value)
+            && $membership !== null
+            && Order::where('store_id', currentStoreId())
+                ->whereKey($orderId)
+                ->visibleTo($membership)
+                ->exists());
+
+    if (! $allowed) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2187,7 +2201,6 @@ $markOrderDuplicate = function (string $orderId): void {
         ->first();
 
     if ($status && app(OrderService::class)->canTransition($order, 'duplicate')) {
-        $membership = $this->getCurrentMembership();
         app(OrderService::class)->transition($order, 'duplicate', 'Marked as duplicate', $membership);
     }
 
@@ -2199,7 +2212,15 @@ $markOrderDuplicate = function (string $orderId): void {
 // ——— Bulk status change (P29) ———
 
 $openBulkStatusModal = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    $membership = $this->getCurrentMembership();
+
+    // Phase 36.12.1 — same OR-branch as $markOrderDuplicate: order.manage, or
+    // order.status.manage.own. Only the gate opens here; the per-order filter
+    // happens in $submitBulkStatus, because the selection is not known yet.
+    $allowed = canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        || (canStore(StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value) && $membership !== null);
+
+    if (! $allowed) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2230,7 +2251,16 @@ $closeBulkStatusModal = function (): void {
 };
 
 $submitBulkStatus = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    $membership = $this->getCurrentMembership();
+
+    // Phase 36.12.1 — same OR-branch as $openBulkStatusModal. A member holding
+    // order.manage is unrestricted, so the per-order filter below must not
+    // engage for them; only a status.manage.own-only member is scope-limited.
+    $scopedToOwn = ! canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        && canStore(StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value)
+        && $membership !== null;
+
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! $scopedToOwn) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2250,14 +2280,25 @@ $submitBulkStatus = function (): void {
     }
 
     $service = app(OrderService::class);
-    $membership = $this->getCurrentMembership();
     $done = 0;
     $skipped = 0;
 
     Order::where('store_id', currentStoreId())
         ->whereIn('id', $this->selectedOrders)
-        ->each(function ($order) use ($service, $statusKey, $membership, &$done, &$skipped) {
+        ->each(function ($order) use ($service, $statusKey, $membership, $scopedToOwn, &$done, &$skipped) {
             try {
+                // Phase 36.12.1 — a status.manage.own-only member is confined to
+                // their visibleTo() scope. Without this an order outside it would
+                // still be transitioned, because the loop above is a plain
+                // whereIn on the selection and knows nothing about visibility.
+                // Skipping (not throwing) keeps the rest of the batch useful and
+                // surfaces the order in the skipped count.
+                if ($scopedToOwn && ! Order::whereKey($order->getKey())->visibleTo($membership)->exists()) {
+                    $skipped++;
+
+                    return;
+                }
+
                 if (! $service->canTransition($order, $statusKey)) {
                     $skipped++;
                     return;

@@ -784,7 +784,7 @@ canStore(StorePermissionEnum::ORDER_MANAGE->value)                 // كما ه�
 
 ### 6.7 — الشهادة المطلوبة (بنفس أسلوب 36.7)
 - `grep` على `TrackingRiderFormConcern.php` و`order-drawer.blade.php`: `ORDER_ASSIGN` **لم يبقَ منفردًا** — صار بديلًا داخل `||` مع `ORDER_DISPATCH_RIDER` (بلا سطر يبقى بلا بديل).
-- `grep` ≥ **6** تعريفات جديدة في `StorePermissionEnum` (46 ⇒ 52)، و≥ **6** مدخلات في `DEPENDENCIES`، و≥ **7** أوصاف في `permissions_descriptions.php` (لكل لغة).
+- `grep` ≥ **6** تعريفات جديدة في `StorePermissionEnum` (46 ⇒ 52)، و≥ **6** مدخلات في `DEPENDENCIES`، و≥ **8** أوصاف في `permissions_descriptions.php` (لكل لغة).
 - `grep` على `bulk-actions-bar.blade.php`: عدد أسطر `@if` التي تحجب `openBulkSendModal` **1**، والتي تحجب `openBulkStatusModal` **1** — أي **مفصولان** (6.5b-6). لو بقي `@if` واحد يغطّهما ⇒ الاختبار الحاسم يفشل.
 - **اختبار non-regression الأهم:** كل اختبارات Merchant خضراء بلا تعديل على التوقعات (مثل Phase 36.7: 628 ناجح / 2711 تأكيد؛ إعادة القياس مطلوبة).
 - **اختباران جديدان نَعلان:** (أ) **اختبار نطاق D1** — عضو `status.manage.own`: على **طلبيته** ينجح انتقال `confirmed` **و** ينجح انتقال `no_answer_1` (كلاهما من مجموعتَي `forStatus()` لا من fallback `:61`)؛ وعلى **طلبية زميله** يُرفض الاثنان. هذا يثبت أن فرع الـ OR يغطي **كل** مفاتيح الحالات وأن القيد الوحيد هو `visibleTo()` — وهو بالضبط ما كانت ساخنه الجملة المقتصرة على `:61` فقط. (ب) **اختبار عدم-التراجع للانقسام** — عضو `order.assign` عبر pivot **بلا** `dispatch.rider` ⇒ `assignRider` **تنجح** (لا 403) لأن `ORDER_ASSIGN` بديل باقٍ، بينما عضو بلا كليهما ⇒ 403. هذا هو الفرق بين Union وReplacement، وهو ما يمنع كسر قالب MANAGER.
@@ -826,7 +826,7 @@ canStore(StorePermissionEnum::ORDER_MANAGE->value)                 // كما ه�
 | سلال التصنيف | 15 / 15 / 10 / 9 / 2 = **51** | جدول 1.2 |
 | حالات `StorePermissionEnum` **بعد** التنفيذ | **52** | 46 + 6 (§6.0-1) |
 | الصلاحيات الجديدة الإجمالية | **6** | حالة + 3 تحرير + `dispatch.rider` + `dispatch.carrier` (D2) |
-| أوصاف مطلوبة لكل لغة | **7** | 6 جديدة + توسيع `order.manage` (§6.0-4) |
+| أوصاف مطلوبة لكل لغة | **8** | 6 جديدة + توسيع `order.manage` + توضيح `order.dispatch_validate` (§6.0-4) |
 | مواضع إرسال الطلبية لشركة شحن (D2) | **3 حرّاس + 3 توائم** | `:1886`، `:1309`، `:2014` + `:127-128`، `:79`، `:61` (§3.6) |
 | استدعاءات `->send()` (تسليم فعلي) | **3** | `:1962`، `:2050`، `:1348` (عبر `$gateway`) |
 | إشارات `OrderShippingGateway` في `app`+`resources`+`routes`+`database` | **14 في 6 ملفات** | مسح 1261 ملف PHP/blade |

@@ -62,6 +62,47 @@ class StoreOrderPermissions
     }
 
     /**
+     * Phase 36.12.1 — the single gate for moving an order to a new status.
+     *
+     * Wraps forStatus() without altering it. The first branch is the historical
+     * behaviour, byte for byte, so every existing holder of order.confirm /
+     * order.cancel / order.manage is unaffected.
+     *
+     * The second branch is order.status.manage.own, which unlocks a member who
+     * has neither order.manage nor the fine-grained confirm/cancel grants — the
+     * store-rep case from §1.4 — but only for orders inside their own
+     * visibleTo() scope. Per D1 it covers every status key, not just the
+     * forStatus() fallback at :61, so a single narrow grant manages the whole
+     * lifecycle of the member's own orders: confirming, call outcomes
+     * (no_answer_1, postponed, …) and the shipping statuses alike.
+     *
+     * The $membership !== null guard is load-bearing: scopeVisibleTo() treats a
+     * null membership as "no scoping at all", so without it a null membership
+     * would let this branch match an arbitrary order in the store.
+     */
+    public static function canTransitionStatus(string $orderId, string $statusKey, ?StoreMembership $membership, ?string $storeId = null): bool
+    {
+        $storeId ??= (string) currentStoreId();
+
+        if (canStore(self::forStatus($statusKey, $storeId))) {
+            return true;
+        }
+
+        if (! canStore(StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value)) {
+            return false;
+        }
+
+        if ($membership === null) {
+            return false;
+        }
+
+        return Order::where('store_id', $storeId)
+            ->whereKey($orderId)
+            ->visibleTo($membership)
+            ->exists();
+    }
+
+    /**
      * P29.1 — Who may inspect the order event log (audit timeline)?
      *
      * - OWNER / ADMIN  → always
