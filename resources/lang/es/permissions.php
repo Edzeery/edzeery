@@ -40,11 +40,23 @@ return [
             'final' => 'Eliminar pedidos (final)',
             'label' => 'Eliminar pedidos',
         ],
+        'dispatch' => [
+            'carrier' => 'Enviar el pedido a una empresa de transporte',
+            'rider' => 'Entregar el pedido a un repartidor',
+        ],
         'dispatch_validate' => 'Validar despacho de pedidos',
         'edit' => [
+            'geography' => 'Editar los datos de entrega del pedido',
+            'identity' => 'Editar los datos del cliente del pedido',
             'price' => 'Editar precios de productos del pedido',
+            'products' => 'Editar los productos del pedido',
         ],
         'manage' => 'Gestionar pedidos',
+        'status' => [
+            'manage' => [
+                'own' => 'Gestionar el estado de sus propios pedidos',
+            ],
+        ],
         'view' => 'Ver pedido',
     ],
     'products' => [

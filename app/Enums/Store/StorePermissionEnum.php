@@ -46,6 +46,12 @@ enum StorePermissionEnum: string
     case ORDER_ASSIGN = 'order.assign';
     case ORDER_EDIT_PRICE = 'order.edit.price';
     case ORDER_DISPATCH_VALIDATE = 'order.dispatch_validate';
+    case ORDER_STATUS_MANAGE_OWN = 'order.status.manage.own';
+    case ORDER_EDIT_IDENTITY = 'order.edit.identity';
+    case ORDER_EDIT_PRODUCTS = 'order.edit.products';
+    case ORDER_EDIT_GEOGRAPHY = 'order.edit.geography';
+    case ORDER_DISPATCH_RIDER = 'order.dispatch.rider';
+    case ORDER_DISPATCH_CARRIER = 'order.dispatch.carrier';
 
     /*
     |--------------------------------------------------------------------------

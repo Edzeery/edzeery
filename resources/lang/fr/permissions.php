@@ -40,11 +40,23 @@ return [
             'final' => 'Supprimer la commande (final)',
             'label' => 'Supprimer la commande',
         ],
+        'dispatch' => [
+            'carrier' => 'Confier la commande à une société de livraison',
+            'rider' => 'Confier la commande à un livreur',
+        ],
         'dispatch_validate' => 'Valider l\'expédition des commandes',
         'edit' => [
+            'geography' => 'Modifier les informations de livraison de la commande',
+            'identity' => 'Modifier les informations client de la commande',
             'price' => 'Modifier les prix des produits de la commande',
+            'products' => 'Modifier les produits de la commande',
         ],
         'manage' => 'Gérer les commandes',
+        'status' => [
+            'manage' => [
+                'own' => 'Gérer le statut de ses propres commandes',
+            ],
+        ],
         'view' => 'Voir la commande',
     ],
     'products' => [

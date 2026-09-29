@@ -40,11 +40,23 @@ return [
             'final' => 'Delete Order (Final)',
             'label' => 'Delete Order',
         ],
+        'dispatch' => [
+            'carrier' => 'Dispatch Order to Shipping Company',
+            'rider' => 'Dispatch Order to Delivery Rider',
+        ],
         'dispatch_validate' => 'Validate Order Dispatch',
         'edit' => [
+            'geography' => 'Edit Order Delivery Details',
+            'identity' => 'Edit Order Customer Details',
             'price' => 'Edit Order Product Prices',
+            'products' => 'Edit Order Products',
         ],
         'manage' => 'Manage Orders',
+        'status' => [
+            'manage' => [
+                'own' => 'Manage Status of Own Orders',
+            ],
+        ],
         'view' => 'Order View',
     ],
     'products' => [
