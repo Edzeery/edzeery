@@ -16,6 +16,12 @@
     };
     $showStopdeskHint = ($order['delivery_type'] ?? null) === 'stopdesk';
     $canManage = canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value);
+    // 36.12.3: weight_kg and shipment_type are product fields, so they follow
+    // order.edit.products too. Every other field below stays on $canManage
+    // because it belongs to 36.12.4 (geography) and the permissions it splits
+    // out have not landed yet.
+    $canManageProducts = canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+        || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value);
 @endphp
 
 <div class="mt-2 space-y-1.5 text-xs text-ink-muted">
@@ -197,7 +203,7 @@
                     <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                 @endif
             </div>
-        @elseif ($canManage)
+        @elseif ($canManageProducts)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 wire:click="startOrderWeightEdit('{{ $orderId }}')">
                 <x-edz.icon name="cube" class="w-3 h-3 shrink-0 text-ink-muted" />
@@ -231,7 +237,7 @@
                     <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                 @endif
             </div>
-        @elseif ($canManage)
+        @elseif ($canManageProducts)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderShipmentTypeEdit('{{ $orderId }}')">
                 <x-edz.icon name="tag" class="w-3 h-3 shrink-0 text-ink-muted" />

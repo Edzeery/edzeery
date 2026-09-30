@@ -469,3 +469,66 @@ it('gates the price cell on itemsPriceEditable whatever unlocked the rest of the
     $html = oepVolt($bothUser, $store)->set('visibleColumns', ['price'])->html();
     expect(substr_count($html, "openItemsModal('price'"))->toBeGreaterThanOrEqual(1);
 });
+
+// ————— 6. mobile card (36.12.3b) —————
+
+/**
+ * orders-mobile-fields.blade.php stamps its affordances with
+ * edz-inline-edit__display--touch. The button is not closed on the class line,
+ * so the whole element is matched and the handler is read from its opening tag
+ * (the click attribute lives there, not in the body).
+ */
+function oepMobileAffordances(string $html): array
+{
+    preg_match_all('/<button[^>]*edz-inline-edit__display--touch[^>]*>.*?<\/button>/s', $html, $buttons);
+
+    $handlers = [];
+    foreach ($buttons[0] as $button) {
+        $openingTag = substr($button, 0, strpos($button, '>'));
+
+        if (preg_match('/(startOrder\w+Edit|toggleSendFromWarehouse)/', $openingTag, $handler)) {
+            $handlers[] = $handler[1];
+        }
+    }
+
+    return $handlers;
+}
+
+it('shows the mobile weight and shipment affordances to a products-only member, but no mobile geography ones', function () {
+    [$ownerUser, $store] = oepOwner();
+    [$repUser, $rep] = oepStaff($store, PRODUCTS_GRANT, 'Rep');
+    oepOrder($store, 'pending', $rep);
+
+    $columns = ['delivery_type', 'shipping_provider', 'city', 'address', 'weight', 'shipment_type'];
+    $affordances = oepMobileAffordances(oepVolt($repUser, $store)->set('visibleColumns', $columns)->html());
+
+    // $canManageProducts: weight_kg and shipment_type are product fields.
+    expect($affordances)->toContain('startOrderWeightEdit')
+        ->toContain('startOrderShipmentTypeEdit');
+
+    // Still $canManage: these are 36.12.4's (geography) responsibility.
+    foreach (['startOrderDeliveryTypeEdit', 'startOrderProviderEdit', 'startOrderCityEdit', 'startOrderAddressEdit'] as $handler) {
+        expect($affordances)->not->toContain($handler, "geography affordance {$handler} must stay order.manage-gated");
+    }
+});
+
+it('keeps the mobile card unchanged for an order.manage holder and a plain member', function () {
+    [$ownerUser, $store] = oepOwner();
+    [$mgrUser, $mgr] = oepStaff($store, MANAGE_GRANT, 'Manager');
+    [$plainUser, $plain] = oepStaff($store, [StorePermissionEnum::ORDER_VIEW->value], 'Plain');
+
+    $columns = ['delivery_type', 'shipping_provider', 'city', 'address', 'weight', 'shipment_type'];
+
+    oepOrder($store, 'pending', $mgr);
+    $affordances = oepMobileAffordances(oepVolt($mgrUser, $store)->set('visibleColumns', $columns)->html());
+    expect($affordances)->toContain('startOrderWeightEdit')
+        ->toContain('startOrderShipmentTypeEdit')
+        ->toContain('startOrderDeliveryTypeEdit')
+        ->toContain('startOrderProviderEdit')
+        ->toContain('startOrderCityEdit')
+        ->toContain('startOrderAddressEdit');
+
+    oepOrder($store, 'pending', $plain);
+    $affordances = oepMobileAffordances(oepVolt($plainUser, $store)->set('visibleColumns', $columns)->html());
+    expect($affordances)->toBeEmpty();
+});
