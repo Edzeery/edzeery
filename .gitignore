@@ -18,8 +18,8 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/framework/views/
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
-# Compiled Blade views are runtime artifacts ignored via storage/framework/views/.gitignore
