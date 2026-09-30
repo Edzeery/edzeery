@@ -129,7 +129,7 @@
                         </div>
                     </dl>
 
-                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_ASSIGN->value) && ! $this->drawerTracking['has_provider'])
+                    @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_RIDER->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_ASSIGN->value)) && ! $this->drawerTracking['has_provider'])
                         <div class="mt-2">
                             <x-edz.dropdown align="right" width="280px"
                                 trigger-class="edz-btn edz-btn--ghost edz-btn--sm">

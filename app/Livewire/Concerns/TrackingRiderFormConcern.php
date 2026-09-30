@@ -26,7 +26,7 @@ trait TrackingRiderFormConcern
 
     public function assignRider(string $orderId, ?string $riderId = null): void
     {
-        abort_unless(canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);
+        abort_unless(canStore(StorePermissionEnum::ORDER_DISPATCH_RIDER->value) || canStore(StorePermissionEnum::ORDER_ASSIGN->value), 403);
 
         $order = Order::where('store_id', currentStoreId())->find($orderId);
 
