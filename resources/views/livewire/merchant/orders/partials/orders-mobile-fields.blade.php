@@ -15,13 +15,12 @@
         default    => null,
     };
     $showStopdeskHint = ($order['delivery_type'] ?? null) === 'stopdesk';
-    $canManage = canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value);
-    // 36.12.3: weight_kg and shipment_type are product fields, so they follow
-    // order.edit.products too. Every other field below stays on $canManage
-    // because it belongs to 36.12.4 (geography) and the permissions it splits
-    // out have not landed yet.
+    // 36.12.3: weight_kg and shipment_type are product fields.
+    // 36.12.4: every remaining field is a geography field.
     $canManageProducts = canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
         || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value);
+    $canManageGeography = canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+        || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value);
 @endphp
 
 <div class="mt-2 space-y-1.5 text-xs text-ink-muted">
@@ -37,7 +36,7 @@
                         @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                 </div>
             </div>
-        @elseif ($canManage)
+        @elseif ($canManageGeography)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderDeliveryTypeEdit('{{ $orderId }}')">
                 <x-edz.icon name="adjustments-horizontal" class="w-3 h-3 shrink-0 text-ink-muted" />
@@ -59,7 +58,7 @@
     @if (in_array('shipping_provider', $this->visibleColumns))
         @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
             @include('livewire.merchant.orders.partials.inline-carrier-select', ['wireKeyPrefix' => 'provider-mobile'])
-        @elseif ($canManage)
+        @elseif ($canManageGeography)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
                 <x-edz.icon name="truck" class="w-3 h-3 shrink-0 text-ink-muted" />
@@ -108,7 +107,7 @@
                         @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                 </div>
             </div>
-        @elseif ($canManage && !empty($order['state_id']))
+        @elseif ($canManageGeography && !empty($order['state_id']))
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderCityEdit('{{ $orderId }}')">
                 @if (!empty($order['city']['name']))
@@ -136,7 +135,7 @@
                         @click="$wire.cancelOrderEdit()">{{ __('buttons.cancel') }}</button>
                 </div>
             </div>
-        @elseif ($canManage)
+        @elseif ($canManageGeography)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 @click="$wire.startOrderStopdeskEdit('{{ $orderId }}')">
                 @if (!empty($order['stopdesk_point']['name']))
@@ -165,7 +164,7 @@
                         wire:click="cancelOrderEdit">{{ __('buttons.cancel') }}</button>
                 </div>
             </div>
-        @elseif ($canManage)
+        @elseif ($canManageGeography)
             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch w-full text-left"
                 wire:click="startOrderAddressEdit('{{ $orderId }}')"
                 title="{{ $order['address'] ?? '' }}">
@@ -253,7 +252,7 @@
 
     {{-- send_from_carrier_warehouse (tap-to-toggle pill, no edit mode) --}}
     @if (in_array('send_from_carrier_warehouse', $this->visibleColumns))
-        @if ($canManage && ! $this->showTrash)
+        @if ($canManageGeography && ! $this->showTrash)
             <button type="button" wire:click="toggleSendFromWarehouse('{{ $orderId }}')"
                 wire:loading.attr="disabled" wire:loading.class="opacity-60 pointer-events-none"
                 wire:target="toggleSendFromWarehouse"

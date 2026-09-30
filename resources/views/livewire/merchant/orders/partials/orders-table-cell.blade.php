@@ -253,9 +253,9 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display min-w-[115px] "
-                    @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
+        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
+            <button type="button" class="edz-inline-edit__display min-w-[115px] "
+                @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['state']['name']))
                             @if (!empty($order['state']['state_code']))
@@ -542,9 +542,9 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !empty($order['state_id']))
-                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    @click="$wire.startOrderCityEdit('{{ $orderId }}')">
+        @elseif ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) && !empty($order['state_id']))
+            <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
+                @click="$wire.startOrderCityEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['city']['name']))
                             {{ $order['city']['name'] }}
@@ -586,8 +586,8 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <x-edz.tooltip label="{{ $order['address'] ?? '' }}">
+        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
+            <x-edz.tooltip label="{{ $order['address'] ?? '' }}">
                 <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     wire:click="startOrderAddressEdit('{{ $orderId }}')">
                     <span
@@ -619,9 +619,9 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    @click="$wire.startOrderDeliveryTypeEdit('{{ $orderId }}')">
+        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
+            <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
+                @click="$wire.startOrderDeliveryTypeEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if ($deliveryTypeLabel)
                             {{ $deliveryTypeLabel }}
@@ -648,9 +648,9 @@
         <td class="px-4 py-3 text-ink-muted text-xs min-w-[115px]">
             @if ($this->editingField === 'order.shipping_provider' && $this->editingId === $orderId)
                 @include('livewire.merchant.orders.partials.inline-carrier-select', ['wireKeyPrefix' => 'provider-inline'])
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
+        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
+            <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
+                @click="$wire.startOrderProviderEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (! empty($order['shipping_provider']['name']))
                             {{ $order['shipping_provider']['name'] }}
@@ -701,9 +701,9 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-                <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
-                    @click="$wire.startOrderStopdeskEdit('{{ $orderId }}')">
+        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
+            <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
+                @click="$wire.startOrderStopdeskEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">
                         @if (!empty($order['stopdesk_point']['name']))
                             {{ $order['stopdesk_point']['name'] }}@if (!empty($order['stopdesk_point']['city']['name']))
@@ -732,8 +732,8 @@
 
     @case('send_from_carrier_warehouse')
         <td class="px-4 py-3">
-            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && !$this->showTrash)
-                <x-edz.tooltip label="{{ __('merchant_panel.send_from_carrier_warehouse') }}">
+        @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) && !$this->showTrash)
+            <x-edz.tooltip label="{{ __('merchant_panel.send_from_carrier_warehouse') }}">
                 <button type="button" wire:click="toggleSendFromWarehouse('{{ $orderId }}')"
                     wire:loading.attr="disabled" wire:loading.class="edz-inline-edit__save--loading" wire:target="toggleSendFromWarehouse"
                     aria-label="{{ __('merchant_panel.send_from_carrier_warehouse') }}"

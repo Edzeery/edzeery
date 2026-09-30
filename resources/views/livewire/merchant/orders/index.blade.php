@@ -3082,7 +3082,7 @@ $refreshFormOffices = function (): void {
 //      delivery fields + allStates/allCities/formOffices + the cascade helpers.
 
 $openDeliveryModal = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3448,7 +3448,7 @@ $guardOrderEditable = function (): bool {
 };
 
 $startOrderWilayaEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3457,7 +3457,7 @@ $startOrderWilayaEdit = function (string $orderId): void {
 };
 
 $startOrderCityEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3505,7 +3505,7 @@ $saveOrderWilaya = function (?string $stateId = null): void {
 
     $this->saveEdit([
         'field' => 'order.wilaya',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => ['value' => ['required', 'string', 'exists:states,id']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => function (Order $order, $value): void {
@@ -3541,7 +3541,7 @@ $saveOrderCity = function (?string $cityId = null): void {
 
     $this->saveEdit([
         'field' => 'order.city',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => function (string $field, $value, $id) use ($order): array {
             return [
                 'value' => [
@@ -3617,7 +3617,7 @@ $inlineStopdeskOptions = function (Order $order): array {
 };
 
 $startOrderProviderEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3662,7 +3662,7 @@ $saveOrderProvider = function (?string $providerId = null): void {
 
     $this->saveEdit([
         'field' => 'order.shipping_provider',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => function (string $field, $value, $id) use ($order): array {
             return ['value' => ['nullable', function (string $attribute, $candidate, $fail) use ($order): void {
                 if (blank($candidate)) {
@@ -3738,7 +3738,7 @@ $saveOrderProvider = function (?string $providerId = null): void {
 };
 
 $startOrderDeliveryTypeEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3763,7 +3763,7 @@ $saveOrderDeliveryType = function (?string $deliveryType = null): void {
 
     $this->saveEdit([
         'field' => 'order.delivery_type',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => ['value' => ['required', 'in:home,stopdesk']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => function (Order $order, $value): void {
@@ -3826,7 +3826,7 @@ $saveOrderShipmentType = function (?string $shipmentType = null): void {
 };
 
 $startOrderStopdeskEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3855,7 +3855,7 @@ $saveOrderStopdesk = function (?string $pointId = null): void {
 
     $this->saveEdit([
         'field' => 'order.stopdesk_point',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => function (string $field, $value, $id) use ($order): array {
             return ['value' => ['nullable', function (string $attribute, $candidate, $fail) use ($order): void {
                 if (blank($candidate)) {
@@ -3979,7 +3979,7 @@ $saveOrderAgent = function (?string $membershipId = null): void {
 // ——— 31.4 ——— Inline field edits (address / weight / discount / send-from-warehouse) ———
 
 $startOrderAddressEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -4000,7 +4000,7 @@ $saveOrderAddress = function (?string $address = null): void {
 
     $this->saveEdit([
         'field' => 'order.address',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value),
         'rules' => ['value' => ['nullable', 'string', 'max:5000']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => function (Order $order, $value): void {
@@ -4164,7 +4164,7 @@ $saveOrderDiscount = function (): void {
 };
 
 $toggleSendFromWarehouse = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -5483,7 +5483,7 @@ $submitEdit = function (): void {
                                                                 {{ $this->editingError }}</p>
                                                         @endif
                                                     </div>
-                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_GEOGRAPHY->value))
                                                     <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch"
                                                         @click="$wire.startOrderWilayaEdit('{{ $orderId }}')">
                                                         <span class="edz-inline-edit__value">
