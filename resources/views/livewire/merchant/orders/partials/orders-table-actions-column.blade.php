@@ -58,7 +58,9 @@
     </x-edz.tooltip>
     @endif
 
-    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value)
+    {{-- 36.12.6 (§6.5b-5) — twin of $sendConfirmedOrder. Same OR, with the
+         existing status-key condition kept intact as a second requirement. --}}
+    @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_CARRIER->value))
      && !$showTrash && in_array($order['status_key'] ?? null, ['confirmed', 'preparing'], true))
         <x-edz.tooltip label="{{ $layout === 'compact' ? __('order_flow.send_to_carrier') : '' }}">
         <button wire:click="sendConfirmedOrder('{{ $orderId }}')"

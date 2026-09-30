@@ -75,17 +75,24 @@
             </button>
         </div>
 
-        {{-- Send to carrier (P29.3) / change status (P29) --}}
-        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
-            <p class="px-2.5 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
-                {{ __('order_flow.bulk_status_title') }}
-            </p>
+        {{-- 36.12.6 (§6.5b-6) — these two buttons used to share ONE @if keyed on
+             order.manage, which conflated "hand orders to a carrier" with "change
+             the status of my own orders". They are now two independent gates:
+             sending follows order.dispatch.carrier, status editing follows
+             order.status.manage.own. Never merge them back. --}}
+        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_CARRIER->value))
             <button wire:click="openBulkSendModal" @click="open = false" type="button"
                 class="w-full flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-secondary disabled:opacity-50"
                 wire:loading.attr="disabled" wire:target="openBulkSendModal,confirmBulkSend">
                 <x-edz.icon name="truck" class="w-4 h-4 shrink-0 text-ink-muted" />
                 <span>{{ __('merchant.bulk_send_carrier') }}</span>
             </button>
+        @endif
+
+        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value))
+            <p class="px-2.5 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+                {{ __('order_flow.bulk_status_title') }}
+            </p>
             <button wire:click="openBulkStatusModal" @click="open = false" type="button"
                 class="w-full flex items-center gap-2 px-2.5 min-h-[44px] rounded-lg text-sm hover:bg-surface-secondary disabled:opacity-50"
                 wire:loading.attr="disabled" wire:target="openBulkStatusModal,submitBulkStatus">

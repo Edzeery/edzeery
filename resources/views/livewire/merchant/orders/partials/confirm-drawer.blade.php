@@ -124,7 +124,12 @@
                             <span>{{ __('order_flow.confirm_only') }}</span>
                         </button>
                     @endif
-                    @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                    {{-- 36.12.6 (§6.5b-2) — twin of $submitConfirmAndSend: the same
+                         compound AND, so the button shows for exactly the same
+                         members the guard accepts. Never split this from the
+                         handler. --}}
+                    @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM->value))
+                        && (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_DISPATCH_CARRIER->value)))
                         <button wire:click="submitConfirmAndSend" type="button"
                             class="edz-btn edz-btn--primary"
                             wire:loading.attr="disabled">

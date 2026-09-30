@@ -1204,7 +1204,12 @@ $bulkAssignAgent = function (?string $membershipId): void {
 // the confirmation modal BEFORE anything is sent, and are named with their
 // reasons in the result toast. No auto-confirm is ever performed.
 $openBulkSendModal = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    // 36.12.6 — companion guard for the §6.5b-6 button. The spec table lists only
+    // $confirmBulkSend, but this opener gates the very same bulk-send action, so
+    // without the OR the newly visible button would 403 for a dispatch.carrier
+    // member — the "button without its guard" failure the pairing rule forbids.
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        && ! canStore(StorePermissionEnum::ORDER_DISPATCH_CARRIER->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -1306,7 +1311,8 @@ $resolveBulkOrderState = function (Order $order): array {
 };
 
 $confirmBulkSend = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        && ! canStore(StorePermissionEnum::ORDER_DISPATCH_CARRIER->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -1883,7 +1889,12 @@ $submitConfirmOnly = function (): void {
 };
 
 $submitConfirmAndSend = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    // 36.12.6 (§6.5b-1) — compound AND, deliberately not one OR: confirming
+    // needs (order.manage | order.confirm) AND sending needs
+    // (order.manage | order.dispatch.carrier). Holding only one half is refused,
+    // which is what keeps order.confirm from silently becoming a send licence.
+    if ((! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_CONFIRM->value))
+        || (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_DISPATCH_CARRIER->value))) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -2011,7 +2022,8 @@ $submitConfirmAndSend = function (): void {
 // Readiness is validated before any transition; incomplete orders get a
 // field-by-field warning and keep their current status.
 $sendConfirmedOrder = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)
+        && ! canStore(StorePermissionEnum::ORDER_DISPATCH_CARRIER->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
