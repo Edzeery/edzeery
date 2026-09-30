@@ -294,7 +294,7 @@
                 ->implode('; ');
         @endphp
         <td class="px-4 py-3 text-xs text-ink-muted max-w-[200px]">
-            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                 <x-edz.tooltip label="{{ $itemsSummaryTitle }}" block>
                     <button type="button" class="edz-inline-edit__display w-full text-start"
                         wire:click="openItemsModal('products', '{{ $orderId }}')"
@@ -316,7 +316,7 @@
 
     @case('quantity')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums text-center max-w-[150px]">
-            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                 <x-edz.tooltip label="{{ __('merchant_panel.edit_items') }}" block>
                     <button type="button" class="edz-inline-edit__display w-full text-center"
                         wire:click="openItemsModal('quantity', '{{ $orderId }}')"
@@ -342,7 +342,7 @@
 
     @case('price')
         <td class="px-4 py-3 text-xs text-ink-muted tabular-nums max-w-[200px]">
-            @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) && $this->itemsPriceEditable())
+            @if ((canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) && $this->itemsPriceEditable())
                 <x-edz.tooltip label="{{ __('merchant_panel.edit_items') }}" block>
                     <button type="button" class="edz-inline-edit__display w-full text-start"
                         wire:click="openItemsModal('price', '{{ $orderId }}')"
@@ -411,7 +411,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                 @php
                     $discountTitle = match ($order['discount_type'] ?? null) {
                         'percent' => ($order['discount_value'] ?? '') . '%',
@@ -472,7 +472,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                 <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     wire:click="startOrderWeightEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">{{ $order['weight_kg'] ? $order['weight_kg'] . ' kg' : '—' }}</span>
@@ -504,7 +504,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                 <button type="button" class="edz-inline-edit__display max-w-[100px] text-start"
                     @click="$wire.startOrderShipmentTypeEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value">{{ $shipmentLabel['label'] ?? ($order['shipment_type'] ?? '—') }}</span>

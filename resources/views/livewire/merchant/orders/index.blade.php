@@ -310,7 +310,7 @@ $itemsPriceEditable = function (): bool {
 };
 
 $openItemsModal = function (string $kind, string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -366,7 +366,7 @@ $updateInlineItemPrice = function (int $index, $price): void {
 };
 
 $addInlineItem = function (string $variantId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -374,7 +374,7 @@ $addInlineItem = function (string $variantId): void {
 };
 
 $saveOrderItems = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3786,7 +3786,7 @@ $saveOrderDeliveryType = function (?string $deliveryType = null): void {
 };
 
 $startOrderShipmentTypeEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3814,7 +3814,7 @@ $saveOrderShipmentType = function (?string $shipmentType = null): void {
 
     $this->saveEdit([
         'field' => 'order.shipment_type',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value),
         'rules' => ['value' => ['required', 'in:delivery,exchange,pickup']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => fn(Order $order, $value) => $order->update(['shipment_type' => $value]),
@@ -4019,7 +4019,7 @@ $saveOrderAddress = function (?string $address = null): void {
 };
 
 $startOrderWeightEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -4046,7 +4046,7 @@ $saveOrderWeight = function (?string $weight = null): void {
 
     $this->saveEdit([
         'field' => 'order.weight',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value),
         'rules' => ['value' => ['nullable', 'numeric', 'min:0', 'max:'.Order::resolveMaxWeightKg($limitOrder->shipping_provider_id)]],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => fn(Order $order, $value) => $order->update(['weight_kg' => blank($value) ? 1.00 : $value]),
@@ -4095,7 +4095,7 @@ $saveOrderNotes = function (?string $notes = null): void {
 };
 
 $startOrderDiscountEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -4126,7 +4126,7 @@ $saveOrderDiscount = function (): void {
 
     $this->saveEdit([
         'field' => 'order.discount',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_PRODUCTS->value),
         'rules' => [
             'value' => [
                 'nullable',
@@ -5532,7 +5532,7 @@ $submitEdit = function (): void {
                                                 </span>
                                             @endif
                                         </div>
-                                        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                        @if (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_PRODUCTS->value))
                                             <div class="relative mt-2" x-data="itemsEditMenu($el)"
                                                 @click.away="close()">
                                                 <button @click="toggle()" x-ref="itemsMenuTrigger"
