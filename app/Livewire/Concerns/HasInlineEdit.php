@@ -93,7 +93,18 @@ trait HasInlineEdit
     {
         $permission = $config['permission'] ?? null;
 
-        if ($permission !== null && ! canStore($permission)) {
+        // A permission is normally the permission string, but a caller may pass a
+        // Closure to express an OR across several permissions. is_string() is
+        // tested before is_callable() because PHP also treats function names as
+        // callables, so a string must never be reached by the callable branch.
+        $allowed = match (true) {
+            $permission === null => true,
+            is_string($permission) => canStore($permission),
+            is_callable($permission) => (bool) $permission(),
+            default => false,
+        };
+
+        if (! $allowed) {
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
             return;
         }

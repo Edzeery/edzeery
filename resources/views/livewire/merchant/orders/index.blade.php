@@ -3262,7 +3262,7 @@ $saveDeliveryModal = function (): void {
 // ——— Inline phone edit (customer phone + order secondary, stacked) ———
 
 $startOrderPhoneEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3286,7 +3286,7 @@ $cancelOrderPhoneEdit = function (): void {
 };
 
 $saveOrderPhone = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3339,7 +3339,7 @@ $saveOrderPhone = function (): void {
 // ——— Inline customer name edit (30.7) ———
 
 $startOrderNameEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -3361,7 +3361,7 @@ $cancelOrderNameEdit = function (): void {
 };
 
 $saveOrderName = function (): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -4058,7 +4058,7 @@ $saveOrderWeight = function (?string $weight = null): void {
 };
 
 $startOrderNotesEdit = function (string $orderId): void {
-    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value)) {
+    if (! canStore(StorePermissionEnum::ORDER_MANAGE->value) && ! canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value)) {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
@@ -4083,7 +4083,7 @@ $saveOrderNotes = function (?string $notes = null): void {
 
     $this->saveEdit([
         'field' => 'order.notes',
-        'permission' => StorePermissionEnum::ORDER_MANAGE->value,
+        'permission' => fn (): bool => canStore(StorePermissionEnum::ORDER_MANAGE->value) || canStore(StorePermissionEnum::ORDER_EDIT_IDENTITY->value),
         'rules' => ['value' => ['nullable', 'string', 'max:500']],
         'subject' => fn(mixed $id) => Order::where('store_id', currentStoreId())->findOrFail($id),
         'apply' => fn(Order $order, $value) => $order->update(['notes' => blank($value) ? null : $value]),
@@ -5302,7 +5302,7 @@ $submitEdit = function (): void {
                                                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                                                     @endif
                                                 </div>
-                                            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                                                 <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch min-w-0"
                                                     wire:click="startOrderNameEdit('{{ $orderId }}')"
                                                     title="{{ $order['customer']['name'] ?? '-' }}">
@@ -5349,7 +5349,7 @@ $submitEdit = function (): void {
                                                         {{ $this->editingError }}</p>
                                                 @endif
                                             </div>
-                                        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                        @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                                             <button type="button" class="edz-inline-edit__display edz-inline-edit__display--touch mt-1"
                                                 wire:click="startOrderPhoneEdit('{{ $orderId }}')">
                                                 <span class="edz-inline-edit__value" dir="ltr">
@@ -5427,7 +5427,7 @@ $submitEdit = function (): void {
                                                                     {{ $this->editingError }}</p>
                                                             @endif
                                                         </div>
-                                                    @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+                                                    @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                                                         <button type="button"
                                                             class="edz-inline-edit__display
                                                              edz-inline-edit__display--touch w-full text-left"

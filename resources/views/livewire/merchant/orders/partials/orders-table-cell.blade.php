@@ -62,7 +62,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                 <x-edz.tooltip label="{{ $order['customer']['name'] ?? '-' }}">
                     <button type="button" class="edz-inline-edit__display max-w-[110px]"
                         wire:click="startOrderNameEdit('{{ $orderId }}')"
@@ -144,7 +144,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                 <button type="button" class="edz-inline-edit__display min-w-[115px]"
                     wire:click="startOrderPhoneEdit('{{ $orderId }}')">
                     <span class="edz-inline-edit__value"
@@ -195,7 +195,7 @@
                         <p class="edz-inline-edit__error">{{ $this->editingError }}</p>
                     @endif
                 </div>
-            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value))
+            @elseif (canStore(\App\Enums\Store\StorePermissionEnum::ORDER_MANAGE->value) || canStore(\App\Enums\Store\StorePermissionEnum::ORDER_EDIT_IDENTITY->value))
                 <x-edz.tooltip label="{{ $order['notes'] ?? '' }}">
                     <button type="button" class="edz-inline-edit__display text-left"
                         wire:click="startOrderNotesEdit('{{ $orderId }}')">
