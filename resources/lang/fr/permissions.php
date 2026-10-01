@@ -44,7 +44,7 @@ return [
             'carrier' => 'Confier la commande à une société de livraison',
             'rider' => 'Confier la commande à un livreur',
         ],
-        'dispatch_validate' => 'Valider l\'expédition des commandes',
+        'dispatch_validate' => 'Valider la remise du transporteur',
         'edit' => [
             'geography' => 'Modifier les informations de livraison de la commande',
             'identity' => 'Modifier les informations client de la commande',

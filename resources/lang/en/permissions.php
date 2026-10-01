@@ -44,7 +44,7 @@ return [
             'carrier' => 'Dispatch Order to Shipping Company',
             'rider' => 'Dispatch Order to Delivery Rider',
         ],
-        'dispatch_validate' => 'Validate Order Dispatch',
+        'dispatch_validate' => 'Validate Carrier Handover',
         'edit' => [
             'geography' => 'Edit Order Delivery Details',
             'identity' => 'Edit Order Customer Details',

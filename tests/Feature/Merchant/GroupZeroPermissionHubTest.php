@@ -178,7 +178,16 @@ it('auto-includes order.view when the row is toggled', function (string $permiss
         ->set('store_role', StoreRoleEnum::STAFF->value)
         ->call('openPermissionGroup', 'order')
         ->assertSee(PermissionGroupMeta::label($permission))
-        ->assertSee(PermissionGroupMeta::description($permission))
+        // The description is no longer a plain line under the label — it is the
+        // accessible label of the inline info-circle tooltip trigger. Assert the
+        // attribute rather than the bare text: the text also sits in the bubble's
+        // hidden body, so a plain assertSee would pass either way, and the point
+        // of the refinement is that the description leaves the row's flow.
+        ->assertSee('aria-label="' . e(PermissionGroupMeta::description($permission)) . '"', escape: false)
+        ->assertDontSee('mt-0.5 block text-xs text-ink-muted">' . e(PermissionGroupMeta::description($permission)), escape: false)
+        // The long groups scroll inside the list itself, with the themed edz bar,
+        // instead of stretching the modal panel to its 90vh limit.
+        ->assertSee('max-h-[45vh] overflow-y-auto edz-scroll', escape: false)
         // Enabling pulls order.view in with it.
         ->call('togglePermission', $permission, true)
         ->assertSet('permissions', fn (array $granted) => in_array($permission, $granted, true)
@@ -214,7 +223,7 @@ it('keeps the sibling order labels resolving to their own strings', function () 
         ->and(PermissionGroupMeta::label('order.delete'))->toBe('Delete Order')
         ->and(PermissionGroupMeta::label('order.delete.final'))->toBe('Delete Order (Final)')
         ->and(PermissionGroupMeta::label('order.edit.price'))->toBe('Edit Order Product Prices')
-        ->and(PermissionGroupMeta::label('order.dispatch_validate'))->toBe('Validate Order Dispatch');
+        ->and(PermissionGroupMeta::label('order.dispatch_validate'))->toBe('Validate Carrier Handover');
 });
 
 it('exposes the new group keys as arrays and no caller reads them', function () {

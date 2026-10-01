@@ -28,7 +28,13 @@
                     </span>
                 </div>
 
-                <ul class="mt-3 divide-y divide-surface-border rounded-lg border border-surface-border">
+                {{-- 45vh matches the other bordered, divided lists that scroll
+                     inside a modal (orders-items-edit-modals). The modal panel
+                     itself scrolls at 90vh with a browser-default bar, so the
+                     long groups after Phase 36.12 pushed the header and the
+                     Done button off with them. Scrolling the list instead keeps
+                     those pinned and themes the bar with the edz convention. --}}
+                <ul class="mt-3 max-h-[45vh] overflow-y-auto edz-scroll divide-y divide-surface-border rounded-lg border border-surface-border">
                     @foreach ($this->activeGroupMeta['rows'] as $row)
                         <li class="flex items-start justify-between gap-3 px-3 py-2.5 {{ $row['coming_soon'] ? 'opacity-60' : '' }}">
                             <label class="flex min-w-0 items-start gap-2.5 {{ $row['coming_soon'] ? 'cursor-not-allowed' : 'cursor-pointer' }}">
@@ -52,15 +58,33 @@
                                         @if ($row['coming_soon'])
                                             <span class="edz-badge edz-badge--neutral edz-badge--sm">{{ __('teams.soon_badge') }}</span>
                                         @endif
+                                        {{-- The description used to sit here as a plain
+                                             line under the label, which made every row a
+                                             different height. It now lives in an inline
+                                             tooltip on this same row, so rows stay uniform
+                                             and the list reads as a clean set of switches.
+                                             The trigger is a real <button> (the repo's
+                                             convention for icon-only tooltip triggers) so
+                                             the bubble opens on keyboard focus too, not
+                                             just on hover; nesting a button in this <label>
+                                             is safe because a label's activation
+                                             behaviour does nothing on interactive
+                                             descendants, so the checkbox never toggles
+                                             from the info icon. --}}
+                                        @if (! empty($row['description']))
+                                            <x-edz.tooltip :label="$row['description']" side="top">
+                                                <button type="button" aria-label="{{ $row['description'] }}"
+                                                    class="shrink-0 cursor-help rounded p-0.5 text-ink-muted transition hover:text-accent-600">
+                                                    <x-edz.icon name="info-circle" class="w-3.5 h-3.5 shrink-0" />
+                                                </button>
+                                            </x-edz.tooltip>
+                                        @endif
                                     </span>
                                     @if (! empty($row['requires']))
                                         <span class="mt-0.5 block text-xs text-ink-muted">
                                             {{ __('teams.requires') }}:
                                             {{ collect($row['requires'])->map(fn ($r) => \App\Support\PermissionGroupMeta::label($r))->implode(', ') }}
                                         </span>
-                                    @endif
-                                    @if (! empty($row['description']))
-                                        <span class="mt-0.5 block text-xs text-ink-muted">{{ $row['description'] }}</span>
                                     @endif
                                 </span>
                             </label>

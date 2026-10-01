@@ -44,7 +44,7 @@ return [
             'carrier' => 'Enviar el pedido a una empresa de transporte',
             'rider' => 'Entregar el pedido a un repartidor',
         ],
-        'dispatch_validate' => 'Validar despacho de pedidos',
+        'dispatch_validate' => 'Validar la entrega del transportista',
         'edit' => [
             'geography' => 'Editar los datos de entrega del pedido',
             'identity' => 'Editar los datos del cliente del pedido',
