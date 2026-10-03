@@ -8,6 +8,7 @@ use App\Domains\Shipping\Models\Carrier;
 use App\Domains\Shipping\Models\DeliveryRate;
 use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Enums\Finance\DebtStatusEnum;
 use App\Enums\Finance\DebtTypeEnum;
 use App\Enums\Platform\UserRoleEnum;
@@ -16,11 +17,16 @@ use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Enums\Store\StoreStatusEnum;
+use App\Enums\SubscriptionPayment\StatusPaymentEnum;
+use App\Enums\SubscriptionPayment\StatusSubscriptionEnum;
+use App\Models\billing\Payment;
+use App\Models\billing\Subscription;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Finance\Debt;
 use App\Models\Finance\DebtPayment;
+use App\Models\Plans\Plan;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -38,6 +44,7 @@ use App\Models\Status;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
+use App\Support\Storefront\StorefrontSections;
 use App\Support\StoreRoles;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -79,13 +86,54 @@ class DemoStoreSeeder extends Seeder
             ]
         );
 
+        $themeContent = StorefrontSections::normalize([
+            'hero' => [
+                'title'       => 'مرحباً بكم في المتجر التجريبي',
+                'description' => 'اكتشف تشكيلتنا المختارة مع توصيل سريع عبر كامل التراب الوطني والدفع عند الاستلام.',
+                'button_text' => 'تسوق الآن',
+            ],
+            'social_proof' => [
+                'title' => 'لماذا يختارنا الزبائن؟',
+                'items' => [
+                    ['title' => 'الدفع عند الاستلام', 'description' => 'ادفع بكل أمان عند استلام طلبك.', 'icon' => 'shield-check'],
+                    ['title' => 'توصيل سريع', 'description' => 'توصيل عبر كامل التراب الوطني.', 'icon' => 'truck'],
+                    ['title' => 'إرجاع سهل', 'description' => 'سياسة إرجاع مرنة وبدون تعقيد.', 'icon' => 'refresh'],
+                ],
+            ],
+            'faq' => [
+                'title' => 'الأسئلة الشائعة',
+                'items' => [
+                    ['question' => 'كم تستغرق مدة التوصيل؟', 'answer' => 'من 2 إلى 7 أيام عمل حسب الولاية.'],
+                    ['question' => 'ما هي طرق الدفع المتاحة؟', 'answer' => 'الدفع عند الاستلام نقداً.'],
+                    ['question' => 'كيف تتم معالجة الإرجاعات؟', 'answer' => 'تُعالج الأغراض المرتجعة خلال 48 ساعة من الوصول.'],
+                ],
+            ],
+            'cta' => [
+                'title'       => 'جاهز للطلب؟',
+                'description' => 'ابدأ التسوق الآن واستمتع بتجربة شراء مميزة.',
+                'button_text' => 'اطلب الآن',
+            ],
+        ]);
+
         $store->theme()->updateOrCreate(
             ['store_id' => $store->id],
             [
                 'primary_color'     => '#6366f1',
                 'secondary_color'   => '#8b5cf6',
                 'font_family'       => 'Cairo',
-                'homepage_sections' => ['hero', 'categories', 'social_proof'],
+                'homepage_sections' => StorefrontSections::defaultSectionsFor('catalog'),
+                'section_content'   => $themeContent,
+            ]
+        );
+
+        $store->seo()->updateOrCreate(
+            ['store_id' => $store->id],
+            [
+                'meta_title'       => 'المتجر التجريبي — إدزيري',
+                'meta_description' => 'اكتشف تشكيلة مختارة من الإلكترونيات، الألبسة والإكسسوارات مع توصيل سريع عبر كامل التراب الوطني والدفع عند الاستلام.',
+                'meta_keywords'    => 'متجر الكتروني, تسوق, الكترونيات, البسة, اكسسوارات, توصيل, الدفع عند الاستلام, الجزائر',
+                'og_image'         => 'img/icons/noimg.png',
+                'favicon'          => 'img/icons/noimg.png',
             ]
         );
 
@@ -129,6 +177,10 @@ class DemoStoreSeeder extends Seeder
             $user->merchant()->assignRole(StoreRoleEnum::OWNER);
         }
         $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
+
+        // A real, paid subscription (no trial) so the billing dashboard,
+        // plan limits and renewal dates are fully populated for the demo.
+        $this->seedSubscription($user, $store);
 
         // Demo team members — one per role on THIS demo store, so a tester can
         // log in as each role and see the scoped/matrix behaviour. Separate
@@ -192,6 +244,7 @@ class DemoStoreSeeder extends Seeder
 
         $this->seedDemoCustomers($store);
         $this->seedShippingRates($store);
+        $this->seedStopdeskPoints($store);
         $this->seedDemoOrders($store);
         $this->seedFinanceData($store);
     }
@@ -221,6 +274,55 @@ class DemoStoreSeeder extends Seeder
         }
 
         return $user;
+    }
+
+    private function seedSubscription(User $user, Store $store): void
+    {
+        // A real paid plan (best-fit: pro, else basic). Deterministic dates —
+        // starts 12 days ago, renews in 18 days — with a settled payment record
+        // so billing, plan limits and renewal reminders all behave like a live
+        // merchant account. No trial: status stays ACTIVE from the first run.
+        $plan = Plan::whereIn('slug', ['pro', 'basic'])
+            ->orderByRaw("FIELD(slug, 'pro', 'basic')")
+            ->first() ?? Plan::query()->orderByDesc('is_default')->first();
+
+        if (! $plan) {
+            return;
+        }
+
+        $planPrice = $plan->prices()->where('billing_period', 'monthly')->first();
+        if (! $planPrice) {
+            return;
+        }
+
+        $subscription = Subscription::updateOrCreate(
+            ['user_id' => $user->id, 'plan_id' => $plan->id],
+            [
+                'plan_price_id' => $planPrice->id,
+                'is_trial'      => false,
+                'starts_at'     => now()->subDays(12),
+                'ends_at'       => now()->addDays(18),
+                'status'        => StatusSubscriptionEnum::ACTIVE,
+            ]
+        );
+
+        Payment::updateOrCreate(
+            [
+                'user_id'         => $user->id,
+                'store_id'        => $store->id,
+                'subscription_id' => $subscription->id,
+                'transaction_id'  => 'DEMO-TRX-PRO-001',
+            ],
+            [
+                'plan_price_id' => $planPrice->id,
+                'gateway'       => 'chargily',
+                'status'        => StatusPaymentEnum::PAID,
+                'amount'        => (float) $planPrice->price,
+                'currency'      => $planPrice->currency ?? 'DZD',
+                'meta'          => ['demo' => true, 'note' => 'Demo seeding — settled subscription payment.'],
+                'paid_at'       => now()->subDays(12),
+            ]
+        );
     }
 
     private function seedDemoCustomer(User $owner): void
@@ -787,6 +889,7 @@ class DemoStoreSeeder extends Seeder
         $riders    = DeliveryRider::where('store_id', $store->id)->get()->keyBy('phone');
         $customers = Customer::where('store_id', $store->id)->get()->keyBy('phone');
         $variants  = ProductVariant::withoutGlobalScopes()->where('store_id', $store->id)->get()->keyBy('sku');
+        $stopdesks = StopdeskPoint::where('store_id', $store->id)->get()->keyBy('external_code');
 
         $ctx = [
             'statuses'  => $statuses,
@@ -795,6 +898,7 @@ class DemoStoreSeeder extends Seeder
             'riders'    => $riders,
             'customers' => $customers,
             'variants'  => $variants,
+            'stopdesks' => $stopdesks,
             'owner'     => $members->get('demo@edzeery.com'),
             'confirmer' => $members->get('demo.confirmer@edzeery.com'),
             'tracker'   => $members->get('demo.tracker@edzeery.com'),
@@ -989,6 +1093,31 @@ class DemoStoreSeeder extends Seeder
                     ],
                 ],
             ],
+            [ // 21016 — delivered via carrier office (stopdesk pickup)
+                'number' => '21016', 'customer' => '0770987654', 'status' => 'delivered', 'days_ago' => 6, 'create_hour' => 10,
+                'items' => [['DEMO-WATCH-001-SV', 1]],
+                'provider' => 'zrexpress_v2',
+                'delivery_type' => 'stopdesk',
+                'stopdesk_point' => 'ZR-ORN-01',
+                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'notes' => 'Delivered to the ZR Express Oran office; customer picked it up.',
+                'history' => [
+                    ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed — customer chose office pickup', 8],
+                    ['shipped', 'demo.tracker@edzeery.com', 'Shipped to the ZR Express Oran office', 26],
+                    ['in_transit', 'demo.tracker@edzeery.com', 'Arrived at the Oran distribution centre', 76],
+                    ['out_for_delivery', 'demo.tracker@edzeery.com', 'Ready for pickup at the office', 120],
+                    ['delivered', 'demo.tracker@edzeery.com', 'Picked up by the customer at the office', 140],
+                ],
+                'tracking' => [
+                    'number' => 'DEM-HM-402734', 'status' => 'delivered', 'shipped_hours' => 26, 'delivered_hours' => 140,
+                    'timeline' => [
+                        ['shipped', 'Shipped to the ZR Express Oran office', 26],
+                        ['in_transit', 'Arrived at the Oran distribution centre', 76],
+                        ['out_for_delivery', 'Ready for pickup at the office', 120],
+                        ['delivered', 'Picked up by the customer at the office', 140],
+                    ],
+                ],
+            ],
         ];
 
         foreach ($specs as $spec) {
@@ -1034,6 +1163,43 @@ class DemoStoreSeeder extends Seeder
                     ]
                 );
             }
+        }
+    }
+
+    private function seedStopdeskPoints(Store $store): void
+    {
+        // Pickup offices the demo's carriers actually serve, so the order-form
+        // office-delivery (stopdesk) block has real options for the seeded
+        // customer wilayas and the stopdesk demo order (21016) resolves to one.
+        $points = [
+            ['provider' => 'ecotrack',    'state' => '16', 'city' => 'Bab Ezzouar', 'code' => 'EC-ALG-01', 'name' => 'Ecotrack — Hub Alger',       'address' => "Zone d'activite de Bab Ezzouar, Alger",   'phone' => '023 80 12 34'],
+            ['provider' => 'ecotrack',    'state' => '31', 'city' => 'Bir El Djir', 'code' => 'EC-ORN-01', 'name' => 'Ecotrack — Agence Oran',      'address' => "Rue de l'ANP, Bir El Djir, Oran",         'phone' => '041 55 44 33'],
+            ['provider' => 'zrexpress_v2','state' => '16', 'city' => 'Bab Ezzouar', 'code' => 'ZR-ALG-01', 'name' => 'ZR Express — Agence Alger',   'address' => 'Cite 5 Juillet, Bab Ezzouar, Alger',       'phone' => '023 90 21 43'],
+            ['provider' => 'zrexpress_v2','state' => '31', 'city' => 'Bir El Djir', 'code' => 'ZR-ORN-01', 'name' => 'ZR Express — Agence Oran',    'address' => 'Rue El Karma, Bir El Djir, Oran',          'phone' => '041 55 44 88'],
+        ];
+
+        foreach ($points as $point) {
+            $provider = ShippingProvider::where('store_id', $store->id)->where('code', $point['provider'])->first();
+            $state = State::where('state_code', $point['state'])->first();
+
+            if (! $provider || ! $state) {
+                continue;
+            }
+
+            $city = City::where('state_id', $state->id)->where('name', $point['city'])->first();
+
+            StopdeskPoint::updateOrCreate(
+                ['store_id' => $store->id, 'name' => $point['name']],
+                [
+                    'shipping_provider_id' => $provider->id,
+                    'state_id'             => $state->id,
+                    'city_id'              => $city?->id,
+                    'address'              => $point['address'],
+                    'phone'                => $point['phone'],
+                    'external_code'        => $point['code'],
+                    'is_active'            => true,
+                ]
+            );
         }
     }
 
@@ -1188,6 +1354,7 @@ class DemoStoreSeeder extends Seeder
         }
 
         $shippingCost = 0.0;
+        $isStopdesk = ($spec['delivery_type'] ?? null) === Order::DELIVERY_STOPDESK;
         if ($provider) {
             $rate = DeliveryRate::query()
                 ->where('store_id', $store->id)
@@ -1196,7 +1363,9 @@ class DemoStoreSeeder extends Seeder
                 ->where('is_active', true)
                 ->first();
 
-            $shippingCost = (float) ($rate?->home_cost ?? $provider->flat_rate ?? 0);
+            $shippingCost = $isStopdesk
+                ? (float) ($rate?->office_cost ?? $provider->flat_rate ?? 0)
+                : (float) ($rate?->home_cost ?? $provider->flat_rate ?? 0);
         }
 
         $assignedAt = $assignTo ? $createdAt->copy()->addMinutes(25) : null;
@@ -1213,7 +1382,10 @@ class DemoStoreSeeder extends Seeder
         $order->state_id = $customer->state_id;
         $order->city_id = $customer->city_id;
         $order->address = $customer->address;
-        $order->delivery_type = Order::DELIVERY_HOME;
+        $order->delivery_type = $isStopdesk ? Order::DELIVERY_STOPDESK : Order::DELIVERY_HOME;
+        $order->stopdesk_point_id = $isStopdesk
+            ? $ctx['stopdesks']->get($spec['stopdesk_point'])?->id
+            : null;
         $order->payment_method = 'cod';
         $order->shipment_type = 'delivery';
         $order->shipping_provider_id = $provider?->id;
