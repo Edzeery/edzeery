@@ -5,8 +5,10 @@ namespace App\Domains\Order\Services;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
+use App\Models\Orders\OrderItem;
 use App\Models\Orders\OrderTracking;
 use App\Models\Stores\Team\StoreMembership;
+use App\Services\Stores\StoreProductScopeService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -27,8 +29,9 @@ class OrderTrackingAssignmentService
 
         $storeId = $store->id;
 
-        // 1. Resolve candidate pool
-        $candidates = $this->resolveCandidatePool($storeId);
+        // 1. Resolve candidate pool (product ids of the underlying order drive
+        //    the visibility guard — tracking itself has no product dimension)
+        $candidates = $this->resolveCandidatePool($storeId, $this->orderProductIds($tracking));
 
         // 2. Balance: fewest open assignments, then oldest last assignment,
         //    allowing store-configured overflow when no member fits strictly.
@@ -107,18 +110,40 @@ class OrderTrackingAssignmentService
 
     /**
      * Resolve candidate pool for a store: every active member holding the
-     * CRM_ORDER_TRACKING permission (no specialist tier — tracking has no
-     * product-matching model yet).
+     * CRM_ORDER_TRACKING permission whose visibility covers at least one of the
+     * order's products (no specialist tier — tracking has no product-matching
+     * model yet).
      */
-    private function resolveCandidatePool(string $storeId): Collection
+    private function resolveCandidatePool(string $storeId, array $productIds): Collection
     {
         // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
-        return StoreMembership::where('store_id', $storeId)
+        $candidates = StoreMembership::where('store_id', $storeId)
             ->where('is_active', true)
             ->with('storeWithTimezone')
             ->get()
             ->filter(fn (StoreMembership $m) => $m->can(StorePermissionEnum::CRM_ORDER_TRACKING))
             ->values();
+
+        return app(StoreProductScopeService::class)->filterByVisibility($candidates, $productIds);
+    }
+
+    /**
+     * Distinct product ids of the tracked order — the same set the confirm
+     * pipeline feeds to the specialist tiering, reused here so a manager whose
+     * product scope excludes every item is never auto-assigned the shipment.
+     */
+    private function orderProductIds(OrderTracking $tracking): array
+    {
+        if (! $tracking->order_id) {
+            return [];
+        }
+
+        return OrderItem::query()
+            ->where('order_id', $tracking->order_id)
+            ->whereNotNull('product_id')
+            ->distinct()
+            ->pluck('product_id')
+            ->all();
     }
 
     /**

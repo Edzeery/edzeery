@@ -7,31 +7,35 @@ use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\Stores\Team\StoreMembershipPermission;
+use App\Services\Stores\StoreProductScopeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Permission-scoped candidate listing for the manual reassignment modals
- * (confirm and tracking contexts). Given a store id and role scope it returns
- * the active members holding the matching permission, annotated with their
- * current open-assignment count for that scope, the effective role-scoped cap
- * (null = uncapped, taken from their active ConfirmationShifts), their on-shift
- * state at the current store time, and whether they hold BOTH permissions
- * (dual-role). All lookups are batched — no query per member.
+ * (confirm and tracking contexts). Given a store id, role scope and the
+ * order's product ids it returns the active members holding the matching
+ * permission — excluding anyone whose product visibility scope would hide the
+ * order — annotated with their current open-assignment count for that scope,
+ * the effective role-scoped cap (null = uncapped, taken from their active
+ * ConfirmationShifts), their on-shift state at the current store time, and
+ * whether they hold BOTH permissions (dual-role). All lookups are batched —
+ * no query per member.
  *
  * This is a read model for the reassign UI only. Manual reassignment itself
  * still bypasses eligibility checks (see the reassign() services); nothing here
- * enforces capacity.
+ * enforces capacity, and the visibility filter only narrows what is offered.
  */
 class AssignmentCandidateResolver
 {
     /**
      * @param string $roleScope 'confirm' | 'track'
      * @param string $permission Permission value the candidates must hold.
+     * @param array<int, string> $productIds Order product ids; empty = no visibility narrowing.
      * @return Collection<int, array<string, mixed>>
      */
-    public function resolve(string $storeId, string $roleScope, string $permission): Collection
+    public function resolve(string $storeId, string $roleScope, string $permission, array $productIds = []): Collection
     {
         $permissionsByMember = $this->permissionsByMember($storeId);
 
@@ -41,6 +45,16 @@ class AssignmentCandidateResolver
             ->get()
             ->filter(fn (StoreMembership $m) => $this->holdsPermission($m, $permission, $permissionsByMember))
             ->values();
+
+        if ($members->isEmpty()) {
+            return collect();
+        }
+
+        // Prime the permissions relation with the batch we already read so the
+        // visibility guard below can check TEAM_VIEW_OWN without re-querying.
+        $this->primePermissionsRelation($members, $permissionsByMember);
+
+        $members = app(StoreProductScopeService::class)->filterByVisibility($members, $productIds);
 
         if ($members->isEmpty()) {
             return collect();
@@ -103,6 +117,19 @@ class AssignmentCandidateResolver
         }
 
         return (bool) $member->user?->hasPermissionTo($permission, 'merchant');
+    }
+
+    /**
+     * Hand the already-batched permission rows to the memberships as a loaded
+     * relation, so later StoreMembership::can() checks (the visibility guard)
+     * read from memory instead of issuing one pivot query per member.
+     */
+    private function primePermissionsRelation(Collection $members, array $permissionsByMember): void
+    {
+        $members->each(function (StoreMembership $member) use ($permissionsByMember) {
+            $member->setRelation('permissions', collect($permissionsByMember[$member->id] ?? [])
+                ->map(fn (string $permission) => new StoreMembershipPermission(['permission' => $permission])));
+        });
     }
 
     /**

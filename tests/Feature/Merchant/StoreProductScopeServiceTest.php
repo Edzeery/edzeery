@@ -1,9 +1,9 @@
 <?php
 
-use App\Domains\Order\Models\ConfirmationProductAssignment;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Products\Product;
 use App\Models\Stores\Store;
+use App\Models\Stores\Team\MembershipProductScope;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
 use App\Services\Stores\StoreProductScopeService;
@@ -78,7 +78,7 @@ it('assigns a product to a manager membership of the same store (idempotent upse
     app(StoreProductScopeService::class)->assign($store, $membership, $product);
     app(StoreProductScopeService::class)->assign($store, $membership, $product);
 
-    $rows = ConfirmationProductAssignment::query()
+    $rows = MembershipProductScope::query()
         ->where('store_id', $store->id)
         ->where('membership_id', $membership->id)
         ->where('product_id', $product->id)
@@ -149,7 +149,7 @@ it('revokes only the exact assignment row for the given product', function () {
 
     expect(app(StoreProductScopeService::class)->assignedProductIds($store, $membership))->toBe([$productB->id]);
 
-    expect(ConfirmationProductAssignment::query()
+    expect(MembershipProductScope::query()
         ->where('store_id', $store->id)
         ->where('membership_id', $membership->id)
         ->where('product_id', $productA->id)
@@ -171,7 +171,7 @@ it('blocks add-product for a non-manager target via the Volt action guard', func
         ->assertDontSee(__('teams.product_scope_title'))
         ->call('addProductScope', $product->id);
 
-    expect(ConfirmationProductAssignment::query()->count())->toBe(0);
+    expect(MembershipProductScope::query()->count())->toBe(0);
 });
 
 it('fills the product scope modal for an active manager and add/remove works', function () {

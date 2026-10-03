@@ -5,6 +5,7 @@ namespace App\Livewire\Concerns;
 use App\Domains\Order\Support\AssignmentCandidateResolver;
 use App\Domains\Order\Services\OrderTrackingAssignmentService;
 use App\Enums\Store\StorePermissionEnum;
+use App\Models\Orders\OrderItem;
 use App\Models\Orders\OrderTracking;
 use App\Models\Stores\Team\StoreMembership;
 
@@ -36,7 +37,7 @@ trait TrackingReassignConcern
 
         $this->trackingReassignBulk = false;
         $this->trackingReassignCandidates = app(AssignmentCandidateResolver::class)
-            ->resolve($storeId, 'track', StorePermissionEnum::CRM_ORDER_TRACKING->value)
+            ->resolve($storeId, 'track', StorePermissionEnum::CRM_ORDER_TRACKING->value, $this->orderProductIds([$tracking->order_id]))
             ->toArray();
         $this->trackingReassignId = $tracking->id;
         $this->trackingReassignMembershipId = '';
@@ -68,7 +69,7 @@ trait TrackingReassignConcern
 
         $this->trackingReassignBulk = true;
         $this->trackingReassignCandidates = app(AssignmentCandidateResolver::class)
-            ->resolve($storeId, 'track', StorePermissionEnum::CRM_ORDER_TRACKING->value)
+            ->resolve($storeId, 'track', StorePermissionEnum::CRM_ORDER_TRACKING->value, $this->orderProductIds($this->selectedShipments))
             ->toArray();
         $this->trackingReassignId = null;
         $this->trackingReassignMembershipId = '';
@@ -141,5 +142,27 @@ trait TrackingReassignConcern
         $this->loadShipments();
 
         $this->dispatch('swal:toast', ['icon' => 'success', 'title' => __('order_flow.tracking_reassigned')]);
+    }
+
+    /**
+     * Distinct product ids of the given orders — the input of the visibility
+     * guard, so a manager product-scoped away from every one of them is never
+     * offered as a reassignment target. Bulk mode unions the whole selection,
+     * so the list is only narrowed when a candidate cannot see any of it.
+     */
+    private function orderProductIds(array $orderIds): array
+    {
+        $orderIds = array_values(array_filter($orderIds));
+
+        if ($orderIds === []) {
+            return [];
+        }
+
+        return OrderItem::where('store_id', currentStoreId())
+            ->whereIn('order_id', $orderIds)
+            ->whereNotNull('product_id')
+            ->distinct()
+            ->pluck('product_id')
+            ->all();
     }
 }

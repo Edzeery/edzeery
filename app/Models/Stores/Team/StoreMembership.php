@@ -168,6 +168,15 @@ class StoreMembership extends Model
         return $this->hasMany(\App\Domains\Order\Models\ConfirmationProductAssignment::class, 'membership_id');
     }
 
+    /**
+     * Product visibility restrictions (separate from the specialist rows above:
+     * one raises auto-assign priority, the other narrows what the member sees).
+     */
+    public function productScopes(): HasMany
+    {
+        return $this->hasMany(MembershipProductScope::class, 'membership_id');
+    }
+
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(self::class, 'supervisor_membership_id');

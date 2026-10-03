@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
 use App\Models\Orders\Order;
+use App\Models\Orders\OrderItem;
 use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Status;
@@ -2339,8 +2340,19 @@ $openReassignModal = function (string $orderId): void {
         $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
         return;
     }
+
+    // Product ids of the order drive the visibility guard: a manager whose
+    // product scope excludes every item of this order is not offered, since
+    // handing it to them would create an order they cannot open.
+    $productIds = OrderItem::where('store_id', currentStoreId())
+        ->where('order_id', $orderId)
+        ->whereNotNull('product_id')
+        ->distinct()
+        ->pluck('product_id')
+        ->all();
+
     $this->reassignCandidates = app(AssignmentCandidateResolver::class)
-        ->resolve(currentStoreId(), 'confirm', StorePermissionEnum::ORDER_CONFIRM->value)
+        ->resolve(currentStoreId(), 'confirm', StorePermissionEnum::ORDER_CONFIRM->value, $productIds)
         ->toArray();
     $this->reassignOrderId = $orderId;
     $this->reassignMembershipId = '';

@@ -8,6 +8,7 @@ use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
+use App\Services\Stores\StoreProductScopeService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -131,20 +132,26 @@ class OrderAssignmentService
     /**
      * Resolve candidate pool for a store and set of product IDs.
      *
-     * Returns every active ORDER_CONFIRM member; tier selection (specialists
-     * vs general) is decided later in selectBest() so a store with a narrow
+     * Returns every active ORDER_CONFIRM member whose visibility covers at
+     * least one of the order's products; tier selection (specialists vs
+     * general) is decided later in selectBest() so a store with a narrow
      * specialist roster still falls back to general confirmers.
      */
     private function resolveCandidatePool(string $storeId, array $productIds): Collection
     {
         // Members with ORDER_CONFIRM permission in this store
         // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
-        return StoreMembership::where('store_id', $storeId)
+        $candidates = StoreMembership::where('store_id', $storeId)
             ->where('is_active', true)
             ->with('storeWithTimezone')
             ->get()
             ->filter(fn (StoreMembership $m) => $m->can(StorePermissionEnum::ORDER_CONFIRM))
             ->values();
+
+        // Never hand an order to someone it would be invisible to: a manager
+        // whose product scope misses every item would be unable to open it.
+        // Specialist tiering below is untouched — this is an extra exclusion.
+        return app(StoreProductScopeService::class)->filterByVisibility($candidates, $productIds);
     }
 
     /**

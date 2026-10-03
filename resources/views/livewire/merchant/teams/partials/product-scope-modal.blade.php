@@ -2,6 +2,7 @@
 
 use App\Domains\Order\Models\ConfirmationProductAssignment;
 use App\Models\Products\Product;
+use App\Models\Stores\Team\MembershipProductScope;
 use App\Models\Stores\Team\StoreMembership;
 use App\Services\Stores\StoreProductScopeService;
 use function Livewire\Volt\computed;
@@ -32,9 +33,37 @@ $assigned = computed(function (): array {
         return [];
     }
 
+    return MembershipProductScope::query()
+        ->where('store_id', currentStoreId())
+        ->where('membership_id', $membership->id)
+        ->with('product:id,name,sku')
+        ->get()
+        ->map(fn (MembershipProductScope $scope) => [
+            'id' => $scope->product_id,
+            'name' => $scope->product?->name,
+            'sku' => $scope->product?->sku,
+        ])
+        ->values()
+        ->all();
+});
+
+/**
+ * Products this manager holds BOTH ways: a visibility scope row here AND a
+ * leftover confirmation specialist row in confirmation_product_assignments.
+ * Those rows were backfilled non-destructively, so the owner resolves them.
+ */
+$duplicatedSpecialist = computed(function (): array {
+    $membership = $this->membership;
+    $scopeIds = $this->assignedIds;
+
+    if (! $membership || $scopeIds === []) {
+        return [];
+    }
+
     return ConfirmationProductAssignment::query()
         ->where('store_id', currentStoreId())
         ->where('membership_id', $membership->id)
+        ->whereIn('product_id', $scopeIds)
         ->with('product:id,name,sku')
         ->get()
         ->map(fn (ConfirmationProductAssignment $assignment) => [
@@ -111,6 +140,30 @@ $close = function (): void {
     $this->search = '';
     $this->dispatch('product-scope-closed');
 };
+
+/**
+ * Owner review action: drop the specialist-side duplicate for one product,
+ * keeping the visibility scope. Guarded to managers of the current store, so
+ * unambiguous staff rows are unreachable from here.
+ */
+$removeSpecialistDuplicate = function (string $productId): void {
+    $membership = $this->membership;
+
+    if (! $membership || ! $membership->isManager() || $membership->store_id !== currentStoreId()) {
+        return;
+    }
+
+    ConfirmationProductAssignment::query()
+        ->where('store_id', currentStoreId())
+        ->where('membership_id', $membership->id)
+        ->where('product_id', $productId)
+        ->delete();
+
+    $this->dispatch('swal:toast', [
+        'icon' => 'success',
+        'title' => __('teams.product_scope_duplicate_removed'),
+    ]);
+};
 ?>
 
 <div @edz-modal-closed.window="$wire.close()">
@@ -155,6 +208,9 @@ $close = function (): void {
                         @endforeach
                     </ul>
                 @endif
+
+                {{-- Ambiguous backfilled rows still pending owner review --}}
+                @include('livewire.merchant.teams.partials.product-scope-duplicates')
 
                 <div class="mt-5">
                     <label class="edz-label">{{ __('teams.product_scope_add_label') }}</label>
