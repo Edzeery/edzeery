@@ -1,6 +1,8 @@
 <?php
 
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StoreRoleEnum;
+use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Support\StoreRoles;
@@ -54,6 +56,36 @@ function dfwOwnerStore(): array
     dfwMembership($store, $user, StoreRoleEnum::OWNER);
 
     return [$user, $store];
+}
+
+/**
+ * A carrier that can be attached to an order, so it shows up in the filter list.
+ */
+function dfwCarrier(Store $store, string $name, bool $isActive = true): ShippingProvider
+{
+    return ShippingProvider::create([
+        'store_id' => $store->id,
+        'name' => $name,
+        'code' => 'dfw-'.uniqid(),
+        'credentials' => [],
+        'is_active' => $isActive,
+    ]);
+}
+
+/**
+ * A delivered order, optionally routed through a carrier.
+ */
+function dfwOrder(Store $store, \App\Models\User $user, ?ShippingProvider $carrier = null): Order
+{
+    return Order::query()->create([
+        'store_id' => $store->id,
+        'number' => 'ORD-'.uniqid(),
+        'total_amount' => 2500,
+        'status_id' => app(\App\Domains\Analytics\Support\OrderStatusIdMap::class)
+            ->id(\App\Enums\Store\OrderStatus::DELIVERED),
+        'delivery_type' => 'home',
+        'shipping_provider_id' => $carrier?->id,
+    ]);
 }
 
 /**
@@ -136,8 +168,10 @@ test('dashboard renders the filter bar from pre-built options without querying i
     // STATS_DELIVERY, so the stats view switch is offered straight away: it
     // selects the whole dashboard view, not just member attribution.
     expect($html)
-        ->toContain('wire:model="memberId"')
+        ->toContain('wire:model.live="memberId"')
+        ->toContain('wire:model.live="carrierId"')
         ->toContain('wire:model.live="memberDimension"')
+        ->toContain('search')
         ->toContain(__('dashboard.stats_view'));
 
     $source = file_get_contents(
@@ -257,8 +291,9 @@ test('member select is hidden and the dimension is fixed when the member is lock
         ->getContent();
 
     expect($html)
-        ->not->toContain('wire:model="memberId"')
+        ->not->toContain('wire:model.live="memberId"')
         ->not->toContain('wire:model.live="memberDimension"')
+        ->toContain('wire:model.live="carrierId"')
         // The locked dimension is still reported, just not selectable.
         ->toContain(__('dashboard.dimension_confirmation'))
         ->toContain(__('dashboard.filter_carrier'));
@@ -321,4 +356,174 @@ test('the sales trend uses server generated labels and a no-data state', functio
     expect($source)
         ->not->toContain('new Date(')
         ->toContain('labels: data.chartDays');
+});
+
+test('the carrier and member controls are the project select with a search field', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    $html = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug]))
+        ->assertOk()
+        ->getContent();
+
+    // x-edz.select renders a combobox trigger plus its own search input, and
+    // binds the model through the hidden input rather than a native <select>.
+    expect($html)
+        ->toContain('edz-select')
+        ->toContain('role="combobox"')
+        ->toContain('edz-select__search-input')
+        ->toContain(__('dashboard.search_carrier'))
+        ->toContain(__('dashboard.search_member'))
+        // The translated empty state the panel shows when a search matches nothing.
+        ->toContain(__('merchant_panel.no_options_found'))
+        ->not->toContain('<select id="dashboard-carrier"')
+        ->not->toContain('<select id="dashboard-member"');
+
+    $source = file_get_contents(
+        resource_path('views/livewire/merchant/dashboard/partials/filter-bar.blade.php')
+    );
+
+    // Both controls are live-bound so a pick applies without an explicit apply.
+    expect($source)
+        ->toContain('<x-edz.select')
+        ->toContain('wire:model.live="carrierId"')
+        ->toContain('wire:model.live="memberId"')
+        ->toContain(":searchPlaceholder=\"__('dashboard.search_carrier')\"")
+        ->toContain(":searchPlaceholder=\"__('dashboard.search_member')\"")
+        // Options come from the class, never from view logic.
+        ->toContain("\$filterOptions['carrierOptions']")
+        ->toContain("\$filterOptions['memberOptions']");
+});
+
+test('the carrier select carries every provider with orders and hints the inactive ones', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    $active = dfwCarrier($store, 'Active Carrier');
+    $inactive = dfwCarrier($store, 'Retired Carrier', isActive: false);
+
+    // Only providers that actually appear on an order are offered.
+    $order = dfwOrder($store, $owner, $active);
+
+    $options = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)
+        ->carrierSelectOptions($store->id);
+
+    expect($options)->toBeArray()
+        // The empty first entry is what the "all" pick writes to the model.
+        ->and($options[0]['value'])->toBe('')
+        ->and($options[0]['label'])->toBe(__('dashboard.all_carriers'))
+        ->and(array_column($options, 'value'))->toContain((string) $active->id)
+        ->and(array_column($options, 'value'))->not->toContain((string) $inactive->id);
+
+    $activeOption = collect($options)->firstWhere('value', (string) $active->id);
+    expect($activeOption['hint'])->toBeNull();
+
+    // Now give the retired provider an order: it must now appear, flagged.
+    $order->update(['shipping_provider_id' => $inactive->id]);
+
+    $options = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)
+        ->carrierSelectOptions($store->id);
+
+    $inactiveOption = collect($options)->firstWhere('value', (string) $inactive->id);
+    expect($inactiveOption['hint'])->toBe(__('dashboard.carrier_inactive'));
+});
+
+test('member select options follow the existing scope rules and hint the role', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    // A second, unrelated member the owner can see.
+    $colleague = roleUser('merchant');
+    dfwMembership($store, $colleague, StoreRoleEnum::MANAGER);
+
+    $membership = $store->memberships()->where('user_id', $owner->id)->first();
+
+    $options = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)
+        ->memberSelectOptions($membership);
+
+    expect($options)->toBeArray()
+        ->and($options[0]['value'])->toBe('')
+        ->and($options[0]['label'])->toBe(__('dashboard.all_members'))
+        ->and(count($options))->toBeGreaterThan(1);
+
+    // The role label is read from the membership row, so it costs no extra query.
+    $ownerOption = collect($options)->firstWhere('value', $membership->id);
+    expect($ownerOption['hint'])->toBe(StoreRoleEnum::OWNER->label());
+
+    // A member with neither team-view nor team-view-own sees only themselves.
+    $staff = roleUser('merchant');
+    $staffMembership = dfwMembership($store, $staff, StoreRoleEnum::STAFF);
+
+    $staffOptions = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)
+        ->memberSelectOptions($staffMembership);
+
+    expect($staffOptions)->toHaveCount(2)
+        ->and(array_column($staffOptions, 'value'))->toBe(['', $staffMembership->id]);
+
+    // An inactive or absent membership yields only the "all" entry.
+    expect(app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)->memberSelectOptions(null))
+        ->toHaveCount(1);
+});
+
+test('the aov card appears exactly once per view', function () {
+    [$owner, $store] = dfwOwnerStore();
+    $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
+
+    $htmlConfirmation = $this->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'confirmation']))
+        ->assertOk()->getContent();
+    $htmlDelivery = $this->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
+        ->assertOk()->getContent();
+
+    $marker = 'uppercase tracking-wider">'.__('dashboard.aov').'</p>';
+
+    // Delivery leads with AOV in the KPI row and drops it from the secondary row;
+    // confirmation keeps it only in the secondary row.
+    expect(substr_count($htmlDelivery, $marker))->toBe(1)
+        ->and(substr_count($htmlConfirmation, $marker))->toBe(1);
+
+    // The delivery view keeps two columns for the remaining two cards, so the
+    // row does not leave a gap where AOV used to be.
+    expect($htmlDelivery)->toContain('sm:grid-cols-2')
+        ->and($htmlConfirmation)->toContain('sm:grid-cols-3');
+});
+
+test('the trend draws straight segments with points only where there is activity', function () {
+    $source = file_get_contents(
+        resource_path('views/livewire/merchant/dashboard/partials/charts.blade.php')
+    );
+
+    // A smoothed curve between hourly buckets invents activity that never
+    // happened; segments are straight and the orders line is not stepped.
+    expect($source)
+        ->toContain('tension: 0')
+        ->not->toContain('tension: 0.4')
+        ->toContain('stepped: false')
+        // An axis of 31 buckets or fewer can carry markers; a wider one cannot.
+        ->toContain('values.length <= 31')
+        ->toContain('const pointHoverRadius = (values) => showPoints(values) ? 5 : 0;')
+        // Hourly buckets are mostly empty, so a zero bucket gets no marker.
+        ->toContain('isHourly(data.chartDays) && !(Number(ctx.raw) > 0) ? 0 : 3')
+        // The tooltip carries the bucket label and a formatted value.
+        ->toContain("title: (items) => items.length ? items[0].label : ''")
+        ->toContain('maximumFractionDigits: 0')
+        ->toContain("context.dataset.yAxisID === 'y'");
+});
+
+test('selecting all carrier clears the carrier filter', function () {
+    [$user, $store] = dfwOwnerStore();
+
+    $this->actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.dashboard')
+        ->set('carrierId', '')
+        ->assertSet('carrierId', null);
+});
+
+test('selecting all member clears the member filter', function () {
+    [$user, $store] = dfwOwnerStore();
+
+    $this->actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.dashboard')
+        ->set('memberId', '')
+        ->assertSet('memberId', null);
 });

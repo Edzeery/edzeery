@@ -77,29 +77,31 @@
     @endif
 
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div class="flex flex-col gap-1 w-full sm:w-auto">
+        <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
             <label class="edz-label" for="dashboard-carrier">{{ __('dashboard.filter_carrier') }}</label>
-            <select id="dashboard-carrier" wire:model="carrierId" class="edz-input text-sm">
-                <option value="">{{ __('dashboard.all_carriers') }}</option>
-                @foreach ($filterOptions['carriers'] as $carrier)
-                    <option value="{{ $carrier->id }}">{{ $carrier->name }}</option>
-                @endforeach
-            </select>
+            <x-edz.select
+                wire:model.live="carrierId"
+                :options="$filterOptions['carrierOptions']"
+                search
+                :placeholder="__('dashboard.all_carriers')"
+                :searchPlaceholder="__('dashboard.search_carrier')"
+            />
             @if ($activeCarrier && ! $activeCarrier->is_active)
                 <p class="text-xs text-warning-fg-strong">{{ __('dashboard.carrier_inactive') }}</p>
             @endif
         </div>
 
         @unless ($filter->memberLocked)
-            @if ($filterOptions['members']->isNotEmpty())
-                <div class="flex flex-col gap-1 w-full sm:w-auto">
+            @if ($filterOptions['memberOptions'])
+                <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
                     <label class="edz-label" for="dashboard-member">{{ __('dashboard.filter_member') }}</label>
-                    <select id="dashboard-member" wire:model="memberId" class="edz-input text-sm">
-                        <option value="">{{ __('dashboard.all_members') }}</option>
-                        @foreach ($filterOptions['members'] as $member)
-                            <option value="{{ $member->id }}">{{ $member->name }}</option>
-                        @endforeach
-                    </select>
+                    <x-edz.select
+                        wire:model.live="memberId"
+                        :options="$filterOptions['memberOptions']"
+                        search
+                        :placeholder="__('dashboard.all_members')"
+                        :searchPlaceholder="__('dashboard.search_member')"
+                    />
                 </div>
             @endif
         @endunless

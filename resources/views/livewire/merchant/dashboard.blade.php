@@ -5,6 +5,7 @@ use App\Domains\Analytics\Support\DashboardFilterOptions;
 use App\Domains\User\Services\SubscriptionGuardService;
 use App\Enums\Store\StorePermissionEnum;
 use App\Livewire\Concerns\DashboardFilterConcern;
+
 use function Livewire\Volt\layout;
 use function Livewire\Volt\uses;
 use function Livewire\Volt\with;
@@ -35,10 +36,11 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     $canViewStats = $isDeliveryView ? $canStatsDelivery : $canConfirmStats;
 
     $filterOptions = app(DashboardFilterOptions::class);
+    $currentMembership = auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first();
     $carriers = $filterOptions->carriers(currentStoreId());
-    $members = $filterOptions->members(
-        auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first()
-    );
+    $members = $filterOptions->members($currentMembership);
+    $carrierOptions = $filterOptions->carrierSelectOptions(currentStoreId());
+    $memberOptions = $filterOptions->memberSelectOptions($currentMembership);
 
     $periodLabel = $filter->period === 'custom'
         ? __('dashboard.period_range', [
@@ -49,7 +51,12 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
 
     return [
         'filter' => $filter,
-        'filterOptions' => ['carriers' => $carriers, 'members' => $members],
+        'filterOptions' => [
+            'carriers' => $carriers,
+            'members' => $members,
+            'carrierOptions' => $carrierOptions,
+            'memberOptions' => $memberOptions,
+        ],
         'periodLabel' => $periodLabel,
         // Boundaries are stored in UTC; compare against the local dates the user typed.
         'invalidRange' => $filter->period === 'custom' && (
@@ -165,7 +172,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
                 </div>
                 <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.confirmed_of_total') }}</p>
             </div>
-
             {{-- Awaiting Confirmation --}}
             <div class="edz-card edz-card--padded group">
                 <div class="flex items-center justify-between mb-3">
@@ -174,7 +180,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
                 <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['pending_count'] }}</p>
                 <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
             </div>
-
             {{-- Canceled --}}
             <div class="edz-card edz-card--padded group">
                 <div class="flex items-center justify-between mb-3">
@@ -185,13 +190,18 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             </div>
         @endif
     </div>
-
     {{-- Secondary KPIs --}}
-    <div class="edz-stagger grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-        <div class="edz-card edz-card--padded">
-            <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.aov') }}</p>
-            <p class="mt-2 text-2xl font-bold tracking-tighter text-ink">{{ number_format($summary['aov'], 0) }} <span class="text-sm font-medium text-ink-muted">{{ __('stores.currency_symbol') }}</span></p>
-        </div>
+    <div @class([
+        'edz-stagger grid grid-cols-1 gap-4 mb-6',
+        'sm:grid-cols-2' => $isDeliveryView,
+        'sm:grid-cols-3' => ! $isDeliveryView,
+    ])>
+            @if (! $isDeliveryView)
+                <div class="edz-card edz-card--padded">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.aov') }}</p>
+                    <p class="mt-2 text-2xl font-bold tracking-tighter text-ink">{{ number_format($summary['aov'], 0) }} <span class="text-sm font-medium text-ink-muted">{{ __('stores.currency_symbol') }}</span></p>
+                </div>
+            @endif
         <div class="edz-card edz-card--padded">
             <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('titles.products') }}</p>
             <p class="mt-2 text-2xl font-bold tracking-tighter text-ink">{{ $summary['active_products'] }} <span class="text-sm font-medium text-ink-muted">/ {{ $summary['total_products'] }}</span></p>
@@ -202,7 +212,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         </div>
     </div>
     @endif
-
     {{-- Store Link --}}
     <div class="edz-card edz-card--padded mb-6">
         <div class="flex items-center justify-between">
@@ -233,12 +242,10 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             </div>
         </div>
     </div>
-
     {{-- Charts Row --}}
     @if ($canViewStats)
         @include('livewire.merchant.dashboard.partials.charts')
     @endif
-
     {{-- Delivery Breakdown Row: delivery view only --}}
     @if ($canStatsDelivery && $isDeliveryView)
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
@@ -265,7 +272,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
                 </div>
             @endif
         </div>
-
         {{-- Delivery Type --}}
         <div class="edz-card edz-card--padded">
             <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">{{ __('dashboard.delivery_breakdown') }}</h3>
@@ -295,7 +301,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         </div>
     </div>
     @endif
-
     {{-- Tables Row: exactly one list shows, so the grid never goes two wide. --}}
     <div class="edz-stagger grid grid-cols-1 gap-6 mb-6 lg:grid-cols-1">
         {{-- Pending Orders --}}
@@ -333,7 +338,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             @endif
         </div>
         @endif
-
         {{-- Top Selling Products --}}
         @if ($canTopProducts && $isDeliveryView)
         <div class="edz-card edz-card--padded">
@@ -365,7 +369,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         </div>
         @endif
     </div>
-
     {{-- Stock Alerts --}}
     @if ($canInventory && $lowStockVariants->isNotEmpty())
         <div class="edz-card edz-card--padded mb-6">
@@ -393,7 +396,5 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             </div>
         </div>
     @endif
-
     </div>
-
 </div>

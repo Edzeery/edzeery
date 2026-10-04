@@ -2,14 +2,22 @@
 
 /*
 |--------------------------------------------------------------------------
-| PHASE 37-H
+| PHASE 37-H / 37-I
 |--------------------------------------------------------------------------
 |
 | Mojibake guard. Several blade and lang files were once saved through a
-| non-UTF-8 editor and now carry byte sequences such as "â€”" (an em dash read
-| as Windows-1252) or "Ø§" (a middle dot read as an Arabic code page). The
-| damage is invisible in a diff and only shows up as garbage in the browser, so
-| it is pinned by a test instead of by review.
+| non-UTF-8 editor, so a character that exists in one code page landed in
+| another: an em dash saved as Windows-1252, a middle dot saved through
+| Windows-1256. The damage is invisible in a diff and only shows up as garbage
+| in the browser, so it is pinned by a test instead of by review.
+|
+| Two rules keep this file itself trustworthy:
+|
+|   1. Every pattern is an escaped byte string. Quoting the real characters
+|      would put the damage under test inside the test.
+|   2. A pattern is only listed if its bytes cannot occur in a correctly saved
+|      file. Arabic and French text is legitimately multi-byte, so a pattern
+|      built from real text of those languages would fire on good files.
 |
 | This test deliberately uses no framework binding: it only touches the
 | filesystem, and tests/Unit is not bootstrapped by tests/Pest.php.
@@ -17,19 +25,30 @@
 */
 
 /**
- * Byte sequences that can only come from a mis-decoded save. Matched on the
- * decoded string, because that is how they appear in the browser.
+ * Decoded byte sequences that can only come from a mis-decoded save, with the
+ * damage each one represents.
+ *
+ * @return array<string, string>
  */
 function mojibakeSequences(): array
 {
     return [
-        'â€' => 'mis-decoded em/en dash or quote (Windows-1252)',
-        'â–' => 'mis-decoded en dash (Windows-1252)',
-        'Ã©' => 'mis-decoded é (Latin-1/Windows-1252)',
-        'Ø§' => 'mis-decoded middle dot (Arabic code page)',
-        // A middle dot read through Windows-1256 instead of UTF-8. Same damage
-        // as the entry above, different code page.
-        'آ·' => 'mis-decoded middle dot (Windows-1256)',
+        // U+2014 EM DASH and the cp1252 smart quotes, saved as Windows-1252.
+        "\xC3\xA2\xE2\x82\xAC" => 'mis-decoded em dash or smart quote (Windows-1252)',
+        // U+2013 EN DASH, saved as Windows-1252.
+        "\xC3\xA2\xE2\x80\x93" => 'mis-decoded en dash (Windows-1252)',
+        // U+00E9 e-acute, saved as Latin-1.
+        "\xC3\x83\xC2\xA9" => 'mis-decoded e-acute (Latin-1)',
+        // U+00B7 MIDDLE DOT, saved as Latin-1.
+        "\xC3\x98\xC2\xA7" => 'mis-decoded middle dot (Latin-1)',
+        // U+00B7 MIDDLE DOT, saved as Windows-1256. Same damage, other code page.
+        "\xD8\xA2\xC2\xB7" => 'mis-decoded middle dot (Windows-1256)',
+        // U+2190-U+2193 arrows, saved as Windows-1252.
+        "\xC3\xA2\xE2\x84\x90" => 'mis-decoded up arrow (Windows-1252)',
+        "\xC3\xA2\xE2\x84\x94" => 'mis-decoded down arrow (Windows-1252)',
+        // U+25B2 / U+25BC triangles, saved as Windows-1252.
+        "\xC3\xA2\xE2\x96\xB2" => 'mis-decoded up triangle (Windows-1252)',
+        "\xC3\xA2\xE2\x96\xBC" => 'mis-decoded down triangle (Windows-1252)',
     ];
 }
 
@@ -41,6 +60,9 @@ function projectPath(string $relative = ''): string
     return $relative === '' ? $root : $root.DIRECTORY_SEPARATOR.ltrim($relative, '/\\');
 }
 
+/**
+ * @return array<string, array<int, string>>
+ */
 function mojibakeFilesIn(string $directory): array
 {
     if (! is_dir($directory)) {
@@ -60,22 +82,25 @@ function mojibakeFilesIn(string $directory): array
             continue;
         }
 
-        $contents = file_get_contents($file->getPathname());
+        $raw = file_get_contents($file->getPathname());
 
-        if ($contents === false || ! mb_check_encoding($contents, 'UTF-8')) {
-            $found[$file->getPathname()][] = 'not valid UTF-8';
+        // A mis-decoded save can also leave the file as invalid UTF-8.
+        if (! mb_check_encoding($raw, 'UTF-8')) {
+            $found[$file->getPathname()][] = 'invalid UTF-8';
 
             continue;
         }
 
-        foreach (array_keys($sequences) as $sequence) {
-            $count = substr_count($contents, $sequence);
+        foreach ($sequences as $sequence => $why) {
+            $hits = substr_count($raw, $sequence);
 
-            if ($count > 0) {
-                $found[$file->getPathname()][] = sprintf('"%s" x%d', $sequence, $count);
+            if ($hits > 0) {
+                $found[$file->getPathname()][] = sprintf('"%s" x%d (%s)', $sequence, $hits, $why);
             }
         }
     }
+
+    ksort($found);
 
     return $found;
 }
@@ -90,4 +115,33 @@ it('finds no mojibake in the language files', function () {
     $offenders = mojibakeFilesIn(projectPath('resources/lang'));
 
     expect($offenders)->toBe([], "Mojibake found:\n".print_r($offenders, true));
+});
+
+it('still detects damage that is present', function () {
+    // Guards the guard: a pattern table that had lost its bytes would make the
+    // two tests above pass on a broken repository.
+    $scratch = projectPath('storage/framework/testing/mojibake-probe');
+
+    if (! is_dir($scratch)) {
+        mkdir($scratch, 0777, true);
+    }
+
+    $damaged = $scratch.'/damaged.php';
+    file_put_contents($damaged, "<?php\n// broken: \xC3\xA2\xE2\x82\xAC em dash\n");
+
+    try {
+        $offenders = mojibakeFilesIn($scratch);
+
+        // The iterator reports a native path, which differs from the forward
+        // slashes used to build the scratch directory, so match on the basename.
+        expect($offenders)->toHaveCount(1);
+
+        $reported = (string) array_key_first($offenders);
+
+        expect(basename(str_replace('/', '\\', $reported)))->toBe('damaged.php')
+            ->and(implode(' ', $offenders[$reported]))->toContain('Windows-1252');
+    } finally {
+        @unlink($damaged);
+        @rmdir($scratch);
+    }
 });

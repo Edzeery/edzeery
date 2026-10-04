@@ -45,6 +45,8 @@ return [
     'revenue_delivered_in_period' => 'Delivered revenue',
     'sales_trend' => 'Sales Trend (30 days)',
     'sales_trend_for' => 'Sales trend (:period)',
+    'search_carrier' => 'Search carrier',
+    'search_member' => 'Search member',
     'settings' => 'Settings',
     'statistics' => 'Statistics',
     'stats_view' => 'Stats view',

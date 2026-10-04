@@ -45,6 +45,8 @@ return [
     'revenue_delivered_in_period' => 'Ingresos de pedidos entregados',
     'sales_trend' => 'Tendencia de ventas (30 días)',
     'sales_trend_for' => 'Tendencia de ventas (:period)',
+    'search_carrier' => 'Buscar transportista',
+    'search_member' => 'Buscar miembro',
     'settings' => 'Ajustes',
     'statistics' => 'Estadística',
     'stats_view' => 'Tipo de estadísticas',

@@ -65,8 +65,7 @@
                 const t = triplet.replace(/[^0-9,\s]/g, '').trim();
                 const parts = t.split(',').map(p => parseInt(p.trim(), 10));
                 return t.includes(',') && parts.length >= 3 && !parts.some(isNaN)
-                    ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`
-                    : null;
+                    ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})` : null;
             };
 
             const parseColor = (input) => input ? String(input).trim() : null;
@@ -82,9 +81,7 @@
                     const r = parseInt(hex.substring(0, 2), 16);
                     const g = parseInt(hex.substring(2, 4), 16);
                     const b = parseInt(hex.substring(4, 6), 16);
-                    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
-                        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                    }
+                    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return `rgba(${r}, ${g}, ${b}, ${alpha})`;
                 }
                 return `rgba(107, 114, 128, ${alpha})`;
             };
@@ -113,6 +110,16 @@
             // full-height bar, which looks like real activity on an empty day.
             const hasPositive = (values) => Array.isArray(values) && values.some(v => Number(v) > 0);
 
+            // DateBucket labels an hourly axis "H:00", a daily one "d/m" and a
+            // monthly one "m/Y". Only the hourly axis can hold 24 mostly-empty
+            // buckets, which is why points are hidden on its zero buckets.
+            const isHourly = (labels) => Array.isArray(labels) && labels.some(l => String(l).includes(':'));
+            const showPoints = (values) => Array.isArray(values) && values.length > 0 && values.length <= 31;
+            const pointRadius = (ctx, values) => ! showPoints(values) ? 0
+                : (isHourly(data.chartDays) && !(Number(ctx.raw) > 0) ? 0 : 3);
+            const pointHoverRadius = (values) => showPoints(values) ? 5 : 0;
+            const num = (v) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(v);
+
             if (window.__dashCharts.s) {
                 window.__dashCharts.s.destroy();
                 window.__dashCharts.s = null;
@@ -135,10 +142,10 @@
                                 borderColor: resolvedAccent,
                                 backgroundColor: toRgba(resolvedAccent, 0.08),
                                 fill: true,
-                                tension: 0.4,
+                                tension: 0,
                                 borderWidth: 2,
-                                pointRadius: 0,
-                                pointHoverRadius: 5,
+                                pointRadius: (ctx) => pointRadius(ctx, data.chartRevenue),
+                                pointHoverRadius: pointHoverRadius(data.chartRevenue),
                                 pointHoverBackgroundColor: resolvedAccent,
                                 yAxisID: 'y',
                             }, {
@@ -147,10 +154,11 @@
                                 borderColor: resolvedSuccess,
                                 backgroundColor: toRgba(resolvedSuccess, 0.05),
                                 fill: false,
-                                tension: 0.4,
+                                tension: 0,
+                                stepped: false,
                                 borderWidth: 2,
-                                pointRadius: 0,
-                                pointHoverRadius: 5,
+                                pointRadius: (ctx) => pointRadius(ctx, data.chartOrders),
+                                pointHoverRadius: pointHoverRadius(data.chartOrders),
                                 pointHoverBackgroundColor: resolvedSuccess,
                                 yAxisID: 'y1',
                             }]
@@ -165,11 +173,18 @@
                             plugins: {
                                 legend: {
                                     position: 'top',
-                                    labels: {
-                                        boxWidth: 12,
-                                        padding: 16,
-                                        usePointStyle: true,
-                                        color: resolvedFontColor
+                                    labels: { boxWidth: 12, padding: 16, usePointStyle: true, color: resolvedFontColor }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        title: (items) => items.length ? items[0].label : '',
+                                        label: (context) => {
+                                            const value = num(context.parsed.y);
+                                            // Revenue carries the store currency, orders are whole counts.
+                                            return context.dataset.yAxisID === 'y'
+                                                ? `${context.dataset.label}: ${value} ${@js(__('stores.currency_symbol'))}`
+                                                : `${context.dataset.label}: ${value}`;
+                                        }
                                     }
                                 }
                             },
@@ -187,11 +202,7 @@
                                     grid: { color: resolvedGridColor, drawBorder: false },
                                     border: { display: false },
                                     ticks: { color: resolvedFontColor },
-                                    title: {
-                                        display: true,
-                                        text: @js(__('stores.currency_symbol')),
-                                        color: resolvedFontColor
-                                    }
+                                    title: { display: true, text: @js(__('stores.currency_symbol')), color: resolvedFontColor }
                                 },
                                 y1: {
                                     position: 'right',
@@ -199,16 +210,9 @@
                                     suggestedMax: hasPositive(data.chartOrders) ? undefined : 4,
                                     grid: { drawOnChartArea: false },
                                     border: { display: false },
-                                    ticks: {
-                                        color: resolvedFontColor,
-                                        // Order counts are whole numbers; "2.5 orders" is noise.
-                                        precision: 0
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: @js(__('dashboard.orders')),
-                                        color: resolvedFontColor
-                                    }
+                                    // Order counts are whole numbers; "2.5 orders" is noise.
+                                    ticks: { color: resolvedFontColor, precision: 0 },
+                                    title: { display: true, text: @js(__('dashboard.orders')), color: resolvedFontColor }
                                 },
                             }
                         }
@@ -221,7 +225,6 @@
                     const hex = parseColor(data.statusHex?.[i]);
                     return hex && hex !== '' ? hex : resolvedInk;
                 });
-
                 const statusCanvas = document.getElementById('statusChart');
                 if (statusCanvas) {
                     window.__dashCharts.st = new Chart(statusCanvas, {
@@ -260,7 +263,8 @@
                                                 index: i,
                                                 fontColor: resolvedFontColor
                                             }));
-                                        }
+                                        },
+
                                     }
                                 }
                             },
@@ -273,16 +277,10 @@
 
         if (!window.__dashCharts.mo) {
             window.__dashCharts.mo = new MutationObserver((mutations) => {
-                const hasThemeChange = mutations.some(m => m.attributeName === 'class'
-                    || m.attributeName === 'data-theme');
-                if (hasThemeChange && window.__dashCharts._lastData) {
-                    window.renderDashboardCharts(window.__dashCharts._lastData);
-                }
+                const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName === 'data-theme');
+                if (hasThemeChange && window.__dashCharts._lastData) window.renderDashboardCharts(window.__dashCharts._lastData);
             });
-            window.__dashCharts.mo.observe(document.documentElement, {
-                attributes: true,
-                attributeFilter: ['class', 'data-theme']
-            });
+            window.__dashCharts.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
         }
 
         if (window.Livewire) {

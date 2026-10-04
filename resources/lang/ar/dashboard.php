@@ -45,6 +45,8 @@ return [
     'revenue_delivered_in_period' => 'إيراد الطلبات المُسلّمة',
     'sales_trend' => 'اتجاه المبيعات (30 يوم)',
     'sales_trend_for' => 'اتجاه المبيعات (:period)',
+    'search_carrier' => 'بحث عن شركة توصيل',
+    'search_member' => 'بحث عن عضو',
     'settings' => 'الإعدادات',
     'statistics' => 'الإحصائيات',
     'stats_view' => 'نوع الإحصائيات',

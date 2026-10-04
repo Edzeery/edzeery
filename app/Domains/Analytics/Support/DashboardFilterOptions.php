@@ -4,6 +4,7 @@ namespace App\Domains\Analytics\Support;
 
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
+use App\Enums\Store\StoreRoleEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Collection;
@@ -23,6 +24,23 @@ final class DashboardFilterOptions
             ->whereIn('id', $providerIds)
             ->orderBy('name')
             ->get(['id', 'name', 'is_active']);
+    }
+
+    public function carrierSelectOptions(string $storeId): array
+    {
+        $options = [
+            ['value' => '', 'label' => __('dashboard.all_carriers')],
+        ];
+
+        foreach ($this->carriers($storeId) as $carrier) {
+            $options[] = [
+                'value' => $carrier->id,
+                'label' => $carrier->name,
+                'hint' => $carrier->is_active ? null : __('dashboard.carrier_inactive'),
+            ];
+        }
+
+        return $options;
     }
 
     public function members(?StoreMembership $current): Collection
@@ -59,7 +77,34 @@ final class DashboardFilterOptions
             return (object) [
                 'id' => $m->id,
                 'name' => $m->user?->name ?? $m->user?->email ?? $m->id,
+                'role' => $m->role,
             ];
         });
+    }
+
+    public function memberSelectOptions(?StoreMembership $current): array
+    {
+        $options = [
+            ['value' => '', 'label' => __('dashboard.all_members')],
+        ];
+
+        foreach ($this->members($current) as $member) {
+            $hint = null;
+            if (! empty($member->role)) {
+                try {
+                    $hint = StoreRoleEnum::from($member->role)->label();
+                } catch (\Throwable) {
+                    $hint = null;
+                }
+            }
+
+            $options[] = [
+                'value' => $member->id,
+                'label' => $member->name,
+                'hint' => $hint,
+            ];
+        }
+
+        return $options;
     }
 }
