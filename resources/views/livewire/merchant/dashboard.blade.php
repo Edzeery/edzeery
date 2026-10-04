@@ -20,12 +20,19 @@ $canTopKpis = canStore(StorePermissionEnum::STATS_TOP_KPIS->value);
 $canStatsDelivery = canStore(StorePermissionEnum::STATS_DELIVERY->value);
 $canConfirm = canStore(StorePermissionEnum::ORDER_CONFIRM->value);
 $canStatsConfirmation = canStore(StorePermissionEnum::STATS_CONFIRMATION->value);
-$canPickDimension = ($canConfirm || $canStatsConfirmation) && $canStatsDelivery;
 $canInventory = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
 $canTopProducts = canStore(StorePermissionEnum::PRODUCT_VIEW->value);
 
-with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDelivery, $canConfirm, $canPickDimension, $canInventory, $canTopProducts) {
+with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDelivery, $canConfirm, $canStatsConfirmation, $canInventory, $canTopProducts) {
     $filter = $this->filter();
+
+    // memberDimension selects the whole dashboard view, not just member
+    // attribution: it decides which KPIs lead and which lists are loaded.
+    $isDeliveryView = $filter->memberDimension === 'delivery';
+    $canConfirmStats = $canConfirm || $canStatsConfirmation;
+    // Charts follow the active view, so a confirmation-only user still sees the
+    // trend and the status doughnut.
+    $canViewStats = $isDeliveryView ? $canStatsDelivery : $canConfirmStats;
 
     $filterOptions = app(DashboardFilterOptions::class);
     $carriers = $filterOptions->carriers(currentStoreId());
@@ -51,13 +58,15 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             || $this->dateFrom !== $filter->localFrom()?->format('Y-m-d')
             || $this->dateTo !== $filter->localTo()?->format('Y-m-d')
         ),
+        'isDeliveryView' => $isDeliveryView,
+        'canViewStats' => $canViewStats,
         'summary' => $canTopKpis ? $analytics->summary($filter) : collect(),
-        'salesByDay' => $canStatsDelivery ? $analytics->salesByDay($filter) : collect(),
-        'ordersByStatus' => $canStatsDelivery ? $analytics->ordersByStatus($filter) : collect(),
-        'ordersByState' => $canStatsDelivery ? $analytics->ordersByState($filter) : collect(),
-        'deliveryTypeBreakdown' => $canStatsDelivery ? $analytics->deliveryTypeBreakdown($filter) : collect(),
-        'pendingOrders' => $canConfirm ? $analytics->pendingConfirmationOrders($filter) : collect(),
-        'topProducts' => $canTopProducts ? $analytics->topSellingProducts($filter) : collect(),
+        'salesByDay' => $canViewStats ? $analytics->salesByDay($filter) : collect(),
+        'ordersByStatus' => $canViewStats ? $analytics->ordersByStatus($filter) : collect(),
+        'ordersByState' => $canStatsDelivery && $isDeliveryView ? $analytics->ordersByState($filter) : collect(),
+        'deliveryTypeBreakdown' => $canStatsDelivery && $isDeliveryView ? $analytics->deliveryTypeBreakdown($filter) : collect(),
+        'pendingOrders' => $canConfirm && ! $isDeliveryView ? $analytics->pendingConfirmationOrders($filter) : collect(),
+        'topProducts' => $canTopProducts && $isDeliveryView ? $analytics->topSellingProducts($filter) : collect(),
         'lowStockVariants' => $canInventory ? $analytics->lowStockVariants() : collect(),
         'subscription' => $subscriptionGuard->getSubscription(),
         'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
@@ -66,7 +75,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         'canTopKpis' => $canTopKpis,
         'canStatsDelivery' => $canStatsDelivery,
         'canConfirm' => $canConfirm,
-        'canPickDimension' => $canPickDimension,
+        'canStatsConfirmation' => $canStatsConfirmation,
         'canInventory' => $canInventory,
         'canTopProducts' => $canTopProducts,
     ];
@@ -80,7 +89,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     <div wire:loading.class="opacity-60 transition-opacity duration-200"
          wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension">
 
-    {{-- KPI Cards â€” Apple-style large numbers with negative tracking --}}
+    {{-- KPI Cards — Apple-style large numbers with negative tracking --}}
     @if ($canTopKpis)
     <div class="edz-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {{-- Total Orders --}}
@@ -90,7 +99,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
                 @if ($summary['has_previous'] && $summary['total_orders_change'] != 0)
                     <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
                         {{ $summary['total_orders_change'] > 0 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
-                        {{ $summary['total_orders_change'] > 0 ? 'â–²' : 'â–¼' }} {{ abs($summary['total_orders_change']) }}%
+                        {{ $summary['total_orders_change'] > 0 ? '▲' : '▼' }} {{ abs($summary['total_orders_change']) }}%
                     </span>
                 @endif
             </div>
@@ -98,51 +107,83 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
         </div>
 
-        {{-- Revenue --}}
-        <div class="edz-card edz-card--padded group">
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.revenue') }}</p>
-                <div class="w-8 h-8 rounded-lg bg-success-surface flex items-center justify-center text-success-600">
-                    <x-edz.icon name="trending-up" class="w-4 h-4" />
+        {{-- Confirmation stats lead with the two states an operator acts on; delivery stats lead with money. --}}
+        @if ($isDeliveryView)
+            {{-- Delivered Revenue --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.revenue') }}</p>
+                    <div class="w-8 h-8 rounded-lg bg-success-surface flex items-center justify-center text-success-600">
+                        <x-edz.icon name="trending-up" class="w-4 h-4" />
+                    </div>
                 </div>
+                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ number_format($summary['revenue'], 0) }}<span class="text-lg font-semibold text-ink-muted ms-1">{{ __('stores.currency_symbol') }}</span></p>
+                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.revenue_delivered_in_period') }}</p>
+                <p class="mt-1 text-xs text-ink-muted">{{ $periodLabel }}</p>
             </div>
-            <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ number_format($summary['revenue'], 0) }}<span class="text-lg font-semibold text-ink-muted ms-1">{{ __('stores.currency_symbol') }}</span></p>
-            <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.delivered_orders') }}</p>
-        </div>
 
-        {{-- Confirmation Rate --}}
-        <div class="edz-card edz-card--padded group">
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.confirmation_rate') }}</p>
-                <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                    {{ $summary['confirmation_rate'] >= 70 ? 'text-success-fg-strong bg-success-surface' : 'text-warning-fg-strong bg-warning-surface' }}">
-                    {{ $summary['confirmation_rate'] }}%
-                </span>
+            {{-- Return Rate --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.return_rate') }}</p>
+                    <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
+                        {{ $summary['return_rate'] <= 10 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
+                        {{ $summary['return_rate'] }}%
+                    </span>
+                </div>
+                <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
+                    <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
+                        {{ $summary['return_rate'] <= 10 ? 'bg-success-500' : 'bg-danger-500' }}"
+                         style="width: {{ $summary['return_rate'] }}%"></div>
+                </div>
+                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.return_of_processed') }}</p>
             </div>
-            <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
-                <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
-                    {{ $summary['confirmation_rate'] >= 70 ? 'bg-success-500' : 'bg-warning-500' }}"
-                     style="width: {{ $summary['confirmation_rate'] }}%"></div>
-            </div>
-            <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.confirmed_of_total') }}</p>
-        </div>
 
-        {{-- Return Rate --}}
-        <div class="edz-card edz-card--padded group">
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.return_rate') }}</p>
-                <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                    {{ $summary['return_rate'] <= 10 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
-                    {{ $summary['return_rate'] }}%
-                </span>
+            {{-- Average Delivered Order Value --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.aov') }}</p>
+                </div>
+                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ number_format($summary['aov'], 0) }}<span class="text-lg font-semibold text-ink-muted ms-1">{{ __('stores.currency_symbol') }}</span></p>
+                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.revenue_delivered_in_period') }}</p>
+                <p class="mt-1 text-xs text-ink-muted">{{ $periodLabel }}</p>
             </div>
-            <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
-                <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
-                    {{ $summary['return_rate'] <= 10 ? 'bg-success-500' : 'bg-danger-500' }}"
-                     style="width: {{ $summary['return_rate'] }}%"></div>
+        @else
+            {{-- Confirmation Rate --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.confirmation_rate') }}</p>
+                    <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
+                        {{ $summary['confirmation_rate'] >= 70 ? 'text-success-fg-strong bg-success-surface' : 'text-warning-fg-strong bg-warning-surface' }}">
+                        {{ $summary['confirmation_rate'] }}%
+                    </span>
+                </div>
+                <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
+                    <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
+                        {{ $summary['confirmation_rate'] >= 70 ? 'bg-success-500' : 'bg-warning-500' }}"
+                         style="width: {{ $summary['confirmation_rate'] }}%"></div>
+                </div>
+                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.confirmed_of_total') }}</p>
             </div>
-            <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.return_of_processed') }}</p>
-        </div>
+
+            {{-- Awaiting Confirmation --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.pending_confirmation_count') }}</p>
+                </div>
+                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['pending_count'] }}</p>
+                <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
+            </div>
+
+            {{-- Canceled --}}
+            <div class="edz-card edz-card--padded group">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.canceled_count') }}</p>
+                </div>
+                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['canceled_count'] }}</p>
+                <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
+            </div>
+        @endif
     </div>
 
     {{-- Secondary KPIs --}}
@@ -194,10 +235,12 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     </div>
 
     {{-- Charts Row --}}
-    @if ($canStatsDelivery)
+    @if ($canViewStats)
         @include('livewire.merchant.dashboard.partials.charts')
+    @endif
 
-    {{-- Second Charts Row --}}
+    {{-- Delivery Breakdown Row: delivery view only --}}
+    @if ($canStatsDelivery && $isDeliveryView)
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-2 mb-6">
         {{-- Geographic Distribution --}}
         <div class="edz-card edz-card--padded">
@@ -253,10 +296,10 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     </div>
     @endif
 
-    {{-- Tables Row --}}
-    <div class="edz-stagger grid grid-cols-1 gap-6 mb-6 {{ ($canConfirm && $canTopProducts) ? 'lg:grid-cols-2' : 'lg:grid-cols-1' }}">
+    {{-- Tables Row: exactly one list shows, so the grid never goes two wide. --}}
+    <div class="edz-stagger grid grid-cols-1 gap-6 mb-6 lg:grid-cols-1">
         {{-- Pending Orders --}}
-        @if ($canConfirm)
+        @if ($canConfirm && ! $isDeliveryView)
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.pending_confirmation') }}</h3>
@@ -273,7 +316,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
                         <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-medium text-ink">#{{ $order->number }}</p>
-                                <p class="text-xs text-ink-muted">{{ $order->customer_name ?? '-' }} آ· {{ $order->customer_phone ?? '-' }}</p>
+                                <p class="text-xs text-ink-muted">{{ $order->customer_name ?? '-' }} · {{ $order->customer_phone ?? '-' }}</p>
                             </div>
                             <div class="text-end">
                                 <p class="text-sm font-bold tracking-tight text-ink">{{ number_format($order->total_amount, 0) }} {{ __('stores.currency_symbol') }}</p>
@@ -292,7 +335,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         @endif
 
         {{-- Top Selling Products --}}
-        @if ($canTopProducts)
+        @if ($canTopProducts && $isDeliveryView)
         <div class="edz-card edz-card--padded">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.top_products') }}</h3>
@@ -354,7 +397,3 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     </div>
 
 </div>
-
-
-
-

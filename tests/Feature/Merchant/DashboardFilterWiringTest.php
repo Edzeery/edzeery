@@ -132,11 +132,13 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->toContain('wire:loading.class')
         ->toContain('wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension"');
 
-    // OWNER sees the member list, but no dimension radios until a member is
-    // picked (memberId defaults to null for a team-view permission).
+    // OWNER sees the member list, and holds both a confirmation capability and
+    // STATS_DELIVERY, so the stats view switch is offered straight away: it
+    // selects the whole dashboard view, not just member attribution.
     expect($html)
         ->toContain('wire:model="memberId"')
-        ->not->toContain('wire:model="memberDimension"');
+        ->toContain('wire:model.live="memberDimension"')
+        ->toContain(__('dashboard.stats_view'));
 
     $source = file_get_contents(
         resource_path('views/livewire/merchant/dashboard/partials/filter-bar.blade.php')
@@ -148,27 +150,103 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->not->toContain('dark:');
 });
 
-test('dimension radios appear once a member is selected', function () {
+test('the stats view switch is offered without picking a member first', function () {
     [$owner, $store] = dfwOwnerStore();
-
-    $teammate = roleUser('merchant');
-    dfwMembership($store, $teammate, StoreRoleEnum::MANAGER);
 
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
+    // No member is selected and none is needed: the switch drives the KPI row
+    // and the lists, so it must not wait for a member filter to appear.
     Volt::test('merchant.dashboard')
-        ->set('memberId', $teammate->storeMemberships()->where('store_id', $store->id)->value('id'))
-        ->assertSeeHtml('wire:model="memberDimension"')
+        ->assertSet('memberId', null)
+        ->assertSeeHtml('wire:model.live="memberDimension"')
         ->assertSee(__('dashboard.dimension_confirmation'))
         ->assertSee(__('dashboard.dimension_delivery'));
+});
+
+test('switching the stats view swaps the KPI row and the lists', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
+
+    // Confirmation is the default for a user who can confirm: it leads with the
+    // two actionable states and shows the pending queue.
+    Volt::test('merchant.dashboard')
+        ->assertSee(__('dashboard.pending_confirmation_count'))
+        ->assertSee(__('dashboard.canceled_count'))
+        ->assertSee(__('dashboard.pending_confirmation'))
+        ->assertDontSee(__('dashboard.revenue_delivered_in_period'))
+        ->assertDontSee(__('dashboard.delivery_breakdown'));
+
+    // Switching to delivery replaces both.
+    Volt::test('merchant.dashboard')
+        ->set('memberDimension', 'delivery')
+        ->assertSet('memberDimension', 'delivery')
+        ->assertSee(__('dashboard.revenue_delivered_in_period'))
+        ->assertSee(__('dashboard.return_rate'))
+        ->assertSee(__('dashboard.delivery_breakdown'))
+        ->assertDontSee(__('dashboard.pending_confirmation_count'))
+        ->assertDontSee(__('dashboard.canceled_count'))
+        ->assertDontSee(__('dashboard.pending_confirmation'));
+
+    // Back again, proving the switch is not one-way.
+    Volt::test('merchant.dashboard')
+        ->set('memberDimension', 'confirmation')
+        ->assertSee(__('dashboard.pending_confirmation_count'))
+        ->assertDontSee(__('dashboard.delivery_breakdown'));
+});
+
+test('a user with only the confirmation capability gets a fixed badge, not a switch', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    // STAFF carries STATS_CONFIRMATION but not STATS_DELIVERY.
+    $staff = roleUser('merchant');
+    dfwMembership($store, $staff, StoreRoleEnum::STAFF);
+
+    $html = $this->actingAs($staff)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug]))
+        ->assertOk()
+        ->getContent();
+
+    // The view is still labelled, just not selectable.
+    expect($html)
+        ->toContain(__('dashboard.stats_view'))
+        ->toContain(__('dashboard.dimension_confirmation'))
+        ->not->toContain('wire:model.live="memberDimension"');
+});
+
+test('the stats view is only chipped once it differs from the user default', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
+
+    // OWNER defaults to confirmation, so asking for confirmation is not an
+    // override and nothing is chipped.
+    expect($this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'confirmation']))
+        ->assertOk()
+        ->getContent())
+        ->not->toContain(__('dashboard.active_filters'));
+
+    // Delivery is the override, so it is surfaced with a reset affordance.
+    expect($this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
+        ->assertOk()
+        ->getContent())
+        ->toContain(__('dashboard.active_filters'))
+        ->toContain(__('dashboard.dimension_delivery'))
+        ->toContain(__('dashboard.reset_filters'));
 });
 
 test('member select is hidden and the dimension is fixed when the member is locked', function () {
     [$owner, $store] = dfwOwnerStore();
 
     // STAFF carries neither team-view nor team-view-own, so the factory locks
-    // the scope to the current membership. STAFF also lacks STATS_DELIVERY,
-    // so the dimension radios must not render at all.
+    // the scope to the current membership. STAFF also lacks STATS_DELIVERY, so
+    // the stats view cannot be switched at all.
     $staff = roleUser('merchant');
     dfwMembership($store, $staff, StoreRoleEnum::STAFF);
 
@@ -180,10 +258,24 @@ test('member select is hidden and the dimension is fixed when the member is lock
 
     expect($html)
         ->not->toContain('wire:model="memberId"')
-        ->not->toContain('wire:model="memberDimension"')
+        ->not->toContain('wire:model.live="memberDimension"')
         // The locked dimension is still reported, just not selectable.
         ->toContain(__('dashboard.dimension_confirmation'))
         ->toContain(__('dashboard.filter_carrier'));
+});
+
+test('the trend axes start at zero and stay whole numbers', function () {
+    $source = file_get_contents(
+        resource_path('views/livewire/merchant/dashboard/partials/charts.blade.php')
+    );
+
+    expect($source)
+        // Both series are counts and sums, so neither axis has a negative half.
+        ->toContain('beginAtZero: true')
+        ->toContain('suggestedMax: hasPositive(data.chartRevenue) ? undefined : 1000')
+        ->toContain('suggestedMax: hasPositive(data.chartOrders) ? undefined : 4')
+        // "2.5 orders" is not a thing.
+        ->toContain('precision: 0');
 });
 
 test('a custom range without both dates reports that it was adjusted', function () {

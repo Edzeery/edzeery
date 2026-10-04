@@ -53,6 +53,14 @@ final class DashboardSummaryQuery
             ? round(($returnedCount / ($deliveredCount + $returnedCount)) * 100)
             : 0;
 
+        // The Confirmation view leads with the two states an operator acts on.
+        // Both spellings of cancelled are counted, because stores configure
+        // either key and the doughnut already treats them as one alias.
+        $pendingCount = (clone $current)->where('status_id', $statusId(OrderStatus::PENDING))->count();
+        $canceledCount = (clone $current)
+            ->whereIn('status_id', $statusIds([OrderStatus::CANCELED, OrderStatus::CANCELLED]))
+            ->count();
+
         return [
             'total_orders' => $totalCurrent,
             'total_orders_change' => $this->change($totalCurrent, $totalPrev, $previous !== null),
@@ -63,6 +71,8 @@ final class DashboardSummaryQuery
             'return_rate' => $returnRate,
             // Average value of a delivered order, not of a confirmed one.
             'aov' => $deliveredCount > 0 ? round($revenueCurrent / $deliveredCount, 2) : 0,
+            'pending_count' => $pendingCount,
+            'canceled_count' => $canceledCount,
         ];
     }
 

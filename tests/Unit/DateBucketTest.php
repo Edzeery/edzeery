@@ -41,19 +41,19 @@ it('spells the bucket expression the way each driver expects', function (string 
     ],
     'mysql hour' => [
         'driver' => 'mysql', 'granularity' => 'hour', 'offset' => 3600,
-        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), 'Y-m-d H') as bucket",
+        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), '%Y-%m-%d %H') as bucket",
     ],
     'mysql day' => [
         'driver' => 'mysql', 'granularity' => 'day', 'offset' => 3600,
-        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), 'Y-m-d') as bucket",
+        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), '%Y-%m-%d') as bucket",
     ],
     'mysql month' => [
         'driver' => 'mysql', 'granularity' => 'month', 'offset' => 3600,
-        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), 'Y-m') as bucket",
+        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 3600 SECOND), '%Y-%m') as bucket",
     ],
     'mariadb shares the mysql spelling' => [
         'driver' => 'mariadb', 'granularity' => 'day', 'offset' => 0,
-        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 0 SECOND), 'Y-m-d') as bucket",
+        'expected' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 0 SECOND), '%Y-%m-%d') as bucket",
     ],
     'pgsql hour' => [
         'driver' => 'pgsql', 'granularity' => 'hour', 'offset' => 3600,
@@ -70,7 +70,7 @@ it('spells the bucket expression the way each driver expects', function (string 
     // An unknown driver still emits something runnable rather than throwing.
     'unknown driver' => [
         'driver' => 'sqlsrv', 'granularity' => 'day', 'offset' => 0,
-        'expected' => "DATE_FORMAT(orders.created_at, 'Y-m-d') as bucket",
+        'expected' => "DATE_FORMAT(orders.created_at, '%Y-%m-%d') as bucket",
     ],
 ]);
 
@@ -362,6 +362,62 @@ it('still draws a zero-filled axis when nothing matches the window', function ()
     expect($outside['labels'])->toBe(['01/03', '02/03'])
         ->and($outside['orders'])->toBe([0, 0])
         ->and($outside['revenue'])->toBe([0.0, 0.0]);
+});
+
+it('agrees with the keys MySQL DATE_FORMAT actually returns', function () {
+    $bucket = app(DateBucket::class);
+
+    // The regression: sqlFormat() used to hand DATE_FORMAT a PHP-style
+    // 'Y-m-d H', which MySQL returns verbatim. Every row collapsed into one
+    // literal bucket key, so no real bucket ever matched the PHP axis and the
+    // production trend chart came out flat. These keys are what MySQL produces
+    // with the fixed format.
+    $mysqlRows = [
+        (object) ['bucket' => '2026-03-10 08', 'revenue' => 100.0, 'orders' => 1],
+        (object) ['bucket' => '2026-03-10 09', 'revenue' => 100.0, 'orders' => 1],
+        (object) ['bucket' => '2026-03-10 10', 'revenue' => 100.0, 'orders' => 1],
+    ];
+
+    $series = $bucket->generateSeries(
+        CarbonImmutable::parse('2026-03-10 00:00:00', DATE_BUCKET_TZ)->utc(),
+        CarbonImmutable::parse('2026-03-10 23:59:59', DATE_BUCKET_TZ)->utc(),
+        'mysql', DATE_BUCKET_TZ, 3600,
+        fn () => $mysqlRows,
+    );
+
+    expect($series['orders'])->toHaveCount(24)
+        ->and($series['orders'][8])->toBe(1)
+        ->and($series['orders'][9])->toBe(1)
+        ->and($series['orders'][10])->toBe(1)
+        ->and($series['orders'][11])->toBe(0)
+        ->and(array_sum($series['orders']))->toBe(3)
+        ->and($series['revenue'][9])->toBe(100.0);
+
+    // The broken format produced one row keyed with the literal text 'Y-m-d H'
+    // and matched nothing, which is what flattened the chart.
+    $broken = $bucket->generateSeries(
+        CarbonImmutable::parse('2026-03-10 00:00:00', DATE_BUCKET_TZ)->utc(),
+        CarbonImmutable::parse('2026-03-10 23:59:59', DATE_BUCKET_TZ)->utc(),
+        'mysql', DATE_BUCKET_TZ, 3600,
+        fn () => [(object) ['bucket' => 'Y-m-d H', 'revenue' => 300.0, 'orders' => 3]],
+    );
+
+    expect(array_sum($broken['orders']))->toBe(0);
+});
+
+it('matches monthly MySQL keys', function () {
+    $series = app(DateBucket::class)->generateSeries(
+        CarbonImmutable::parse('2025-11-01 00:00:00', DATE_BUCKET_TZ)->utc(),
+        CarbonImmutable::parse('2026-02-28 23:59:59', DATE_BUCKET_TZ)->utc(),
+        'mysql', DATE_BUCKET_TZ, 3600,
+        fn () => [
+            (object) ['bucket' => '2025-12', 'revenue' => 100.0, 'orders' => 1],
+            (object) ['bucket' => '2026-01', 'revenue' => 300.0, 'orders' => 3],
+        ],
+    );
+
+    expect($series['orders'])->toBe([0, 1, 3, 0])
+        ->and($series['labels'])->toBe(['11/2025', '12/2025', '01/2026', '02/2026']);
 });
 
 it('defaults a missing revenue or orders column to zero', function () {

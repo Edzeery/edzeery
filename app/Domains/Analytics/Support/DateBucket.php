@@ -53,6 +53,12 @@ final class DateBucket
     /**
      * strftime, DATE_FORMAT and to_char each spell the same instant
      * differently, so the format has to follow the driver.
+     *
+     * MySQL and MariaDB need percent-prefixed specifiers. Handing DATE_FORMAT a
+     * PHP-style 'Y-m-d H' makes it return that text verbatim, so every row is
+     * grouped under one literal bucket key that the PHP side never matches and
+     * the trend chart renders flat. The default branch shares the MySQL
+     * formats, since MySQL is the production driver.
      */
     private function sqlFormat(string $driver, string $granularity): string
     {
@@ -68,9 +74,9 @@ final class DateBucket
                 default => 'YYYY-MM-DD',
             },
             default => match ($granularity) {
-                'hour' => 'Y-m-d H',
-                'month' => 'Y-m',
-                default => 'Y-m-d',
+                'hour' => '%Y-%m-%d %H',
+                'month' => '%Y-%m',
+                default => '%Y-%m-%d',
             },
         };
     }

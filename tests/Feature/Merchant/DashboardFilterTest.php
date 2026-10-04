@@ -559,6 +559,48 @@ it('reports store level counters that ignore the filter', function () {
         ->and($summary['total_members'])->toBe(1);
 });
 
+it('counts pending and canceled orders inside the same scope', function () {
+    // Stores configure the cancelled state under either spelling, so both rows
+    // exist here and both must land in the same counter.
+    $cancelled = (string) Str::ulid();
+    $canceled = (string) Str::ulid();
+
+    foreach (['cancelled' => $cancelled, 'canceled' => $canceled] as $key => $id) {
+        DB::table('statuses')->insert([
+            'id' => $id,
+            'store_id' => null,
+            'type' => 'order',
+            'key' => $key,
+            'label' => ucfirst($key),
+            'is_system' => true,
+        ]);
+    }
+
+    ($this->order)(['status_id' => $this->status['pending']]);
+    ($this->order)(['status_id' => $this->status['pending']]);
+    ($this->order)(['status_id' => $cancelled]);
+    ($this->order)(['status_id' => $canceled]);
+    ($this->order)(['status_id' => $this->status['delivered']]);
+
+    $summary = $this->service->summary(($this->filter)());
+
+    expect($summary['pending_count'])->toBe(2)
+        ->and($summary['canceled_count'])->toBe(2)
+        // These two are new fields, not a rename of the existing counters.
+        ->and($summary['total_orders'])->toBe(5);
+
+    // Scoped exactly like every other block: the same orders fall outside
+    // yesterday's window in the store timezone.
+    $scoped = $this->service->summary(($this->filter)(['period' => 'yesterday']));
+
+    expect($scoped['pending_count'])->toBe(0)
+        ->and($scoped['canceled_count'])->toBe(0);
+
+    // And a store that has not defined a cancelled status at all must not
+    // error out, it just has nothing to count.
+    expect($this->service->summary(($this->filter)(['period' => 'yesterday']))['canceled_count'])->toBe(0);
+});
+
 it('plots one point per bucket for the selected period', function () {
     expect($this->service->salesSeries(($this->filter)())['labels'])->toHaveCount(24)
         ->and($this->service->salesSeries(($this->filter)(['period' => 'week']))['labels'])->toHaveCount(7)

@@ -6,11 +6,6 @@
     statusKeys: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
     statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
     statusHex: {{ json_encode($ordersByStatus->pluck('hex')->values()) }},
-    stateLabels: {{ json_encode($ordersByState->pluck('name')->values()) }},
-    stateCounts: {{ json_encode($ordersByState->pluck('count')->values()->map(fn($v) => (int) $v)) }},
-    stateRevenues: {{ json_encode($ordersByState->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
-    deliveryLabels: {{ json_encode($deliveryTypeBreakdown->pluck('delivery_type')->values()) }},
-    deliveryCounts: {{ json_encode($deliveryTypeBreakdown->pluck('count')->values()->map(fn($v) => (int) $v)) }},
     renderCharts() {
         let tries = 0;
         const attempt = () => {
@@ -68,26 +63,19 @@
             const toRgbFromTriplet = (triplet) => {
                 if (!triplet) return null;
                 const t = triplet.replace(/[^0-9,\s]/g, '').trim();
-                if (!t.includes(',')) return null;
                 const parts = t.split(',').map(p => parseInt(p.trim(), 10));
-                if (parts.length < 3 || parts.some(isNaN)) return null;
-                return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+                return t.includes(',') && parts.length >= 3 && !parts.some(isNaN)
+                    ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`
+                    : null;
             };
 
-            const parseColor = (input) => {
-                if (!input) return null;
-                let c = String(input).trim();
-                return c;
-            };
+            const parseColor = (input) => input ? String(input).trim() : null;
 
             const toRgba = (input, alpha = 0.08) => {
                 const c = parseColor(input);
                 if (!c) return `rgba(107, 114, 128, ${alpha})`;
-                if (c.startsWith('rgb(') && !c.startsWith('rgba(')) return c.replace('rgb(', 'rgba(').replace(')',
-                    `, ${alpha})`);
-                if (c.startsWith('rgba(')) {
-                    return c.replace(/,[^,]+\)$/, `, ${alpha})`);
-                }
+                if (c.startsWith('rgba(')) return c.replace(/,[^,]+\)$/, `, ${alpha})`);
+                if (c.startsWith('rgb(')) return c.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
                 if (c[0] === '#') {
                     let hex = c.substring(1);
                     if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
@@ -101,29 +89,29 @@
                 return `rgba(107, 114, 128, ${alpha})`;
             };
 
-            let fontColor = cssVar('--edz-color-text-soft');
-            let gridColor = cssVar('--edz-color-border');
-            let accent500 = cssVar('--edz-color-accent-500');
-            let success500 = cssVar('--edz-color-success-500');
+            const themeColor = (name, fallback) => toRgbFromTriplet(cssVar(name)) || cssVar(name) || fallback;
 
-            fontColor = toRgbFromTriplet(fontColor) || fontColor || '#6b7280';
-            gridColor = toRgbFromTriplet(gridColor) || gridColor || '#e5e7eb';
-            accent500 = toRgbFromTriplet(accent500) || accent500 || '#6366f1';
-            success500 = toRgbFromTriplet(success500) || success500 || '#22c55e';
+            const resolvedFontColor = themeColor('--edz-color-text-soft', '#6b7280');
+            const resolvedGridColor = themeColor('--edz-color-border', '#e5e7eb');
+            const resolvedAccent = themeColor('--edz-color-accent-500', '#6366f1');
+            const resolvedSuccess = themeColor('--edz-color-success-500', '#22c55e');
+            const resolvedInk = themeColor('--edz-color-ink', '#111827');
 
-            const resolvedFontColor = parseColor(fontColor) || fontColor;
-            const resolvedGridColor = parseColor(gridColor) || gridColor;
-            const resolvedAccent = parseColor(accent500) || accent500;
-            const resolvedSuccess = parseColor(success500) || success500;
             Chart.defaults.color = resolvedFontColor;
             Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
-            if (Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels) {
+            if (Chart.defaults.plugins.legend?.labels) {
                 Chart.defaults.plugins.legend.labels.color = resolvedFontColor;
             }
             if (Chart.defaults.plugins.tooltip) {
                 Chart.defaults.plugins.tooltip.titleColor = resolvedFontColor;
                 Chart.defaults.plugins.tooltip.bodyColor = resolvedFontColor;
             }
+
+            // Both series are counts and sums, so neither axis has a meaningful
+            // negative half. Without an all-zero series Chart.js draws the
+            // baseline at its own top gridline and the first point reads as a
+            // full-height bar, which looks like real activity on an empty day.
+            const hasPositive = (values) => Array.isArray(values) && values.some(v => Number(v) > 0);
 
             if (window.__dashCharts.s) {
                 window.__dashCharts.s.destroy();
@@ -187,29 +175,18 @@
                             },
                             scales: {
                                 x: {
-                                    grid: {
-                                        color: resolvedGridColor,
-                                        drawBorder: false
-                                    },
-                                    border: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: resolvedFontColor
-                                    }
+                                    grid: { color: resolvedGridColor, drawBorder: false },
+                                    border: { display: false },
+                                    ticks: { color: resolvedFontColor }
                                 },
                                 y: {
                                     position: 'left',
-                                    grid: {
-                                        color: resolvedGridColor,
-                                        drawBorder: false
-                                    },
-                                    border: {
-                                        display: false
-                                    },
-                                    ticks: {
-                                        color: resolvedFontColor
-                                    },
+                                    beginAtZero: true,
+                                    // An empty period still needs a readable scale.
+                                    suggestedMax: hasPositive(data.chartRevenue) ? undefined : 1000,
+                                    grid: { color: resolvedGridColor, drawBorder: false },
+                                    border: { display: false },
+                                    ticks: { color: resolvedFontColor },
                                     title: {
                                         display: true,
                                         text: @js(__('stores.currency_symbol')),
@@ -218,14 +195,14 @@
                                 },
                                 y1: {
                                     position: 'right',
-                                    grid: {
-                                        drawOnChartArea: false
-                                    },
-                                    border: {
-                                        display: false
-                                    },
+                                    beginAtZero: true,
+                                    suggestedMax: hasPositive(data.chartOrders) ? undefined : 4,
+                                    grid: { drawOnChartArea: false },
+                                    border: { display: false },
                                     ticks: {
-                                        color: resolvedFontColor
+                                        color: resolvedFontColor,
+                                        // Order counts are whole numbers; "2.5 orders" is noise.
+                                        precision: 0
                                     },
                                     title: {
                                         display: true,
@@ -241,14 +218,8 @@
 
             if (data.statusKeys && data.statusKeys.length > 0 && data.statusCounts && data.statusCounts.length > 0) {
                 const resolvedColors = data.statusKeys.map((k, i) => {
-                    const hex = data.statusHex?.[i];
-                    if (hex && String(hex).trim() !== '') {
-                        const parsed = parseColor(hex);
-                        if (parsed) return parsed;
-                    }
-                    const fallbackInk = cssVar('--edz-color-ink');
-                    const inkRgb = toRgbFromTriplet(fallbackInk) || fallbackInk || '#111827';
-                    return inkRgb;
+                    const hex = parseColor(data.statusHex?.[i]);
+                    return hex && hex !== '' ? hex : resolvedInk;
                 });
 
                 const statusCanvas = document.getElementById('statusChart');
@@ -278,8 +249,7 @@
                                         color: resolvedFontColor,
                                         generateLabels: (chart) => {
                                             const labels = chart.data.labels || [];
-                                            const dataset = chart.data.datasets[0] || {};
-                                            const colors = dataset.backgroundColor || [];
+                                            const colors = chart.data.datasets[0]?.backgroundColor || [];
                                             return labels.map((label, i) => ({
                                                 text: label,
                                                 fillStyle: colors[i] || '#9ca3af',
@@ -300,12 +270,11 @@
                 }
             }
         };
- 
 
         if (!window.__dashCharts.mo) {
             window.__dashCharts.mo = new MutationObserver((mutations) => {
-                const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName ===
-                    'data-theme');
+                const hasThemeChange = mutations.some(m => m.attributeName === 'class'
+                    || m.attributeName === 'data-theme');
                 if (hasThemeChange && window.__dashCharts._lastData) {
                     window.renderDashboardCharts(window.__dashCharts._lastData);
                 }

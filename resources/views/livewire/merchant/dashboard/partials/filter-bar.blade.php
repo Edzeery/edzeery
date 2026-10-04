@@ -8,7 +8,10 @@
         'custom' => __('dashboard.period_custom'),
     ];
 
-    $canPickDimension = $canPickDimension && (filled($filter->memberId) || $filter->memberLocked);
+    // The stats view is chosen by permission, not by whether a member is selected.
+    $canConfirmStats = $canConfirm || $canStatsConfirmation;
+    $canSwitchStatsView = $canConfirmStats && $canStatsDelivery;
+    $defaultDimension = $canConfirmStats ? 'confirmation' : 'delivery';
 
     $activeCarrier = $filter->carrierId
         ? $filterOptions['carriers']->firstWhere('id', $filter->carrierId)
@@ -22,9 +25,14 @@
         ? __("dashboard.dimension_{$filter->memberDimension}")
         : null;
 
+    // Only worth a chip once it differs from what this user would get anyway.
+    $dimensionIsOverridden = $filter->memberDimension !== null
+        && $filter->memberDimension !== $defaultDimension;
+
     $hasActiveFilters = $filter->period !== 'today'
         || filled($activeCarrier)
-        || filled($activeMember);
+        || filled($activeMember)
+        || $dimensionIsOverridden;
 @endphp
 
 <div class="mb-6 flex flex-col gap-3">
@@ -96,25 +104,27 @@
             @endif
         @endunless
 
-        @if ($canPickDimension)
+        {{-- Anyone who can read both sides of the dashboard switches the whole
+             view; anyone who can read only one gets a fixed badge. --}}
+        @if ($canSwitchStatsView)
             <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <span class="edz-label" aria-hidden="true">&nbsp;</span>
+                <span class="edz-label">{{ __('dashboard.stats_view') }}</span>
                 <div class="flex items-center gap-3 px-3 py-2 rounded-md border border-surface-border bg-surface">
                     @foreach (['confirmation', 'delivery'] as $dimension)
                         <label class="flex items-center gap-1.5 text-xs text-ink" for="dashboard-dimension-{{ $dimension }}">
                             <input id="dashboard-dimension-{{ $dimension }}"
                                    type="radio"
                                    value="{{ $dimension }}"
-                                   wire:model="memberDimension"
+                                   wire:model.live="memberDimension"
                                    class="rounded">
                             <span>{{ __("dashboard.dimension_{$dimension}") }}</span>
                         </label>
                     @endforeach
                 </div>
             </div>
-        @elseif (filled($dimensionLabel) && (filled($filter->memberId) || $filter->memberLocked))
+        @elseif (filled($dimensionLabel))
             <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <span class="edz-label" aria-hidden="true">&nbsp;</span>
+                <span class="edz-label">{{ __('dashboard.stats_view') }}</span>
                 <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
             </div>
         @endif
@@ -141,7 +151,7 @@
                 <span class="edz-badge edz-badge--neutral">{{ $activeMember->name }}</span>
             @endif
 
-            @if (filled($dimensionLabel) && filled($filter->memberId))
+            @if ($dimensionIsOverridden)
                 <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
             @endif
 
