@@ -1,4 +1,4 @@
-﻿<div wire:key="dash-charts-{{ ($filter ?? null)?->hash() ?? '' }}" x-data="{
+<div wire:key="dash-charts-{{ ($filter ?? null)?->hash() ?? '' }}" x-data="{
     chartDays: {{ json_encode($salesSeries['labels'] ?? $salesByDay->pluck('date')->values()) }},
     chartRevenue: {{ json_encode($salesSeries['revenue'] ?? $salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
     chartOrders: {{ json_encode($salesSeries['orders'] ?? $salesByDay->pluck('orders')->values()->map(fn($v) => (int) $v)) }},

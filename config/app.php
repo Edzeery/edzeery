@@ -123,6 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'domain' => env('APP_DOMAIN', 'edzeery.com'),
+    'domain' => env('APP_DOMAIN') ?: (\App\Support\PlatformDomain::base() ?: 'edzeery.com'),
 
 ];

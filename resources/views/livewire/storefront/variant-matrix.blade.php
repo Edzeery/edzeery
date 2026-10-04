@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Domains\Cart\Support\OrderRules;
 use App\Models\Products\Product;

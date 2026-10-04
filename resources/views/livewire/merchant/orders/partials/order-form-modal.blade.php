@@ -1,4 +1,4 @@
-﻿<div x-data="orderProductPicker()">
+<div x-data="orderProductPicker()">
     @if ($showCreateModal || $showEditModal)
         <x-edz.modal :isOpen="true" :showCloseButton="false" :preventClose="true" size="lg" class=" edz-scroll"
             wire:key="order-create-edit-{{ $showCreateModal ? 'create' : 'edit' }}-{{ $showEditModal ? $editingOrderId : 'new' }}">

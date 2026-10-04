@@ -1,4 +1,4 @@
-﻿{{-- Tracking list (advanced grid) — desktop table + mobile cards + prev/next.
+{{-- Tracking list (advanced grid) — desktop table + mobile cards + prev/next.
     Columns render from $this->visibleColumns (per-tab persisted prefs); header filter
     buttons per filterable column via tracking-table-header. Row <td> markup lives in
     tracking-row-cell, mobile cards in tracking-mobile-card. Shared by both tabs. --}}

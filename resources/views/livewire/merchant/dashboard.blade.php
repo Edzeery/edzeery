@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\User\Services\SubscriptionGuardService;
@@ -7,6 +7,7 @@ use App\Livewire\Concerns\DashboardFilterConcern;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
+layout('components.layouts.store');
 
 $analytics = app(StoreDashboardAnalyticsService::class);
 $subscriptionGuard = app(SubscriptionGuardService::class);

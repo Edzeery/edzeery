@@ -236,8 +236,11 @@ class Store extends Model
         // example.com); an apex host (example.com) or bare localhost is kept.
         $labels = explode('.', $host);
         $base = count($labels) > 2 ? implode('.', array_slice($labels, 1)) : $host;
+        if ($base === 'localhost') {
+            return "{$scheme}://{$this->slug}.{$host}{$port}";
+        }
 
-        return "{$scheme}://{$this->slug}.{$base}{$port}";
+        return "{$scheme}://{$this->slug}." . \App\Support\PlatformDomain::base() . $port;
     }
 
     /**

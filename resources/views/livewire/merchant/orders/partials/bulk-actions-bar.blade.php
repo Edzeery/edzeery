@@ -1,4 +1,4 @@
-﻿{{-- Bulk Tasks dropdown â€” shared with the orders index Volt component via @include.
+{{-- Bulk Tasks dropdown â€” shared with the orders index Volt component via @include.
 
      Runs in the SAME component instance as index.blade.php (Blade partial, not a
      separate Livewire component), so $this / $wire / parent-defined methods are
