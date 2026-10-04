@@ -1,7 +1,22 @@
 ﻿<?php
 
 use App\Domains\Analytics\Support\OrderStatusChartMapper;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+
+/*
+|--------------------------------------------------------------------------
+| PHASE 37-G
+|--------------------------------------------------------------------------
+|
+| This file lives in tests/Unit, which tests/Pest.php does not bootstrap, so
+| it could only ever run when an earlier Feature test happened to have booted
+| the container and set the Eloquent connection resolver in the same process.
+| Order dependent, so it is bound to the app explicitly.
+|
+*/
+
+uses(Tests\TestCase::class, RefreshDatabase::class);
 
 it("maps known key with translation", function () {
     $rows = collect([

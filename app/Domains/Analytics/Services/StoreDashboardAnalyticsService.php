@@ -4,11 +4,11 @@ namespace App\Domains\Analytics\Services;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
-use App\Domains\Analytics\Support\DashboardFilterOptions;
 use App\Domains\Analytics\Support\DashboardOrderScope;
 use App\Domains\Analytics\Support\DashboardSeriesQuery;
 use App\Domains\Analytics\Support\DashboardSummaryQuery;
 use App\Domains\Analytics\Support\OrderStatusChartMapper;
+use App\Domains\Analytics\Support\OrderStatusIdMap;
 use App\Enums\Store\OrderStatus;
 use App\Models\Orders\Order;
 use App\Models\Products\Product;
@@ -22,19 +22,16 @@ class StoreDashboardAnalyticsService
 {
     private string $storeId;
 
-    /** @var array<string, string|null>|null key => id for type='order' statuses */
-    private ?array $orderStatusIdMap = null;
-
     public function __construct(
         ?string $storeId = null,
         private ?DashboardOrderScope $scope = null,
-        private ?DashboardFilterOptions $options = null,
+        private ?OrderStatusIdMap $statusIds = null,
         private ?DashboardSummaryQuery $summaryQuery = null,
         private ?DashboardSeriesQuery $seriesQuery = null
     ) {
         $this->storeId = $storeId ?? currentStoreId();
         $this->scope = $this->scope ?? app(DashboardOrderScope::class);
-        $this->options = $this->options ?? app(DashboardFilterOptions::class);
+        $this->statusIds = $this->statusIds ?? app(OrderStatusIdMap::class);
         $this->summaryQuery = $this->summaryQuery ?? app(DashboardSummaryQuery::class);
         $this->seriesQuery = $this->seriesQuery ?? app(DashboardSeriesQuery::class);
     }
@@ -44,8 +41,8 @@ class StoreDashboardAnalyticsService
         $result = $this->summaryQuery->run(
             $this->baseOrdersQuery(),
             $filter ?? app(DashboardFilterFactory::class)->make([], null),
-            fn ($s) => $this->statusId($s),
-            fn ($s) => $this->statusIds($s)
+            fn ($s) => $this->statusIds->id($s),
+            fn ($s) => $this->statusIds->ids($s)
         );
 
         $totalProducts = Product::query()->where('store_id', $this->storeId)->count();
@@ -65,7 +62,7 @@ class StoreDashboardAnalyticsService
 
     public function ordersByStatus(?DashboardFilter $filter = null): Collection
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
         $query = DB::table('orders')
             ->join('statuses', 'statuses.id', '=', 'orders.status_id')
             ->where('orders.store_id', $this->storeId)
@@ -86,8 +83,8 @@ class StoreDashboardAnalyticsService
 
     public function salesByDay(?DashboardFilter $filter = null): Collection
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
-        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIdResolver());
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
+        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIds->resolver());
         $trend = collect();
         $labels = $res['labels'];
         $revenue = $res['revenue'];
@@ -106,14 +103,14 @@ class StoreDashboardAnalyticsService
 
     public function salesSeries(?DashboardFilter $filter = null): array
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
 
-        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIdResolver());
+        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIds->resolver());
     }
 
     public function ordersByState(?DashboardFilter $filter = null): Collection
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
         $query = DB::table('orders')
             ->join('states', 'states.id', '=', 'orders.state_id')
             ->where('orders.store_id', $this->storeId)
@@ -131,7 +128,7 @@ class StoreDashboardAnalyticsService
 
     public function deliveryTypeBreakdown(?DashboardFilter $filter = null): Collection
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
         $query = DB::table('orders')
             ->where('store_id', $this->storeId)
             ->whereNull('deleted_at');
@@ -146,12 +143,12 @@ class StoreDashboardAnalyticsService
 
     public function pendingConfirmationOrders(?DashboardFilter $filter = null, int $limit = 5): Collection
     {
-        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
         $query = DB::table('orders')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->where('orders.store_id', $this->storeId)
             ->whereNull('orders.deleted_at')
-            ->where('orders.status_id', $this->statusId(OrderStatus::PENDING));
+            ->where('orders.status_id', $this->statusIds->id(OrderStatus::PENDING));
 
         $this->scope->applyPending($query, $filter);
 
@@ -162,17 +159,30 @@ class StoreDashboardAnalyticsService
             ->get();
     }
 
-    public function topSellingProducts(int $limit = 5): Collection
+    /**
+     * Ranked by quantity sold inside the scoped window.
+     *
+     * This used to hard-code "since the start of the current month" on the app
+     * clock, which made the card disagree with every other block on a filtered
+     * dashboard. Without a filter the original current-month window is kept.
+     */
+    public function topSellingProducts(?DashboardFilter $filter = null, int $limit = 5): Collection
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        return DB::table('order_items')
+        $query = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
             ->where('orders.store_id', $this->storeId)
             ->whereNull('orders.deleted_at')
-            ->where('orders.created_at', '>=', $startOfMonth)
+            ->whereNull('order_items.deleted_at');
+
+        if ($filter) {
+            $this->scope->apply($query, $filter);
+        } else {
+            $query->where('orders.created_at', '>=', Carbon::now()->startOfMonth());
+        }
+
+        return $query
             ->select(
                 'products.name',
                 DB::raw('SUM(order_items.quantity) as total_qty'),
@@ -199,53 +209,5 @@ class StoreDashboardAnalyticsService
     private function baseOrdersQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return Order::query()->where('store_id', $this->storeId)->whereNull('deleted_at');
-    }
-
-    private function statusIdsByKey(): array
-    {
-        // One lookup per request instead of one DB query per statusId() call
-        // (the service runs ~5 status lookups on every dashboard render). Kept
-        // on the instance, not in a static, so a long-lived worker cannot serve
-        // status ids from an earlier request.
-        if ($this->orderStatusIdMap === null) {
-            $this->orderStatusIdMap = DB::table('statuses')
-                ->where('type', 'order')
-                ->pluck('id', 'key')
-                ->all();
-        }
-
-        return $this->orderStatusIdMap;
-    }
-
-    private function statusId(OrderStatus $status): ?string
-    {
-        return $this->statusIdsByKey()[$status->value] ?? null;
-    }
-
-    /**
-     * The series query resolves the delivered status through the same lookup
-     * the summary uses, instead of keeping its own copy of the map.
-     *
-     * @return callable(OrderStatus): ?string
-     */
-    private function statusIdResolver(): callable
-    {
-        return fn (OrderStatus $status) => $this->statusId($status);
-    }
-
-    private function statusIds(array $statuses): array
-    {
-        $map = $this->statusIdsByKey();
-        $ids = [];
-
-        foreach ($statuses as $status) {
-            $id = $map[$status->value] ?? null;
-
-            if ($id !== null) {
-                $ids[] = $id;
-            }
-        }
-
-        return $ids;
     }
 }

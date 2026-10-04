@@ -106,13 +106,8 @@ final class DateBucket
         int $offsetSeconds,
         callable $fetcher
     ): array {
-        $empty = ['labels' => [], 'revenue' => [], 'orders' => [], 'trend' => collect()];
-
-        if (! $from) {
-            return $empty;
-        }
-
         $end = $to ?? $from->endOfDay();
+
         if ($end->lt($from)) {
             [$from, $end] = [$end->startOfDay(), $from->endOfDay()];
         }

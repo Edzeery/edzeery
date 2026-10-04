@@ -58,7 +58,9 @@ it('runs analytics methods with default filter', function () {
     $delivery = $service->deliveryTypeBreakdown($filter);
     expect($delivery)->toBeInstanceOf(\Illuminate\Support\Collection::class);
 
-    $top = $service->topSellingProducts(5);
+    // Named argument: topSellingProducts() takes the filter first, like every
+    // other block, so the limit must not be passed positionally.
+    $top = $service->topSellingProducts(limit: 5);
     expect($top)->toBeInstanceOf(\Illuminate\Support\Collection::class);
 
     $pending = $service->pendingConfirmationOrders($filter, 5);

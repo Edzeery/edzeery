@@ -8,12 +8,11 @@ use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\TestCase;
 
 // tests/Unit is not covered by the Pest.php bootstrap, so bind the app here.
 uses(Tests\TestCase::class)->use(RefreshDatabase::class);
 
-const TZ = 'Africa/Algiers';
+const DASHBOARD_FILTER_TZ = 'Africa/Algiers';
 
 /**
  * Builds the filter the factory would build for a membership with the given
@@ -71,7 +70,7 @@ it('bounds every named period in the store timezone and hands over UTC', functio
         ->and($filter->localFrom()->format('Y-m-d H:i:s'))->toBe($localFrom)
         ->and($filter->from->timezoneName)->toBe('UTC')
         ->and($filter->to->timezoneName)->toBe('UTC')
-        ->and($filter->timezone)->toBe(TZ)
+        ->and($filter->timezone)->toBe(DASHBOARD_FILTER_TZ)
         ->and($filter->utcOffsetSeconds)->toBe(3600);
 })->with([
     'all' => [['period' => 'all'], null, null, null],
@@ -284,9 +283,9 @@ it('changes the hash when any filter input changes', function () {
 it('gives an identical filter the same hash and separates different ones', function () {
     $window = fn (string $from, string $to) => new DashboardFilter(
         period: 'today',
-        from: Carbon\CarbonImmutable::parse($from, TZ)->utc(),
-        to: Carbon\CarbonImmutable::parse($to, TZ)->utc(),
-        timezone: TZ,
+        from: Carbon\CarbonImmutable::parse($from, DASHBOARD_FILTER_TZ)->utc(),
+        to: Carbon\CarbonImmutable::parse($to, DASHBOARD_FILTER_TZ)->utc(),
+        timezone: DASHBOARD_FILTER_TZ,
         utcOffsetSeconds: 3600,
     );
 
@@ -306,9 +305,9 @@ it('gives an identical filter the same hash and separates different ones', funct
         // A different offset for the same instant is a different bucket layout.
         ->and((new DashboardFilter(
             period: 'today',
-            from: Carbon\CarbonImmutable::parse('2026-03-10 00:00:00', TZ)->utc(),
-            to: Carbon\CarbonImmutable::parse('2026-03-10 23:59:59', TZ)->utc(),
-            timezone: TZ,
+            from: Carbon\CarbonImmutable::parse('2026-03-10 00:00:00', DASHBOARD_FILTER_TZ)->utc(),
+            to: Carbon\CarbonImmutable::parse('2026-03-10 23:59:59', DASHBOARD_FILTER_TZ)->utc(),
+            timezone: DASHBOARD_FILTER_TZ,
             utcOffsetSeconds: 7200,
         ))->hash())->not->toBe($baseline);
 });
@@ -318,11 +317,11 @@ it('serialises the window in UTC and exposes the local copy for display', functi
 
     expect($filter->from->timezoneName)->toBe('UTC')
         ->and($filter->to->timezoneName)->toBe('UTC')
-        ->and($filter->localFrom()->timezoneName)->toBe(TZ)
+        ->and($filter->localFrom()->timezoneName)->toBe(DASHBOARD_FILTER_TZ)
         ->and($filter->toArray())
         ->toMatchArray([
             'period' => 'today',
-            'timezone' => TZ,
+            'timezone' => DASHBOARD_FILTER_TZ,
             'utcOffsetSeconds' => 3600,
             'carrierId' => null,
             'memberLocked' => true,

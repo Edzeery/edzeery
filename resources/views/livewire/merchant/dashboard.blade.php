@@ -57,7 +57,7 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         'ordersByState' => $canStatsDelivery ? $analytics->ordersByState($filter) : collect(),
         'deliveryTypeBreakdown' => $canStatsDelivery ? $analytics->deliveryTypeBreakdown($filter) : collect(),
         'pendingOrders' => $canConfirm ? $analytics->pendingConfirmationOrders($filter) : collect(),
-        'topProducts' => $canTopProducts ? $analytics->topSellingProducts() : collect(),
+        'topProducts' => $canTopProducts ? $analytics->topSellingProducts($filter) : collect(),
         'lowStockVariants' => $canInventory ? $analytics->lowStockVariants() : collect(),
         'subscription' => $subscriptionGuard->getSubscription(),
         'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
