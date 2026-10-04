@@ -278,13 +278,9 @@ class DemoStoreSeeder extends Seeder
 
     private function seedSubscription(User $user, Store $store): void
     {
-        // A real paid plan (best-fit: pro, else basic). Deterministic dates —
-        // starts 12 days ago, renews in 18 days — with a settled payment record
-        // so billing, plan limits and renewal reminders all behave like a live
-        // merchant account. No trial: status stays ACTIVE from the first run.
-        $plan = Plan::whereIn('slug', ['pro', 'basic'])
-            ->orderByRaw("FIELD(slug, 'pro', 'basic')")
-            ->first() ?? Plan::query()->orderByDesc('is_default')->first();
+        // A real paid plan (best-fit: pro, else basic) — never the trial, so
+        // billing keeps a live-merchant look: starts 12 days ago, renews in 18.
+        $plan = Plan::where('slug', 'pro')->first() ?? Plan::where('slug', 'basic')->first();
 
         if (! $plan) {
             return;
@@ -530,6 +526,9 @@ class DemoStoreSeeder extends Seeder
 
         foreach ($products as $data) {
             $brand = $brands->get($data['brand_slug'] ?? null);
+            $primaryCategory = isset($data['category_slugs'][0])
+                ? $cats->get($data['category_slugs'][0])
+                : null;
 
             $product = Product::withoutGlobalScopes()->firstOrCreate(
                 ['store_id' => $store->id, 'slug' => $data['slug']],
@@ -544,8 +543,15 @@ class DemoStoreSeeder extends Seeder
                     'is_active'         => $data['is_active'],
                     'is_featured'       => $data['is_featured'],
                     'brand_id'          => $brand?->id,
+                    'primary_category_id' => $primaryCategory?->id,
                 ]
             );
+
+            // firstOrCreate only inserts — backfill the primary category on
+            // products created before this column was seeded (idempotent re-runs).
+            if ($primaryCategory && $product->primary_category_id === null) {
+                $product->forceFill(['primary_category_id' => $primaryCategory->id])->save();
+            }
 
             if (isset($data['category_slugs'])) {
                 $catIds = $cats->filter(fn ($c) => in_array($c->slug, $data['category_slugs']))
@@ -633,10 +639,13 @@ class DemoStoreSeeder extends Seeder
     {
         // Three members whose stored permissions are scoped to a single
         // workflow — the exact confirm/track/dual scenarios the reassign
-        // modals and the capacity-rotation rules exercise:
-        //   • demo.confirmer@edzeery.com  → confirm only
-        //   • demo.tracker@edzeery.com   → tracking only
-        //   • demo.dual@edzeery.com      → confirm + track (dual-role member)
+        // modals and the capacity-rotation rules exercise. Each member also
+        // carries the Phase 36 atomic grants its seeded scenario needs
+        // (order.dispatch.*, order.status.manage.own); the lists intentionally
+        // never include ORDER_MANAGE:
+        //   • demo.confirmer@edzeery.com  → confirm + own-status (returns, callbacks)
+        //   • demo.tracker@edzeery.com   → tracking + dispatch + own-status
+        //   • demo.dual@edzeery.com      → confirm + track + dispatch.carrier + own-status
         $scopedMembers = [
             'demo.confirmer@edzeery.com' => [
                 'name'  => 'Demo Confirmer',
@@ -647,6 +656,7 @@ class DemoStoreSeeder extends Seeder
                     StorePermissionEnum::RETURNS_PROCESS->value,
                     StorePermissionEnum::STATS_CONFIRMATION->value,
                     StorePermissionEnum::INVENTORY_VIEW->value,
+                    StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value,
                 ],
             ],
             'demo.tracker@edzeery.com' => [
@@ -658,6 +668,10 @@ class DemoStoreSeeder extends Seeder
                     StorePermissionEnum::STATS_DELIVERY->value,
                     StorePermissionEnum::STATS_TOP_KPIS->value,
                     StorePermissionEnum::INVENTORY_VIEW->value,
+                    StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value,
+                    StorePermissionEnum::ORDER_DISPATCH_CARRIER->value,
+                    StorePermissionEnum::ORDER_DISPATCH_RIDER->value,
+                    StorePermissionEnum::ORDER_DISPATCH_VALIDATE->value,
                 ],
             ],
             'demo.dual@edzeery.com' => [
@@ -670,6 +684,8 @@ class DemoStoreSeeder extends Seeder
                     StorePermissionEnum::STATS_CONFIRMATION->value,
                     StorePermissionEnum::STATS_DELIVERY->value,
                     StorePermissionEnum::INVENTORY_VIEW->value,
+                    StorePermissionEnum::ORDER_STATUS_MANAGE_OWN->value,
+                    StorePermissionEnum::ORDER_DISPATCH_CARRIER->value,
                 ],
             ],
         ];
@@ -855,17 +871,17 @@ class DemoStoreSeeder extends Seeder
     private function seedDemoCustomers(Store $store): void
     {
         $customers = [
-            ['name' => 'Amine Bensaïd',   'phone' => '0550123456', 'state' => '16', 'city' => 'Bab Ezzouar', 'post' => '16062', 'email' => 'amine.bensaid@example.dz',    'address' => 'Cité 200 logements, Bab Ezzouar, Alger'],
-            ['name' => 'Meriem Cherif',   'phone' => '0770987654', 'state' => '31', 'city' => 'Bir El Djir', 'post' => '31000', 'email' => 'meriem.cherif@example.dz',    'address' => 'Résidence les Palmiers, Bir El Djir, Oran'],
-            ['name' => 'Rania Bouzid',    'phone' => '0661234567', 'state' => '25', 'city' => 'El Khroub',   'post' => '25100', 'email' => 'rania.bouzid@example.dz',     'address' => 'Zone urbaine est, El Khroub, Constantine'],
-            ['name' => 'Yacine Haddad',   'phone' => '0555555555', 'state' => '09', 'city' => 'Boufarik',    'post' => '09000', 'email' => 'yacine.haddad@example.dz',    'address' => 'Route de Boufarik centre, Blida'],
-            ['name' => 'Sofiane Belkadi', 'phone' => '0771112233', 'state' => '16', 'city' => 'Hussein Dey', 'post' => '16045', 'email' => 'sofiane.belkadi@example.dz', 'address' => 'Rue des Frères Mansouri, Hussein Dey, Alger'],
+            ['name' => 'Amine Bensaïd',   'phone' => '0550123456', 'state' => '16', 'city' => 'Bab Azzouar', 'post' => '16021', 'email' => 'amine.bensaid@example.dz',    'address' => 'Cité 200 logements, Bab Azzouar, Alger'],
+            ['name' => 'Meriem Cherif',   'phone' => '0770987654', 'state' => '31', 'city' => 'Bir El Djir', 'post' => '31003', 'email' => 'meriem.cherif@example.dz',    'address' => 'Résidence les Palmiers, Bir El Djir, Oran'],
+            ['name' => 'Rania Bouzid',    'phone' => '0661234567', 'state' => '25', 'city' => 'El Khroub',   'post' => '25006', 'email' => 'rania.bouzid@example.dz',     'address' => 'Zone urbaine est, El Khroub, Constantine'],
+            ['name' => 'Yacine Haddad',   'phone' => '0555555555', 'state' => '09', 'city' => 'Boufarik',    'post' => '9020',  'email' => 'yacine.haddad@example.dz',    'address' => 'Route de Boufarik centre, Blida'],
+            ['name' => 'Sofiane Belkadi', 'phone' => '0771112233', 'state' => '16', 'city' => 'Hussein Dey', 'post' => '16017', 'email' => 'sofiane.belkadi@example.dz', 'address' => 'Rue des Frères Mansouri, Hussein Dey, Alger'],
         ];
 
         foreach ($customers as $data) {
             $loc = $this->algeriaLocation($data['state'], $data['city'], $data['post']);
 
-            Customer::firstOrCreate(
+            $customer = Customer::firstOrCreate(
                 ['store_id' => $store->id, 'phone' => $data['phone']],
                 [
                     'name'       => $data['name'],
@@ -877,6 +893,21 @@ class DemoStoreSeeder extends Seeder
                     'status'     => true,
                 ]
             );
+
+            // firstOrCreate only inserts — force-sync the location on re-runs so
+            // already-seeded customers point to the real commune.
+            $locMap = [
+                'country_id' => $loc['country']->id,
+                'state_id'   => $loc['state']->id,
+                'city_id'    => $loc['city']->id,
+                'address'    => $data['address'],
+            ];
+            $locMap = array_filter(
+                $locMap,
+                fn ($value, $field) => (string) ($customer->{$field} ?? '') !== (string) $value,
+                ARRAY_FILTER_USE_BOTH
+            );
+            $customer->forceFill($locMap)->save();
         }
     }
 
@@ -931,9 +962,9 @@ class DemoStoreSeeder extends Seeder
                 'notes' => 'Client did not answer the first call — try again tomorrow.',
                 'phone_secondary' => '0661998877',
                 'attempts' => 1, 'last_contact_hours' => 26,
-                'history' => [['no_answer_1', 'demo.staff@edzeery.com', 'First confirmation attempt — no answer', 26]],
+                'history' => [['no_answer_1', 'demo.confirmer@edzeery.com', 'First confirmation attempt — no answer', 26]],
                 'events' => [
-                    ['type' => 'contact', 'hours' => 26, 'by' => 'demo.staff@edzeery.com',
+                    ['type' => 'contact', 'hours' => 26, 'by' => 'demo.confirmer@edzeery.com',
                      'message' => __('order_flow.event_contact', ['outcome' => 'no answer'], 'ar'), 'payload' => ['outcome' => 'no answer']],
                 ],
             ],
@@ -941,7 +972,7 @@ class DemoStoreSeeder extends Seeder
                 'number' => '21005', 'customer' => '0771112233', 'status' => 'postponed', 'days_ago' => 4, 'create_hour' => 11,
                 'items' => [['DEMO-SPK-001-DF', 1]],
                 'notes' => 'Customer asked to call back next week.',
-                'history' => [['postponed', 'demo.staff@edzeery.com', 'Customer requested a callback next week', 34]],
+                'history' => [['postponed', 'demo.confirmer@edzeery.com', 'Customer requested a callback next week', 34]],
             ],
             [ // 21006 — confirmed, company selected, ready to send
                 'number' => '21006', 'customer' => '0550123456', 'status' => 'confirmed', 'days_ago' => 1, 'create_hour' => 10,
@@ -1172,9 +1203,9 @@ class DemoStoreSeeder extends Seeder
         // office-delivery (stopdesk) block has real options for the seeded
         // customer wilayas and the stopdesk demo order (21016) resolves to one.
         $points = [
-            ['provider' => 'ecotrack',    'state' => '16', 'city' => 'Bab Ezzouar', 'code' => 'EC-ALG-01', 'name' => 'Ecotrack — Hub Alger',       'address' => "Zone d'activite de Bab Ezzouar, Alger",   'phone' => '023 80 12 34'],
+            ['provider' => 'ecotrack',    'state' => '16', 'city' => 'Bab Azzouar', 'code' => 'EC-ALG-01', 'name' => 'Ecotrack — Hub Alger',       'address' => "Zone d'activite de Bab Azzouar, Alger",   'phone' => '023 80 12 34'],
             ['provider' => 'ecotrack',    'state' => '31', 'city' => 'Bir El Djir', 'code' => 'EC-ORN-01', 'name' => 'Ecotrack — Agence Oran',      'address' => "Rue de l'ANP, Bir El Djir, Oran",         'phone' => '041 55 44 33'],
-            ['provider' => 'zrexpress_v2','state' => '16', 'city' => 'Bab Ezzouar', 'code' => 'ZR-ALG-01', 'name' => 'ZR Express — Agence Alger',   'address' => 'Cite 5 Juillet, Bab Ezzouar, Alger',       'phone' => '023 90 21 43'],
+            ['provider' => 'zrexpress_v2','state' => '16', 'city' => 'Bab Azzouar', 'code' => 'ZR-ALG-01', 'name' => 'ZR Express — Agence Alger',   'address' => 'Cite 5 Juillet, Bab Azzouar, Alger',       'phone' => '023 90 21 43'],
             ['provider' => 'zrexpress_v2','state' => '31', 'city' => 'Bir El Djir', 'code' => 'ZR-ORN-01', 'name' => 'ZR Express — Agence Oran',    'address' => 'Rue El Karma, Bir El Djir, Oran',          'phone' => '041 55 44 88'],
         ];
 
@@ -1245,7 +1276,7 @@ class DemoStoreSeeder extends Seeder
 
             $debt->payments()->delete();
 
-            // ZR Express gets a partial settlement (150 DA of 400 DA) so the
+            // ZR Express gets a 150 DA partial settlement against its invoice so the
             // finance screens show a progressing debt; Ecotrack stays open.
             if ($provider->code === 'zrexpress_v2') {
                 DebtPayment::create([

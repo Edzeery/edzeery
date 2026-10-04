@@ -5,7 +5,7 @@
     statusLabels: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
     statusKeys: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
     statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
-    statusColors: {{ json_encode($ordersByStatus->pluck('color')->values()) }},
+    statusHex: {{ json_encode($ordersByStatus->pluck('hex')->values()) }},
     stateLabels: {{ json_encode($ordersByState->pluck('name')->values()) }},
     stateCounts: {{ json_encode($ordersByState->pluck('count')->values()->map(fn($v) => (int) $v)) }},
     stateRevenues: {{ json_encode($ordersByState->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
@@ -23,7 +23,7 @@
         };
         this.$nextTick(attempt);
     }
-}" x-init="renderCharts()" x-destroy="if (window.__dashCharts) { window.__dashCharts.s?.destroy?.(); window.__dashCharts.st?.destroy?.(); window.__dashCharts.mo?.disconnect?.(); window.__dashCharts = {}; }">
+}" x-init="renderCharts()">
 
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
         {{-- Sales Trend --}}
@@ -53,28 +53,80 @@
         window.__dashCharts = window.__dashCharts || {};
         window.renderDashboardCharts = function(data) {
             const root = getComputedStyle(document.documentElement);
-            const fontColor = root.getPropertyValue('--edz-color-text-soft')?.trim() || '#6b7280';
-            const gridColor = root.getPropertyValue('--edz-color-border')?.trim() || '#e5e7eb';
-            const accent500 = root.getPropertyValue('--edz-color-accent-500')?.trim() || '#6366f1';
-            const success500 = root.getPropertyValue('--edz-color-success-500')?.trim() || '#22c55e';
-            const inkColor = root.getPropertyValue('--edz-color-ink')?.trim() || '#111827';
+            const cssVar = (name) => root.getPropertyValue(name)?.trim() || null;
 
-            const toRgba = (hex, alpha = 0.08) => {
-                if (!hex) return `rgba(107, 114, 128, ${alpha})`;
-                let c = hex.trim();
-                if (c.startsWith('rgb')) return c.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
-                if (c.startsWith('rgba')) return c.replace(/,[^,]+\)$/, `, ${alpha})`);
-                if (c[0] === '#') c = c.substring(1);
-                if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
-                const r = parseInt(c.substring(0,2), 16);
-                const g = parseInt(c.substring(2,4), 16);
-                const b = parseInt(c.substring(4,6), 16);
-                if (Number.isNaN(r)) return `rgba(107, 114, 128, ${alpha})`;
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            const toRgbFromTriplet = (triplet) => {
+                if (!triplet) return null;
+                const t = triplet.replace(/[^0-9,\s]/g, '').trim();
+                if (!t.includes(',')) return null;
+                const parts = t.split(',').map(p => parseInt(p.trim(), 10));
+                if (parts.length < 3 || parts.some(isNaN)) return null;
+                return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
             };
 
-            Chart.defaults.color = fontColor;
+            const parseColor = (input) => {
+                if (!input) return null;
+                let c = String(input).trim();
+                if (c.startsWith('var(')) {
+                    try {
+                        const m = c.match(/var\(([^)]+)\)/);
+                        if (m) {
+                            const v = cssVar(m[1].trim());
+                            if (v && v.includes(',')) {
+                                const rgb = toRgbFromTriplet(v);
+                                if (rgb) return rgb;
+                            }
+                            if (v) return v;
+                        }
+                    } catch (e) {}
+                }
+                return c;
+            };
+
+            const toRgba = (input, alpha = 0.08) => {
+                const c = parseColor(input);
+                if (!c) return `rgba(107, 114, 128, ${alpha})`;
+                if (c.startsWith('rgb(') && !c.startsWith('rgba(')) return c.replace('rgb(', 'rgba(').replace(')',
+                    `, ${alpha})`);
+                if (c.startsWith('rgba(')) {
+                    return c.replace(/,[^,]+\)$/, `, ${alpha})`);
+                }
+                if (c[0] === '#') {
+                    let hex = c.substring(1);
+                    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    const r = parseInt(hex.substring(0, 2), 16);
+                    const g = parseInt(hex.substring(2, 4), 16);
+                    const b = parseInt(hex.substring(4, 6), 16);
+                    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+                        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    }
+                }
+                return `rgba(107, 114, 128, ${alpha})`;
+            };
+
+            let fontColor = cssVar('--edz-color-text-soft');
+            let gridColor = cssVar('--edz-color-border');
+            let accent500 = cssVar('--edz-color-accent-500');
+            let success500 = cssVar('--edz-color-success-500');
+
+            fontColor = toRgbFromTriplet(fontColor) || fontColor || '#6b7280';
+            gridColor = toRgbFromTriplet(gridColor) || gridColor || '#e5e7eb';
+            accent500 = toRgbFromTriplet(accent500) || accent500 || '#6366f1';
+            success500 = toRgbFromTriplet(success500) || success500 || '#22c55e';
+
+            const resolvedFontColor = parseColor(fontColor) || fontColor;
+            const resolvedGridColor = parseColor(gridColor) || gridColor;
+            const resolvedAccent = parseColor(accent500) || accent500;
+            const resolvedSuccess = parseColor(success500) || success500;
+            Chart.defaults.color = resolvedFontColor;
             Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
+            if (Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels) {
+                Chart.defaults.plugins.legend.labels.color = resolvedFontColor;
+            }
+            if (Chart.defaults.plugins.tooltip) {
+                Chart.defaults.plugins.tooltip.titleColor = resolvedFontColor;
+                Chart.defaults.plugins.tooltip.bodyColor = resolvedFontColor;
+            }
 
             if (window.__dashCharts.s) {
                 window.__dashCharts.s.destroy();
@@ -93,57 +145,102 @@
                         data: {
                             labels: data.chartDays.map(d => {
                                 const dt = new Date(d);
-                                return dt.toLocaleDateString('ar-DZ', { month: 'short', day: 'numeric' });
+                                return dt.toLocaleDateString('ar-DZ', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                });
                             }),
                             datasets: [{
-                                label: '{{ __("dashboard.revenue") }}',
+                                label: '{{ __('dashboard.revenue') }}',
                                 data: data.chartRevenue,
-                                borderColor: accent500,
-                                backgroundColor: toRgba(accent500, 0.08),
+                                borderColor: resolvedAccent,
+                                backgroundColor: toRgba(resolvedAccent, 0.08),
                                 fill: true,
                                 tension: 0.4,
                                 borderWidth: 2,
                                 pointRadius: 0,
                                 pointHoverRadius: 5,
-                                pointHoverBackgroundColor: accent500,
+                                pointHoverBackgroundColor: resolvedAccent,
                                 yAxisID: 'y',
                             }, {
-                                label: '{{ __("dashboard.total_orders") }}',
+                                label: '{{ __('dashboard.total_orders') }}',
                                 data: data.chartOrders,
-                                borderColor: success500,
-                                backgroundColor: toRgba(success500, 0.05),
+                                borderColor: resolvedSuccess,
+                                backgroundColor: toRgba(resolvedSuccess, 0.05),
                                 fill: false,
                                 tension: 0.4,
                                 borderWidth: 2,
                                 pointRadius: 0,
                                 pointHoverRadius: 5,
-                                pointHoverBackgroundColor: success500,
+                                pointHoverBackgroundColor: resolvedSuccess,
                                 yAxisID: 'y1',
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            interaction: { intersect: false, mode: 'index' },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            },
                             plugins: {
                                 legend: {
                                     position: 'top',
-                                    labels: { boxWidth: 12, padding: 16, usePointStyle: true }
+                                    labels: {
+                                        boxWidth: 12,
+                                        padding: 16,
+                                        usePointStyle: true,
+                                        color: resolvedFontColor
+                                    }
                                 }
                             },
                             scales: {
-                                x: { grid: { color: gridColor, drawBorder: false }, border: { display: false } },
+                                x: {
+                                    grid: {
+                                        color: resolvedGridColor,
+                                        drawBorder: false
+                                    },
+                                    border: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: resolvedFontColor
+                                    }
+                                },
                                 y: {
                                     position: 'left',
-                                    grid: { color: gridColor, drawBorder: false },
-                                    border: { display: false },
-                                    title: { display: true, text: '{{ __("stores.currency_symbol") }}' }
+                                    grid: {
+                                        color: resolvedGridColor,
+                                        drawBorder: false
+                                    },
+                                    border: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: resolvedFontColor
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '{{ __('stores.currency_symbol') }}',
+                                        color: resolvedFontColor
+                                    }
                                 },
                                 y1: {
                                     position: 'right',
-                                    grid: { drawOnChartArea: false },
-                                    border: { display: false },
-                                    title: { display: true, text: '{{ __("dashboard.orders") }}' }
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    border: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        color: resolvedFontColor
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: '{{ __('dashboard.orders') }}',
+                                        color: resolvedFontColor
+                                    }
                                 },
                             }
                         }
@@ -152,12 +249,15 @@
             }
 
             if (data.statusKeys && data.statusKeys.length > 0 && data.statusCounts && data.statusCounts.length > 0) {
-                const resolvedColors = data.statusKeys.map((k) => {
-                    const nk = (k || '').toString().trim().toLowerCase();
-                    if (nk === 'pending') {
-                        return '#9ca3af';
+                const resolvedColors = data.statusKeys.map((k, i) => {
+                    const hex = data.statusHex?.[i];
+                    if (hex && String(hex).trim() !== '') {
+                        const parsed = parseColor(hex);
+                        if (parsed) return parsed;
                     }
-                    return inkColor;
+                    const fallbackInk = cssVar('--edz-color-ink');
+                    const inkRgb = toRgbFromTriplet(fallbackInk) || fallbackInk || '#111827';
+                    return inkRgb;
                 });
 
                 const statusCanvas = document.getElementById('statusChart');
@@ -169,7 +269,8 @@
                             datasets: [{
                                 data: data.statusCounts,
                                 backgroundColor: resolvedColors,
-                                borderWidth: 0,
+                                borderColor: resolvedColors,
+                                borderWidth: 1,
                                 hoverOffset: 4
                             }]
                         },
@@ -179,7 +280,27 @@
                             plugins: {
                                 legend: {
                                     position: 'bottom',
-                                    labels: { boxWidth: 12, padding: 10, usePointStyle: true }
+                                    labels: {
+                                        boxWidth: 12,
+                                        padding: 10,
+                                        usePointStyle: true,
+                                        color: resolvedFontColor,
+                                        generateLabels: (chart) => {
+                                            const labels = chart.data.labels || [];
+                                            const dataset = chart.data.datasets[0] || {};
+                                            const colors = dataset.backgroundColor || [];
+                                            return labels.map((label, i) => ({
+                                                text: label,
+                                                fillStyle: colors[i] || '#9ca3af',
+                                                strokeStyle: colors[i] || '#9ca3af',
+                                                lineWidth: 1,
+                                                pointStyle: 'circle',
+                                                hidden: false,
+                                                index: i,
+                                                fontColor: resolvedFontColor
+                                            }));
+                                        }
+                                    }
                                 }
                             },
                             cutout: '68%',
@@ -189,21 +310,31 @@
             }
         };
 
+        window.__dashCharts._lastData = data;
+
         if (!window.__dashCharts.mo) {
             window.__dashCharts.mo = new MutationObserver((mutations) => {
-                const rootEl = document.documentElement;
                 const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName === 'data-theme');
                 if (hasThemeChange && window.__dashCharts._lastData) {
                     window.renderDashboardCharts(window.__dashCharts._lastData);
                 }
             });
-            window.__dashCharts.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+            window.__dashCharts.mo.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class', 'data-theme']
+            });
         }
+    };
 
-        window.addEventListener('render-dashboard-charts-data', (e) => {
-            if (e && e.detail) {
-                window.__dashCharts._lastData = e.detail;
+    if (window.Livewire) {
+        window.addEventListener('livewire:navigating', function () {
+            if (window.__dashCharts) {
+                if (window.__dashCharts.s) window.__dashCharts.s.destroy();
+                if (window.__dashCharts.st) window.__dashCharts.st.destroy();
+                if (window.__dashCharts.mo) window.__dashCharts.mo.disconnect();
+                window.__dashCharts = {};
             }
-        }, { once: true });
+        });
+    }
     </script>
 </div>

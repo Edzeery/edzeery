@@ -79,25 +79,59 @@ class StoreDashboardAnalyticsService
     {
         $startOfMonth = Carbon::now()->startOfMonth();
 
-        return DB::table('orders')
+        $rows = DB::table('orders')
             ->join('statuses', 'statuses.id', '=', 'orders.status_id')
             ->where('orders.store_id', $this->storeId)
             ->whereNull('orders.deleted_at')
             ->where('orders.created_at', '>=', $startOfMonth)
-            ->select('statuses.key', 'statuses.color', DB::raw('COUNT(*) as count'))
-            ->groupBy('statuses.key', 'statuses.color')
+            ->select('statuses.key', DB::raw('COUNT(*) as count'))
+            ->groupBy('statuses.key')
             ->orderByDesc('count')
-            ->get()
-            ->map(function ($row) {
-                $key = $row->key;
+            ->get();
 
-                return (object) [
-                    'key'   => $key,
-                    'color' => $row->color,
-                    'count' => (int) $row->count,
-                    'label' => $key,
-                ];
-            });
+        $resolvedDomain = \App\Domains\Status\StatusResolver::domain('order', $this->storeId);
+
+        return $rows->map(function ($row) use ($resolvedDomain) {
+            $key = $row->key;
+
+            $resolved = $resolvedDomain[$key] ?? null;
+
+            $label = null;
+
+            if ($key) {
+                $tk = 'statuses.order.' . $key;
+                $tr = trans($tk);
+                if ($tr !== $tk && ! empty($tr)) {
+                    $label = $tr;
+                } else {
+                    $alt = str_replace('cancelled', 'canceled', $key);
+                    if ($alt !== $key) {
+                        $tak = 'statuses.order.' . $alt;
+                        $tar = trans($tak);
+                        if ($tar !== $tak && ! empty($tar)) {
+                            $label = $tar;
+                        }
+                    }
+                }
+            }
+
+            if (empty($label) && $resolved && ! empty($resolved->label)) {
+                $label = $resolved->label;
+            }
+
+            if (empty($label) && $key) {
+                $label = \Illuminate\Support\Str::of($key)->replace('_', ' ')->title();
+            }
+
+            $hex = $resolved?->hex ?? '#9ca3af';
+
+            return (object) [
+                'key'   => $key,
+                'count' => (int) $row->count,
+                'label' => $label,
+                'hex'   => $hex,
+            ];
+        });
     }
 
     public function salesByDay(): Collection
