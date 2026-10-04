@@ -1,12 +1,12 @@
-<?php
+﻿<?php
 
 use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\User\Services\SubscriptionGuardService;
 use App\Enums\Store\StorePermissionEnum;
+use App\Livewire\Concerns\DashboardFilterConcern;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\with;
 
-layout('components.layouts.store');
 
 $analytics = app(StoreDashboardAnalyticsService::class);
 $subscriptionGuard = app(SubscriptionGuardService::class);
@@ -40,7 +40,7 @@ with([
 
 <div>
 
-    {{-- KPI Cards — Apple-style large numbers with negative tracking --}}
+    {{-- KPI Cards â€” Apple-style large numbers with negative tracking --}}
     @if ($canTopKpis)
     <div class="edz-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
         {{-- Total Orders --}}
@@ -50,7 +50,7 @@ with([
                 @if ($summary['total_orders_change'] != 0)
                     <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
                         {{ $summary['total_orders_change'] > 0 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
-                        {{ $summary['total_orders_change'] > 0 ? '▲' : '▼' }} {{ abs($summary['total_orders_change']) }}%
+                        {{ $summary['total_orders_change'] > 0 ? 'â–²' : 'â–¼' }} {{ abs($summary['total_orders_change']) }}%
                     </span>
                 @endif
             </div>
@@ -233,7 +233,7 @@ with([
                         <div class="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-medium text-ink">#{{ $order->number }}</p>
-                                <p class="text-xs text-ink-muted">{{ $order->customer_name ?? '-' }} · {{ $order->customer_phone ?? '-' }}</p>
+                                <p class="text-xs text-ink-muted">{{ $order->customer_name ?? '-' }} آ· {{ $order->customer_phone ?? '-' }}</p>
                             </div>
                             <div class="text-end">
                                 <p class="text-sm font-bold tracking-tight text-ink">{{ number_format($order->total_amount, 0) }} {{ __('stores.currency_symbol') }}</p>
@@ -313,3 +313,7 @@ with([
 
 
 </div>
+
+
+
+

@@ -1,8 +1,8 @@
-<div x-data="{
-    chartDays: {{ json_encode($salesByDay->pluck('date')->values()) }},
-    chartRevenue: {{ json_encode($salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
-    chartOrders: {{ json_encode($salesByDay->pluck('total')->values()->map(fn($v) => (int) $v)) }},
-    statusLabels: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
+﻿<div wire:key="dash-charts-{{ ($filter ?? null)?->hash() ?? '' }}" x-data="{
+    chartDays: {{ json_encode($salesSeries['labels'] ?? $salesByDay->pluck('date')->values()) }},
+    chartRevenue: {{ json_encode($salesSeries['revenue'] ?? $salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
+    chartOrders: {{ json_encode($salesSeries['orders'] ?? $salesByDay->pluck('orders')->values()->map(fn($v) => (int) $v)) }},
+    statusLabels: {{ json_encode($ordersByStatus->pluck('label')->values()) }},
     statusKeys: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
     statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
     statusHex: {{ json_encode($ordersByStatus->pluck('hex')->values()) }},
@@ -52,6 +52,9 @@
     <script>
         window.__dashCharts = window.__dashCharts || {};
         window.renderDashboardCharts = function(data) {
+            if (data === undefined) return;
+            if (!window.__dashCharts) window.__dashCharts = {};
+            window.__dashCharts._lastData = data;
             const root = getComputedStyle(document.documentElement);
             const cssVar = (name) => root.getPropertyValue(name)?.trim() || null;
 
@@ -67,19 +70,6 @@
             const parseColor = (input) => {
                 if (!input) return null;
                 let c = String(input).trim();
-                if (c.startsWith('var(')) {
-                    try {
-                        const m = c.match(/var\(([^)]+)\)/);
-                        if (m) {
-                            const v = cssVar(m[1].trim());
-                            if (v && v.includes(',')) {
-                                const rgb = toRgbFromTriplet(v);
-                                if (rgb) return rgb;
-                            }
-                            if (v) return v;
-                        }
-                    } catch (e) {}
-                }
                 return c;
             };
 
@@ -151,7 +141,7 @@
                                 });
                             }),
                             datasets: [{
-                                label: '{{ __('dashboard.revenue') }}',
+                                label: @js(__('dashboard.revenue')),
                                 data: data.chartRevenue,
                                 borderColor: resolvedAccent,
                                 backgroundColor: toRgba(resolvedAccent, 0.08),
@@ -163,7 +153,7 @@
                                 pointHoverBackgroundColor: resolvedAccent,
                                 yAxisID: 'y',
                             }, {
-                                label: '{{ __('dashboard.total_orders') }}',
+                                label: @js(__('dashboard.total_orders')),
                                 data: data.chartOrders,
                                 borderColor: resolvedSuccess,
                                 backgroundColor: toRgba(resolvedSuccess, 0.05),
@@ -221,7 +211,7 @@
                                     },
                                     title: {
                                         display: true,
-                                        text: '{{ __('stores.currency_symbol') }}',
+                                        text: @js(__('stores.currency_symbol')),
                                         color: resolvedFontColor
                                     }
                                 },
@@ -238,7 +228,7 @@
                                     },
                                     title: {
                                         display: true,
-                                        text: '{{ __('dashboard.orders') }}',
+                                        text: @js(__('dashboard.orders')),
                                         color: resolvedFontColor
                                     }
                                 },
@@ -309,12 +299,12 @@
                 }
             }
         };
-
-        window.__dashCharts._lastData = data;
+ 
 
         if (!window.__dashCharts.mo) {
             window.__dashCharts.mo = new MutationObserver((mutations) => {
-                const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName === 'data-theme');
+                const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName ===
+                    'data-theme');
                 if (hasThemeChange && window.__dashCharts._lastData) {
                     window.renderDashboardCharts(window.__dashCharts._lastData);
                 }
@@ -324,17 +314,16 @@
                 attributeFilter: ['class', 'data-theme']
             });
         }
-    };
 
-    if (window.Livewire) {
-        window.addEventListener('livewire:navigating', function () {
-            if (window.__dashCharts) {
-                if (window.__dashCharts.s) window.__dashCharts.s.destroy();
-                if (window.__dashCharts.st) window.__dashCharts.st.destroy();
-                if (window.__dashCharts.mo) window.__dashCharts.mo.disconnect();
-                window.__dashCharts = {};
-            }
-        });
-    }
+        if (window.Livewire) {
+            window.addEventListener('livewire:navigating', function() {
+                if (window.__dashCharts) {
+                    if (window.__dashCharts.s) window.__dashCharts.s.destroy();
+                    if (window.__dashCharts.st) window.__dashCharts.st.destroy();
+                    if (window.__dashCharts.mo) window.__dashCharts.mo.disconnect();
+                    window.__dashCharts = {};
+                }
+            });
+        }
     </script>
 </div>

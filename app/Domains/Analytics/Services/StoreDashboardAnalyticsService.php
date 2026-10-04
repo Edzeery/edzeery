@@ -2,6 +2,13 @@
 
 namespace App\Domains\Analytics\Services;
 
+use App\Domains\Analytics\DTOs\DashboardFilter;
+use App\Domains\Analytics\Support\DashboardFilterFactory;
+use App\Domains\Analytics\Support\DashboardFilterOptions;
+use App\Domains\Analytics\Support\DashboardOrderScope;
+use App\Domains\Analytics\Support\DashboardSeriesQuery;
+use App\Domains\Analytics\Support\DashboardSummaryQuery;
+use App\Domains\Analytics\Support\OrderStatusChartMapper;
 use App\Enums\Store\OrderStatus;
 use App\Models\Orders\Order;
 use App\Models\Products\Product;
@@ -18,40 +25,28 @@ class StoreDashboardAnalyticsService
     /** @var array<string, string|null>|null key => id for type='order' statuses */
     private static ?array $orderStatusIdMap = null;
 
-    public function __construct(?string $storeId = null)
-    {
+    public function __construct(
+        ?string $storeId = null,
+        private ?DashboardOrderScope $scope = null,
+        private ?DashboardFilterOptions $options = null,
+        private ?DashboardSummaryQuery $summaryQuery = null,
+        private ?DashboardSeriesQuery $seriesQuery = null
+    ) {
         $this->storeId = $storeId ?? currentStoreId();
+        $this->scope = $this->scope ?? app(DashboardOrderScope::class);
+        $this->options = $this->options ?? app(DashboardFilterOptions::class);
+        $this->summaryQuery = $this->summaryQuery ?? app(DashboardSummaryQuery::class);
+        $this->seriesQuery = $this->seriesQuery ?? app(DashboardSeriesQuery::class);
     }
 
-    public function summary(): array
+    public function summary(?DashboardFilter $filter = null): array
     {
-        $now = Carbon::now();
-        $startOfPeriod = $now->copy()->startOfMonth();
-        $startOfPrev = $startOfPeriod->copy()->subMonth();
-
-        $orders = $this->baseOrdersQuery();
-        $currentOrders = (clone $orders)->where('created_at', '>=', $startOfPeriod);
-        $prevOrders = (clone $orders)->where('created_at', '>=', $startOfPrev)->where('created_at', '<', $startOfPeriod);
-
-        $totalCurrent = (clone $currentOrders)->count();
-        $totalPrev = (clone $prevOrders)->count();
-        $totalChange = $totalPrev > 0 ? round((($totalCurrent - $totalPrev) / $totalPrev) * 100) : 0;
-
-        $revenueCurrent = (clone $currentOrders)->where('status_id', $this->statusId(OrderStatus::DELIVERED))->sum('total_amount');
-        $revenuePrev = (clone $prevOrders)->where('status_id', $this->statusId(OrderStatus::DELIVERED))->sum('total_amount');
-
-        $confirmedCount = (clone $currentOrders)->whereIn('status_id', $this->statusIds([
-            OrderStatus::CONFIRMED, OrderStatus::PREPARING, OrderStatus::SHIPPED,
-            OrderStatus::IN_TRANSIT, OrderStatus::OUT_FOR_DELIVERY, OrderStatus::DELIVERED, OrderStatus::COMPLETED,
-        ]))->count();
-
-        $confirmationRate = $totalCurrent > 0 ? round(($confirmedCount / $totalCurrent) * 100) : 0;
-
-        $returnedCount = (clone $currentOrders)->where('status_id', $this->statusId(OrderStatus::RETURNED))->count();
-        $deliveredCount = (clone $currentOrders)->where('status_id', $this->statusId(OrderStatus::DELIVERED))->count();
-        $returnRate = ($deliveredCount + $returnedCount) > 0
-            ? round(($returnedCount / ($deliveredCount + $returnedCount)) * 100)
-            : 0;
+        $result = $this->summaryQuery->run(
+            $this->baseOrdersQuery(),
+            $filter ?? app(DashboardFilterFactory::class)->make([], null),
+            fn ($s) => $this->statusId($s),
+            fn ($s) => $this->statusIds($s)
+        );
 
         $totalProducts = Product::query()->where('store_id', $this->storeId)->count();
         $activeProducts = Product::query()->where('store_id', $this->storeId)->where('is_active', true)->count();
@@ -61,107 +56,72 @@ class StoreDashboardAnalyticsService
             ->distinct('user_id')
             ->count('user_id');
 
-        return [
-            'total_orders' => $totalCurrent,
-            'total_orders_change' => $totalChange,
-            'revenue' => $revenueCurrent,
-            'revenue_prev' => $revenuePrev,
-            'confirmation_rate' => $confirmationRate,
-            'return_rate' => $returnRate,
-            'aov' => $confirmedCount > 0 ? round($revenueCurrent / max($confirmedCount, 1), 2) : 0,
-            'total_products' => $totalProducts,
-            'active_products' => $activeProducts,
-            'total_members' => $totalMembers,
-        ];
+        $result['total_products'] = $totalProducts;
+        $result['active_products'] = $activeProducts;
+        $result['total_members'] = $totalMembers;
+
+        return $result;
     }
 
-    public function ordersByStatus(): Collection
+    public function ordersByStatus(?DashboardFilter $filter = null): Collection
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        $rows = DB::table('orders')
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $query = DB::table('orders')
             ->join('statuses', 'statuses.id', '=', 'orders.status_id')
             ->where('orders.store_id', $this->storeId)
-            ->whereNull('orders.deleted_at')
-            ->where('orders.created_at', '>=', $startOfMonth)
+            ->whereNull('orders.deleted_at');
+
+        $this->scope->apply($query, $filter);
+
+        $rows = $query
             ->select('statuses.key', DB::raw('COUNT(*) as count'))
             ->groupBy('statuses.key')
             ->orderByDesc('count')
             ->get();
 
-        $resolvedDomain = \App\Domains\Status\StatusResolver::domain('order', $this->storeId);
+        $mapper = app(OrderStatusChartMapper::class);
 
-        return $rows->map(function ($row) use ($resolvedDomain) {
-            $key = $row->key;
-
-            $resolved = $resolvedDomain[$key] ?? null;
-
-            $label = null;
-
-            if ($key) {
-                $tk = 'statuses.order.' . $key;
-                $tr = trans($tk);
-                if ($tr !== $tk && ! empty($tr)) {
-                    $label = $tr;
-                } else {
-                    $alt = str_replace('cancelled', 'canceled', $key);
-                    if ($alt !== $key) {
-                        $tak = 'statuses.order.' . $alt;
-                        $tar = trans($tak);
-                        if ($tar !== $tak && ! empty($tar)) {
-                            $label = $tar;
-                        }
-                    }
-                }
-            }
-
-            if (empty($label) && $resolved && ! empty($resolved->label)) {
-                $label = $resolved->label;
-            }
-
-            if (empty($label) && $key) {
-                $label = \Illuminate\Support\Str::of($key)->replace('_', ' ')->title();
-            }
-
-            $hex = $resolved?->hex ?? '#9ca3af';
-
-            return (object) [
-                'key'   => $key,
-                'count' => (int) $row->count,
-                'label' => $label,
-                'hex'   => $hex,
-            ];
-        });
+        return $mapper->map($rows, $this->storeId);
     }
 
-    public function salesByDay(): Collection
+    public function salesByDay(?DashboardFilter $filter = null): Collection
     {
-        $days = Carbon::now()->subDays(29)->startOfDay();
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter);
+        $trend = collect();
+        $labels = $res['labels'];
+        $revenue = $res['revenue'];
+        $orders = $res['orders'];
+        $count = count($labels);
+        for ($i = 0; $i < $count; $i++) {
+            $trend->push((object) [
+                'date' => $labels[$i],
+                'revenue' => (float) ($revenue[$i] ?? 0),
+                'orders' => (int) ($orders[$i] ?? 0),
+            ]);
+        }
 
-        return DB::table('orders')
-            ->where('store_id', $this->storeId)
-            ->whereNull('deleted_at')
-            ->where('created_at', '>=', $days)
-            ->select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN status_id = ? THEN total_amount ELSE 0 END) as revenue')
-            )
-            ->addBinding([$this->statusId(OrderStatus::DELIVERED)], 'select')
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->get();
+        return $trend;
     }
 
-    public function ordersByState(): Collection
+    public function salesSeries(?DashboardFilter $filter = null): array
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
 
-        return DB::table('orders')
+        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter);
+    }
+
+    public function ordersByState(?DashboardFilter $filter = null): Collection
+    {
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $query = DB::table('orders')
             ->join('states', 'states.id', '=', 'orders.state_id')
             ->where('orders.store_id', $this->storeId)
-            ->whereNull('orders.deleted_at')
-            ->where('orders.created_at', '>=', $startOfMonth)
+            ->whereNull('orders.deleted_at');
+
+        $this->scope->apply($query, $filter);
+
+        return $query
             ->select('states.name', DB::raw('COUNT(*) as count'), DB::raw('SUM(orders.total_amount) as revenue'))
             ->groupBy('states.name')
             ->orderByDesc('count')
@@ -169,26 +129,33 @@ class StoreDashboardAnalyticsService
             ->get();
     }
 
-    public function deliveryTypeBreakdown(): Collection
+    public function deliveryTypeBreakdown(?DashboardFilter $filter = null): Collection
     {
-        $startOfMonth = Carbon::now()->startOfMonth();
-
-        return DB::table('orders')
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $query = DB::table('orders')
             ->where('store_id', $this->storeId)
-            ->whereNull('deleted_at')
-            ->where('created_at', '>=', $startOfMonth)
+            ->whereNull('deleted_at');
+
+        $this->scope->apply($query, $filter);
+
+        return $query
             ->select('delivery_type', DB::raw('COUNT(*) as count'))
             ->groupBy('delivery_type')
             ->get();
     }
 
-    public function pendingConfirmationOrders(int $limit = 5): Collection
+    public function pendingConfirmationOrders(?DashboardFilter $filter = null, int $limit = 5): Collection
     {
-        return DB::table('orders')
+        $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
+        $query = DB::table('orders')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->where('orders.store_id', $this->storeId)
             ->whereNull('orders.deleted_at')
-            ->where('orders.status_id', $this->statusId(OrderStatus::PENDING))
+            ->where('orders.status_id', $this->statusId(OrderStatus::PENDING));
+
+        $this->scope->applyPending($query, $filter);
+
+        return $query
             ->select('orders.id', 'orders.number', 'orders.total_amount', 'orders.created_at', 'customers.name as customer_name', 'customers.phone as customer_phone')
             ->orderByDesc('orders.created_at')
             ->limit($limit)
