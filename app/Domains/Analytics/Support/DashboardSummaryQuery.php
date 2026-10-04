@@ -8,53 +8,38 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class DashboardSummaryQuery
 {
-    public function __construct(
-        private DashboardOrderScope $scope,
-        private DashboardFilterOptions $options
-    ) {}
+    public function __construct(private DashboardOrderScope $scope) {}
 
     /**
      * @param  Builder<\App\Models\Orders\Order>  $baseQuery
+     * @param  callable(OrderStatus): ?string  $statusId
+     * @param  callable(array<int, OrderStatus>): array<int, string>  $statusIds
+     * @return array<string, int|float|bool>
      */
     public function run(Builder $baseQuery, DashboardFilter $filter, callable $statusId, callable $statusIds): array
     {
+        $deliveredId = $statusId(OrderStatus::DELIVERED);
+
         $current = (clone $baseQuery);
         $this->scope->apply($current, $filter);
 
-        $prev = (clone $baseQuery);
-        if ($filter->previousFrom && $filter->previousTo) {
-            $prev->whereBetween('orders.created_at', [
-                $filter->previousFrom->toDateTimeString(),
-                $filter->previousTo->toDateTimeString(),
-            ]);
-            if ($filter->carrierId) {
-                $prev->where('orders.shipping_provider_id', $filter->carrierId);
-            }
-            if ($filter->memberId && $filter->memberDimension && ! empty($filter->allowedMembershipIds)) {
-                if (in_array($filter->memberId, $filter->allowedMembershipIds, true)) {
-                    if ($filter->memberDimension === 'confirmation') {
-                        $prev->where('orders.assigned_to_membership_id', $filter->memberId);
-                    } elseif ($filter->memberDimension === 'delivery') {
-                        $prev->whereExists(function ($sub) use ($filter) {
-                            $sub->selectRaw('1')
-                                ->from('order_trackings')
-                                ->whereColumn('order_trackings.order_id', 'orders.id')
-                                ->where('order_trackings.store_id', $filter->storeId)
-                                ->where('order_trackings.assigned_to_membership_id', $filter->memberId);
-                        });
-                    }
-                }
-            }
-        } else {
-            $prev->whereRaw('1=0');
-        }
-
         $totalCurrent = (clone $current)->count();
-        $totalPrev = (clone $prev)->count();
-        $totalChange = $totalPrev > 0 ? round((($totalCurrent - $totalPrev) / $totalPrev) * 100) : 0;
+        $revenueCurrent = (clone $current)->where('status_id', $deliveredId)->sum('total_amount');
+        $deliveredCount = (clone $current)->where('status_id', $deliveredId)->count();
 
-        $revenueCurrent = (clone $current)->where('status_id', $statusId(OrderStatus::DELIVERED))->sum('total_amount');
-        $revenuePrev = (clone $prev)->where('status_id', $statusId(OrderStatus::DELIVERED))->sum('total_amount');
+        // The previous window reuses the exact same scoping rules, so a member
+        // or carrier filter is applied to both sides of the comparison.
+        $previous = $filter->previous();
+        $totalPrev = 0;
+        $revenuePrev = 0;
+
+        if ($previous !== null) {
+            $prev = (clone $baseQuery);
+            $this->scope->apply($prev, $previous);
+
+            $totalPrev = (clone $prev)->count();
+            $revenuePrev = (clone $prev)->where('status_id', $deliveredId)->sum('total_amount');
+        }
 
         $confirmedCount = (clone $current)->whereIn('status_id', $statusIds([
             OrderStatus::CONFIRMED, OrderStatus::PREPARING, OrderStatus::SHIPPED,
@@ -64,19 +49,29 @@ final class DashboardSummaryQuery
         $confirmationRate = $totalCurrent > 0 ? round(($confirmedCount / $totalCurrent) * 100) : 0;
 
         $returnedCount = (clone $current)->where('status_id', $statusId(OrderStatus::RETURNED))->count();
-        $deliveredCount = (clone $current)->where('status_id', $statusId(OrderStatus::DELIVERED))->count();
         $returnRate = ($deliveredCount + $returnedCount) > 0
             ? round(($returnedCount / ($deliveredCount + $returnedCount)) * 100)
             : 0;
 
         return [
             'total_orders' => $totalCurrent,
-            'total_orders_change' => $totalChange,
+            'total_orders_change' => $this->change($totalCurrent, $totalPrev, $previous !== null),
             'revenue' => $revenueCurrent,
-            'revenue_prev' => $revenuePrev,
+            'revenue_change' => $this->change($revenueCurrent, $revenuePrev, $previous !== null),
+            'has_previous' => $previous !== null,
             'confirmation_rate' => $confirmationRate,
             'return_rate' => $returnRate,
-            'aov' => $confirmedCount > 0 ? round($revenueCurrent / max($confirmedCount, 1), 2) : 0,
+            // Average value of a delivered order, not of a confirmed one.
+            'aov' => $deliveredCount > 0 ? round($revenueCurrent / $deliveredCount, 2) : 0,
         ];
+    }
+
+    private function change(int|float $current, int|float $previous, bool $comparable): int
+    {
+        if (! $comparable || $previous <= 0) {
+            return 0;
+        }
+
+        return (int) round((($current - $previous) / $previous) * 100);
     }
 }

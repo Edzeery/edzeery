@@ -3,38 +3,33 @@
 namespace App\Domains\Analytics\Support;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
-use App\Models\Stores\Shipping\StoreShippingProvider;
+use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use Carbon\CarbonImmutable;
 
 final class DashboardFilterFactory
 {
+    private const FALLBACK_TIMEZONE = 'Africa/Algiers';
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
     public function make(array $input, ?StoreMembership $currentMembership): DashboardFilter
     {
         $storeId = $currentMembership?->store_id ?? currentStoreId();
-        $tz = config('app.timezone') ?? 'UTC';
-        $now = CarbonImmutable::now($tz);
+        $timezone = $this->resolveTimezone($storeId);
+        $now = CarbonImmutable::now($timezone);
 
-        $period = strtolower($input['period'] ?? 'today');
-        $allowedPeriods = ['all', 'today', 'yesterday', 'week', 'month', 'custom'];
-        if (! in_array($period, $allowedPeriods, true)) {
-            $period = 'today';
-        }
+        $period = $this->resolvePeriodName($input);
 
-        [$from, $to, $prevFrom, $prevTo] = $this->resolvePeriod($period, $now, $input);
+        // Boundaries are built in the store's timezone (so "today" starts at
+        // local midnight) and handed over as UTC, because orders.created_at is
+        // stored in UTC and every query compares against that clock.
+        [$from, $to] = $this->resolveWindow($period, $now, $input);
 
-        $carrierId = $input['carrierId'] ?? null;
-        if ($carrierId) {
-            $exists = StoreShippingProvider::where('store_id', $storeId)
-                ->where('id', $carrierId)
-                ->exists();
-            if (! $exists) {
-                $carrierId = null;
-            }
-        }
-
-        [$memberId, $memberDimension, $allowedMembershipIds] = $this->resolveMember(
+        [$memberId, $memberDimension, $memberScopeIds, $memberLocked] = $this->resolveMember(
             $currentMembership,
             $input['memberId'] ?? null,
             $input['memberDimension'] ?? null
@@ -42,154 +37,193 @@ final class DashboardFilterFactory
 
         return new DashboardFilter(
             period: $period,
-            from: $from,
-            to: $to,
-            previousFrom: $prevFrom,
-            previousTo: $prevTo,
-            carrierId: $carrierId,
+            from: $from?->utc(),
+            to: $to?->utc(),
+            timezone: $timezone,
+            // Buckets are shifted by the offset in effect at the end of the window.
+            utcOffsetSeconds: ($to ?? $now)->getOffset(),
+            carrierId: $this->resolveCarrier($input, $storeId),
             memberId: $memberId,
             memberDimension: $memberDimension,
-            allowedMembershipIds: $allowedMembershipIds,
+            memberScopeIds: $memberScopeIds,
             storeId: $storeId ?? '',
+            memberLocked: $memberLocked,
         );
     }
 
-    private function resolvePeriod(string $period, CarbonImmutable $now, array $input): array
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function resolvePeriodName(array $input): string
     {
-        $tz = $now->timezone;
+        $period = strtolower((string) ($input['period'] ?? 'today'));
 
+        return in_array($period, ['all', 'today', 'yesterday', 'week', 'month', 'custom'], true)
+            ? $period
+            : 'today';
+    }
+
+    private function resolveTimezone(?string $storeId): string
+    {
+        // The store's timezone lives in store_settings (store_settings.timezone).
+        $store = currentStore() ?? ($storeId ? Store::query()->find($storeId) : null);
+
+        $timezone = $store?->settings?->timezone;
+
+        if (! is_string($timezone) || ! in_array($timezone, timezone_identifiers_list(), true)) {
+            return self::FALLBACK_TIMEZONE;
+        }
+
+        return $timezone;
+    }
+
+    private function resolveCarrier(array $input, ?string $storeId): ?string
+    {
+        $carrierId = $input['carrierId'] ?? null;
+
+        if (! $carrierId || ! $storeId) {
+            return null;
+        }
+
+        $exists = ShippingProvider::where('store_id', $storeId)
+            ->where('id', $carrierId)
+            ->exists();
+
+        return $exists ? (string) $carrierId : null;
+    }
+
+    /**
+     * @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable}
+     */
+    private function resolveWindow(string $period, CarbonImmutable $now, array $input): array
+    {
         return match ($period) {
-            'all' => [null, null, null, null],
-            'today' => [
-                $now->startOfDay(),
-                $now->endOfDay(),
-                $now->subDay()->startOfDay(),
-                $now->subDay()->endOfDay(),
-            ],
-            'yesterday' => [
-                $now->subDay()->startOfDay(),
-                $now->subDay()->endOfDay(),
-                $now->subDays(2)->startOfDay(),
-                $now->subDays(2)->endOfDay(),
-            ],
-            'week' => [
-                $now->subDays(6)->startOfDay(),
-                $now->endOfDay(),
-                $now->subDays(13)->startOfDay(),
-                $now->subDays(7)->endOfDay(),
-            ],
-            'month' => [
-                $now->startOfMonth()->startOfDay(),
-                $now->endOfDay(),
-                $now->subMonth()->startOfMonth()->startOfDay(),
-                $now->subMonth()->endOfMonth()->endOfDay(),
-            ],
+            'all' => [null, null],
+            'today' => [$now->startOfDay(), $now->endOfDay()],
+            'yesterday' => [$now->subDay()->startOfDay(), $now->subDay()->endOfDay()],
+            'week' => [$now->subDays(6)->startOfDay(), $now->endOfDay()],
+            'month' => [$now->startOfMonth()->startOfDay(), $now->endOfDay()],
             'custom' => $this->resolveCustom($now, $input),
-            default => [
-                $now->startOfDay(),
-                $now->endOfDay(),
-                $now->subDay()->startOfDay(),
-                $now->subDay()->endOfDay(),
-            ],
+            default => [$now->startOfDay(), $now->endOfDay()],
         };
     }
 
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable}
+     */
     private function resolveCustom(CarbonImmutable $now, array $input): array
     {
-        $tz = $now->timezone;
-        $fromStr = $input['dateFrom'] ?? null;
-        $toStr = $input['dateTo'] ?? null;
-        if (! $fromStr || ! $toStr) {
-            return [
-                $now->startOfDay(),
-                $now->endOfDay(),
-                $now->subDay()->startOfDay(),
-                $now->subDay()->endOfDay(),
-            ];
+        // An incomplete or unreadable range falls back to today; the view warns
+        // the user that the range it asked for was adjusted.
+        $today = [$now->startOfDay(), $now->endOfDay()];
+
+        $fromInput = $input['dateFrom'] ?? null;
+        $toInput = $input['dateTo'] ?? null;
+
+        if (! $fromInput || ! $toInput) {
+            return $today;
         }
 
         try {
-            $from = CarbonImmutable::parse($fromStr, $tz)->startOfDay();
-            $to = CarbonImmutable::parse($toStr, $tz)->endOfDay();
+            $from = CarbonImmutable::parse($fromInput, $now->timezone)->startOfDay();
+            $to = CarbonImmutable::parse($toInput, $now->timezone)->endOfDay();
         } catch (\Throwable) {
-            return [
-                $now->startOfDay(),
-                $now->endOfDay(),
-                $now->subDay()->startOfDay(),
-                $now->subDay()->endOfDay(),
-            ];
+            return $today;
         }
 
         if ($from->greaterThan($to)) {
             [$from, $to] = [$to->startOfDay(), $from->endOfDay()];
         }
 
-        $diff = $from->diffInDays($to);
-        if ($diff > 366) {
-            $to = $from->addDays(366)->endOfDay();
-        }
-
-        $len = $from->diffInSeconds($to) + 1;
-        $prevTo = $from->subSecond();
-        $prevFrom = $prevTo->subSeconds($len - 1)->startOfDay();
-
-        return [$from, $to, $prevFrom, $prevTo];
+        return $from->diffInDays($to) > 366
+            ? [$from, $from->addDays(366)->endOfDay()]
+            : [$from, $to];
     }
 
+    /**
+     * Returns [memberId, dimension, memberScopeIds, memberLocked], where
+     * memberScopeIds is null for "every member" and an explicit list otherwise.
+     *
+     * @return array{0: ?string, 1: string, 2: ?array<int, string>, 3: bool}
+     */
     private function resolveMember(?StoreMembership $current, ?string $memberId, ?string $memberDimension): array
     {
         if (! $current || ! $current->is_active) {
-            return [null, null, null];
+            // Fail closed: without a membership nothing is visible.
+            return [null, 'confirmation', [], true];
         }
 
-        $storeId = $current->store_id;
-
+        // OWNER/ADMIN are roles, not permissions: StoreRoles grants both of them
+        // TEAM_VIEW, so team visibility is fully described by these two checks.
         $hasTeamView = $current->hasPermission(StorePermissionEnum::STATS_TEAM_VIEW->value)
-            || $current->hasPermission(StorePermissionEnum::TEAM_VIEW->value)
-            || $current->hasAnyPermission([StorePermissionEnum::OWNER->value, StorePermissionEnum::ADMIN->value]);
+            || $current->hasPermission(StorePermissionEnum::TEAM_VIEW->value);
 
-        $hasTeamViewOwn = $current->hasPermission(StorePermissionEnum::TEAM_VIEW_OWN->value)
-            && ! $hasTeamView;
+        $hasTeamViewOwn = ! $hasTeamView
+            && $current->hasPermission(StorePermissionEnum::TEAM_VIEW_OWN->value);
 
-        $hasStatsConfirm = $current->hasPermission(StorePermissionEnum::STATS_CONFIRMATION->value)
+        $canConfirm = $current->hasPermission(StorePermissionEnum::STATS_CONFIRMATION->value)
             || $current->hasPermission(StorePermissionEnum::ORDER_CONFIRM->value);
 
-        $defaultDim = $hasStatsConfirm ? 'confirmation' : 'delivery';
+        $canDeliver = $current->hasPermission(StorePermissionEnum::STATS_DELIVERY->value);
 
-        $dim = strtolower($memberDimension ?? '');
-        if (! in_array($dim, ['confirmation', 'delivery'], true)) {
-            $dim = $defaultDim;
-        }
+        $dimension = $this->resolveDimension($memberDimension, $canConfirm, $canDeliver);
 
         if ($hasTeamView) {
             $allowed = StoreMembership::query()
-                ->where('store_id', $storeId)
+                ->where('store_id', $current->store_id)
                 ->where('is_active', true)
                 ->pluck('id')
-                ->toArray();
+                ->all();
 
-            $mid = $memberId;
-            if ($mid && ! in_array($mid, $allowed, true)) {
-                $mid = null;
-            }
+            $selected = $this->keepIfAllowed($memberId, $allowed);
 
-            return [$mid, $dim, $allowed];
+            // No pick means no restriction: this is the whole point of a free choice.
+            return [$selected, $dimension, $selected ? [$selected] : null, false];
         }
 
         if ($hasTeamViewOwn) {
-            $subs = $current->subordinates();
-            $allowed = $subs->merge([$current])->pluck('id')->unique()->toArray();
-            $mid = $memberId;
-            if ($mid && ! in_array($mid, $allowed, true)) {
-                $mid = null;
-            }
-            if (! $mid) {
-                $mid = $current->id;
-            }
+            $allowed = $current->subordinates()
+                ->where('is_active', true)
+                ->pluck('id')
+                ->push($current->id)
+                ->unique()
+                ->all();
 
-            return [$mid, $dim, $allowed];
+            $selected = $this->keepIfAllowed($memberId, $allowed);
+
+            // No pick means the whole team: self plus subordinates.
+            return [$selected, $dimension, $selected ? [$selected] : $allowed, false];
         }
 
-        return [$current->id, $defaultDim, [$current->id]];
+        return [$current->id, $dimension, [$current->id], true];
+    }
+
+    /**
+     * @param  array<int, string>  $allowed
+     */
+    private function keepIfAllowed(?string $memberId, array $allowed): ?string
+    {
+        return $memberId !== null && in_array($memberId, $allowed, true) ? $memberId : null;
+    }
+
+    /**
+     * A dimension is only honoured when the member actually holds that
+     * capability; otherwise they fall back to confirmation when they can
+     * confirm, and to delivery when they cannot.
+     */
+    private function resolveDimension(?string $requested, bool $canConfirm, bool $canDeliver): string
+    {
+        $requested = strtolower($requested ?? '');
+
+        if ($requested === 'confirmation' && $canConfirm) {
+            return 'confirmation';
+        }
+
+        if ($requested === 'delivery' && $canDeliver) {
+            return 'delivery';
+        }
+
+        return $canConfirm ? 'confirmation' : 'delivery';
     }
 }

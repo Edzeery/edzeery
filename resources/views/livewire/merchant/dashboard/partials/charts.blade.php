@@ -1,7 +1,7 @@
-<div wire:key="dash-charts-{{ ($filter ?? null)?->hash() ?? '' }}" x-data="{
-    chartDays: {{ json_encode($salesSeries['labels'] ?? $salesByDay->pluck('date')->values()) }},
-    chartRevenue: {{ json_encode($salesSeries['revenue'] ?? $salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
-    chartOrders: {{ json_encode($salesSeries['orders'] ?? $salesByDay->pluck('orders')->values()->map(fn($v) => (int) $v)) }},
+<div wire:key="dash-charts-{{ $filter->hash() }}" x-data="{
+    chartDays: {{ json_encode($salesByDay->pluck('date')->values()) }},
+    chartRevenue: {{ json_encode($salesByDay->pluck('revenue')->values()->map(fn($v) => (float) $v)) }},
+    chartOrders: {{ json_encode($salesByDay->pluck('orders')->values()->map(fn($v) => (int) $v)) }},
     statusLabels: {{ json_encode($ordersByStatus->pluck('label')->values()) }},
     statusKeys: {{ json_encode($ordersByStatus->pluck('key')->values()) }},
     statusCounts: {{ json_encode($ordersByStatus->pluck('count')->values()->map(fn($v) => (int) $v)) }},
@@ -28,10 +28,18 @@
     <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
         {{-- Sales Trend --}}
         <div class="lg:col-span-2 edz-card edz-card--padded">
-            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">{{ __('dashboard.sales_trend') }}</h3>
-            <div class="h-64">
-                <canvas id="salesChart"></canvas>
-            </div>
+            <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">
+                {{ __('dashboard.sales_trend_for', ['period' => $periodLabel]) }}
+            </h3>
+            @if ($salesByDay->isNotEmpty())
+                <div class="h-64">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            @else
+                <div class="h-64 flex items-center justify-center">
+                    <p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p>
+                </div>
+            @endif
         </div>
 
         {{-- Orders by Status --}}
@@ -53,7 +61,6 @@
         window.__dashCharts = window.__dashCharts || {};
         window.renderDashboardCharts = function(data) {
             if (data === undefined) return;
-            if (!window.__dashCharts) window.__dashCharts = {};
             window.__dashCharts._lastData = data;
             const root = getComputedStyle(document.documentElement);
             const cssVar = (name) => root.getPropertyValue(name)?.trim() || null;
@@ -133,13 +140,7 @@
                     window.__dashCharts.s = new Chart(salesCanvas, {
                         type: 'line',
                         data: {
-                            labels: data.chartDays.map(d => {
-                                const dt = new Date(d);
-                                return dt.toLocaleDateString('ar-DZ', {
-                                    month: 'short',
-                                    day: 'numeric'
-                                });
-                            }),
+                            labels: data.chartDays,
                             datasets: [{
                                 label: @js(__('dashboard.revenue')),
                                 data: data.chartRevenue,

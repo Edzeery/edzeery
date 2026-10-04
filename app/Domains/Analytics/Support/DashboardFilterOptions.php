@@ -2,9 +2,9 @@
 
 namespace App\Domains\Analytics\Support;
 
+use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
-use App\Models\Stores\Shipping\StoreShippingProvider;
 use App\Models\Stores\Team\StoreMembership;
 use Illuminate\Support\Collection;
 
@@ -18,7 +18,7 @@ final class DashboardFilterOptions
             ->pluck('shipping_provider_id')
             ->unique();
 
-        return StoreShippingProvider::query()
+        return ShippingProvider::query()
             ->where('store_id', $storeId)
             ->whereIn('id', $providerIds)
             ->orderBy('name')
@@ -33,9 +33,10 @@ final class DashboardFilterOptions
 
         $storeId = $current->store_id;
 
+        // OWNER/ADMIN are roles, not permissions: StoreRoles grants both of them
+        // TEAM_VIEW, so team visibility is fully described by these two checks.
         $hasTeamView = $current->hasPermission(StorePermissionEnum::STATS_TEAM_VIEW->value)
-            || $current->hasPermission(StorePermissionEnum::TEAM_VIEW->value)
-            || $current->hasAnyPermission([StorePermissionEnum::OWNER->value, StorePermissionEnum::ADMIN->value]);
+            || $current->hasPermission(StorePermissionEnum::TEAM_VIEW->value);
 
         $hasTeamViewOwn = $current->hasPermission(StorePermissionEnum::TEAM_VIEW_OWN->value)
             && ! $hasTeamView;

@@ -23,7 +23,7 @@ class StoreDashboardAnalyticsService
     private string $storeId;
 
     /** @var array<string, string|null>|null key => id for type='order' statuses */
-    private static ?array $orderStatusIdMap = null;
+    private ?array $orderStatusIdMap = null;
 
     public function __construct(
         ?string $storeId = null,
@@ -87,7 +87,7 @@ class StoreDashboardAnalyticsService
     public function salesByDay(?DashboardFilter $filter = null): Collection
     {
         $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
-        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter);
+        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIdResolver());
         $trend = collect();
         $labels = $res['labels'];
         $revenue = $res['revenue'];
@@ -108,7 +108,7 @@ class StoreDashboardAnalyticsService
     {
         $filter ??= app(\App\Domains\Analytics\Support\DashboardFilterFactory::class)->make([], null);
 
-        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter);
+        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIdResolver());
     }
 
     public function ordersByState(?DashboardFilter $filter = null): Collection
@@ -204,20 +204,33 @@ class StoreDashboardAnalyticsService
     private function statusIdsByKey(): array
     {
         // One lookup per request instead of one DB query per statusId() call
-        // (the service runs ~5 status lookups on every dashboard render).
-        if (self::$orderStatusIdMap === null) {
-            self::$orderStatusIdMap = DB::table('statuses')
+        // (the service runs ~5 status lookups on every dashboard render). Kept
+        // on the instance, not in a static, so a long-lived worker cannot serve
+        // status ids from an earlier request.
+        if ($this->orderStatusIdMap === null) {
+            $this->orderStatusIdMap = DB::table('statuses')
                 ->where('type', 'order')
                 ->pluck('id', 'key')
                 ->all();
         }
 
-        return self::$orderStatusIdMap;
+        return $this->orderStatusIdMap;
     }
 
     private function statusId(OrderStatus $status): ?string
     {
         return $this->statusIdsByKey()[$status->value] ?? null;
+    }
+
+    /**
+     * The series query resolves the delivered status through the same lookup
+     * the summary uses, instead of keeping its own copy of the map.
+     *
+     * @return callable(OrderStatus): ?string
+     */
+    private function statusIdResolver(): callable
+    {
+        return fn (OrderStatus $status) => $this->statusId($status);
     }
 
     private function statusIds(array $statuses): array

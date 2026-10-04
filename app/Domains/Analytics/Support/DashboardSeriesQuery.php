@@ -3,7 +3,10 @@
 namespace App\Domains\Analytics\Support;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
+use App\Enums\Store\OrderStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class DashboardSeriesQuery
@@ -15,57 +18,68 @@ final class DashboardSeriesQuery
 
     /**
      * @param  Builder<\App\Models\Orders\Order>  $baseQuery
+     * @param  callable(OrderStatus): ?string  $statusId  Same resolver the summary uses.
+     * @return array{labels: array<int, string>, revenue: array<int, float>, orders: array<int, int>, trend: Collection}
      */
-    public function salesSeries(Builder $baseQuery, DashboardFilter $filter): array
+    public function salesSeries(Builder $baseQuery, DashboardFilter $filter, callable $statusId): array
     {
-        $driver = DB::getDriverName();
-        $bucketExpr = $this->bucket->bucketExpression($driver);
+        [$from, $to] = $this->resolveWindow($baseQuery, $filter);
 
-        $from = $filter->from;
-        $to = $filter->to;
-        if (! $from) {
-            return [
-                'labels' => [],
-                'revenue' => [],
-                'orders' => [],
-                'trend' => collect(),
-            ];
+        if ($from === null) {
+            return ['labels' => [], 'revenue' => [], 'orders' => [], 'trend' => collect()];
         }
 
+        $driver = DB::getDriverName();
+        $granularity = DateBucket::granularityFor($from, $to);
+
+        // The orders line counts every order in scope; only delivered orders
+        // contribute revenue. Restricting the whole query to delivered used to
+        // hide the other orders entirely.
         $query = (clone $baseQuery)
-            ->selectRaw($bucketExpr)
-            ->selectRaw('SUM(total_amount) as revenue')
+            ->selectRaw($this->bucket->bucketExpression($driver, $granularity, $filter->utcOffsetSeconds))
             ->selectRaw('COUNT(*) as orders')
-            ->where('status_id', $this->statusDeliveredId($baseQuery, $filter))
+            ->selectRaw('SUM(CASE WHEN orders.status_id = ? THEN orders.total_amount ELSE 0 END) as revenue', [
+                $statusId(OrderStatus::DELIVERED),
+            ])
             ->groupBy('bucket')
             ->orderBy('bucket');
 
-        $scope = $this->scope;
-        $scope->apply($query, $filter);
+        $this->scope->apply($query, $filter);
 
         $rows = $query->get();
 
-        return $this->bucket->generateSeries($from, $to, $filter->granularity(), function () use ($rows) {
-            return $rows;
-        });
+        return $this->bucket->generateSeries(
+            $from,
+            $to,
+            $driver,
+            $filter->timezone,
+            $filter->utcOffsetSeconds,
+            fn () => $rows
+        );
     }
 
-    private function statusDeliveredId($baseQuery, DashboardFilter $filter): ?string
+    /**
+     * "All" has no factory boundaries: anchor the axis at the oldest scoped
+     * order, so a chart is drawn only when there is something to show.
+     *
+     * @param  Builder<\App\Models\Orders\Order>  $baseQuery
+     * @return array{0: ?CarbonImmutable, 1: ?CarbonImmutable}
+     */
+    private function resolveWindow(Builder $baseQuery, DashboardFilter $filter): array
     {
-        $storeId = $filter->storeId;
-        static $map = [];
-        if (isset($map[$storeId])) {
-            return $map[$storeId];
+        if ($filter->from !== null && $filter->to !== null) {
+            return [$filter->from, $filter->to];
         }
 
-        $id = DB::table('statuses')
-            ->where('type', 'order')
-            ->where('key', 'delivered')
-            ->where('store_id', $storeId)
-            ->value('id');
+        $oldest = (clone $baseQuery)->min('orders.created_at');
 
-        $map[$storeId] = $id;
+        if ($oldest === null) {
+            return [null, null];
+        }
 
-        return $id;
+        return [
+            CarbonImmutable::parse((string) $oldest, 'UTC'),
+            CarbonImmutable::now('UTC'),
+        ];
     }
 }

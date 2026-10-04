@@ -1,45 +1,84 @@
 <?php
 
 use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
+use App\Domains\Analytics\Support\DashboardFilterOptions;
 use App\Domains\User\Services\SubscriptionGuardService;
 use App\Enums\Store\StorePermissionEnum;
 use App\Livewire\Concerns\DashboardFilterConcern;
 use function Livewire\Volt\layout;
+use function Livewire\Volt\uses;
 use function Livewire\Volt\with;
 
 layout('components.layouts.store');
 
+uses(DashboardFilterConcern::class);
+
 $analytics = app(StoreDashboardAnalyticsService::class);
 $subscriptionGuard = app(SubscriptionGuardService::class);
 
-$canTopKpis     = canStore(StorePermissionEnum::STATS_TOP_KPIS->value);
+$canTopKpis = canStore(StorePermissionEnum::STATS_TOP_KPIS->value);
 $canStatsDelivery = canStore(StorePermissionEnum::STATS_DELIVERY->value);
-$canConfirm     = canStore(StorePermissionEnum::ORDER_CONFIRM->value);
-$canInventory   = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
+$canConfirm = canStore(StorePermissionEnum::ORDER_CONFIRM->value);
+$canStatsConfirmation = canStore(StorePermissionEnum::STATS_CONFIRMATION->value);
+$canPickDimension = ($canConfirm || $canStatsConfirmation) && $canStatsDelivery;
+$canInventory = canStore(StorePermissionEnum::INVENTORY_VIEW->value);
 $canTopProducts = canStore(StorePermissionEnum::PRODUCT_VIEW->value);
 
-with([
-    'summary'               => $canTopKpis ? $analytics->summary() : collect(),
-    'salesByDay'            => $canStatsDelivery ? $analytics->salesByDay() : collect(),
-    'ordersByStatus'        => $canStatsDelivery ? $analytics->ordersByStatus() : collect(),
-    'ordersByState'         => $canStatsDelivery ? $analytics->ordersByState() : collect(),
-    'deliveryTypeBreakdown' => $canStatsDelivery ? $analytics->deliveryTypeBreakdown() : collect(),
-    'pendingOrders'         => $canConfirm ? $analytics->pendingConfirmationOrders() : collect(),
-    'topProducts'           => $canTopProducts ? $analytics->topSellingProducts() : collect(),
-    'lowStockVariants'      => $canInventory ? $analytics->lowStockVariants() : collect(),
-    'subscription'          => $subscriptionGuard->getSubscription(),
-    'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
-    'subscriptionStatus'    => $subscriptionGuard->statusLabel(),
-    'daysRemaining'         => $subscriptionGuard->daysRemaining(),
-    'canTopKpis'            => $canTopKpis,
-    'canStatsDelivery'      => $canStatsDelivery,
-    'canConfirm'            => $canConfirm,
-    'canInventory'          => $canInventory,
-    'canTopProducts'        => $canTopProducts,
-]);
+with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDelivery, $canConfirm, $canPickDimension, $canInventory, $canTopProducts) {
+    $filter = $this->filter();
+
+    $filterOptions = app(DashboardFilterOptions::class);
+    $carriers = $filterOptions->carriers(currentStoreId());
+    $members = $filterOptions->members(
+        auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first()
+    );
+
+    $periodLabel = $filter->period === 'custom'
+        ? __('dashboard.period_range', [
+            'from' => $filter->localFrom()?->format('Y-m-d'),
+            'to' => $filter->localTo()?->format('Y-m-d'),
+        ])
+        : __("dashboard.period_{$filter->period}");
+
+    return [
+        'filter' => $filter,
+        'filterOptions' => ['carriers' => $carriers, 'members' => $members],
+        'periodLabel' => $periodLabel,
+        // Boundaries are stored in UTC; compare against the local dates the user typed.
+        'invalidRange' => $filter->period === 'custom' && (
+            blank($this->dateFrom)
+            || blank($this->dateTo)
+            || $this->dateFrom !== $filter->localFrom()?->format('Y-m-d')
+            || $this->dateTo !== $filter->localTo()?->format('Y-m-d')
+        ),
+        'summary' => $canTopKpis ? $analytics->summary($filter) : collect(),
+        'salesByDay' => $canStatsDelivery ? $analytics->salesByDay($filter) : collect(),
+        'ordersByStatus' => $canStatsDelivery ? $analytics->ordersByStatus($filter) : collect(),
+        'ordersByState' => $canStatsDelivery ? $analytics->ordersByState($filter) : collect(),
+        'deliveryTypeBreakdown' => $canStatsDelivery ? $analytics->deliveryTypeBreakdown($filter) : collect(),
+        'pendingOrders' => $canConfirm ? $analytics->pendingConfirmationOrders($filter) : collect(),
+        'topProducts' => $canTopProducts ? $analytics->topSellingProducts() : collect(),
+        'lowStockVariants' => $canInventory ? $analytics->lowStockVariants() : collect(),
+        'subscription' => $subscriptionGuard->getSubscription(),
+        'hasActiveSubscription' => $subscriptionGuard->hasActiveSubscription(),
+        'subscriptionStatus' => $subscriptionGuard->statusLabel(),
+        'daysRemaining' => $subscriptionGuard->daysRemaining(),
+        'canTopKpis' => $canTopKpis,
+        'canStatsDelivery' => $canStatsDelivery,
+        'canConfirm' => $canConfirm,
+        'canPickDimension' => $canPickDimension,
+        'canInventory' => $canInventory,
+        'canTopProducts' => $canTopProducts,
+    ];
+});
 ?>
 
 <div>
+
+    @include('livewire.merchant.dashboard.partials.filter-bar')
+
+    <div wire:loading.class="opacity-60 transition-opacity duration-200"
+         wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension">
 
     {{-- KPI Cards â€” Apple-style large numbers with negative tracking --}}
     @if ($canTopKpis)
@@ -48,7 +87,7 @@ with([
         <div class="edz-card edz-card--padded group">
             <div class="flex items-center justify-between mb-3">
                 <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.total_orders') }}</p>
-                @if ($summary['total_orders_change'] != 0)
+                @if ($summary['has_previous'] && $summary['total_orders_change'] != 0)
                     <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
                         {{ $summary['total_orders_change'] > 0 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
                         {{ $summary['total_orders_change'] > 0 ? 'â–²' : 'â–¼' }} {{ abs($summary['total_orders_change']) }}%
@@ -56,7 +95,7 @@ with([
                 @endif
             </div>
             <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['total_orders'] }}</p>
-            <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.this_month') }}</p>
+            <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
         </div>
 
         {{-- Revenue --}}
@@ -312,6 +351,7 @@ with([
         </div>
     @endif
 
+    </div>
 
 </div>
 

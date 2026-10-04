@@ -7,38 +7,57 @@ use Illuminate\Contracts\Support\Arrayable;
 
 final class DashboardFilter implements Arrayable
 {
+    private bool $previousResolved = false;
+
+    private ?self $previousFilter = null;
+
+    /**
+     * @param  string  $timezone  Store timezone the period is expressed in.
+     * @param  int  $utcOffsetSeconds  Offset of $timezone at the end of the window.
+     * @param  ?array<int, string>|null  $memberScopeIds  null = every member.
+     * @param  CarbonImmutable|null  $from  Window start, already converted to UTC
+     *                                      because orders.created_at is stored in UTC.
+     *                                      Use localFrom()/localTo() for anything shown.
+     * @param  CarbonImmutable|null  $to  Window end in UTC, null for period "all".
+     */
     public function __construct(
         public readonly string $period,
         public readonly ?CarbonImmutable $from,
         public readonly ?CarbonImmutable $to,
-        public readonly ?CarbonImmutable $previousFrom,
-        public readonly ?CarbonImmutable $previousTo,
+        public readonly string $timezone,
+        public readonly int $utcOffsetSeconds,
         public readonly ?string $carrierId = null,
         public readonly ?string $memberId = null,
         public readonly ?string $memberDimension = null,
-        public readonly ?array $allowedMembershipIds = null,
+        public readonly ?array $memberScopeIds = null,
         public readonly string $storeId = '',
+        public readonly bool $memberLocked = false,
     ) {}
 
-    public function granularity(): string
+    /**
+     * The immediately preceding window of identical length, or null when the
+     * period is unbounded ("all") and therefore has nothing to compare with.
+     */
+    public function previous(): ?self
     {
-        if ($this->from && $this->to) {
-            $diff = $this->from->diffInDays($this->to);
-            if ($diff <= 0) {
-                return 'hour';
-            }
-            if ($diff <= 62) {
-                return 'day';
-            }
-
-            return 'month';
+        if ($this->previousResolved) {
+            return $this->previousFilter;
         }
 
-        if ($this->period === 'today' || $this->period === 'yesterday') {
-            return 'hour';
-        }
+        $this->previousResolved = true;
+        $this->previousFilter = $this->buildPrevious();
 
-        return 'month';
+        return $this->previousFilter;
+    }
+
+    public function localFrom(): ?CarbonImmutable
+    {
+        return $this->from?->setTimezone($this->timezone);
+    }
+
+    public function localTo(): ?CarbonImmutable
+    {
+        return $this->to?->setTimezone($this->timezone);
     }
 
     public function hash(): string
@@ -47,6 +66,8 @@ final class DashboardFilter implements Arrayable
             'period' => $this->period,
             'from' => $this->from?->format('Y-m-d H:i:s'),
             'to' => $this->to?->format('Y-m-d H:i:s'),
+            'tz' => $this->timezone,
+            'offset' => $this->utcOffsetSeconds,
             'carrier' => $this->carrierId,
             'member' => $this->memberId,
             'dim' => $this->memberDimension,
@@ -59,14 +80,41 @@ final class DashboardFilter implements Arrayable
     {
         return [
             'period' => $this->period,
+            'timezone' => $this->timezone,
+            'utcOffsetSeconds' => $this->utcOffsetSeconds,
             'from' => $this->from?->toIso8601String(),
             'to' => $this->to?->toIso8601String(),
-            'previousFrom' => $this->previousFrom?->toIso8601String(),
-            'previousTo' => $this->previousTo?->toIso8601String(),
             'carrierId' => $this->carrierId,
             'memberId' => $this->memberId,
             'memberDimension' => $this->memberDimension,
+            'memberScopeIds' => $this->memberScopeIds,
             'storeId' => $this->storeId,
+            'memberLocked' => $this->memberLocked,
         ];
+    }
+
+    private function buildPrevious(): ?self
+    {
+        if ($this->from === null || $this->to === null) {
+            return null;
+        }
+
+        // [from - length, from - 1s]: exactly as many seconds as the current
+        // window, immediately before it.
+        $length = $this->from->diffInSeconds($this->to) + 1;
+
+        return new self(
+            period: $this->period,
+            from: $this->from->subSeconds($length),
+            to: $this->from->subSecond(),
+            timezone: $this->timezone,
+            utcOffsetSeconds: $this->utcOffsetSeconds,
+            carrierId: $this->carrierId,
+            memberId: $this->memberId,
+            memberDimension: $this->memberDimension,
+            memberScopeIds: $this->memberScopeIds,
+            storeId: $this->storeId,
+            memberLocked: $this->memberLocked,
+        );
     }
 }

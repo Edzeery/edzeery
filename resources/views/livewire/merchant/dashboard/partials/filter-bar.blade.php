@@ -1,83 +1,153 @@
+@php
+    $periods = [
+        'all' => __('dashboard.period_all'),
+        'today' => __('dashboard.period_today'),
+        'yesterday' => __('dashboard.period_yesterday'),
+        'week' => __('dashboard.period_week'),
+        'month' => __('dashboard.period_month'),
+        'custom' => __('dashboard.period_custom'),
+    ];
+
+    $canPickDimension = $canPickDimension && (filled($filter->memberId) || $filter->memberLocked);
+
+    $activeCarrier = $filter->carrierId
+        ? $filterOptions['carriers']->firstWhere('id', $filter->carrierId)
+        : null;
+
+    $activeMember = $filter->memberId
+        ? $filterOptions['members']->firstWhere('id', $filter->memberId)
+        : null;
+
+    $dimensionLabel = $filter->memberDimension
+        ? __("dashboard.dimension_{$filter->memberDimension}")
+        : null;
+
+    $hasActiveFilters = $filter->period !== 'today'
+        || filled($activeCarrier)
+        || filled($activeMember);
+@endphp
+
 <div class="mb-6 flex flex-col gap-3">
-    <div class="flex flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible" style="scrollbar-width:none;-ms-overflow-style:none">
-        @php
-            $periods = [
-                'all' => __('dashboard.period_all'),
-                'today' => __('dashboard.period_today'),
-                'yesterday' => __('dashboard.period_yesterday'),
-                'week' => __('dashboard.period_week'),
-                'month' => __('dashboard.period_month'),
-                'custom' => __('dashboard.period_custom'),
-            ];
-        @endphp
-        @foreach($periods as $key => $label)
+    <div class="flex flex-wrap items-center gap-2">
+        @foreach ($periods as $key => $label)
             <button type="button"
                 wire:click="$set('period','{{ $key }}')"
-                class="px-3 py-1.5 text-xs sm:text-sm rounded-full border transition-colors {{ $filter->period === $key ? 'bg-primary text-white border-primary' : 'border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 text-ink' }}">
+                @class([
+                    'px-3 py-1.5 text-xs sm:text-sm rounded-full border transition-colors',
+                    'bg-brand-600 text-white border-brand-600' => $filter->period === $key,
+                    'border-surface-border bg-surface text-ink hover:bg-surface-secondary' => $filter->period !== $key,
+                ])>
                 {{ $label }}
             </button>
         @endforeach
     </div>
 
-    @if($filter->period === 'custom')
-        <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+    @if ($filter->period === 'custom')
+        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
             <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <label class="text-xs text-ink/70">{{ __('dashboard.date_from') }}</label>
-                <input type="text" x-data="{}" x-init="flatpickr($el,{dateFormat:'Y-m-d'})" wire:model.blur="dateFrom" class="form-input text-sm px-2 py-1.5 rounded-md border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800" placeholder="YYYY-MM-DD">
+                <label class="edz-label" for="dashboard-date-from">{{ __('dashboard.date_from') }}</label>
+                <input id="dashboard-date-from" type="text" x-data="{}"
+                       x-init="flatpickr($el,{dateFormat:'Y-m-d'})"
+                       wire:model.blur="dateFrom"
+                       class="edz-input text-sm @if ($invalidRange) edz-input--error @endif"
+                       placeholder="YYYY-MM-DD">
             </div>
             <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <label class="text-xs text-ink/70">{{ __('dashboard.date_to') }}</label>
-                <input type="text" x-data="{}" x-init="flatpickr($el,{dateFormat:'Y-m-d'})" wire:model.blur="dateTo" class="form-input text-sm px-2 py-1.5 rounded-md border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800" placeholder="YYYY-MM-DD">
+                <label class="edz-label" for="dashboard-date-to">{{ __('dashboard.date_to') }}</label>
+                <input id="dashboard-date-to" type="text" x-data="{}"
+                       x-init="flatpickr($el,{dateFormat:'Y-m-d'})"
+                       wire:model.blur="dateTo"
+                       class="edz-input text-sm @if ($invalidRange) edz-input--error @endif"
+                       placeholder="YYYY-MM-DD">
             </div>
+            @if ($invalidRange)
+                <p class="w-full sm:w-auto sm:pe-1 text-xs text-warning-fg-strong">
+                    {{ __('dashboard.invalid_range') }}
+                </p>
+            @endif
         </div>
     @endif
 
-    <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-        @php
-            $carriers = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)->carriers(currentStoreId());
-            $members = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)->members(auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first());
-        @endphp
+    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div class="flex flex-col gap-1 w-full sm:w-auto">
-            <label class="text-xs text-ink/70">{{ __('dashboard.filter_carrier') }}</label>
-            <select wire:model="carrierId" class="form-select text-sm px-2 py-1.5 rounded-md border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
+            <label class="edz-label" for="dashboard-carrier">{{ __('dashboard.filter_carrier') }}</label>
+            <select id="dashboard-carrier" wire:model="carrierId" class="edz-input text-sm">
                 <option value="">{{ __('dashboard.all_carriers') }}</option>
-                @foreach($carriers as $c)
-                    <option value="{{ $c->id }}">{{ $c->name }}@if(!$c->is_active) (inactive)@endif</option>
+                @foreach ($filterOptions['carriers'] as $carrier)
+                    <option value="{{ $carrier->id }}">{{ $carrier->name }}</option>
                 @endforeach
             </select>
+            @if ($activeCarrier && ! $activeCarrier->is_active)
+                <p class="text-xs text-warning-fg-strong">{{ __('dashboard.carrier_inactive') }}</p>
+            @endif
         </div>
 
-        @if($members->count() > 0)
-            <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <label class="text-xs text-ink/70">{{ __('dashboard.filter_member') }}</label>
-                <select wire:model="memberId" class="form-select text-sm px-2 py-1.5 rounded-md border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
-                    <option value="">{{ __('dashboard.all_members') }}</option>
-                    @foreach($members as $m)
-                        <option value="{{ $m->id }}">{{ $m->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            @if($filter->memberId)
+        @unless ($filter->memberLocked)
+            @if ($filterOptions['members']->isNotEmpty())
                 <div class="flex flex-col gap-1 w-full sm:w-auto">
-                    <label class="text-xs text-ink/70">&nbsp;</label>
-                    <div class="flex items-center gap-2 px-2 py-1.5 rounded-md border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
-                        <label class="flex items-center gap-1 text-xs">
-                            <input type="radio" value="confirmation" wire:model="memberDimension" class="rounded">
-                            <span>{{ __('dashboard.dimension_confirmation') }}</span>
-                        </label>
-                        <label class="flex items-center gap-1 text-xs">
-                            <input type="radio" value="delivery" wire:model="memberDimension" class="rounded">
-                            <span>{{ __('dashboard.dimension_delivery') }}</span>
-                        </label>
-                    </div>
+                    <label class="edz-label" for="dashboard-member">{{ __('dashboard.filter_member') }}</label>
+                    <select id="dashboard-member" wire:model="memberId" class="edz-input text-sm">
+                        <option value="">{{ __('dashboard.all_members') }}</option>
+                        @foreach ($filterOptions['members'] as $member)
+                            <option value="{{ $member->id }}">{{ $member->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
             @endif
-        @endif
+        @endunless
 
-        <button type="button" wire:click="resetFilters" class="px-3 py-1.5 text-xs sm:text-sm rounded-md border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors mt-4 sm:mt-5">
-            {{ __('dashboard.reset_filters') }}
-        </button>
+        @if ($canPickDimension)
+            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                <span class="edz-label" aria-hidden="true">&nbsp;</span>
+                <div class="flex items-center gap-3 px-3 py-2 rounded-md border border-surface-border bg-surface">
+                    @foreach (['confirmation', 'delivery'] as $dimension)
+                        <label class="flex items-center gap-1.5 text-xs text-ink" for="dashboard-dimension-{{ $dimension }}">
+                            <input id="dashboard-dimension-{{ $dimension }}"
+                                   type="radio"
+                                   value="{{ $dimension }}"
+                                   wire:model="memberDimension"
+                                   class="rounded">
+                            <span>{{ __("dashboard.dimension_{$dimension}") }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        @elseif (filled($dimensionLabel) && (filled($filter->memberId) || $filter->memberLocked))
+            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                <span class="edz-label" aria-hidden="true">&nbsp;</span>
+                <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
+            </div>
+        @endif
     </div>
 
-    <div wire:loading.class="opacity-60" wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension"></div>
+    @if ($hasActiveFilters)
+        <div class="flex flex-wrap items-center gap-2 border-t border-surface-border pt-3">
+            <span class="text-xs font-medium text-ink-muted">{{ __('dashboard.active_filters') }}</span>
+
+            @if ($filter->period !== 'today')
+                <span class="edz-badge edz-badge--neutral">{{ $periodLabel }}</span>
+            @endif
+
+            @if ($activeCarrier)
+                <span class="edz-badge edz-badge--neutral">
+                    {{ $activeCarrier->name }}
+                    @unless ($activeCarrier->is_active)
+                        ({{ __('dashboard.carrier_inactive') }})
+                    @endunless
+                </span>
+            @endif
+
+            @if ($activeMember)
+                <span class="edz-badge edz-badge--neutral">{{ $activeMember->name }}</span>
+            @endif
+
+            @if (filled($dimensionLabel) && filled($filter->memberId))
+                <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
+            @endif
+
+            <button type="button" wire:click="resetFilters" class="edz-btn edz-btn--secondary edz-btn--sm ms-auto">
+                {{ __('dashboard.reset_filters') }}
+            </button>
+        </div>
+    @endif
 </div>
