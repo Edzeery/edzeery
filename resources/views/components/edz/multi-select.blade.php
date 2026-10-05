@@ -63,7 +63,7 @@
     $hasWireChange = (bool) $attributes->get('wire:change');
 @endphp
 
-<div {{ $attributes->merge(['class' => "edz-select edz-multi-select $sizeClass $errorClass $class"])->whereDoesntStartWith('wire:model')->whereDoesntStartWith('wire:change')->whereDoesntStartWith('x-model') }}
+<div {{ $attributes->merge(['class' => "edz-select edz-multi-select edz-scroll $sizeClass $errorClass $class"] )->whereDoesntStartWith('wire:model')->whereDoesntStartWith('wire:change')->whereDoesntStartWith('x-model') }}
     x-data="edzMultiSelect({
         searchable: @js((bool) $search),
         searchMinChars: @js($searchMinChars),

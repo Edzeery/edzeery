@@ -23,7 +23,7 @@
         x-transition:leave-start="edz-dropdown-leave-start"
         x-transition:leave-end="edz-dropdown-leave-end"
         :class="{ 'edz-dropdown__positioning': positioning }"
-        class="edz-dropdown__panel"
+        class="edz-dropdown__panel edz-scroll"
         :style="menuStyle"
     >
         {{ $slot }}

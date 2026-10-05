@@ -181,7 +181,7 @@
             </div>
         @endif
 
-        <ul id="{{ $uid }}-listbox" role="listbox" class="edz-select__list">
+        <ul id="{{ $uid }}-listbox" role="listbox" class="edz-select__list edz-scroll">
             <template x-for="(opt, idx) in filteredOptions" :key="opt.value">
                 <li role="option" class="edz-select__option"
                     :class="{
