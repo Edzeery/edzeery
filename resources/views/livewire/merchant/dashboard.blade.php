@@ -11,7 +11,6 @@ use function Livewire\Volt\uses;
 use function Livewire\Volt\with;
 
 layout('components.layouts.store');
-
 uses(DashboardFilterConcern::class);
 
 $analytics = app(StoreDashboardAnalyticsService::class);
@@ -68,6 +67,8 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         'isDeliveryView' => $isDeliveryView,
         'canViewStats' => $canViewStats,
         'summary' => $canTopKpis ? $analytics->summary($filter) : collect(),
+        'teamPerformance' => $canViewStats && ! $filter->memberLocked
+            ? $analytics->teamPerformance($filter, $members) : [],
         'salesByDay' => $canViewStats ? $analytics->salesByDay($filter) : collect(),
         'ordersByStatus' => $canViewStats ? $analytics->ordersByStatus($filter) : collect(),
         'ordersByState' => $canStatsDelivery && $isDeliveryView ? $analytics->ordersByState($filter) : collect(),
@@ -88,11 +89,8 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     ];
 });
 ?>
-
 <div>
-
     @include('livewire.merchant.dashboard.partials.filter-bar')
-
     <div wire:loading.class="opacity-60 transition-opacity duration-200"
          wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension">
 
@@ -301,6 +299,8 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         </div>
     </div>
     @endif
+    {{-- Team performance table: one aggregate query, columns follow the view. --}}
+    @includeWhen($canViewStats && ! $filter->memberLocked, 'livewire.merchant.dashboard.partials.team-performance')
     {{-- Tables Row: exactly one list shows, so the grid never goes two wide. --}}
     <div class="edz-stagger grid grid-cols-1 gap-6 mb-6 lg:grid-cols-1">
         {{-- Pending Orders --}}

@@ -108,16 +108,18 @@ test('the dashboard request stays inside its query budget', function () {
 
     $this->get(route('merchant.dashboard', ['store' => $store->slug]))->assertOk();
 
-    // Measured baseline is 42 for an owner render with no orders: ~20 for
+    // Measured baseline is 50 for an owner render with no orders: ~20 for
     // auth, store, subscription and permission resolution, 10 for the summary
-    // aggregates, 7 for the analytics blocks. The ceiling leaves headroom but
-    // still fails on a real N+1 regression.
+    // aggregates, 9 for the analytics blocks and the filter option lists, and
+    // 1 for the team-performance aggregate behind the table on this page. The
+    // ceiling leaves two queries of headroom but still fails on a real N+1
+    // regression, which grows with the number of members rather than by one.
     //
     // Note: 5 of those queries are byte-identical `select * from subscriptions`
     // lookups issued by the subscription gate. That is a genuine inefficiency,
     // but it belongs to the gating domain rather than analytics, so it is
     // reported rather than changed here.
-    expect($queries)->toBeLessThanOrEqual(50);
+    expect($queries)->toBeLessThanOrEqual(52);
 });
 
 test('a locked member only sees their own pending orders in the rendered page', function () {

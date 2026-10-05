@@ -7,6 +7,8 @@ use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Domains\Analytics\Support\DashboardOrderScope;
 use App\Domains\Analytics\Support\DashboardSeriesQuery;
 use App\Domains\Analytics\Support\DashboardSummaryQuery;
+use App\Domains\Analytics\Support\DashboardTeamPerformance;
+use App\Domains\Analytics\Support\DashboardTeamPerformanceQuery;
 use App\Domains\Analytics\Support\OrderStatusChartMapper;
 use App\Domains\Analytics\Support\OrderStatusIdMap;
 use App\Enums\Store\OrderStatus;
@@ -58,6 +60,26 @@ class StoreDashboardAnalyticsService
         $result['total_members'] = $totalMembers;
 
         return $result;
+    }
+
+    /**
+     * The team table: one aggregate query, presented for the active view.
+     *
+     * @param  Collection<int, object{id: string, name: string}>  $members
+     * @return list<array<string, mixed>>
+     */
+    public function teamPerformance(?DashboardFilter $filter, Collection $members): array
+    {
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
+        $teamQuery = app(DashboardTeamPerformanceQuery::class);
+        $rows = $teamQuery->run(
+            $this->baseOrdersQuery(),
+            $filter,
+            $this->statusIds->resolver(),
+            fn ($s) => $this->statusIds->ids($s)
+        );
+
+        return app(DashboardTeamPerformance::class)->present($rows, $filter, $members);
     }
 
     public function ordersByStatus(?DashboardFilter $filter = null): Collection
