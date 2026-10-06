@@ -90,10 +90,10 @@
 | 37-K | Unified status groups + per-view charts | — | Done - verified (owner approved the 24 screenshots; `8e0fe03`) | 2026-10-06, `8e0fe03` + `71065cd` | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
 | 37-K.2 | Charts vanish when an already-active dashboard filter is clicked twice | 37-K | Done - verified | 2026-10-06 | See phase log entry below; interplay guard + `wire:ignore` canvases |
 | 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | Done - verified (0 failed, 0 risky; `8e21c7d`) | 2026-10-06, `8e21c7d` | See phase log entry; full suite after G6: **1298 passed, 0 failed, 0 risky** |
-| 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp; who creates tracking rows and how; which attribution fields exist — **all three now answered from the repo** | 37-K | Done - verified (docs-only; `docs/plans/financial-accounts.md`) | 2026-10-06 | Section **12 "38-A Findings (audit)"**: `order_status_histories` stores a nullable `changed_by_membership_id` + standard `created_at` (no from-status, no source, actor often null); tracking rows are created by `OrderTrackingService::startShipment()` (idempotent only while open — duplicates after close); attribution = nullable membership FKs on orders/trackings/history/events. No payroll/HR module exists yet. |
-| 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | Needs open decisions D2, D3, D5 |
-| 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Gaps confirmed (section 12 "Gaps"); concrete scope in section 12 "Proposals for 38-B/38-C/38-D"; must ship before 38-D runs on production |
-| 38-D | Earning ledger + backfill from accrual start date + tests | 38-B, 38-C | Not started | — | Needs open decisions D1, D4 |
+| 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp; who creates tracking rows and how; which attribution fields exist — **all three now answered from the repo** | 37-K | Done - verified (owner approved 2026-10-06; decisions S8–S12; docs-only; commit hash pending) | 2026-10-06 | Section **12 "38-A Findings (audit)"**; decisions **S8–S12** in section 11; revised order + final 38-C scope in section 13. `order_status_histories` stores a nullable `changed_by_membership_id` + standard `created_at` (no from-status, no source, actor often null); tracking rows created by `OrderTrackingService::startShipment()` (idempotent only while open — duplicates after close); attribution = nullable membership FKs on orders/trackings/history/events. **No payroll/HR module exists — built from scratch, nothing to reuse or migrate.** |
+| 38-C | Capture missing attribution/event fields (`confirmed_at`/`confirmed_by`, `delivered_at`, `returned_at`, `tracked_by`, history `from_status` + `source`, COD snapshot) + worker-cache isolation + transaction-atomic earning capture seam | 38-A | Not started | — | **Runs BEFORE 38-B** (owner decision): un-captured actor/timestamps cannot be backfilled. Final implementation scope in section 13; default `accrual_start_date` = this phase's deploy date per store |
+| 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | S9, S10, S12 decided. Build compensation model **from scratch** (no payroll/HR exists; nothing to reuse or migrate). Include assessment-only evaluation of reusing the shifts module for handover attribution |
+| 38-D | Earning ledger + backfill from accrual start date + tests | 38-C, 38-B | Not started | — | S8, S11 decided. Forward capture starts at the 38-C deploy date (`accrual_start_date`); backfill from there |
 | 38-E | "الحسابات المالية" page shell, navigation, permissions, Overview tab | 38-D | Not started | — | |
 | 38-F | Confirmation-team accounting, then tracking-team accounting | 38-E | Not started | — | |
 | 37-L | Conversion funnel | 37-K | Not started | — | |
@@ -261,13 +261,27 @@ Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertio
 
 **Decisions needed from owner** - the five recommended defaults for D1-D5 (section 12, each with a reason), plus approval of the proposed 38-B/38-C/38-D scope and the phase-order note (38-C before 38-D production rollout).
 
-## 11. Open decisions (owner to answer before the phase that needs them)
+### 38-A addendum — owner approval (docs-only) — 2026-10-06
 
-- **D1** Which event creates the earning for "confirmed" and for "tracked" (status key / action)? *(38-A, 38-D)*
-- **D2** Default payroll period (weekly / monthly / custom)? *(38-B)*
-- **D3** Rounding rule for percentage commissions? *(38-B)*
-- **D4** Is delivery confirmed only by carrier status, or can the owner confirm manually? *(38-D)*
-- **D5** Return reasons list the merchant can mark as "member fault"? *(38-B)*
+**Approved.** Decisions S8–S12 recorded in **section 11** (replaces the D1–D5 open list). Tracker re-ordered: **38-C (capture) runs BEFORE 38-B, then 38-D** — reason: un-captured actor/timestamps cannot be backfilled. Per-store default `accrual_start_date` = the **38-C deploy date**; older orders may later be manually reassigned from the "unattributed" bucket; **attribution is never guessed**.
+
+**38-C scope additions** (final implementation spec in section 13) — (a) reset per-request/per-store caches (`StoreContext`, `canStore` memo, `OrderService::$branchCache`/`$totalCache`, `OrderCompleteness::$exceptionsCache`, `DeliveryRiderService::$listCache`, `StatusResolver::$keyCache`, `app('currentMembership')`) at the **start and end of every queued job and scheduled command**; (b) the 38-D earning listener must write its entry **inside the same DB transaction as the status transition**.
+
+**38-B addition** — evaluate using the existing shifts module (`confirmation_shifts`) for attribution at shift handover — **assessment only**, no build.
+
+**Recorded** — **no payroll/HR module exists in the repo; the Financial Accounts program is built from scratch — nothing to reuse or migrate.**
+
+**Checks** - a/d/g/i applied for this addendum; b/c/e/f/h N/A (docs-only). `git diff` shows only `docs/plans/financial-accounts.md`. Tracker rows re-ordered (38-C before 38-B); 38-A = **Done - verified** (commit hash pending until the doc is committed at the owner's request).
+
+## 11. Decisions (owner-approved S8–S12, recorded 2026-10-06; replaced the D1–D5 open list)
+
+- **S8 (D1)** Confirmation earning event = the **first** time an order enters **any** status of the earningTriggers group (**not** only key `confirmed`); actor = the history row's membership; a **null actor** routes the entry to the **"unattributed"** bucket and is **never credited silently**. Tracking earning event = **exactly one per order, ever** (the first `order_trackings` row; later rows — including after a closed shipment — never create another event).
+- **S9 (D2)** Default payroll period **monthly**; the data model supports **weekly, biweekly, monthly and custom** from day one. Payments/advances are independent of periods.
+- **S10 (D3)** Per-entry **ROUND_HALF_UP to 2 decimals**; payroll lines sum the already-rounded entries (**no re-rounding of the total**); **decimal/integer math only**.
+- **S11 (D4)** Store setting: **carrier-sourced delivery auto-finalizes**; a manual delivery by a **non-owner** member creates a **"pending review"** entry **excluded from the payable balance** until owner approval or carrier evidence arrives.
+- **S12 (D5)** Structured return-reason list **per store**, with an optional **"apply suggested template"** action (customer refused, no answer, wrong number, wrong address, changed mind, damaged, ...) and a **per-reason "member fault" flag** chosen by the merchant. Default return policy = **no deduction**.
+
+> Section 12 keeps the original recommended-defaults text for the reasoning behind these decisions; S8–S12 here are authoritative.
 
 ## 12. 38-A Findings (audit) — 2026-10-06
 
@@ -367,12 +381,16 @@ Evidence style: `file:line` refers to this repo (branch/commit used: the state a
 
 ### Proposals for 38-B / 38-C / 38-D (scope)
 
-- **38-C (capture, in this order)**: (a) `orders.confirmed_at` + `orders.confirmed_by_membership_id` set inside `OrderObserver::handleStatusChange` when incoming status key is `confirmed`; (b) `orders.delivered_at`/`returned_at` mirroring tracking derived at status transitions (first per order); (c) `order_status_histories.from_status` (string key) + `source` enum captured in `Order::setTransitionMeta`/`transition`; (d) `order_trackings.created_by_membership_id` set in `startShipment` (actor already threaded) and `ensureRiderTracking` (member from context); (e) snapshot COD collectible at confirmed (new nullable `cod_collectible` column) — snap on write, reconcile later. All with `store_id` written explicitly.
-- **38-B (compensation model)**: new Edzeery-owned `member_compensation_plans` (per store, versioned `effective_from`, trigger enum confirmed|confirmed_and_delivered|tracked|tracked_and_delivered, formula fixed|percentage|tiers json, base_salary, plan overrides json, return policy default + member override, grace window) + `store_finance_settings` (accrual_start_date, return policy default, grace, period) + the 4 finance permissions + member-form compensation fields + sidebar gating. Reuses debts pattern and permissions recipe; **no code reuse from Finance-Manager repo**.
-- **38-D (earning ledger + backfill)**: append-only `earning_entries` (id, store_id, order_id, membership_id, plan_snapshot json, trigger, occurred_at, amount decimal(12,2), type earning|reversal|adjustment, idempotency_key unique (order_id, membership_id, trigger)); listener on confirmed/delivered/returned + tracking-created transitions, entry written **in the same transaction** as the status transition (OrderService::transition), store from event payload; backfill CLI from `accrual_start_date` iterating history + trackings, dedupe by idempotency_key, mark un-attributed rows `attribution=null` + report; reversals as negative entries. Confirmer lookup via `Order::confirmedByHistory()`; assignment-agnostic (use history, not current assignee).
-- **Phase order note**: 38-C must ship **before** 38-D runs on production (forward capture), backfill covers the historical window from `store_finance_settings.accrual_start_date`. Optional: fold 38-D's forward-capture listener into 38-C to keep post-38-C production events captured.
+- **Revised order (owner-approved, 2026-10-06)** — **38-C (capture) runs BEFORE 38-B, then 38-D**. Reason: un-captured actor/timestamps cannot be backfilled. Per-store default `accrual_start_date` = the **38-C deploy date**; older orders may later be manually reassigned from the "unattributed" bucket; **attribution is never guessed**. The final, implementation-ready 38-C scope is **section 13**.
+- Original audit proposals (superseded by the approved scope; kept for rationale):
+  - 38-C: `orders.confirmed_at`/`confirmed_by_membership_id` set on the first earningTriggers status event; `orders.delivered_at`/`returned_at` at transitions (first per order); history `from_status` + `source` captured in transition meta; `order_trackings.created_by_membership_id` in `startShipment`/`ensureRiderTracking`; COD collectible snapshot. All rows write `store_id` explicitly.
+  - 38-B: `member_compensation_plans` (per store, versioned `effective_from`) + `store_finance_settings` + the 4 finance permissions + member-form compensation fields + sidebar gating; **build from scratch — no payroll/HR module exists to reuse or migrate**; plus an assessment-only evaluation of the shifts module for handover attribution.
+  - 38-D: append-only `earning_entries` + listener inside the transition transaction + backfill CLI from `accrual_start_date`; confirmer via history, assignment-agnostic.
+- **Phase order note**: 38-D forward capture starts at the 38-C deploy date; backfill covers orders from `store_finance_settings.accrual_start_date`.
 
-### Recommended defaults for D1–D5 (with reasons)
+### Recommended defaults for D1–D5 (with reasons) — superseded by the owner's decisions S8–S12 (section 11)
+
+> Kept verbatim for the reasoning behind the approved decisions; **section 11 is authoritative.**
 
 - **D1 (earning event)**: confirmed = status key `confirmed` reached via transition (history row created_at = event time); tracked = creation of the **first** `order_trackings` row (startShipment `created_at`; dedupe rule first-per-order) — matches the dashboard's `trackedOnly` existence semantics and avoids double count on re-shipments. Delivered-based triggers key off the new `orders.delivered_at` (38-C) for a single event time.
 - **D2 (payroll period)** : default **monthly**. DZD retail, store_settings accrual, matches the permission `close_period`; weekly adds churn without revenue coupling. Custom-period support can come later.
@@ -393,3 +411,56 @@ Evidence style: `file:line` refers to this repo (branch/commit used: the state a
 - d. `git diff` = only `docs/plans/financial-accounts.md`.
 - g./h. 38-A row = **Done - verified** (2026-10-06); browser/craft not applicable (docs-only).
 - i. Stopped here; results reported to the owner in the task response.
+
+## 13. Owner approval of 38-A (2026-10-06): decisions S8–S12, revised phase order, final 38-C scope
+
+Decision record S8–S12 lives in **section 11** (single source of truth). This section holds what the approval changes for the remaining phases and the **final implementation spec for 38-C**.
+
+### Revised phase order (owner decision)
+
+**38-C (capture) → 38-B (compensation model) → 38-D (earning ledger + backfill).**
+
+Reason: un-captured actor/timestamps cannot be backfilled — capture ships first. Tracker rows are ordered accordingly (38-C above 38-B). Per-store default `accrual_start_date` = the **38-C deploy date**; the merchant may later manually assign older orders from the "unattributed" bucket; **attribution is never guessed**.
+
+### Final 38-C scope (implementation spec — for owner review before the 38-C prompt)
+
+**A. New columns** (migrations; all rows write `store_id` explicitly)
+1. `orders.confirmed_at` (timestamp) + `orders.confirmed_by_membership_id` (nullable FK) — set on the **first** transition into any earningTriggers status (S8: any status of the group, not only `confirmed`).
+2. `orders.delivered_at` (timestamp) — set on the **first** `delivered` transition (first per order).
+3. `orders.returned_at` (timestamp) + `orders.return_reason_key` (string, nullable) + `orders.return_member_fault` (boolean, nullable) — set on the first `returned` transition; the S12 reason/fault fields are filled by the merchant.
+4. `order_status_histories.from_status` (string key, nullable) + `order_status_histories.source` (enum `manual|bulk|carrier|webhook|api|storefront|system`) — captured in `Order::setTransitionMeta`/`transition` and written by `OrderObserver::handleStatusChange`.
+5. `order_trackings.created_by_membership_id` (nullable FK) — set in `startShipment` (actor already threaded) and `ensureRiderTracking` (member resolved from context).
+6. `orders.cod_collectible` (decimal(12,2), nullable) — snapshotted on the first earningTriggers event (S8); reconcilable later.
+
+**B. Event model (S8, S11)**
+- earningTriggers group = the statuses defined by section 4 (confirmed group, delivered, returned variants), **minus member-fault returns** (S12) so a member-fault return withholds the earning.
+- Earning event: **FIRST** entry into any earningTriggers status; actor = that history row's membership. A null actor → the entry is written with `attribution = null` and lands in the **"unattributed"** bucket; it must **never** be credited to anyone. Per-entry idempotency key: `(order_id, membership_id, trigger)`.
+- Tracking event: **exactly one per order, ever** (the first `order_trackings` row). Later rows — including after a closed shipment — never create another event.
+- Delivery finalization (S11): carrier-sourced delivery **auto-finalizes**; manual delivery by a **non-owner** member → a **"pending review"** entry that is **excluded from the payable balance** until (a) owner approval or (b) carrier evidence arrives. Owner-performed manual delivery finalizes immediately.
+
+**C. Worker-cache isolation (owner instruction 3)**
+- Reset these per-store/per-request caches at the **start and end of every queued job and scheduled command**:
+  - `StoreContext` (container singleton)
+  - `canStore` memo (`app/Helpers/helpers.php`, keyed `storeKey.'|'.$permission`)
+  - every static memo found in 38-A: `OrderService::$branchCache`, `OrderService::$totalCache`, `OrderCompleteness::$exceptionsCache`, `DeliveryRiderService::$listCache`, `StatusResolver::$keyCache`
+  - the `app('currentMembership')` instance binding
+- Implement as a shared reset concern (job base / command wrapper) so no current or future job can read another store's state.
+
+**D. Transaction-atomic earning capture seam (owner instruction 3)**
+- The 38-D earning listener must write its `earning_entries` row **inside the same DB transaction as the status transition** (`OrderService::transition`/`transitionToStatus`). 38-C lays this seam (hook in `OrderObserver::handleStatusChange` / transition meta) **without** adding the ledger itself.
+
+**E. Store finance settings (owned by 38-B, defined here)**
+- `accrual_start_date` default = the **38-C deploy date** per store; the merchant can set it earlier and later manually assign older orders from "unattributed".
+- S11 store flag (carrier-sourced auto-finalize) + S12 return-policy defaults.
+
+**F. Tests (per section 9 gate)**
+- Migrations forward + back; `from_status`/`source` captured on transition and on direct `status_id` writes; worker-cache reset verified with a cross-store job; first-entry-once dedupe (confirmed + tracking); "unattributed" bucket behaviour; `store_id` written on every new row; confirmed/delivered/returned first-occurrence stamps stable across re-transitions.
+
+### 38-B additions (owner instructions 4 + 5)
+
+- Build the compensation model **from scratch — nothing to reuse or migrate** (no payroll/HR module exists; verified in 38-A).
+- Include an **assessment-only** evaluation of reusing the existing shifts module (`confirmation_shifts`) for attribution at shift handover. Output: a written recommendation; no code unless the recommendation survives review.
+
+### Checks (section 9) for this addendum
+
+- a/d/g/i applied; b/c/e/f/h N/A (docs-only). `git diff` shows only `docs/plans/financial-accounts.md`. Tracker rows re-ordered (38-C before 38-B); 38-A = **Done - verified** (commit hash pending until the doc is committed at the owner's request).
