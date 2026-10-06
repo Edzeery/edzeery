@@ -29,7 +29,7 @@
                     : __('dashboard.chart_confirmation_trend', ['period' => $periodLabel]) }}
             </h3>
             @if (! empty($trend['labels']))
-                <div class="h-64"><canvas id="salesChart"></canvas></div>
+                <div class="h-64"><canvas id="salesChart" wire:ignore></canvas></div>
             @else
                 <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
@@ -43,7 +43,7 @@
                     : __('dashboard.chart_status_confirmation') }}
             </h3>
             @if ($statusBreakdown->isNotEmpty())
-                <div class="h-64"><canvas id="statusChart"></canvas></div>
+                <div class="h-64"><canvas id="statusChart" wire:ignore></canvas></div>
             @else
                 <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
@@ -166,6 +166,10 @@
                         title: { display: true, text: @js(__('stores.currency_symbol')), color: resolvedFontColor }
                     };
                 }
+                // One Chart instance per canvas: a surviving instance (a
+                // same-filter morph or a stale node) must go before a new one
+                // is asked to draw, or Chart.js refuses the canvas.
+                if (trendCanvas && Chart.getChart(trendCanvas)) Chart.getChart(trendCanvas).destroy();
                 window.__dashCharts.s = new Chart(trendCanvas, {
                     type: 'line',
                     data: { labels: data.chartLabels, datasets: datasets },
@@ -219,6 +223,7 @@
                     }
                 };
                 const statusColors = data.statusKeys.map((k, i) => colorFor(data.statusHex?.[i]));
+                if (statusCanvas && Chart.getChart(statusCanvas)) Chart.getChart(statusCanvas).destroy();
                 window.__dashCharts.st = new Chart(statusCanvas, {
                     type: 'doughnut',
                     plugins: [centerTotal],

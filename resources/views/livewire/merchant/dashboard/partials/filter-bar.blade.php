@@ -39,7 +39,9 @@
     <div class="flex flex-wrap items-center gap-2">
         @foreach ($periods as $key => $label)
             <button type="button"
-                wire:click="$set('period','{{ $key }}')"
+                wire:click="setPeriod('{{ $key }}')"
+                @disabled($filter->period === $key)
+                aria-pressed="{{ $filter->period === $key ? 'true' : 'false' }}"
                 @class([
                     'px-3 py-1.5 text-xs sm:text-sm rounded-full border transition-colors',
                     'bg-brand-600 text-white border-brand-600' => $filter->period === $key,
@@ -118,6 +120,7 @@
                                    type="radio"
                                    value="{{ $dimension }}"
                                    wire:model.live="memberDimension"
+                                   @disabled($dimension === ($filter->memberDimension ?? $defaultDimension))
                                    class="rounded">
                             <span>{{ __("dashboard.dimension_{$dimension}") }}</span>
                         </label>

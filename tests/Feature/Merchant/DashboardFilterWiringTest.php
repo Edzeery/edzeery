@@ -130,6 +130,26 @@ test('dashboard filter props are reactive and reset restores the default period'
         ->assertSet('dateTo', null);
 });
 
+test('re-applying the active period leaves state and payload untouched', function () {
+    [$user, $store] = dfwOwnerStore();
+
+    $this->actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.dashboard')
+        ->call('setPeriod', 'week')
+        ->assertSet('period', 'week')
+        ->call('setPeriod', 'week') // same value again: must be a no-op
+        ->assertSet('period', 'week')
+        ->assertSet('carrierId', null)
+        ->assertSet('memberDimension', null)
+        ->assertSet('dateFrom', null)
+        ->assertSet('dateTo', null)
+        ->assertNotDispatched('dashboard-filters-reset')
+        // A real change still lands.
+        ->call('setPeriod', 'all')
+        ->assertSet('period', 'all');
+});
+
 test('dashboard applies filters from the url query string', function () {
     [$user, $store] = dfwOwnerStore();
 

@@ -26,6 +26,25 @@ trait DashboardFilterConcern
     #[Url(as: 'md')]
     public ?string $memberDimension = null;
 
+    /**
+     * Period pills go through here instead of a raw "$set" so that a request
+     * for the period that is already active is a no-op: re-clicking the active
+     * pill used to re-render the dashboard with an identical filter, whose
+     * in-place morph stripped the width/height/style attributes Chart.js had
+     * written onto its canvases and left the charts blank until a reload.
+     * The active pill is also rendered disabled, so this guard mainly catches
+     * a same-value request that reaches the server another way (e.g. the
+     * period is in the URL and the history entry is re-entered).
+     */
+    public function setPeriod(string $period): void
+    {
+        if ($period === $this->period) {
+            return;
+        }
+
+        $this->period = $period;
+    }
+
     public function filter(): DashboardFilter
     {
         $current = auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first();
