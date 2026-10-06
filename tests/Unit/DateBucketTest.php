@@ -451,3 +451,30 @@ it('still produces an axis when handed a reversed window', function () {
         ->and($series['orders'])->toHaveCount(7)
         ->and(array_sum($series['orders']))->toBe(0);
 });
+
+it('fills any metric column the trend query asks for, MySQL keys included', function () {
+    // DashboardTrendQuery names its own columns (counts and money) and MySQL
+    // hands DATE_FORMAT keys back verbatim; both have to land on the axis or
+    // the chart comes out flat.
+    $rows = [
+        (object) ['bucket' => '2026-03-10 09', 'received' => 3, 'revenue' => 1500.0],
+        (object) ['bucket' => '2026-03-10 10', 'received' => 1, 'revenue' => 0.0],
+    ];
+
+    $series = app(DateBucket::class)->fill(
+        CarbonImmutable::parse('2026-03-10 00:00:00', DATE_BUCKET_TZ)->utc(),
+        CarbonImmutable::parse('2026-03-10 23:59:59', DATE_BUCKET_TZ)->utc(),
+        DATE_BUCKET_TZ,
+        3600,
+        fn () => $rows,
+        ['received' => 'int', 'revenue' => 'float'],
+    );
+
+    expect($series['labels'])->toHaveCount(24)
+        ->and($series['values']['received'][9])->toBe(3)
+        ->and($series['values']['received'][10])->toBe(1)
+        ->and($series['values']['received'][11])->toBe(0)
+        ->and($series['values']['revenue'][9])->toBe(1500.0)
+        ->and($series['values']['revenue'][11])->toBe(0.0)
+        ->and($series['trend']->get('2026-03-10 09'))->toBe(['received' => 3, 'revenue' => 1500.0]);
+});

@@ -2,7 +2,7 @@
 
 **Recorded:** 2026-10-05
 **Commit at time of writing:** `929569d54ac8c2464aaaa5ecc5b3a1aabf87c217`
-**37-K (Unified status groups + per-view charts) status:** Not started — no `DashboardStatusGroups` (or equivalent unified status-group) code was found in the repo at the commit above. The existing per-view charts partial (`resources/views/livewire/merchant/dashboard/partials/charts.blade.php`) and `StoreDashboardAnalyticsService::ordersByStatus()` predate 37-K and are 37-G era work. If 37-K is actually in progress elsewhere, correct this line during 38-A.
+**37-K (Unified status groups + per-view charts) status:** Implemented 2026-10-06 (work uncommitted, see phase log). `App\Domains\Analytics\Support\DashboardStatusGroups` is now the single source of status lists (D2 semantics, KPI/team table only, never payroll); `charts.blade.php` and `StoreDashboardAnalyticsService` were rebuilt on top of it (`statusBreakdown()` + `trendSeries()`). Header line kept honest here rather than in 38-A.
 
 > Anything below marked **[VERIFY]** was written from planning, not from reading the repo. During 38-A the agent must confirm or correct each one and update this file.
 
@@ -87,7 +87,7 @@
 
 | ID | Phase | Depends on | Status | Verified on (date, commit) | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 37-K | Unified status groups + per-view charts | — | Not started | — | Status read from repo at header commit; see header note and [VERIFY] below |
+| 37-K | Unified status groups + per-view charts | — | In progress - code + tests verified (checks a-e, g); check f pending owner visual pass | 2026-10-06 (work uncommitted) | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
 | 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp **[VERIFY]**; who creates tracking rows and how **[VERIFY]**; which attribution fields exist **[VERIFY]** | 37-K | Not started | — | Findings must be written back into this plan |
 | 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | Needs open decisions D2, D3, D5 |
 | 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Only if 38-A confirms gaps |
@@ -122,7 +122,7 @@ i. After a passing gate, **STOP and report to the owner**. Do not start the next
 
 Also, before starting a phase: confirm that its dependencies show "Done - verified"; if not, stop and say so.
 
-## 10. Phase log (empty, append-only)
+## 10. Phase log (append-only)
 
 Entry template:
 
@@ -130,6 +130,34 @@ Entry template:
 ### <ID> - <title> - <date> - <commit>
 Scope done / Deviations / Checks (a-h with evidence) / Open issues / Decisions needed from owner
 ```
+
+### 37-K - Unified status groups + per-view charts - 2026-10-06 - (work uncommitted)
+
+**Scope done**
+- `app/Domains/Analytics/Support/DashboardStatusGroups.php` (new, 79): single source of status lists. D2 "confirmed" group = confirmed, preparing, processing, shipped, in_transit, out_for_delivery, delivered, completed, returned, undeliverable, unclaimed, refunded — KPI + team table + doughnut only, **never payroll**. CANCELLED/CANCELED both present in the canceled group. `inConfirmed()` used for the doughnut collapse.
+- `DashboardStatusBreakdown.php` (new, 120): one grouped query over `orders` x `statuses`, `DashboardOrderScope::trackedOnly()` for the delivery view (D3: orders with ≥1 `order_trackings` row, counted once), collapses the confirmed group only in the confirmation view, mapper, percent with last-slice absorb + deficit correction (rows always sum to 100).
+- `DashboardTrendQuery.php` (new, 125): one bucketed multi-metric query via `DateBucket::fill()`; confirmation view = received/confirmed/canceled lines on `y`; delivery view = delivered + returned bars on `y` and revenue line on `y1`. `countWhen()` exists because a bare `status_id in (?)` in a grouped select returns one row's boolean, not a count (bug found and fixed). Colors come from `OrderStatus` (db source preferred, fallback `#9ca3af`); `token:accent` marks received/revenue for the JS theme lookup.
+- `StoreDashboardAnalyticsService.php` (235 -> 185): dropped `ordersByStatus/salesByDay/salesSeries`, added `statusBreakdown(?DashboardFilter): Collection` and `trendSeries(?DashboardFilter): array`.
+- `DashboardSummaryQuery` / `DashboardTeamPerformanceQuery` refactored onto `DashboardStatusGroups` (87 -> 68, 148 -> 122); `DashboardSeriesQuery` reduced to `series()` (85 -> 78); `DateBucket` gained generic `fill()` with `generateSeries()` delegating to it (170 -> 196).
+- `dashboard.blade.php` payload now sends `statusBreakdown` + `trend` (400 -> 386); `charts.blade.php` rewritten (297 -> 277): per-view doughnut (cutout 68%, center-total plugin, `${label}: ${count} (${percent}%)` tooltips) and per-view trend (y = counts, y1 = money, `y1` axis built only when a series uses it, hourly/daily labels from `data.chartLabels`, `new Date()` nowhere - labels are plain strings), MutationObserver for theme/class swaps retained.
+- Lang: `chart_confirmation_trend`, `chart_delivery_trend`, `chart_status_confirmation`, `chart_status_delivery`, `chart_total`, `series_{received,confirmed,delivered,returned,canceled,revenue}` x 4 locales.
+- Tests: new `DashboardChartsPerViewTest` (9) and `DashboardStatusGroupsTest` (5); `DateBucketTest` gained `fill()` MySQL-key coverage; `DashboardAnalyticsServiceTest`, `DashboardAnalyticsTimezoneTest`, `DashboardFilterTest`, `DashboardFilterWiringTest`, `DashboardTeamPerformanceTest` re-pointed at the new methods (Beta rows `2/1/1/0/0/50%`, totals `5/3/1/1/0/60%`).
+
+**Deviations** - none from the declared scope; `git status` shows only the files listed above (18 modified, 5 new). `php.ini` `memory_limit` was temporarily set to `-1` to run the full suite through paratest child processes, then restored to `512M` (system config, not repo).
+
+**Checks**
+- a. Plan re-read; scope, D1-D4 chart semantics and section 9 gate applied as described above.
+- b. `php artisan test --compact` full run: **1211 passed, 48 failed, 1 risky**; baseline on a stashed clean tree: **1196 passed, 48 failed**; the failure lists are byte-identical (pre-existing storefront/cart/routing failures, e.g. `CartService::getItems(null)` ViewException), so 37-K adds 15 passing tests and no failures. Dashboard group alone: **109 passed (574 assertions)**. `vendor/bin/pint --test` on all 23 touched files: **PASS** (one `concat_space`/`ordered_imports` issue in `DashboardAnalyticsServiceTest` fixed).
+- c. Sizes (before -> after): service 235 -> 185 (<=250), `DateBucket` 170 -> 196 (<=250), new files 120/125/79 (<=250), Volt 400 -> 386 (<=400), partial 297 -> 277 (<=300).
+- d. Diff limited to analytics support classes, the service, dashboard + charts views, 4 lang files, dashboard tests (see `git status` above). No routes, permissions, filters UI, KPI or team-table behavior changes.
+- e. Accuracy: query budget test re-measured (baseline still exactly 50 queries, ceiling 52 comment unchanged); `DashboardChartsPerViewTest` proves multi-tenant isolation is scoped to `store_id`, delivery cohort counts a twice-tracked order once, percent rows sum to 100, empty windows still return keyed series; hourly bucket keys rebuilt as `Y-m-d H` (MySQL `DATE_FORMAT` style) are covered by the new `DateBucket::fill()` test; timezone window behavior re-verified in `DashboardAnalyticsTimezoneTest`.
+- f. **Not done** - needs a human pass at 375/768/1440 px, RTL + LTR, light + dark.
+- g. Tracker row updated (status kept **In progress** until f passes).
+- h. Not applicable while f is open.
+
+**Open issues** - none in code.
+
+**Decisions needed from owner** - do the visual pass (check f) on the dashboard, then approve marking 37-K **Done - verified**; also confirm whether this work should be committed.
 
 ## 11. Open decisions (owner to answer before the phase that needs them)
 

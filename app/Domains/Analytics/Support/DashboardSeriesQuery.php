@@ -3,7 +3,6 @@
 namespace App\Domains\Analytics\Support;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
-use App\Enums\Store\OrderStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -17,44 +16,56 @@ final class DashboardSeriesQuery
     ) {}
 
     /**
+     * One bucketed query for any set of metrics: every entry in $metrics is
+     * one SELECT expression aliased by its key, all grouped by the same
+     * bucket, so a chart with three lines still costs exactly one query and
+     * its lines can never disagree about where a bucket starts.
+     *
      * @param  Builder<\App\Models\Orders\Order>  $baseQuery
-     * @param  callable(OrderStatus): ?string  $statusId  Same resolver the summary uses.
-     * @return array{labels: array<int, string>, revenue: array<int, float>, orders: array<int, int>, trend: Collection}
+     * @param  array<int, array{key: string, expression: string, bindings?: array<int, string>, cast?: 'int'|'float'}>  $metrics
+     * @return array{labels: array<int, string>, values: array<string, array<int, int|float>>, trend: Collection<string, array<string, int|float>>}
      */
-    public function salesSeries(Builder $baseQuery, DashboardFilter $filter, callable $statusId): array
+    public function series(Builder $baseQuery, DashboardFilter $filter, array $metrics): array
     {
+        $columns = [];
+
+        foreach ($metrics as $metric) {
+            $columns[$metric['key']] = $metric['cast'] ?? 'int';
+        }
+
         [$from, $to] = $this->resolveWindow($baseQuery, $filter);
 
         if ($from === null) {
-            return ['labels' => [], 'revenue' => [], 'orders' => [], 'trend' => collect()];
+            return [
+                'labels' => [],
+                'values' => array_fill_keys(array_keys($columns), []),
+                'trend' => collect(),
+            ];
         }
 
         $driver = DB::getDriverName();
         $granularity = DateBucket::granularityFor($from, $to);
 
-        // The orders line counts every order in scope; only delivered orders
-        // contribute revenue. Restricting the whole query to delivered used to
-        // hide the other orders entirely.
         $query = (clone $baseQuery)
-            ->selectRaw($this->bucket->bucketExpression($driver, $granularity, $filter->utcOffsetSeconds))
-            ->selectRaw('COUNT(*) as orders')
-            ->selectRaw('SUM(CASE WHEN orders.status_id = ? THEN orders.total_amount ELSE 0 END) as revenue', [
-                $statusId(OrderStatus::DELIVERED),
-            ])
-            ->groupBy('bucket')
-            ->orderBy('bucket');
+            ->selectRaw($this->bucket->bucketExpression($driver, $granularity, $filter->utcOffsetSeconds));
+
+        foreach ($metrics as $metric) {
+            $query->selectRaw($metric['expression'].' as '.$metric['key'], $metric['bindings'] ?? []);
+        }
+
+        $query->groupBy('bucket')->orderBy('bucket');
 
         $this->scope->apply($query, $filter);
 
         $rows = $query->get();
 
-        return $this->bucket->generateSeries(
+        return $this->bucket->fill(
             $from,
             $to,
-            $driver,
             $filter->timezone,
             $filter->utcOffsetSeconds,
-            fn () => $rows
+            fn () => $rows,
+            $columns
         );
     }
 

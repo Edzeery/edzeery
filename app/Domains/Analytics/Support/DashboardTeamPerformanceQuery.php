@@ -8,16 +8,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class DashboardTeamPerformanceQuery
 {
-    /**
-     * Confirmed, in the same order DashboardSummaryQuery defines it, so the
-     * table's Confirmation rate is the KPI's Confirmation rate.
-     */
-    private const CONFIRMED = [
-        OrderStatus::CONFIRMED, OrderStatus::PREPARING, OrderStatus::SHIPPED,
-        OrderStatus::IN_TRANSIT, OrderStatus::OUT_FOR_DELIVERY, OrderStatus::DELIVERED,
-        OrderStatus::COMPLETED,
-    ];
-
     public function __construct(private DashboardOrderScope $scope) {}
 
     /**
@@ -45,9 +35,9 @@ final class DashboardTeamPerformanceQuery
         $this->scope->apply($query, $filter);
 
         $conditions = [
-            'confirmed' => $this->in($statusIds(self::CONFIRMED)),
+            'confirmed' => $this->in($statusIds(DashboardStatusGroups::CONFIRMED)),
             'pending' => $this->is($statusId(OrderStatus::PENDING)),
-            'canceled' => $this->in($statusIds([OrderStatus::CANCELED, OrderStatus::CANCELLED])),
+            'canceled' => $this->in($statusIds(DashboardStatusGroups::CANCELED)),
             'delivered' => $this->is($statusId(OrderStatus::DELIVERED)),
             'returned' => $this->is($statusId(OrderStatus::RETURNED)),
         ];

@@ -5,11 +5,11 @@ namespace App\Domains\Analytics\Services;
 use App\Domains\Analytics\DTOs\DashboardFilter;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Domains\Analytics\Support\DashboardOrderScope;
-use App\Domains\Analytics\Support\DashboardSeriesQuery;
+use App\Domains\Analytics\Support\DashboardStatusBreakdown;
 use App\Domains\Analytics\Support\DashboardSummaryQuery;
 use App\Domains\Analytics\Support\DashboardTeamPerformance;
 use App\Domains\Analytics\Support\DashboardTeamPerformanceQuery;
-use App\Domains\Analytics\Support\OrderStatusChartMapper;
+use App\Domains\Analytics\Support\DashboardTrendQuery;
 use App\Domains\Analytics\Support\OrderStatusIdMap;
 use App\Enums\Store\OrderStatus;
 use App\Models\Orders\Order;
@@ -29,13 +29,11 @@ class StoreDashboardAnalyticsService
         private ?DashboardOrderScope $scope = null,
         private ?OrderStatusIdMap $statusIds = null,
         private ?DashboardSummaryQuery $summaryQuery = null,
-        private ?DashboardSeriesQuery $seriesQuery = null
     ) {
         $this->storeId = $storeId ?? currentStoreId();
         $this->scope = $this->scope ?? app(DashboardOrderScope::class);
         $this->statusIds = $this->statusIds ?? app(OrderStatusIdMap::class);
         $this->summaryQuery = $this->summaryQuery ?? app(DashboardSummaryQuery::class);
-        $this->seriesQuery = $this->seriesQuery ?? app(DashboardSeriesQuery::class);
     }
 
     public function summary(?DashboardFilter $filter = null): array
@@ -82,52 +80,32 @@ class StoreDashboardAnalyticsService
         return app(DashboardTeamPerformance::class)->present($rows, $filter, $members);
     }
 
-    public function ordersByStatus(?DashboardFilter $filter = null): Collection
+    /**
+     * PHASE 37-K — the status doughnut for the active stats view. One slice
+     * per status in Confirmation (the confirmed group collapsed), one per
+     * status of the shipped orders in Delivery, with integer percentages.
+     */
+    public function statusBreakdown(?DashboardFilter $filter = null): Collection
     {
         $filter ??= app(DashboardFilterFactory::class)->make([], null);
-        $query = DB::table('orders')
-            ->join('statuses', 'statuses.id', '=', 'orders.status_id')
-            ->where('orders.store_id', $this->storeId)
-            ->whereNull('orders.deleted_at');
 
-        $this->scope->apply($query, $filter);
-
-        $rows = $query
-            ->select('statuses.key', DB::raw('COUNT(*) as count'))
-            ->groupBy('statuses.key')
-            ->orderByDesc('count')
-            ->get();
-
-        $mapper = app(OrderStatusChartMapper::class);
-
-        return $mapper->map($rows, $this->storeId);
+        return app(DashboardStatusBreakdown::class)->run($filter, $this->storeId);
     }
 
-    public function salesByDay(?DashboardFilter $filter = null): Collection
-    {
-        $filter ??= app(DashboardFilterFactory::class)->make([], null);
-        $res = $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIds->resolver());
-        $trend = collect();
-        $labels = $res['labels'];
-        $revenue = $res['revenue'];
-        $orders = $res['orders'];
-        $count = count($labels);
-        for ($i = 0; $i < $count; $i++) {
-            $trend->push((object) [
-                'date' => $labels[$i],
-                'revenue' => (float) ($revenue[$i] ?? 0),
-                'orders' => (int) ($orders[$i] ?? 0),
-            ]);
-        }
-
-        return $trend;
-    }
-
-    public function salesSeries(?DashboardFilter $filter = null): array
+    /**
+     * PHASE 37-K — the trend lines/bars for the active stats view, built from
+     * one bucketed query: received/confirmed/canceled for Confirmation,
+     * delivered/returned/revenue for Delivery.
+     */
+    public function trendSeries(?DashboardFilter $filter = null): array
     {
         $filter ??= app(DashboardFilterFactory::class)->make([], null);
 
-        return $this->seriesQuery->salesSeries($this->baseOrdersQuery(), $filter, $this->statusIds->resolver());
+        return app(DashboardTrendQuery::class)->run(
+            $filter,
+            fn ($s) => $this->statusIds->id($s),
+            fn ($s) => $this->statusIds->ids($s)
+        );
     }
 
     public function ordersByState(?DashboardFilter $filter = null): Collection

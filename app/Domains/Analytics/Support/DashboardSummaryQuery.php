@@ -41,10 +41,7 @@ final class DashboardSummaryQuery
             $revenuePrev = (clone $prev)->where('status_id', $deliveredId)->sum('total_amount');
         }
 
-        $confirmedCount = (clone $current)->whereIn('status_id', $statusIds([
-            OrderStatus::CONFIRMED, OrderStatus::PREPARING, OrderStatus::SHIPPED,
-            OrderStatus::IN_TRANSIT, OrderStatus::OUT_FOR_DELIVERY, OrderStatus::DELIVERED, OrderStatus::COMPLETED,
-        ]))->count();
+        $confirmedCount = (clone $current)->whereIn('status_id', $statusIds(DashboardStatusGroups::CONFIRMED))->count();
 
         $confirmationRate = $totalCurrent > 0 ? round(($confirmedCount / $totalCurrent) * 100) : 0;
 
@@ -56,9 +53,9 @@ final class DashboardSummaryQuery
         // The Confirmation view leads with the two states an operator acts on.
         // Both spellings of cancelled are counted, because stores configure
         // either key and the doughnut already treats them as one alias.
-        $pendingCount = (clone $current)->where('status_id', $statusId(OrderStatus::PENDING))->count();
+        $pendingCount = (clone $current)->whereIn('status_id', $statusIds(DashboardStatusGroups::PENDING))->count();
         $canceledCount = (clone $current)
-            ->whereIn('status_id', $statusIds([OrderStatus::CANCELED, OrderStatus::CANCELLED]))
+            ->whereIn('status_id', $statusIds(DashboardStatusGroups::CANCELED))
             ->count();
 
         return [

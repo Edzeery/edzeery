@@ -15,6 +15,17 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+/**
+ * The values of one metric inside a trend payload, keyed by metric key.
+ * Every bucket the axis drew is present, so a sum over them is the window total.
+ */
+function tzTrendValues(array $trend, string $key): array
+{
+    $series = collect($trend['series'])->firstWhere('key', $key);
+
+    return $series['values'] ?? [];
+}
+
 beforeEach(function () {
     $this->user = User::query()->create([
         'name' => 'Phase 37F',
@@ -76,7 +87,7 @@ it('buckets today by hour in the store timezone', function () {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
 
     // Local 00:30 on 2026-03-10 in Algiers (UTC+1) === 23:30 UTC on 2026-03-09.
-    ($this->makeOrder)('delivered', 500, CarbonImmutable::parse('2026-03-09 23:30:00', 'UTC'));
+    $order = ($this->makeOrder)('delivered', 500, CarbonImmutable::parse('2026-03-09 23:30:00', 'UTC'));
 
     $localStart = CarbonImmutable::parse('2026-03-10 00:00:00', 'Africa/Algiers');
 
@@ -90,21 +101,40 @@ it('buckets today by hour in the store timezone', function () {
         storeId: $this->store->id,
     );
 
-    $series = $this->service->salesSeries($filter);
+    $trend = $this->service->trendSeries($filter);
 
-    expect(count($series['labels']))->toBe(24)
-        ->and($series['labels'][0])->toBe('00:00')
-        ->and($series['labels'][23])->toBe('23:00')
-        ->and(array_sum($series['orders']))->toBe(1)
-        ->and($series['orders'][0])->toBe(1)
-        ->and(array_sum($series['revenue']))->toBe(500.0);
+    expect(count($trend['labels']))->toBe(24)
+        ->and($trend['labels'][0])->toBe('00:00')
+        ->and($trend['labels'][23])->toBe('23:00')
+        ->and(array_sum(tzTrendValues($trend, 'received')))->toBe(1)
+        ->and(tzTrendValues($trend, 'received')[0])->toBe(1);
+
+    // The money line only exists on the delivery view, whose cohort is
+    // tracked orders, so the delivered amount is read from there.
+    OrderTracking::query()->create([
+        'order_id' => $order->id,
+        'store_id' => $this->store->id,
+    ]);
+
+    $delivery = $this->service->trendSeries(new DashboardFilter(
+        period: 'today',
+        from: $localStart->utc(),
+        to: $localStart->endOfDay()->utc(),
+        timezone: 'Africa/Algiers',
+        utcOffsetSeconds: 3600,
+        memberDimension: 'delivery',
+        memberScopeIds: null,
+        storeId: $this->store->id,
+    ));
+
+    expect(array_sum(tzTrendValues($delivery, 'revenue')))->toBe(500.0);
 });
 
 it('counts every scoped order but only delivered revenue, and derives aov from delivered', function () {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
 
-    ($this->makeOrder)('delivered', 1000, CarbonImmutable::parse('2026-03-10 09:00:00', 'UTC'));
-    ($this->makeOrder)('delivered', 500, CarbonImmutable::parse('2026-03-10 09:30:00', 'UTC'));
+    $deliveredA = ($this->makeOrder)('delivered', 1000, CarbonImmutable::parse('2026-03-10 09:00:00', 'UTC'));
+    $deliveredB = ($this->makeOrder)('delivered', 500, CarbonImmutable::parse('2026-03-10 09:30:00', 'UTC'));
     ($this->makeOrder)('pending', 9000, CarbonImmutable::parse('2026-03-10 10:00:00', 'UTC'));
 
     $filter = new DashboardFilter(
@@ -124,9 +154,28 @@ it('counts every scoped order but only delivered revenue, and derives aov from d
         ->and($summary['aov'])->toBe(750.0)
         ->and($summary['has_previous'])->toBeTrue();
 
-    $series = $this->service->salesSeries($filter);
-    expect(array_sum($series['orders']))->toBe(3)
-        ->and(array_sum($series['revenue']))->toBe(1500.0);
+    // The confirmation view counts every order in the window.
+    $trend = $this->service->trendSeries($filter);
+    expect(array_sum(tzTrendValues($trend, 'received')))->toBe(3);
+
+    // The delivery view reads money, and its cohort is tracked orders only.
+    foreach ([$deliveredA, $deliveredB] as $delivered) {
+        OrderTracking::query()->create(['order_id' => $delivered->id, 'store_id' => $this->store->id]);
+    }
+
+    $delivery = $this->service->trendSeries(new DashboardFilter(
+        period: 'today',
+        from: CarbonImmutable::parse('2026-03-10 00:00:00', 'Africa/Algiers')->utc(),
+        to: CarbonImmutable::parse('2026-03-10 23:59:59', 'Africa/Algiers')->utc(),
+        timezone: 'Africa/Algiers',
+        utcOffsetSeconds: 3600,
+        memberDimension: 'delivery',
+        memberScopeIds: null,
+        storeId: $this->store->id,
+    ));
+
+    expect(array_sum(tzTrendValues($delivery, 'delivered')))->toBe(2)
+        ->and(array_sum(tzTrendValues($delivery, 'revenue')))->toBe(1500.0);
 });
 
 it('compares against the equal-length window immediately before and hides the arrow when there is none', function () {
@@ -199,16 +248,16 @@ it('picks the granularity from the window length', function () {
     );
 
     // Week: 7 daily points.
-    expect(count($this->service->salesSeries($local('2026-06-14', '2026-06-20'))['labels']))->toBe(7);
+    expect(count($this->service->trendSeries($local('2026-06-14', '2026-06-20'))['labels']))->toBe(7);
 
     // Month to date: one point per day so far.
-    expect(count($this->service->salesSeries($local('2026-06-01', '2026-06-20'))['labels']))->toBe(20);
+    expect(count($this->service->trendSeries($local('2026-06-01', '2026-06-20'))['labels']))->toBe(20);
 
     // Custom up to 62 days stays daily.
-    expect(count($this->service->salesSeries($local('2026-04-20', '2026-06-20'))['labels']))->toBe(62);
+    expect(count($this->service->trendSeries($local('2026-04-20', '2026-06-20'))['labels']))->toBe(62);
 
     // Beyond that it switches to monthly, with m/Y labels.
-    $long = $this->service->salesSeries($local('2025-01-01', '2026-06-20'));
+    $long = $this->service->trendSeries($local('2025-01-01', '2026-06-20'));
     expect($long['labels'])->toContain('01/2025')->toContain('06/2026');
 
     // "All" runs from the oldest scoped order, monthly when the span is long.
@@ -221,7 +270,7 @@ it('picks the granularity from the window length', function () {
         memberScopeIds: null,
         storeId: $this->store->id,
     );
-    expect($this->service->salesSeries($all)['labels'])->toContain('01/2025');
+    expect($this->service->trendSeries($all)['labels'])->toContain('01/2025');
 });
 
 it('keeps all daily when the whole span fits in two months', function () {
@@ -239,7 +288,7 @@ it('keeps all daily when the whole span fits in two months', function () {
         storeId: $this->store->id,
     );
 
-    $series = $this->service->salesSeries($all);
+    $series = $this->service->trendSeries($all);
     expect($series['labels'][0])->toBe('10/06')
         ->and($series['labels'])->toContain('20/06')
         ->and(count($series['labels']))->toBe(11);
@@ -258,12 +307,14 @@ it('returns an empty series when there is nothing to plot', function () {
         storeId: $this->store->id,
     );
 
-    $empty = $this->service->salesSeries($all);
+    $empty = $this->service->trendSeries($all);
 
+    // No window means no axis, and every metric keeps its key with no points.
     expect($empty['labels'])->toBe([])
-        ->and($empty['revenue'])->toBe([])
-        ->and($empty['orders'])->toBe([])
-        ->and($empty['trend'])->toBeEmpty();
+        ->and($empty['series'])->toHaveCount(3)
+        ->and(tzTrendValues($empty, 'received'))->toBe([])
+        ->and(tzTrendValues($empty, 'confirmed'))->toBe([])
+        ->and(tzTrendValues($empty, 'canceled'))->toBe([]);
 });
 
 it('scopes by confirmation assignment or by delivery tracking', function () {

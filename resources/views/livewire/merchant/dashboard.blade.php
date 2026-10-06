@@ -69,8 +69,8 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         'summary' => $canTopKpis ? $analytics->summary($filter) : collect(),
         'teamPerformance' => $canViewStats && ! $filter->memberLocked
             ? $analytics->teamPerformance($filter, $members) : [],
-        'salesByDay' => $canViewStats ? $analytics->salesByDay($filter) : collect(),
-        'ordersByStatus' => $canViewStats ? $analytics->ordersByStatus($filter) : collect(),
+        'statusBreakdown' => $canViewStats ? $analytics->statusBreakdown($filter) : collect(),
+        'trend' => $canViewStats ? $analytics->trendSeries($filter) : null,
         'ordersByState' => $canStatsDelivery && $isDeliveryView ? $analytics->ordersByState($filter) : collect(),
         'deliveryTypeBreakdown' => $canStatsDelivery && $isDeliveryView ? $analytics->deliveryTypeBreakdown($filter) : collect(),
         'pendingOrders' => $canConfirm && ! $isDeliveryView ? $analytics->pendingConfirmationOrders($filter) : collect(),

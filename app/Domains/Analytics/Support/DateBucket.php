@@ -112,6 +112,38 @@ final class DateBucket
         int $offsetSeconds,
         callable $fetcher
     ): array {
+        $filled = $this->fill($from, $to, $timezone, $offsetSeconds, $fetcher, [
+            'revenue' => 'float',
+            'orders' => 'int',
+        ]);
+
+        return [
+            'labels' => $filled['labels'],
+            'revenue' => $filled['values']['revenue'],
+            'orders' => $filled['values']['orders'],
+            'trend' => $filled['trend'],
+        ];
+    }
+
+    /**
+     * The same axis walk for any set of numeric columns, so a metric set is
+     * one bucketed query instead of one query per line of the chart. Gap
+     * filling, the store timezone and the SQL key formats stay exactly as
+     * generateSeries() applies them; only the columns are supplied by the
+     * caller (name => int|float, which is also the output order).
+     *
+     * @param  callable(): iterable  $fetcher  Rows carrying a bucket key plus the columns.
+     * @param  array<string, string>  $columns  Column name => 'int'|'float'.
+     * @return array{labels: array<int, string>, values: array<string, array<int, int|float>>, trend: Collection<string, array<string, int|float>>}
+     */
+    public function fill(
+        CarbonImmutable $from,
+        ?CarbonImmutable $to,
+        string $timezone,
+        int $offsetSeconds,
+        callable $fetcher,
+        array $columns
+    ): array {
         $end = $to ?? $from->endOfDay();
 
         if ($end->lt($from)) {
@@ -120,10 +152,7 @@ final class DateBucket
 
         $map = Collection::make($fetcher())
             ->keyBy('bucket')
-            ->map(fn ($row) => [
-                'revenue' => (float) ($row->revenue ?? 0),
-                'orders' => (int) ($row->orders ?? 0),
-            ]);
+            ->map(fn ($row) => $this->extract($row, $columns));
 
         $granularity = self::granularityFor($from, $end);
         $keyFormat = $this->keyFormat($granularity);
@@ -137,26 +166,52 @@ final class DateBucket
             default => [$start->startOfDay(), $finish->startOfDay(), 'addDay'],
         };
 
-        $labels = $revenue = $orders = [];
+        $labels = [];
+        $values = [];
+
+        foreach ($columns as $column => $cast) {
+            $values[$column] = [];
+        }
 
         while ($cursor->lte($limit)) {
             // The SQL side shifts the UTC instant; do the same here so the axis
             // key matches the bucket the rows were grouped into.
             $key = $cursor->utc()->addSeconds($offsetSeconds)->format($keyFormat);
+            $row = $map->get($key) ?? [];
 
             $labels[] = $this->label($granularity, $cursor);
-            $revenue[] = (float) ($map->get($key)['revenue'] ?? 0);
-            $orders[] = (int) ($map->get($key)['orders'] ?? 0);
+
+            foreach ($columns as $column => $cast) {
+                $values[$column][] = $row[$column] ?? ($cast === 'float' ? 0.0 : 0);
+            }
 
             $cursor = $cursor->{$advance}();
         }
 
         return [
             'labels' => $labels,
-            'revenue' => $revenue,
-            'orders' => $orders,
+            'values' => $values,
             'trend' => $map,
         ];
+    }
+
+    /**
+     * One row of the bucketed result, typed per column so a count never
+     * arrives as "3.0" and a money sum never as an integer.
+     *
+     * @param  array<string, string>  $columns
+     * @return array<string, int|float>
+     */
+    private function extract(object $row, array $columns): array
+    {
+        $out = [];
+
+        foreach ($columns as $column => $cast) {
+            $value = $row->{$column} ?? null;
+            $out[$column] = $cast === 'float' ? (float) $value : (int) $value;
+        }
+
+        return $out;
     }
 
     private function label(string $granularity, CarbonImmutable $cursor): string

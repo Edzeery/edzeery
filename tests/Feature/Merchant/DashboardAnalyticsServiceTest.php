@@ -4,20 +4,20 @@ use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = \App\Models\User::query()->create([
         'name' => 'Test User',
-        'email' => 'test-' . uniqid() . '@example.com',
+        'email' => 'test-'.uniqid().'@example.com',
         'password' => bcrypt('password'),
     ]);
     $this->store = Store::query()->create([
         'name' => 'Test Store',
-        'slug' => 'test-store-' . uniqid(),
+        'slug' => 'test-store-'.uniqid(),
         'domain' => null,
         'currency_code' => 'SAR',
         'locale' => 'ar',
@@ -46,11 +46,12 @@ it('runs analytics methods with default filter', function () {
     $summary = $service->summary($filter);
     expect($summary)->toBeArray()->toHaveKeys(['total_orders', 'revenue']);
 
-    $byStatus = $service->ordersByStatus($filter);
-    expect($byStatus)->toBeInstanceOf(\Illuminate\Support\Collection::class);
+    $breakdown = $service->statusBreakdown($filter);
+    expect($breakdown)->toBeInstanceOf(\Illuminate\Support\Collection::class);
 
-    $series = $service->salesSeries($filter);
-    expect($series)->toBeArray()->toHaveKeys(['labels', 'revenue', 'orders']);
+    $trend = $service->trendSeries($filter);
+    expect($trend)->toBeArray()->toHaveKeys(['view', 'labels', 'series'])
+        ->and($trend['view'])->toBe('confirmation');
 
     $byState = $service->ordersByState($filter);
     expect($byState)->toBeInstanceOf(\Illuminate\Support\Collection::class);
@@ -78,8 +79,8 @@ it('runs analytics methods with custom range', function () {
     ], null);
 
     expect(fn () => $service->summary($filter))->not->toThrow(\Throwable::class);
-    expect(fn () => $service->ordersByStatus($filter))->not->toThrow(\Throwable::class);
-    expect(fn () => $service->salesSeries($filter))->not->toThrow(\Throwable::class);
+    expect(fn () => $service->statusBreakdown($filter))->not->toThrow(\Throwable::class);
+    expect(fn () => $service->trendSeries($filter))->not->toThrow(\Throwable::class);
     expect(fn () => $service->ordersByState($filter))->not->toThrow(\Throwable::class);
     expect(fn () => $service->deliveryTypeBreakdown($filter))->not->toThrow(\Throwable::class);
     expect(fn () => $service->pendingConfirmationOrders($filter, 5))->not->toThrow(\Throwable::class);

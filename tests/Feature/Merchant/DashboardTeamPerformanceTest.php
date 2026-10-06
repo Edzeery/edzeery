@@ -295,14 +295,16 @@ test('the confirmation view lists each member, the unowned orders and a total', 
         ->toContain(__('dashboard.team_performance_confirmation'));
 
     // member, assigned, confirmed, pending, canceled, other, confirmation rate.
+    // D2: the confirmed group covers the whole shipping flow, so Beta's
+    // returned order is confirmed rather than falling through to Other.
     expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '2', '0', '0', '0', '100%'])
-        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '0', '1', '0', '1', '0%'])
-        // The returned order is not confirmed, not pending and not cancelled,
-        // so it lands in Other instead of vanishing from the row.
+        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '1', '0', '0', '50%'])
+        // Nobody owns the cancelled order, so it lands on the unassigned row
+        // under the canceled column.
         ->and(tpfRow($html, __('dashboard.team_unassigned')))
         ->toBe([__('dashboard.team_unassigned'), '1', '0', '0', '1', '0', '0%'])
         ->and(tpfRow($html, __('dashboard.team_total')))
-        ->toBe([__('dashboard.team_total'), '5', '2', '1', '1', '1', '40%']);
+        ->toBe([__('dashboard.team_total'), '5', '3', '1', '1', '0', '60%']);
 
     // Gamma owns nothing today, so the table does not carry an empty row.
     expect(tpfRow($html, 'Gamma'))->toBe([]);
@@ -365,7 +367,7 @@ test('a carrier filter narrows the table the same way it narrows the KPIs', func
 
     $total = tpfRow($html, __('dashboard.team_total'));
 
-    expect(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '0', '1', '0', '1', '0%'])
+    expect(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '1', '0', '0', '50%'])
         ->and(tpfRow($html, 'Alpha'))->toBe([])
         ->and(tpfRow($html, __('dashboard.team_unassigned')))->toBe([])
         ->and($total)->not->toBe([])
