@@ -87,7 +87,7 @@ $save = function (): void {
     }
 
     $this->dispatch('swal', type: 'success', title: $this->debtId ? __('messages.updated_successfully') : __('messages.created_successfully'));
-    $this->redirect(route('merchant.debts.index', currentStore()), navigate: true);
+    $this->redirect(route('merchant.store.debts.index', currentStore()), navigate: true);
 };
 ?>
 
@@ -98,7 +98,7 @@ $save = function (): void {
                 {{ $debtId ? __('finance.edit_debt') : __('finance.add_debt') }}
             </h1>
         </div>
-        <a href="{{ route('merchant.debts.index', currentStore()) }}"
+        <a href="{{ route('merchant.store.debts.index', currentStore()) }}"
            wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
             {{ __('finance.back') }}
         </a>
@@ -173,7 +173,7 @@ $save = function (): void {
                     <button type="submit" class="edz-btn edz-btn--primary">
                         {{ $debtId ? __('finance.update') : __('finance.create') }}
                     </button>
-                    <a href="{{ route('merchant.debts.index', currentStore()) }}"
+                    <a href="{{ route('merchant.store.debts.index', currentStore()) }}"
                        wire:navigate class="edz-btn edz-btn--ghost">
                         {{ __('finance.back') }}
                     </a>

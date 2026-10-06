@@ -297,7 +297,7 @@ with($withData);
                     @endif
 
                     @if ($canViewDebts)
-                        <a href="{{ route('merchant.debts.index', $store) }}" wire:navigate
+                        <a href="{{ route('merchant.store.debts.index', $store) }}" wire:navigate
                            class="edz-sidebar__sub-link @if (request()->routeIs('merchant.debts.*')) edz-sidebar__sub-link--active @endif">
                             <x-edz.icon name="credit-card" class="edz-sidebar__icon edz-sidebar__sub-icon" />
                             <span class="edz-sidebar__label">{{ __('finance.debts') }}</span>

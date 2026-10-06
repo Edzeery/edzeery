@@ -109,8 +109,8 @@ Route::prefix('merchant')
         Volt::route('/{store:slug}/customization/statuses', 'merchant.customization.statuses')->name('customization.statuses');
 
         // Finance / Debts
-        Volt::route('/{store:slug}/debts', 'merchant.debts.index')->name('debts.index');
-        Volt::route('/{store:slug}/debts/create', 'merchant.debts.form')->name('debts.create');
-        Volt::route('/{store:slug}/debts/{debt}/edit', 'merchant.debts.form')->name('debts.edit');
-        Volt::route('/{store:slug}/debts/{debt}', 'merchant.debts.show')->name('debts.show');
+        Volt::route('/{store:slug}/debts', 'merchant.debts.index')->name('store.debts.index');
+        Volt::route('/{store:slug}/debts/create', 'merchant.debts.form')->name('store.debts.create');
+        Volt::route('/{store:slug}/debts/{debt}/edit', 'merchant.debts.form')->name('store.debts.edit');
+        Volt::route('/{store:slug}/debts/{debt}', 'merchant.debts.show')->name('store.debts.show');
     });

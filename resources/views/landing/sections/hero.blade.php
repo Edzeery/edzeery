@@ -28,7 +28,8 @@
                             <ion-icon name="arrow-forward-outline" class="text-lg" aria-hidden="true"></ion-icon>
                         </a>
                     @else
-                        <a href="{{ userRole() == 'admin' ? route('filament.super-admin.pages.dashboard') : route('merchant.dashboard',currentStore()) }}" data-edz-loading
+                        <a href="{{ userRole() == 'admin' ? 
+route('filament.super-admin.pages.dashboard') : route('merchant.dashboard', currentStore()?->id ?? currentStore()) }}" data-edz-loading
                             class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                             {{ __('landing.go_to_dashboard') }}
                             <ion-icon name="arrow-forward-outline" class="text-lg"></ion-icon>

@@ -73,7 +73,7 @@ $formatAmount = function (float $amount): string {
                    wire:navigate class="edz-btn edz-btn--secondary edz-btn--sm">
                     {{ __('finance.edit') }}
                 </a>
-                <a href="{{ route('merchant.debts.index', currentStore()) }}"
+                <a href="{{ route('merchant.store.debts.index', currentStore()) }}"
                    wire:navigate class="edz-btn edz-btn--ghost edz-btn--sm">
                     {{ __('finance.back') }}
                 </a>

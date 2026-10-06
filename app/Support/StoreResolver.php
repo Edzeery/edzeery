@@ -17,7 +17,7 @@ class StoreResolver
             return $store;
         }
 
-        if ($id = session('current_store_id')) {
+        if (auth()->check() && $id = session('current_store_id')) {
             $store = Store::find($id);
             if ($store) {
                 app(StoreContext::class)->set($store);

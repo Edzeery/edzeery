@@ -57,7 +57,7 @@ $delete = function (Debt $debt): void {
     abort_unless(canStore(StorePermissionEnum::FINANCE_DEBT_DELETE->value), 403);
     $debt->delete();
     $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));
-    $this->redirect(route('merchant.debts.index', currentStore()), navigate: true);
+    $this->redirect(route('merchant.store.debts.index', currentStore()), navigate: true);
 };
 
 $formatAmount = function (float $amount): string {
