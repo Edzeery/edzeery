@@ -25,6 +25,10 @@ use App\Models\Stores\Store;
  *  - home orders charge home_cost and keep the raw typed address.
  *  - wilaya options carry a numeric-code badge and order by wilaya number.
  */
+afterEach(function () {
+    app(\App\Support\StoreContext::class)->clear();
+});
+
 function oscStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -43,6 +47,7 @@ function oscStore(array $settings = []): Store
 
     config(['app.domain' => 'example.test']);
     test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $store;
 }

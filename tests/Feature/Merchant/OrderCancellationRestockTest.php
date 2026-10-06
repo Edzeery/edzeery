@@ -13,6 +13,10 @@ use Livewire\Volt\Volt;
 
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
+afterEach(function () {
+    app(\App\Support\StoreContext::class)->clear();
+});
+
 function orStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -31,6 +35,7 @@ function orStore(array $settings = []): Store
 
     config(['app.domain' => 'example.test']);
     test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $store;
 }

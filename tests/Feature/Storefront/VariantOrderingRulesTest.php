@@ -80,11 +80,16 @@ function makeOptionWithVariants(Store $store, Product $product, string $type, ar
     return [$option, $variants];
 }
 
+afterEach(function () {
+    app(\App\Support\StoreContext::class)->clear();
+});
+
 function matrixComponent(Store $store, Product $product)
 {
     config(['app.domain' => 'example.test']);
     test()->artisan('view:clear');
     test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return \Livewire\Volt\Volt::test('storefront.variant-matrix', ['productId' => (string) $product->id]);
 }

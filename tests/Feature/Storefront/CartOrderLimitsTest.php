@@ -17,6 +17,10 @@ use App\Models\Stores\Store;
  *  - A successful checkout decreases variant stock and records a SALE movement.
  *  - Priority: product override -> store default -> ignored.
  */
+afterEach(function () {
+    app(\App\Support\StoreContext::class)->clear();
+});
+
 function colStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -35,6 +39,7 @@ function colStore(array $settings = []): Store
 
     config(['app.domain' => 'example.test']);
     test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $store;
 }

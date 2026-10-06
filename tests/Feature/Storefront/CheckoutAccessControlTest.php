@@ -17,6 +17,10 @@ use App\Models\Stores\Store;
  *    session after a successful order and pre-filled on the next checkout;
  *    a logged-in platform user's own profile still takes precedence.
  */
+afterEach(function () {
+    app(\App\Support\StoreContext::class)->clear();
+});
+
 function cawStore(array $settings = []): Store
 {
     $user = \App\Models\User::factory()->create();
@@ -34,6 +38,7 @@ function cawStore(array $settings = []): Store
     }
 
     config(['app.domain' => 'example.test']);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $store;
 }
