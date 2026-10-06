@@ -4,6 +4,7 @@ namespace App\Filament\SuperAdmin\Resources\Stores\Schemas;
 
 use App\Models\Plans\Plan;
 use App\Models\Plans\PlanFeature;
+use App\Support\StoreSlugRules;
 use Filament\Actions\Action;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
@@ -54,8 +55,7 @@ class StoreForm
                                     ->unique('stores', 'slug')
                                     ->rules([function ($get, $set) {
                                         return function ($attribute, $value, $fail) {
-                                            $reserved = ['www', 'api', 'admin', 'mail', 'app', 'demo', 'edzeery', 'support', 'help', 'status', 'cdn', 'assets'];
-                                            if (in_array(strtolower($value), $reserved)) {
+                                            if (StoreSlugRules::isReserved($value)) {
                                                 $fail(__('validation.reserved', ['attribute' => $attribute]));
                                             }
                                         };
@@ -94,7 +94,7 @@ class StoreForm
                                         'USD' => 'USD',
                                         'EUR' => 'EUR',
                                     ])
-                                    ->default([0])
+                                    ->default('DZD')
                                     ->required(),
 
                                 TextInput::make('currency_symbol')

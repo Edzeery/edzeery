@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::domain('{store:slug}.' . config('app.domain'))
-    ->where(['store' => '^(?!(www|app|admin|api|mail)$)[a-z0-9-]+$'])
+    ->where(['store' => '(?!(?:www|app|admin|api|mail)\.)[a-z0-9-]+'])
     ->middleware(['web', 'resolve.store', 'store.locale'])
     ->group(function () {
 

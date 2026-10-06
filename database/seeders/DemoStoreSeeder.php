@@ -75,16 +75,20 @@ class DemoStoreSeeder extends Seeder
             $user->assignRole(UserRoleEnum::MERCHANT);
         }
 
-        $store = Store::firstOrCreate(
-            ['slug' => 'demo'],
-            [
-                'user_id'          => $user->id,
-                'name'             => 'Edzeery Demo Store',
-                'description'      => 'Welcome to the Edzeery demo store. Browse our curated collection to see how your storefront could look.',
-                'landing_template' => LandingTemplateEnum::CATALOG,
-                'status'           => StoreStatusEnum::ACTIVE,
-            ]
-        );
+        // The platform's own demo store lives at the reserved "demo" slug; this
+        // is the ONLY caller of Store::withReservedSlug() (see StoreSlugRules).
+        $store = Store::withReservedSlug(function () use ($user) {
+            return Store::firstOrCreate(
+                ['slug' => 'demo'],
+                [
+                    'user_id'          => $user->id,
+                    'name'             => 'Edzeery Demo Store',
+                    'description'      => 'Welcome to the Edzeery demo store. Browse our curated collection to see how your storefront could look.',
+                    'landing_template' => LandingTemplateEnum::CATALOG,
+                    'status'           => StoreStatusEnum::ACTIVE,
+                ]
+            );
+        });
 
         $themeContent = StorefrontSections::normalize([
             'hero' => [

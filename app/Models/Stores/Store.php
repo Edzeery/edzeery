@@ -13,6 +13,7 @@ use App\Models\Products\Product;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\Traits\HasStoreDefaults;
 use App\Models\User;
+use App\Support\StoreSlugRules;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -48,6 +49,45 @@ class Store extends Model
         'status' => StoreStatusEnum::class,
         'landing_template' => \App\Enums\Store\LandingTemplateEnum::class,
     ];
+
+    /**
+     * True only while the single DemoStoreSeeder exemption is active.
+     */
+    protected static bool $reservedSlugBypass = false;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Store $store) {
+            if (self::$reservedSlugBypass) {
+                return;
+            }
+
+            if ($store->exists && ! $store->isDirty('slug')) {
+                return;
+            }
+
+            if (StoreSlugRules::isReserved($store->slug)) {
+                throw StoreSlugRules::exception((string) $store->slug);
+            }
+        });
+    }
+
+    /**
+     * Opt-out of the reserved-slug guard for ONE, greppable case: seeding the
+     * platform's own demo store at the reserved "demo" slug. No other caller
+     * may create or rename a store onto a reserved slug.
+     */
+    public static function withReservedSlug(callable $callback): mixed
+    {
+        $previous = self::$reservedSlugBypass;
+        self::$reservedSlugBypass = true;
+
+        try {
+            return $callback();
+        } finally {
+            self::$reservedSlugBypass = $previous;
+        }
+    }
 
 
     /* ================= Relations ================= */
