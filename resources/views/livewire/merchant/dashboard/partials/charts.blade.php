@@ -29,13 +29,9 @@
                     : __('dashboard.chart_confirmation_trend', ['period' => $periodLabel]) }}
             </h3>
             @if (! empty($trend['labels']))
-                <div class="h-64">
-                    <canvas id="salesChart"></canvas>
-                </div>
+                <div class="h-64"><canvas id="salesChart"></canvas></div>
             @else
-                <div class="h-64 flex items-center justify-center">
-                    <p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p>
-                </div>
+                <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
         </div>
 
@@ -47,13 +43,9 @@
                     : __('dashboard.chart_status_confirmation') }}
             </h3>
             @if ($statusBreakdown->isNotEmpty())
-                <div class="h-64">
-                    <canvas id="statusChart"></canvas>
-                </div>
+                <div class="h-64"><canvas id="statusChart"></canvas></div>
             @else
-                <div class="h-64 flex items-center justify-center">
-                    <p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p>
-                </div>
+                <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
         </div>
     </div>
@@ -66,56 +58,49 @@
             const root = getComputedStyle(document.documentElement);
             const cssVar = (name) => root.getPropertyValue(name)?.trim() || null;
 
-            const toRgbFromTriplet = (triplet) => {
-                if (!triplet) return null;
-                const t = triplet.replace(/[^0-9,\s]/g, '').trim();
-                const parts = t.split(',').map(p => parseInt(p.trim(), 10));
-                return t.includes(',') && parts.length >= 3 && !parts.some(isNaN)
-                    ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})` : null;
+            // Tokens ship as "r, g, b" triplets; Chart.js wants a colour.
+            const toRgbFromTriplet = (t) => {
+                const p = String(t ?? '').replace(/[^0-9,\s]/g, '').split(',').map(s => parseInt(s.trim(), 10));
+                return p.length >= 3 && !p.some(isNaN) ? `rgb(${p[0]}, ${p[1]}, ${p[2]})` : null;
             };
-
             const parseColor = (input) => input ? String(input).trim() : null;
-
             const toRgba = (input, alpha = 0.08) => {
                 const c = parseColor(input);
                 if (!c) return `rgba(107, 114, 128, ${alpha})`;
                 if (c.startsWith('rgba(')) return c.replace(/,[^,]+\)$/, `, ${alpha})`);
                 if (c.startsWith('rgb(')) return c.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
-                if (c[0] === '#') {
-                    let hex = c.substring(1);
-                    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-                    const r = parseInt(hex.substring(0, 2), 16);
-                    const g = parseInt(hex.substring(2, 4), 16);
-                    const b = parseInt(hex.substring(4, 6), 16);
-                    if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                }
-                return `rgba(107, 114, 128, ${alpha})`;
+                const hex = c[0] === '#' ? (c.length === 4 ? c.slice(1).split('').map(x => x + x).join('') : c.slice(1)) : '';
+                const rgb = hex.length === 6 ? [0, 2, 4].map(i => parseInt(hex.substring(i, i + 2), 16)) : [];
+                return rgb.length && !rgb.some(isNaN) ? `rgba(${rgb.join(', ')}, ${alpha})` : `rgba(107, 114, 128, ${alpha})`;
             };
 
             const themeColor = (name, fallback) => toRgbFromTriplet(cssVar(name)) || cssVar(name) || fallback;
             const resolvedFontColor = themeColor('--edz-color-text-soft', '#6b7280');
             const resolvedGridColor = themeColor('--edz-color-border', '#e5e7eb');
             const resolvedAccent = themeColor('--edz-color-accent-500', '#6366f1');
-            const resolvedInk = themeColor('--edz-color-ink', '#111827');
+            // --edz-color-ink is not a token, so a near-black fallback made the
+            // centre total vanish on the dark card; --edz-color-text is the
+            // theme body colour and follows it in both directions.
+            const resolvedText = themeColor('--edz-color-text', '#101828');
+            // .edz-card paints rgb(var(--edz-color-surface)); slices are split
+            // with that same colour, so one shared hex still reads as two.
+            const resolvedSurface = themeColor('--edz-color-surface', 'rgb(255, 255, 255)');
             const num = (v) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(v);
+            const currency = @js(__('stores.currency_symbol'));
 
             Chart.defaults.color = resolvedFontColor;
             Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
             if (Chart.defaults.plugins.legend?.labels) Chart.defaults.plugins.legend.labels.color = resolvedFontColor;
-            if (Chart.defaults.plugins.tooltip) {
-                Chart.defaults.plugins.tooltip.titleColor = resolvedFontColor;
-                Chart.defaults.plugins.tooltip.bodyColor = resolvedFontColor;
-            }
+            const tipDefaults = Chart.defaults.plugins.tooltip;
+            if (tipDefaults) { tipDefaults.titleColor = resolvedFontColor; tipDefaults.bodyColor = resolvedFontColor; }
 
-            // Both axes hold counts and sums, so neither has a meaningful
-            // negative half. Without an all-zero series Chart.js draws the
-            // baseline at its own top gridline and the first point reads as a
-            // full-height bar, which looks like real activity on an empty day.
+            // Neither axis has a meaningful negative half, and an all-zero
+            // series would draw the baseline at the top gridline, so an empty
+            // window still gets a four-count scale instead of a full-height bar.
             const hasPositive = (values) => Array.isArray(values) && values.some(v => Number(v) > 0);
 
-            // DateBucket labels an hourly axis "H:00", a daily one "d/m" and a
-            // monthly one "m/Y". Only the hourly axis can hold 24 mostly-empty
-            // buckets, which is why points are hidden on its zero buckets.
+            // Only an hourly axis holds 24 mostly-empty buckets, which is why
+            // its zero buckets carry no marker; wider axes keep theirs.
             const isHourly = (labels) => Array.isArray(labels) && labels.some(l => String(l).includes(':'));
             const showPoints = (values) => Array.isArray(values) && values.length > 0 && values.length <= 31;
             const pointRadius = (ctx, values) => ! showPoints(values) ? 0
@@ -123,10 +108,9 @@
             const pointHoverRadius = (values) => showPoints(values) ? 5 : 0;
 
             // One dataset per server metric: `axis` picks the side, `type` picks
-            // line/bar, and `token:accent` is the theme's accent, resolved here
-            // so dark/light switches repaint without a round trip.
+            // line/bar, and `token:accent` is the theme's own accent colour.
             const series = Array.isArray(data.chartSeries) ? data.chartSeries : [];
-            const colorFor = (hex) => hex === 'token:accent' ? resolvedAccent : (parseColor(hex) || resolvedInk);
+            const colorFor = (hex) => hex === 'token:accent' ? resolvedAccent : (parseColor(hex) || resolvedText);
             const valuesFor = (axis) => series.filter(s => s.axis === axis).flatMap(s => Array.isArray(s.values) ? s.values : []);
             const yValues = valuesFor('y');
             const y1Values = valuesFor('y1');
@@ -136,40 +120,35 @@
                 const isLine = s.type === 'line';
                 return {
                     label: s.label,
+                    // The metric picks its own renderer — delivered and returned
+                    // are bars, revenue is a line. Without carrying the type the
+                    // chart-level default turned every delivery bar into a line.
+                    type: s.type,
                     data: s.values,
                     yAxisID: s.axis,
                     borderColor: color,
                     backgroundColor: isLine ? toRgba(color, 0.08) : toRgba(color, 0.7),
                     fill: isLine && s.axis === 'y1',
-                    tension: 0,
-                    stepped: false,
-                    borderWidth: 2,
-                    borderRadius: isLine ? 0 : 3,
+                    tension: 0, stepped: false, borderWidth: 2, borderRadius: isLine ? 0 : 3,
                     pointRadius: (ctx) => pointRadius(ctx, s.values),
-                    pointHoverRadius: pointHoverRadius(s.values),
-                    pointHoverBackgroundColor: color,
+                    pointHoverRadius: pointHoverRadius(s.values), pointHoverBackgroundColor: color,
                 };
             });
 
-            if (window.__dashCharts.s) { window.__dashCharts.s.destroy(); window.__dashCharts.s = null; }
-            if (window.__dashCharts.st) { window.__dashCharts.st.destroy(); window.__dashCharts.st = null; }
+            ['s', 'st'].forEach(k => { if (window.__dashCharts[k]) { window.__dashCharts[k].destroy(); window.__dashCharts[k] = null; } });
 
             const trendCanvas = data.chartLabels && data.chartLabels.length ? document.getElementById('salesChart') : null;
             if (trendCanvas) {
                 const scales = {
-                    x: {
-                        grid: { color: resolvedGridColor, drawBorder: false },
-                        border: { display: false },
-                        ticks: { color: resolvedFontColor }
-                    },
+                    x: { grid: { color: resolvedGridColor, drawBorder: false }, border: { display: false }, ticks: { color: resolvedFontColor } },
                     y: {
                         position: 'left',
                         beginAtZero: true,
+                        stacked: false, // bars on one axis sit side by side
                         suggestedMax: hasPositive(yValues) ? undefined : 4,
                         grid: { color: resolvedGridColor, drawBorder: false },
                         border: { display: false },
-                        // Order counts are whole numbers; "2.5 orders" is noise.
-                        ticks: { color: resolvedFontColor, precision: 0 },
+                        ticks: { color: resolvedFontColor, precision: 0 }, // "2.5 orders" is noise
                         title: { display: true, text: @js(__('dashboard.orders')), color: resolvedFontColor }
                     },
                 };
@@ -178,10 +157,12 @@
                     scales.y1 = {
                         position: 'right',
                         beginAtZero: true,
+                        stacked: false,
                         suggestedMax: hasPositive(y1Values) ? undefined : 1000,
                         grid: { drawOnChartArea: false },
                         border: { display: false },
-                        ticks: { color: resolvedFontColor },
+                        // Money names its currency in every tick, not only in the title.
+                        ticks: { color: resolvedFontColor, precision: 0, callback: (value) => `${num(value)} ${currency}` },
                         title: { display: true, text: @js(__('stores.currency_symbol')), color: resolvedFontColor }
                     };
                 }
@@ -198,10 +179,10 @@
                                 callbacks: {
                                     title: (items) => items.length ? items[0].label : '',
                                     label: (context) => {
-                                        const value = num(context.parsed.y);
                                         // The money axis carries the store currency; counts stay bare.
+                                        const value = num(context.parsed.y);
                                         return context.dataset.yAxisID === 'y1'
-                                            ? `${context.dataset.label}: ${value} ${@js(__('stores.currency_symbol'))}`
+                                            ? `${context.dataset.label}: ${value} ${currency}`
                                             : `${context.dataset.label}: ${value}`;
                                     }
                                 }
@@ -223,18 +204,21 @@
                         const area = chart.chartArea;
                         if (!area) return;
                         const ctx = chart.ctx;
+                        const cx = (area.left + area.right) / 2;
+                        const cy = (area.top + area.bottom) / 2;
                         ctx.save();
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillStyle = resolvedInk;
-                        ctx.font = '700 22px Inter, sans-serif';
-                        ctx.fillText(num(total), (area.left + area.right) / 2, (area.top + area.bottom) / 2 - 8);
+                        ctx.fillStyle = resolvedText; // theme body colour: readable on both cards
+                        ctx.font = '800 26px Inter, sans-serif';
+                        ctx.fillText(num(total), cx, cy - 10);
                         ctx.fillStyle = resolvedFontColor;
                         ctx.font = '500 11px Inter, sans-serif';
-                        ctx.fillText(@js(__('dashboard.chart_total')), (area.left + area.right) / 2, (area.top + area.bottom) / 2 + 14);
+                        ctx.fillText(@js(__('dashboard.chart_total')), cx, cy + 15);
                         ctx.restore();
                     }
                 };
+                const statusColors = data.statusKeys.map((k, i) => colorFor(data.statusHex?.[i]));
                 window.__dashCharts.st = new Chart(statusCanvas, {
                     type: 'doughnut',
                     plugins: [centerTotal],
@@ -242,9 +226,9 @@
                         labels: data.statusLabels,
                         datasets: [{
                             data: counts,
-                            backgroundColor: data.statusKeys.map((k, i) => colorFor(data.statusHex?.[i])),
-                            borderColor: data.statusKeys.map((k, i) => colorFor(data.statusHex?.[i])),
-                            borderWidth: 1,
+                            backgroundColor: statusColors,
+                            borderColor: data.statusKeys.map(() => resolvedSurface), // card-coloured slice separators
+                            borderWidth: 2,
                             hoverOffset: 4
                         }]
                     },
@@ -255,7 +239,16 @@
                         plugins: {
                             legend: {
                                 position: 'bottom',
-                                labels: { boxWidth: 12, padding: 10, usePointStyle: true, color: resolvedFontColor }
+                                labels: {
+                                    boxWidth: 12, padding: 10, usePointStyle: true, color: resolvedFontColor,
+                                    // Count and percent straight from the service rows, which sum to 100.
+                                    generateLabels: (chart) => data.statusLabels.map((label, i) => ({
+                                        text: `${label}: ${num(counts[i] || 0)} (${percents[i] || 0}%)`,
+                                        fillStyle: statusColors[i], strokeStyle: resolvedSurface, lineWidth: 0,
+                                        hidden: ! chart.getDataVisibility(i), fontColor: resolvedFontColor,
+                                        pointStyle: 'circle', datasetIndex: 0, index: i
+                                    }))
+                                }
                             },
                             tooltip: {
                                 callbacks: {
@@ -273,21 +266,16 @@
         };
 
         if (!window.__dashCharts.mo) {
-            window.__dashCharts.mo = new MutationObserver((mutations) => {
-                const hasThemeChange = mutations.some(m => m.attributeName === 'class' || m.attributeName === 'data-theme');
-                if (hasThemeChange && window.__dashCharts._lastData) window.renderDashboardCharts(window.__dashCharts._lastData);
-            });
+            window.__dashCharts.mo = new MutationObserver((ms) => (ms.some(m => m.attributeName === 'class' || m.attributeName === 'data-theme')
+                && window.__dashCharts._lastData) && window.renderDashboardCharts(window.__dashCharts._lastData));
             window.__dashCharts.mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
         }
 
         if (window.Livewire) {
             window.addEventListener('livewire:navigating', function() {
-                if (window.__dashCharts) {
-                    if (window.__dashCharts.s) window.__dashCharts.s.destroy();
-                    if (window.__dashCharts.st) window.__dashCharts.st.destroy();
-                    if (window.__dashCharts.mo) window.__dashCharts.mo.disconnect();
-                    window.__dashCharts = {};
-                }
+                ['s', 'st'].forEach(k => window.__dashCharts[k]?.destroy());
+                window.__dashCharts.mo?.disconnect();
+                window.__dashCharts = {};
             });
         }
     </script>

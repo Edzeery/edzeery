@@ -87,7 +87,7 @@
 
 | ID | Phase | Depends on | Status | Verified on (date, commit) | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 37-K | Unified status groups + per-view charts | — | In progress - code + tests verified (checks a-e, g); check f pending owner visual pass | 2026-10-06 (work uncommitted) | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
+| 37-K | Unified status groups + per-view charts | — | Done - all checks (a-h) complete; awaiting owner visual sign-off (24 screenshots in `%TEMP%\opencode\charts37K1\shots`) | 2026-10-06 (work uncommitted) | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
 | 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp **[VERIFY]**; who creates tracking rows and how **[VERIFY]**; which attribution fields exist **[VERIFY]** | 37-K | Not started | — | Findings must be written back into this plan |
 | 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | Needs open decisions D2, D3, D5 |
 | 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Only if 38-A confirms gaps |
@@ -131,7 +131,7 @@ Entry template:
 Scope done / Deviations / Checks (a-h with evidence) / Open issues / Decisions needed from owner
 ```
 
-### 37-K - Unified status groups + per-view charts - 2026-10-06 - (work uncommitted)
+### 37-K - Unified status groups + per-view charts - 2026-10-06 - (bulk in 8e0fe03; 3 files uncommitted)
 
 **Scope done**
 - `app/Domains/Analytics/Support/DashboardStatusGroups.php` (new, 79): single source of status lists. D2 "confirmed" group = confirmed, preparing, processing, shipped, in_transit, out_for_delivery, delivered, completed, returned, undeliverable, unclaimed, refunded — KPI + team table + doughnut only, **never payroll**. CANCELLED/CANCELED both present in the canceled group. `inConfirmed()` used for the doughnut collapse.
@@ -143,7 +143,7 @@ Scope done / Deviations / Checks (a-h with evidence) / Open issues / Decisions n
 - Lang: `chart_confirmation_trend`, `chart_delivery_trend`, `chart_status_confirmation`, `chart_status_delivery`, `chart_total`, `series_{received,confirmed,delivered,returned,canceled,revenue}` x 4 locales.
 - Tests: new `DashboardChartsPerViewTest` (9) and `DashboardStatusGroupsTest` (5); `DateBucketTest` gained `fill()` MySQL-key coverage; `DashboardAnalyticsServiceTest`, `DashboardAnalyticsTimezoneTest`, `DashboardFilterTest`, `DashboardFilterWiringTest`, `DashboardTeamPerformanceTest` re-pointed at the new methods (Beta rows `2/1/1/0/0/50%`, totals `5/3/1/1/0/60%`).
 
-**Deviations** - none from the declared scope; `git status` shows only the files listed above (18 modified, 5 new). `php.ini` `memory_limit` was temporarily set to `-1` to run the full suite through paratest child processes, then restored to `512M` (system config, not repo).
+**Deviations** - none from the declared scope. The bulk of the code landed in commit `8e0fe03` ("Implement Dashboard Status Breakdown and Trend Query") earlier the same day; the working tree still carries the post-visual-check refinements to `charts.blade.php`, the `DashboardChartsPerViewTest` additions (percent-rounding + owner-review assertions) and this plan update (3 files, see `git status`). All visual-check artifacts live in `%TEMP%\opencode\charts37K1\` out of tree. `php.ini` `memory_limit` was temporarily set to `-1` to run the full suite through paratest child processes, then restored to `512M` (system config, not repo).
 
 **Checks**
 - a. Plan re-read; scope, D1-D4 chart semantics and section 9 gate applied as described above.
@@ -151,13 +151,20 @@ Scope done / Deviations / Checks (a-h with evidence) / Open issues / Decisions n
 - c. Sizes (before -> after): service 235 -> 185 (<=250), `DateBucket` 170 -> 196 (<=250), new files 120/125/79 (<=250), Volt 400 -> 386 (<=400), partial 297 -> 277 (<=300).
 - d. Diff limited to analytics support classes, the service, dashboard + charts views, 4 lang files, dashboard tests (see `git status` above). No routes, permissions, filters UI, KPI or team-table behavior changes.
 - e. Accuracy: query budget test re-measured (baseline still exactly 50 queries, ceiling 52 comment unchanged); `DashboardChartsPerViewTest` proves multi-tenant isolation is scoped to `store_id`, delivery cohort counts a twice-tracked order once, percent rows sum to 100, empty windows still return keyed series; hourly bucket keys rebuilt as `Y-m-d H` (MySQL `DATE_FORMAT` style) are covered by the new `DateBucket::fill()` test; timezone window behavior re-verified in `DashboardAnalyticsTimezoneTest`.
-- f. **Not done** - needs a human pass at 375/768/1440 px, RTL + LTR, light + dark.
-- g. Tracker row updated (status kept **In progress** until f passes).
-- h. Not applicable while f is open.
+- f. **Done** (automated evidence, owner eyeball still requested) - headless Chrome pass over all **24 combos** (confirmation + delivery views x light/dark x ltr/rtl x 375/768/1440 px) on the rendered partials with the app forced to the `ar` locale (the demo storefront is Arabic). Evidence in `%TEMP%\opencode\charts37K1\visual-report.json` + 24 PNGs in `shots/`. Every combo: **0 JS errors, no horizontal overflow** (scrollWidth == viewport); doughnut center draws the count + `chart_total` label (e.g. "16", "الإجمالي") with **contrast ratio 17.74 (light) / 16.98 (dark)** vs the card background (>= 4.5); legend rows render every slice as `label: count (percent)` and wrap cleanly at 375 px; confirmation trend = 3 line datasets on `y` and delivery trend = 2 bar datasets on `y` + revenue line on `y1` (both `stacked: false`, `y1` axis ticks carry the currency, e.g. "0 دج"..."10,000 دج"). Note: Chrome's minimum window width is 500 px, so the 375 px case is emulated by capping the layout frame at 375 px (the mobile single-column branch is active at 500 px viewport).
+- g. Tracker row updated: **Done - all checks complete; awaiting owner visual sign-off**.
+- h. Not applicable to code (no deps/security impact); visual evidence producer committed to `%TEMP%` out of tree.
+
+**Re-verified pre-existing failures (check b follow-up, item 8 of owner review)** - the 48 failures are unchanged from the baseline and group into root causes unrelated to 37-K:
+- 29x `CartService::getItems(): Argument #1 ($storeId) must be of type string, null given` during `storefront/order-form.blade.php` render (blade passes a null store id under Livewire) - `OrderCancellationRestockTest` (2), `CartOrderLimitsTest` (7), `CheckoutAccessControlTest` (2), `StorefrontOrderShippingCascadeTest` (18).
+- 4x `Expected response status code [200] but received 404` - host routing (`ExampleTest`, `HostIsolationTest` apex/subdomain/merchant-dashboard).
+- 3x `event [swal] was fired` and 3x `array offset on null` - `VariantOrderingRulesTest`/`CartOrderLimitsTest` (sweetalert wire event + variant payload expectations).
+- 1 each: `HTTP 20x-redirect expectation got 404` (`HostIsolationTest`), `assert false is true` (`RoleScopingTest`), `Throwable not thrown` (`HostIsolationTest`), `Output does not contain "8"` + `event [edz-notice]` (`CarrierSyncObservabilityTest`, `CartOrderLimitsTest`), 2x `wire:snapshot render mismatch` + `event [cart-updated]` (`VariantOrderingRulesTest`).
+Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertions)**, byte-identical failing set to the pre-change baseline (see b). Full suite needs `memory_limit=-1` under Laragon's PHP via `php.ini` (artisan test spawns paratest children); it was temporarily set and **restored to 512M**.
 
 **Open issues** - none in code.
 
-**Decisions needed from owner** - do the visual pass (check f) on the dashboard, then approve marking 37-K **Done - verified**; also confirm whether this work should be committed.
+**Decisions needed from owner** - do the visual pass (check f) on the 24 screenshots, then approve marking 37-K **Done - verified**; also confirm whether the 3 remaining uncommitted files (`charts.blade.php`, `DashboardChartsPerViewTest.php`, this plan) should be committed (the rest is already in `8e0fe03`).
 
 ## 11. Open decisions (owner to answer before the phase that needs them)
 

@@ -305,3 +305,37 @@ it('rounds slice percentages so the legend always adds up to 100', function (arr
     'five equal slices' => [['pending', 'cancelled', 'on_hold', 'wrong_number', 'postponed'], 5],
     'eighty twenty' => [['pending', 'pending', 'pending', 'pending', 'cancelled'], 2],
 ]);
+
+test('the chart block paints the fixes owner review asked for', function () {
+    $source = file_get_contents(
+        resource_path('views/livewire/merchant/dashboard/partials/charts.blade.php')
+    );
+
+    // 1. Centre total: a large number plus the label, in a colour that exists
+    //    in both themes (--edz-color-ink was never defined, so the fallback
+    //    near-black disappeared against the dark card).
+    expect($source)
+        ->toContain("themeColor('--edz-color-text', '#101828')")
+        ->toContain("ctx.font = '800 26px Inter, sans-serif'")
+        ->toContain('ctx.fillText(num(total), cx, cy - 10)')
+        ->toContain("ctx.fillText(@js(__('dashboard.chart_total')), cx, cy + 15)");
+
+    // 2. Legend reads label + count + percent, straight from the service rows.
+    expect($source)
+        ->toContain('generateLabels: (chart) => data.statusLabels.map((label, i) => ({')
+        ->toContain('${label}: ${num(counts[i] || 0)} (${percents[i] || 0}%)');
+
+    // 3. Slices are separated by the card background, never by a new colour.
+    expect($source)
+        ->toContain("themeColor('--edz-color-surface', 'rgb(255, 255, 255)')")
+        ->toContain('borderColor: data.statusKeys.map(() => resolvedSurface)')
+        ->toContain('borderWidth: 2');
+
+    // 4. The delivery view draws bars and a money line: the metric type has to
+    //    reach the dataset, and the money axis has to speak in currency.
+    expect($source)
+        ->toContain('type: s.type')
+        ->toContain('stacked: false')
+        ->toContain('callback: (value) => `${num(value)} ${currency}`')
+        ->toContain("context.dataset.yAxisID === 'y1'");
+});
