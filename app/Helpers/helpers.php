@@ -122,9 +122,11 @@ if (! function_exists('canStore')) {
         // Per-request memoization: permission checks run per cell/row/sidebar
         // item on grids, turning a simple check into hundreds of role +
         // membership + permission queries. Results are keyed by the resolved
-        // user id so long-running processes (Octane/queue) never leak a result
-        // between users, and the memo resets as soon as a different user is
-        // resolved on the same worker.
+        // user id AND the resolved store, so long-running processes
+        // (Octane/queue) never leak a result between users or stores, and the
+        // memo resets as soon as a different user or store is resolved on the
+        // same worker — a user switching stores mid-request (decision #6)
+        // must never reuse another store's permission result.
         static $memoUser = null;
         static $memo = [];
 
@@ -135,8 +137,12 @@ if (! function_exists('canStore')) {
             $memo = [];
         }
 
-        if (array_key_exists($permission, $memo)) {
-            return $memo[$permission];
+        // Store id is cheap here: StoreResolver is cached in the
+        // request-scoped StoreContext after its first resolution.
+        $storeKey = (string) currentStoreId();
+
+        if (array_key_exists($storeKey.'|'.$permission, $memo)) {
+            return $memo[$storeKey.'|'.$permission];
         }
 
         // Super Admin / Platform Admin bypass (resolved once per user+request).
@@ -144,7 +150,7 @@ if (! function_exists('canStore')) {
             $memo['__super_admin__'] = $user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web');
         }
         if ($memo['__super_admin__']) {
-            return $memo[$permission] = true;
+            return $memo[$storeKey.'|'.$permission] = true;
         }
 
         $membership = currentMembership();
@@ -155,11 +161,11 @@ if (! function_exists('canStore')) {
         if ($membership) {
             $stored = $membership->permissionNames();
             if (! empty($stored)) {
-                return $memo[$permission] = in_array($permission, $stored, true);
+                return $memo[$storeKey.'|'.$permission] = in_array($permission, $stored, true);
             }
         }
 
-        return $memo[$permission] = $user->can($permission, 'merchant');
+        return $memo[$storeKey.'|'.$permission] = $user->can($permission, 'merchant');
     }
 }
 

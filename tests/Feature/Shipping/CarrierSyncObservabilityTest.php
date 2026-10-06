@@ -168,26 +168,16 @@ test('the carrier-sync:report command summarizes runs per provider', function ()
         'failed' => 1,
     ]);
 
-    $this->artisan('carrier-sync:report', ['--hours' => 24])
-        ->expectsOutputToContain('NOEST DZ')
-        ->expectsOutputToContain('8')
-        ->assertSuccessful();
-});
+    // Assert against the real captured output: the pending-command substring
+    // matchers are per-write and first-match only, so two tokens landing in the
+    // same table row cannot both be asserted through expectsOutputToContain.
+    $code = Artisan::call('carrier-sync:report', ['--hours' => 24]);
+    $output = Artisan::output();
 
-test('debug report output', function () {
-    [$user, $store, $provider] = csrEnv();
-
-    CarrierSyncRun::create([
-        'store_id' => $store->id,
-        'shipping_provider_id' => $provider->id,
-        'started_at' => now()->subMinutes(5),
-        'finished_at' => now()->subMinutes(5)->addSeconds(3),
-        'attempted' => 10,
-        'updated' => 8,
-        'unknown' => 1,
-        'failed' => 1,
-    ]);
-
-    Artisan::call('carrier-sync:report', ['--hours' => 24]);
-    dump(Artisan::output());
+    expect($code)->toBe(0)
+        ->and($output)->toContain('Sync Observability Store')
+        ->and($output)->toContain('NOEST DZ')
+        ->and($output)->toContain('8')
+        ->and($output)->toContain('10')
+        ->and($output)->toContain('80%');
 });
