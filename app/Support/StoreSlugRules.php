@@ -13,8 +13,8 @@ use Illuminate\Validation\ValidationException;
  * every "www.*" request. The same guard protects "api", "app", "mail" and the
  * rest from colliding with platform-owned subdomains.
  *
- * Both enforcement points read from here — the Filament SuperAdmin StoreForm
- * slug rule and the Store model's saving guard — so the list can never drift
+ * Both enforcement points read from here â€” the Filament SuperAdmin StoreForm
+ * slug rule and the Store model's saving guard â€” so the list can never drift
  * between UI validation and the model boundary.
  *
  * The single exemption is Store::withReservedSlug(), used ONLY by
