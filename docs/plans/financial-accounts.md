@@ -4,7 +4,7 @@
 **Commit at time of writing:** `929569d54ac8c2464aaaa5ecc5b3a1aabf87c217`
 **37-K (Unified status groups + per-view charts) status:** Done - verified (`8e0fe03` + `71065cd`, see phase log). `App\Domains\Analytics\Support\DashboardStatusGroups` is now the single source of status lists (D2 semantics, KPI/team table only, never payroll); `charts.blade.php` and `StoreDashboardAnalyticsService` were rebuilt on top of it (`statusBreakdown()` + `trendSeries()`). 37-K.2 (charts vanishing when an already-active filter is clicked twice) also verified; see its phase log entry. Header line kept honest here rather than in 38-A.
 
-> Anything below marked **[VERIFY]** was written from planning, not from reading the repo. During 38-A the agent must confirm or correct each one and update this file.
+> Anything below marked **[VERIFY]** was written from planning, not from reading the repo. During 38-A the agent must confirm or correct each one and update this file. **38-A is complete: the three markers in the tracker row were resolved and are removed; full evidence is in section 12 "38-A Findings (audit)".**
 
 ---
 
@@ -90,9 +90,9 @@
 | 37-K | Unified status groups + per-view charts | — | Done - verified (owner approved the 24 screenshots; `8e0fe03`) | 2026-10-06, `8e0fe03` + `71065cd` | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
 | 37-K.2 | Charts vanish when an already-active dashboard filter is clicked twice | 37-K | Done - verified | 2026-10-06 | See phase log entry below; interplay guard + `wire:ignore` canvases |
 | 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | Done - verified (0 failed, 0 risky; `8e21c7d`) | 2026-10-06, `8e21c7d` | See phase log entry; full suite after G6: **1298 passed, 0 failed, 0 risky** |
-| 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp **[VERIFY]**; who creates tracking rows and how **[VERIFY]**; which attribution fields exist **[VERIFY]** | 37-K | Not started | — | Findings must be written back into this plan |
+| 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp; who creates tracking rows and how; which attribution fields exist — **all three now answered from the repo** | 37-K | Done - verified (docs-only; `docs/plans/financial-accounts.md`) | 2026-10-06 | Section **12 "38-A Findings (audit)"**: `order_status_histories` stores a nullable `changed_by_membership_id` + standard `created_at` (no from-status, no source, actor often null); tracking rows are created by `OrderTrackingService::startShipment()` (idempotent only while open — duplicates after close); attribution = nullable membership FKs on orders/trackings/history/events. No payroll/HR module exists yet. |
 | 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | Needs open decisions D2, D3, D5 |
-| 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Only if 38-A confirms gaps |
+| 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Gaps confirmed (section 12 "Gaps"); concrete scope in section 12 "Proposals for 38-B/38-C/38-D"; must ship before 38-D runs on production |
 | 38-D | Earning ledger + backfill from accrual start date + tests | 38-B, 38-C | Not started | — | Needs open decisions D1, D4 |
 | 38-E | "الحسابات المالية" page shell, navigation, permissions, Overview tab | 38-D | Not started | — | |
 | 38-F | Confirmation-team accounting, then tracking-team accounting | 38-E | Not started | — | |
@@ -104,7 +104,7 @@
 | 38-J | finance-manager workspace provisioning + API v1 + outbox push + reconciliation command | 38-D | Not started | — | Start only after finance-manager's own audit remediation is finished |
 | 38-K | finance-manager UI: payroll runs, payments, advances, period close | 38-J | Not started | — | |
 | 38-L | Payslips, member portal, objections, exports, alerts (= 37-R, 37-S) | 38-K | Not started | — | |
-| 37-M | Time analytics (its history part is needed earlier for event dates) | 37-K | Not started | — | Later as needed; pull the history part forward if 38-D requires it |
+| 37-M | Time analytics (its history part is needed earlier for event dates) | 37-K | Not started | — | 38-A resolved the contingency: history/events already carry event dates (`order_status_histories.created_at`, `order_events.occurred_at`) — the history part does NOT need to be pulled forward |
 | 37-P | (reserved) | 37-K | Not started | — | Later as needed |
 | 37-Q | (reserved) | 37-K | Not started | — | Later as needed |
 
@@ -237,6 +237,30 @@ Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertio
 
 **Decisions needed from owner** - none for G1/G2/G6 (owner decisions from the two pre-task questions already applied end-to-end).
 
+### 38-A - Read-only audit for the Financial Accounts program - 2026-10-06 - (docs-only, no code)
+
+**Scope done** - answered A1..A13, B..F and Q15 from the repo with `file:line` evidence; no code/migration/route/config/lang/test changes. Full findings in the new **section 12 "38-A Findings (audit)"**; summary below.
+
+- **A1-A3 status history**: `order_status_histories` = id, order_id (FK cascade), status_id (FK restrict), `changed_by_membership_id` (nullable FK → store_memberships), `reason` (text), timestamps(), index `[order_id, created_at]` (`database/migrations/2026_02_22_220740_create_order_status_histories_table.php:15-34`). It stores an **acting membership id (nullable)** and an **exact timestamp (`created_at`)**, but **no from-status** (the previous key only goes to the audit event payload via `OrderObserver.php:124`) and **no source column**. One sole order-status writer: `OrderService::transition()/transitionToStatus()` (`OrderService.php:17-78`); the `updated` observer (`OrderObserver.php:59-68,111`) writes the history row for every `status_id` change, so even direct `status_id` writes produce a row but with **null actor** when no transition meta was set. Manual-order creation and storefront placement also write an initial `pending` history row (`OrderService.php:256`, `order-form.blade.php:433`). Carrier sync/webhooks **never** write an order status (`NoestTrackingSyncService.php:121-141`). `confirmed` is reached via `OrderConfirmationService::confirm()` → key `confirmed`; `delivered` is reached **only by manual UI transition** (map `OrderService.php:110-133`); `order_events` is the richer audit store (actor_membership_id + occurred_at + json payload, `2026_09_05_100001:11-24`).
+- **B4-B5 attribution/tracking**: no `confirmed_by/confirmed_at` on orders — the confirmer is derived from the latest history row for key `confirmed` (`Order.php:198-213` `confirmedByHistory()`), and its membership can be **null** (carrier/direct flows). Assignment columns exist on orders and trackings (membership FKs + `assigned_at`/`assignment_method`/`assigned_by_membership_id`) and **assignment can change after confirmation** (manual reassign + shift handover). Tracking rows are created by `OrderTrackingService::startShipment()` (`OrderTrackingService.php:18-45`, idempotent only while an open row exists); `tracking_number` is **not unique** (`2026_08_26_000001:46-47`) so multiple rows per order are possible; **"tracked" = the order has ≥1 tracking row** (`DashboardOrderScope.php:41-49`). No `tracked_by`/`created_by_membership_id` column on trackings (actor only in `order_tracking_histories`).
+- **C6-C7 delivery/returns/COD**: `delivered_at`/`returned_at` exist **only on `order_trackings`** (not on orders); delivered order status is manual-only; a delivered order may move to returned/completed. No structured return reasons — only free-text `reason` + `inspection_result/inspection_notes` enum (`good|damaged|partial|lost`) on trackings + carrier raw text. COD: no `cod_amount/cod_remit/carrier_fee`/return-fee columns anywhere; collectible is computed on the fly (`NoestIntegrationAdapter.php:216-220`). `orders.subtotal` is a dead column.
+- **D8-D9 members/permissions/payroll**: membership + per-store Volt member form + hybrid permission system all exist and are the reuse base; the exact recipe to add `finance.view/manage/pay/close_period` is documented (enum + lang ×4 + StoreRoles + mandatory StoreRolesAndPermissionsSeeder + gates). **No payroll/salary/commission/HR module exists** — only the debts module (ported from the Finance-Manager repo, `Todos.md:124-126`, remain-only), billing payments (subscriptions), and `confirmation_shifts` (scheduling only, no money). Verdicts: reuse shifts for scheduling, reuse the debts pattern, build compensation fresh in 38-B.
+- **E10-E12 money/timezone**: product `cost_price` + `shipping_cost` + `discount_*` + `total_amount` exist; profit is computed only at variant/product display level (no order-level profit); money is `decimal(10,2)` with PHP float + `round(...,2)` (no integer-cents/bcmath); orders carry **no currency column**. No expenses/suppliers/cash accounts/ad spend/partners anywhere. Timezone lives in `store_settings.timezone` (not `stores`), with one canonical store-timezone pattern (`DashboardFilterFactory` → `DashboardFilter` → `DashboardOrderScope`/`DateBucket`) that several order/tracking/finance/plan queries bypass (listed in section 12).
+- **F13-F14 + Q15 infra/tenant**: API = `/api/v1` (only `/user` + products) + 2 webhooks, Sanctum auth, `X-Store-Id` context; **no outbox**, domain events all synchronous (none `ShouldQueue`); queue driver `database`; observers are the dominant pattern (registered `AppServiceProvider.php:95-99`); tenant isolation = `StoreScope` global scope on **Product/Debt/DebtPayment only** + manual `where store_id` (53 sites) + HTTP middleware chain — orders have no global scope, so write discipline is manual. `finance-manager` appears **only in this plan and `Todos.md`** (debts-port origin; `MathFinanceManager` is a status-label helper name collision). Q15: `StoreContext` is a container singleton with **no auto-clear**; `app('currentMembership')` is bound per request; all store-data caches (`canStore`, `OrderService::$branchCache`, `OrderCompleteness`, `DeliveryRiderService::$listCache`, `StatusResolver` — all store-keyed) plus `StoreContext`/`currentMembership` persist across jobs in a long-lived worker with **no reset hook** (`Queue::before`/Octane absent); every job/command already carries `store_id` in its payload — an earning-entry listener (38-D) must resolve the store from the event payload, never from ambient context, and set `store_id` on every written row.
+
+**Deviations** - none. Docs-only by design; no code tests run (gate items b/c/e/f are N/A for a docs-only phase) — see section 12 for the N/A statement.
+
+**Checks**
+- a. Plan re-read; the audit answers A1..F13/Q15 with `file:line` evidence; all three `[VERIFY]` markers removed; tracker row updated; section 12 appended.
+- b/c/e/f/h. N/A — no code, migration, route, config, lang or test touched; `git diff` shows only `docs/plans/financial-accounts.md`.
+- d. Diff limited to the single planned file.
+- g. Tracker row 38-A = **Done - verified**, date 2026-10-06.
+- i. STOP — report to the owner (below).
+
+**Open issues** - gaps for reliable attribution/event dates (section 12 "Gaps"); direct status writes that produce actorless history; multiple-tracking-row dedupe; historical backfill cannot restore the actor for carrier/non-meta flows.
+
+**Decisions needed from owner** - the five recommended defaults for D1-D5 (section 12, each with a reason), plus approval of the proposed 38-B/38-C/38-D scope and the phase-order note (38-C before 38-D production rollout).
+
 ## 11. Open decisions (owner to answer before the phase that needs them)
 
 - **D1** Which event creates the earning for "confirmed" and for "tracked" (status key / action)? *(38-A, 38-D)*
@@ -244,3 +268,128 @@ Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertio
 - **D3** Rounding rule for percentage commissions? *(38-B)*
 - **D4** Is delivery confirmed only by carrier status, or can the owner confirm manually? *(38-D)*
 - **D5** Return reasons list the merchant can mark as "member fault"? *(38-B)*
+
+## 12. 38-A Findings (audit) — 2026-10-06
+
+Read-only audit for the Financial Accounts program. Purpose: replace every `[VERIFY]` marker / planning assumption with repo facts, decide what 38-B / 38-C / 38-D need, and recommend defaults for D1–D5. **No code, migration, route, config, lang or test was changed — this whole section is documentation.**
+
+Verification-gate note: this phase applied section 9 gate items a, d, g, h, i. Items b (suites), c (queue worker), e (migration/ml population), f (config), h (browser/craft) are **N/A for a docs-only phase** — no applicative code was touched. `git diff` shows only `docs/plans/financial-accounts.md`.
+
+Evidence style: `file:line` refers to this repo (branch/commit used: the state at the end of 37-K.3, commit `8e21c7d`). Agent-paraphrased evidence already cross-checked by direct file reads is flagged `(spot-checked)`; everything else was read directly.
+
+### A. Order status history — evidence
+
+- `order_status_histories` schema (`database/migrations/2026_02_22_220740_create_order_status_histories_table.php:15-34`):
+  - `id` ulid PK; `order_id` FK→orders cascade; `status_id` FK→statuses restrict; `changed_by_membership_id` **nullable** FK→store_memberships nullOnDelete; `reason` text nullable; `created_at`/`updated_at` timestamps; index `[order_id, created_at]`.
+  - **Acting user**: yes, but as `changed_by_membership_id` (a membership, not user id), and only when the transition carried meta / explicit actor — frequently **null** (storefront, carrier, direct writes, bulk ops that pass no actor).
+  - **Exact timestamp**: `created_at` (standard second precision; query-ordered by `created_at ASC` in `confirmedByHistory`). `order_events.occurred_at` (`2026_09_05_100001:15`) has `useCurrent()` and is the richer exact-time source.
+  - **From-status**: NOT on the row. The previous key is carried only in the audit event payload: `OrderObserver::handleStatusChange` builds `$meta` with `'from_key' => $this->initial['status_id']` and passes it to `OrderAuditService::statusChanged` (`app/Observers/OrderObserver.php:115-126`) → stored as `order_events.payload.from_key`.
+  - **Source (manual/bulk/carrier/webhook/api)**: no column anywhere on history/events. Would need to be derived at write time (38-C gap).
+- Sole status writer (`app/Domains/Order/Services/OrderService.php:17-78`): `transition()` guards via `canTransition()` (:51) then `transitionToStatus()` sets `status_id` (:62) inside a transaction after `Order::setTransitionMeta()` (:60); the observer fires on `updated` when `wasChanged('status_id')` (`OrderObserver.php:59-68`) and calls `handleStatusChange` (:97-130) which writes `OrderStatusHistory::create` (:111). Meta is populated after save and snapshot into the history row (`changed_by_membership_id`, `reason`) in the observer.
+- Direct `status_id` updates bypassing `transition()` still write a history row (observer safety net) but with null `changed_by`/`reason` (no meta → `meta` missing). Verified non-transition writes: storefront initial pending (`resources/views/livewire/storefront/order-form.blade.php:415-437`, direct `Order::create` + `OrderStatusHistory::create`), seeder rows (`Database/Seeders/DemoStoreSeeder.php:1450-1459`).
+- `order_events` (`2026_09_05_100001:11-24`): `store_id`, `order_id`, `actor_membership_id` nullable, `actor_type` default `membership`, `event_type`, `message`, `payload` json, `occurred_at` `useCurrent()`; indices `[store_id, order_id, occurred_at]`, `[event_type]`. Written by `OrderAuditService` (`created`, `statusChanged`, `fieldChanges`). Not yet consumed for payroll — it is the recommended event-time source for 38-D.
+
+### A.2 Every status-change path (callers of `transition`, and non-transition writes)
+
+- UI single transition (chat/bubbles): `resources/views/livewire/merchant/orders/index.blade.php:1581-1603` (transition param), `:1966-1978` (confirm modal), `:2063-2067` (send), `:2320` (bulk), `:1355-1359` (bulk-confirm modal).
+- Confirmation flow: `OrderConfirmationService::confirm()` (`app/Domains/Order/Services/OrderConfirmationService.php:44-56`) → `transition('confirmed')`; `startPreparing()` (:62-65) → `preparing`.
+- Shipping gateway cancellation/revert: `app/Domains/Shipping/Services/OrderShippingGateway.php:143` (`orders->transition`), `:302-306` (`revertTo` shipped/in_transit/out_for_delivery → confirmed).
+- Scheduler: `app/Console/Commands/AutoCancelPendingOrders.php:43` (pending → auto_cancel, `routes/console.php:34`).
+- Storefront order placement: initial `pending` (see A.1).
+- **Carrier sync never writes an order status**: `NoestTrackingSyncService.php:119-141` only refreshes tracking rows (`tracking_status` :124, `delivered_at` :134, `returned_at` :138); `DeliveryWebhookController` reuses that sync path. Order status is updated later by a merchant action.
+- Status-machine data: `app/Enums/Store/OrderStatus.php` (key list), `app/Support/OrderWorkflow.php` (map incl. delivered→returned/completed), seed `SystemStatusesSeeder`. Confirmed status reached only via confirm flow — no other caller sets `confirmed` outside `transition` (spot-checked).
+
+### B. Attribution & tracking
+
+- `orders` confirmation-related columns (`2026_08_21_100001:12-24`): `assigned_to_membership_id` (nullable FK), `assigned_at`, `assignment_method`, `assigned_by_membership_id` (nullable FK), `confirmation_attempts`, `last_contact_at`, `weight_kg`, `shipment_type`.
+- **Confirmed-by**: no `confirmed_by`/`confirmed_at` column. Derivation: `Order::confirmedByHistory()` (`Order.php:198-213`) = latest history row whose status key is `confirmed`, ordered `created_at DESC`; its `changed_by_membership_id` is the confirmer, **nullable** for carrier/direct flows.
+- **Assignment can change after confirmation**: manual reassign + the shift-handover reassign sweep (`OrderAssignmentService.php:110-130` — reassigns every non-terminal order whose member is not on an active shift; dispatched per store in `routes/console.php:22-27`) operate on confirmed orders too. Confirmer vs current assignee therefore diverge; commissions must key on the history confirmer, not current assignment.
+- `order_trackings` (creation + who/when): created row via `OrderTrackingService::startShipment()` (`OrderTrackingService.php:18-45`) — actor only passed into `recordHistory` (`order_tracking_histories`), **no `created_by/assigned_by` column on the tracking row**. `tracking_number` non-unique (plain index, `2026_08_26_000001:45-47`); `currentOpenTracking()` (`:285-292`) makes startShipment idempotent **only while an open row exists** → after delivery/return, a later startShipment/ensureRiderTracking creates a second row. Rider-number pattern: `generateRiderTrackingNumber` (:55-65); duplicate-guard is a query against `tracking_number`.
+- Writers of tracking rows: `OrderObserver.php:199` (`status→shipped`), `CarrierOrderPostService.php:64` (actor null — carrier creates after payment, no membership), `ensureRiderTracking` (`OrderTrackingService.php:100-141`), seeder `DemoStoreSeeder.php:1504-1530`.
+- "tracked" semantics (dashboard): order has ≥1 tracking row — `DashboardOrderScope::trackedOnly()` (:41-49). Verified earlier.
+
+### C. Delivered / returned / COD
+
+- Delivered order status: manual UI transition only (A.2). `delivered_at` / `returned_at` live **on the tracking row**, not on `orders` (`2026_08_26_000001:33-36`), written by `markDelivered()`/`markReturned()` (`OrderTrackingService.php:145-151`) and by carrier sync logic (`NoestTrackingSyncService.php:...` markDelivered). No `orders.delivered_at`.
+- Returnable states: delivered→returned/completed allowed (`OrderService.php:126`); `revertTo` restricted to shipped/in_transit/out_for_delivery→confirmed (`OrderShippingGateway.php:302-306`, `OrderService.php:171-182`); rider/order forms block delivered/returned edits (form rules spot-checked).
+- Return reasons: **no structured field**. Free text `order_status_histories.reason`; `inspection_result`/`inspection_notes` enum (`good|damaged|partial|lost`, `app/Enums/..../ReturnInspectionResult.php:7-10`) on trackings (`2026_08_26_000002:22-23`); carrier raw event text via `CarrierStatusDictionary` (returned/unclaimed keys).
+- Money on orders: `total_amount` (`2025_12_29_144152:38`), `shipping_cost` (`2026_08_18_000002:39`), `subtotal` (`2026_08_23_194616:15`) — **dead** (never written/read by any resolver; verified grep), `discount_type/value/reason` (`2026_08_26_000003:12-14`), `payment_method` default `cod` (`2026_08_18_000002:38`; `OrderService.php:243`).
+- **COD**: no `cod_amount`/`cod_remit`/`carrier_fee`/return-fee column anywhere. Collectible computed on the fly: NOEST `montant` = `items.subtotal + shipping_cost − discount_amount` (`app/Domains/Shipping/Adapters/NoestIntegrationAdapter.php:216-220`, deliberately not the stored total); rider daily COD = `SUM(total_amount)` over open shipments (`app/Livewire/Concerns/TrackingGridConcern.php:273-280`). `carrier_sync_runs` rows are counters/timestamps only. This means 38-D's COD method must recompute per order or persist on capture; historically inconsistent (dead subtotal, discount not always computed) — treat as best-effort.
+
+### D. Members / permissions / payroll
+
+- **Nothing exists** for payroll/accounting beyond: the **debts module** (`app/Domains/Finance/DebtService.php`, `Debt` + `DebtPayment` models — ported from the Finance-Manager repo, see `docs/Todos.md:124-126`, remain-only read/write, remove on backend DR); `billing payments` (subscriptions, attributed by user id, no membership); `confirmation_shifts` (scheduling-only: membership, shift_type, start/end time, days_of_week, is_active — **no money**, verified `2026_08_21_100002:11-24`).
+- Members: `StoreMembership` (`app/Models/Stores/Team/StoreMembership.php`) + `StoreMembershipPermission` (pivot string ids) + 3 static groups; Volts **per-store** member form (compensation fields to be added there in 38-B, per S2/S3); roles/permissions hybrid (static roles in `StoreRoles`/`StoreRoleEnum` + string permission grants + `SystemStatusesSeeder`… permissions group seeded globally in `StoreRolesAndPermissionsSeeder`). Permission assignment UI + global group grants + gates as listed in prior phases.
+- 38-B needs: 4 finance permissions (`finance.view/manage/pay/close_period`); enum + lang ×4 + StoreRoles STAFF/MANAGER decision + mandatory seed; sidebar/report gating; form fields. Recipe fully documented from the members/groups work.
+- `assigned_to_membership_id` on orders/trackings is the reliable "who" per order (nullable for unassigned/storefront).
+
+### E. Money, cost, profit, timezone
+
+- Costs: `products.cost_price`, `product_variants.cost_price` exist (`app/Models/Products/Product.php:...` costPriceAccessor; verified migration). Profit computed only at variant/product display level (`ProductCompleteness`/listing bucket); **no order-level profit** stored or computed.
+- Discount: `discount_type` (percent|amount) + `discount_value` + `discount_reason` (`2026_08_26_000003:12-14`); `Order::discount_amount()` (`Order.php:238-253`) returns computed value.
+- Rounding/totals: `decimal(10,2)` money, PHP `round(...,2)` mutation (G4 rework); **no integer-cents, no bcmath**; total is mutable platform-side (discount edits + status-timestamp edits) — a historical order's `total_amount` may drift from original COD receipt. **No currency column on orders** — currency is store-level (default DZD, `store_settings.currency`, `2025_12_29_000001`). Multi-currency never supported; store-level only.
+- **No order-level tax**: taxes exist only on invoices (`tax_ids`, amounts), not per order.
+- Expenses/ad-spend/cash accounts/suppliers/partners: **none**.
+- Timezone: principle "Day boundaries use stores.timezone" — schema location is `store_settings.timezone` (default `Africa/Algiers`), **not `stores.timezone`** (correct in this finding; section 1 wording to be treated as intent). Canonical pattern: `DashboardFilterFactory` → `DashboardFilter` (store tz) → `DashboardOrderScope` + `DateBucket`. Inconsistent byways (raw `SET time_zone` in `ActivityLogService` / `SubscriptionUsageTracker`, `TrackingGridConcern` orders filter, `orders` filter and `FeatureUsageService`/commands use app tz) — 38-D must centralize tz at capture and pop in consumers.
+
+### F. Infrastructure & out-of-HTTP (Q15)
+
+- API surface (`routes/api.php`): `GET /api/v1/user` (auth:sanctum), `apiResource` products, `POST /webhooks/chargily` (throttle 60,1), `POST /webhooks/delivery/{provider}` (throttle 120,1). No order endpoints. Store context on API: `X-Store-Id` header/query → `StoreContext`.
+- Outbox: **no outbox**; domain events all synchronous (none `ShouldQueue`); observers are the dominant hook (registered `AppServiceProvider.php:95-99`). Queue = `database` driver (`QUEUE_CONNECTION=database`, `.env`).
+- Scheduler: `routes/console.php` (commands incl. queue:work spin for dev).
+- Tenant isolation: explicit `where store_id` everywhere except **StoreScope global scope** (Product/Debt/DebtPayment) + HTTP middleware chain (`SetStoreContext` etc.). Orders rely on manual `store_id` writes by construction; a warning: `StoreScope::apply` leaves the query **unscoped** when `currentStore()` resolves null (admin/super-admin skip entirely) — safe only because RowScope + `hasStore` gates. 38-D earning entries must store `store_id` explicitly per row.
+- `finance-manager` references: **only this plan and `docs/Todos.md:124-126`** (debts-port origin). `app/Support/Status/MathFinanceManager.php` is a status-label helper — name collision only, not Finance-Manager code.
+- Q15 — tenant context outside HTTP:
+  - Container singletons with no auto-clear: `StoreContext` (request-scoped bind on bootstrap; **no `Queue::before`/`Octane` reset hook**), `app('currentMembership')` instance bind, and these store-keyed caches — `canStore` memo (keyed `storeKey.'|'.$permission` after G6), `OrderService::$branchCache`, `OrderCompleteness::$exceptionsCache`, `OrderService::$totalCache`, `DeliveryRiderService::$listCache`, `StatusResolver::$keyCache`. In a long-lived worker they survive across jobs; a job in store A must not read store B's cache. Current jobs/commands carry `storeId` in payloads (delivery sync, carrier sync, notifications) — pattern to preserve. No job writes store-scoped rows via ambient `currentStore()`; write-side uses explicit `store_id`.
+  - Jobs cannot resolve `currentStore()` from session/auth (none); they use payload `store_id` → recompute/`StoreContext::set()` scoped **inside** the job (never globally). 37-M analytics jobs same discipline.
+  - Recommendation for 38-D listener: resolve store from the **event payload**, set `store_id` explicitly on `earning_entries`, never ambient state; add a `Queue::before`/resolver lane if Octane is ever added.
+
+### Gaps (feed 38-C)
+
+1. Order-level `confirmed_at`/`confirmed_by` (derived from history today; nullable, un-derivable after the fact).
+2. Order-level `delivered_at`/`returned_at` (only on tracking rows; order status may lag or be missed).
+3. Tracking-row actor: `created_by_membership_id` absent — who actually put the package on the rider is not captured (only history of *status* events).
+4. History rows lack `from_status` and `source` (manual/bulk/carrier/webhook/api/storefront/system) — needed for reliable "did member confirm this order" attribution and for 38-D events.
+5. History actor nullable on carrier/direct writes (see A.1) — commission attribution incomplete without a backfill/owner-fix lane.
+6. Multiple tracking rows per order (non-unique tracking_number, post-close re-runs) — dedupe rule needed (first row wins per shipment).
+7. No COD/payout fields at order level (COD collectible recomputed on the fly from mutable totals) — historical COD amount not snapshotted.
+8. No order currency; no order-level profit; discount not always materialized — historical reconciliation best-effort.
+
+### Risks
+
+- Backfill cannot reconstruct the confirmer/tracked-by for carrier-driven or non-meta flows (null membership) → 38-D must mark those entries as un-attributed and report, not guess.
+- Reassign-after-confirm + shift handovers mean "who confirmed" ≠ "current assignee" — commission on wrong field yields wrong earnings.
+- Non-unique tracking rows: double-count risk; dedupe on first-created per order.
+- Money purity: float + decimal(10,2) + mutable totals + no integer cents; rounding rule (D3) must be applied consistently, not historically.
+- No outbox + synchronous events: a crash between order status write and earning-entry write loses the entry — 38-D should create the entry in the same transaction as the status transition (or accept an idempotent repair pass).
+- Store-scoped singletons without reset: cross-store contamination in workers (Q15).
+- `StoreScope` unscoped-on-null: only safe via gates; 38-D consumer queries must always bind store_id explicitly.
+
+### Proposals for 38-B / 38-C / 38-D (scope)
+
+- **38-C (capture, in this order)**: (a) `orders.confirmed_at` + `orders.confirmed_by_membership_id` set inside `OrderObserver::handleStatusChange` when incoming status key is `confirmed`; (b) `orders.delivered_at`/`returned_at` mirroring tracking derived at status transitions (first per order); (c) `order_status_histories.from_status` (string key) + `source` enum captured in `Order::setTransitionMeta`/`transition`; (d) `order_trackings.created_by_membership_id` set in `startShipment` (actor already threaded) and `ensureRiderTracking` (member from context); (e) snapshot COD collectible at confirmed (new nullable `cod_collectible` column) — snap on write, reconcile later. All with `store_id` written explicitly.
+- **38-B (compensation model)**: new Edzeery-owned `member_compensation_plans` (per store, versioned `effective_from`, trigger enum confirmed|confirmed_and_delivered|tracked|tracked_and_delivered, formula fixed|percentage|tiers json, base_salary, plan overrides json, return policy default + member override, grace window) + `store_finance_settings` (accrual_start_date, return policy default, grace, period) + the 4 finance permissions + member-form compensation fields + sidebar gating. Reuses debts pattern and permissions recipe; **no code reuse from Finance-Manager repo**.
+- **38-D (earning ledger + backfill)**: append-only `earning_entries` (id, store_id, order_id, membership_id, plan_snapshot json, trigger, occurred_at, amount decimal(12,2), type earning|reversal|adjustment, idempotency_key unique (order_id, membership_id, trigger)); listener on confirmed/delivered/returned + tracking-created transitions, entry written **in the same transaction** as the status transition (OrderService::transition), store from event payload; backfill CLI from `accrual_start_date` iterating history + trackings, dedupe by idempotency_key, mark un-attributed rows `attribution=null` + report; reversals as negative entries. Confirmer lookup via `Order::confirmedByHistory()`; assignment-agnostic (use history, not current assignee).
+- **Phase order note**: 38-C must ship **before** 38-D runs on production (forward capture), backfill covers the historical window from `store_finance_settings.accrual_start_date`. Optional: fold 38-D's forward-capture listener into 38-C to keep post-38-C production events captured.
+
+### Recommended defaults for D1–D5 (with reasons)
+
+- **D1 (earning event)**: confirmed = status key `confirmed` reached via transition (history row created_at = event time); tracked = creation of the **first** `order_trackings` row (startShipment `created_at`; dedupe rule first-per-order) — matches the dashboard's `trackedOnly` existence semantics and avoids double count on re-shipments. Delivered-based triggers key off the new `orders.delivered_at` (38-C) for a single event time.
+- **D2 (payroll period)** : default **monthly**. DZD retail, store_settings accrual, matches the permission `close_period`; weekly adds churn without revenue coupling. Custom-period support can come later.
+- **D3 (rounding)** : per-entry `ROUND_HALF_UP` to the cent (2 dp), consistent with current `round(...,2)` total mutation (G4). Set once in `earning_entries.amount`.
+- **D4 (delivery confirmation)**: **both**. Carrier status is not an authoritative completion today (carrier never writes order status); a merchant manual `delivered` transition remains the trigger, optionally assisted later by carrier `delivered_at`. This matches existing UI (rider/order confirm flow) and needs no behavior change.
+- **D5 (return reasons)**: structured list seeded empty by default (merchant opts in); include at least: wrong address, customer refused, changed mind, damaged product, defective/wrong item. `return_reason` maps to member-fault only when the merchant marks it so; never infer from text/`inspection_result` alone.
+
+### Corrections to earlier plan wording
+
+- Section 1 "Day boundaries use `stores.timezone`" — schema stores it in `store_settings.timezone`; the principle stands, the table name is corrected here.
+- Section 5 "`ordered_at`/`success_at` snapshotted at the event" — today history only keeps `created_at` + nullable membership; the snapshot columns are the 38-C additions above.
+- Section 5 "order_trackings may have several rows per order (non-unique index): count once" — **confirmed** (non-unique index; `trackedOnly` counts the order once).
+- 37-M contingency "history part needed earlier for event dates" — **not needed**: `order_status_histories.created_at` and `order_events.occurred_at` already provide the event time; 37-M can keep its original order.
+
+### Checks (mirrored from section 9)
+
+- a. Plan re-read end-to-end; every audit question answered with evidence; all `[VERIFY]` markers removed; tracker + phase log updated.
+- d. `git diff` = only `docs/plans/financial-accounts.md`.
+- g./h. 38-A row = **Done - verified** (2026-10-06); browser/craft not applicable (docs-only).
+- i. Stopped here; results reported to the owner in the task response.
