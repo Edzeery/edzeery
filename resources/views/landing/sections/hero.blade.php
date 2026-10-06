@@ -14,8 +14,7 @@
                     {{ __('landing.hero_title') }}
                 </h1>
 
-                <p data-aos="fade-up" data-aos-delay="250"
-                    class="mt-6 text-theme-xl text-ink-muted max-w-xl">
+                <p data-aos="fade-up" data-aos-delay="250" class="mt-6 text-theme-xl text-ink-muted max-w-xl">
                     {{ __('landing.hero_subtitle') }}
                 </p>
 
@@ -28,8 +27,9 @@
                             <ion-icon name="arrow-forward-outline" class="text-lg" aria-hidden="true"></ion-icon>
                         </a>
                     @else
-                        <a href="{{ userRole() == 'admin' ? 
-route('filament.super-admin.pages.dashboard') : route('merchant.dashboard', currentStore()?->id ?? currentStore()) }}" data-edz-loading
+                        <a href="{{ userRole() == 'admin'
+                            ? route('filament.super-admin.pages.dashboard') : route('merchant.dashboard', currentStore()?->id ?? currentStore()) }}" data-edz-loading
+
                             class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
                             {{ __('landing.go_to_dashboard') }}
                             <ion-icon name="arrow-forward-outline" class="text-lg"></ion-icon>
@@ -65,8 +65,7 @@ route('filament.super-admin.pages.dashboard') : route('merchant.dashboard', curr
 
             {{-- Right: Product illustration placeholder --}}
             <div data-aos="fade-left" data-aos-delay="300" class="relative hidden lg:block">
-                <div
-                    class="relative rounded-2xl border border-surface-border bg-surface shadow-2xl overflow-hidden">
+                <div class="relative rounded-2xl border border-surface-border bg-surface shadow-2xl overflow-hidden">
                     {{-- Mock dashboard --}}
                     <div class="flex items-center gap-2 px-4 py-3 border-b border-surface-border">
                         <span class="w-3 h-3 rounded-full bg-red-400"></span>
