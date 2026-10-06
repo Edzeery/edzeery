@@ -89,7 +89,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 37-K | Unified status groups + per-view charts | — | Done - verified (owner approved the 24 screenshots; `8e0fe03`) | 2026-10-06, `8e0fe03` + `71065cd` | See phase log entry below; header note corrected: `DashboardStatusGroups` now exists |
 | 37-K.2 | Charts vanish when an already-active dashboard filter is clicked twice | 37-K | Done - verified | 2026-10-06 | See phase log entry below; interplay guard + `wire:ignore` canvases |
-| 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | In progress - G1 (`01f94b8`) + G2 (`5d6888a`) committed | 2026-10-06 | See phase log entry; remaining: `RoleScopingTest` x1, `CarrierSyncObservabilityTest` x1 + risky x1 (G6) |
+| 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | Done - verified (0 failed, 0 risky; `8e21c7d`) | 2026-10-06, `8e21c7d` | See phase log entry; full suite after G6: **1298 passed, 0 failed, 0 risky** |
 | 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp **[VERIFY]**; who creates tracking rows and how **[VERIFY]**; which attribution fields exist **[VERIFY]** | 37-K | Not started | — | Findings must be written back into this plan |
 | 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | Needs open decisions D2, D3, D5 |
 | 38-C | Capture missing attribution/event fields (`confirmed_by`, `tracked_by`, `delivered_at`, ...) if 38-A finds gaps | 38-A | Not started | — | Only if 38-A confirms gaps |
@@ -191,9 +191,9 @@ Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertio
 
 **Open issues** - none.
 
-### 37-K.3 - Restore a fully green test suite - 2026-10-06 - (G1 `01f94b8`, G2 `5d6888a`)
+### 37-K.3 - Restore a fully green test suite - 2026-10-06 - (G1 `01f94b8`, G2 `5d6888a`, G6 `8e21c7d`)
 
-**Scope** - drive the suite from its 48-failure baseline to 0 failed / 0 risky by fixing root causes (never skip/delete/loosen tests), one commit per group, full suite after each group, counts recorded. Remaining work is still in progress (G6 below).
+**Scope** - drive the suite from its 48-failure baseline to 0 failed / 0 risky by fixing root causes (never skip/delete/loosen tests), one commit per group, full suite after each group, counts recorded. The full-suite gate now passes (see G6 below).
 
 **Group G1 (commit `01f94b8`, "test: resolve store context for storefront Volt tests")**
 - 40 storefront Volt failures shared ONE root cause: the pages resolve the current store at render time via `currentStoreId()` → `StoreResolver::resolve()`, which needs `StoreContext` — set only on actions, not during render. Fix: `app(\App\Support\StoreContext::class)->set($store)` in `oscStore/colStore/cawStore/orStore` + `matrixComponent`, plus `afterEach(app(...)->clear())` in all 5 files. This absorbed the `edz-notice` and `wire:snapshot` failures too (previously planned as G3/G4). Filament ~4.0; 46/46 green.
@@ -212,22 +212,30 @@ Full run that produced this: **48 failed, 1 risky, 1212 passed (1149839 assertio
 - Fresh-DB seeding proven by tests: `DemoStoreSeederTest` runs the REAL seeder on a fresh database (store slug `demo` created, re-run stays idempotent).
 - Pest gotcha recorded: `->throws(\Throwable::class)` fails even when the exception is thrown (Pest's `toThrow` uses `class_exists()`, false for interfaces) — use the concrete `ValidationException::class`.
 
+**Group G6 (commit `8e21c7d`, "fix: scope canStore permission memo per store; assert report output on real buffer")** - the last 2 failures + 1 risky, three distinct root causes:
+1. **Real production bug — `canStore`'s per-request memo was NOT store-scoped** (`app/Helpers/helpers.php`): the memo was keyed only by the permission name and reset only when the USER changed, so a user switching stores mid-request (decision #6 per-store isolation) received the previous store's stale result. Probe test proved it: the store-B OWNER membership's `permissionNames()` contained `order.manage`, yet `canStore(ORDER_MANAGE)` returned false after the switch to store B — while `hasStoreRole` (not memoized) was correct. Fix: key the memo by the resolved store too (`$storeKey = (string) currentStoreId()` — cheap, `StoreResolver::resolve()` is memoized through the request-scoped `StoreContext` singleton). `RoleScopingTest` ("isolates custom permissions per store membership (decision #6)") passes; the whole `tests/Feature/Merchant` directory re-ran green (849 passed, 0 failed) to prove no regression.
+2. **Harness-only quirk — `expectsOutputToContain` vs Symfony table rows** (test-side, not production): Laravel's `PendingCommand` matches each registered substring against individual `doWrite` calls, and each call satisfies only the FIRST matching expectation — two tokens printed in the SAME table row (provider name + the count `8`) cannot both be asserted, so the second (`'8'`) never matched and the test failed even though the real `Artisan::output()` contained both. Fix: assert on the real captured buffer (`Artisan::call` + Pest `expect($output)->toContain(...)`), preserving the exact intents — store + provider name, `updated=8`, `attempted=10`, success rate `80%`, exit code 0.
+3. **Leftover debug "test"** (`debug report output`, zero assertions → the risky result): a debugging dump with no assertions; its only purpose (inspect the report output) is now genuinely asserted inside the rewritten report test. Removed; real coverage preserved.
+
 **Tests**
+- `RoleScopingTest` now 2 passed (19 assertions) after the memo fix.
+- `CarrierSyncObservabilityTest` now 3 passed (45 assertions): the report test asserts provider/count lines against real output; the zero-assertion dump test is gone (count dropped by 1 test item but assertions grew — it never asserted anything).
+- Temporary probe (`tests/Feature/ScratchRouteDebugTest.php`) deleted after diagnosing G6.
 - `StoreSlugGuardTest` (26): every reserved slug rejected on create + update (dataset driven from `StoreSlugRules::reservedSlugs()`), case/whitespace variants rejected (`WWW`, ` Www `, ` demo `, …), normal slug accepted, unchanged reserved slug saves, seeder exemption path works, normal create with `demo` still throws, Filament form still rejects (`fillForm` + `createStore` → slug form error).
 - `DemoStoreSeederTest` (2): fresh-DB seed + idempotent re-run.
 - `HostIsolationTest` rewritten (6): apex `/` → landing 200, subdomain `/` → storefront 200, subdomain `/contact-us` → 404, **www → redirects to landing** (regression pin for the routing bug), creating slug `www` is rejected, merchant dashboard resolves 200 (legit OWNER: platform + store roles, membership, synced perms).
 
 **Checks**
 - a. Plan re-read; the changes are exactly the declared G1/G2 groups.
-- b. Full suite after G2: **1297 passed, 2 failed, 1 risky** (baseline 1213/48/1; after G1 1254/8/1). The 2 failures + 1 risky remain and are G6: `RoleScopingTest` (`canStore(ORDER_MANAGE)` false, one test) and `CarrierSyncObservabilityTest` (report output "8" missing + `debug report output` performs no assertions). Full run used `memory_limit=-1` (temporarily), restored to `512M` afterward. Pint: the two new files pass `pint --test`; the four edited pre-existing files (`Store`, `StoreForm`, `DemoStoreSeeder`, `storefront`) were **already** failing `pint --test` with the identical style categories at the G1 baseline (verified against `git show 01f94b8:`), so G2 introduces zero new style debt; repo-wide cleanup is out of 37-K.3 scope (it would corrupt check-d's diff discipline).
+- b. Full suite after G2: **1297 passed, 2 failed, 1 risky** (baseline 1213/48/1; after G1 1254/8/1). **Full suite after G6 (final): 1298 passed, 0 failed, 0 risky** (1,151,560 assertions, 472s). Full runs used `memory_limit=-1` (temporarily), restored to `512M` afterward. Pint: the two G6 files pass `pint --test` (the added `canStore` concat style auto-fixed); the four older files (`Store`, `StoreForm`, `DemoStoreSeeder`, `storefront`) remain pre-existing pint-dirty from baseline — zero new style debt introduced across G1/G2/G6.
 - c. Sizes (before → after): Store.php 213 → 247 (≤250), StoreForm 169 → 169, `storefront.php` 38 → 38, DemoStoreSeeder 1492 → 1496; new files: `StoreSlugRules` 47, `CheckReservedStoreSlugs` 36, `StoreSlugGuardTest` 115, `DemoStoreSeederTest` 40.
-- d. Diff = the 10 declared files (StoreSlugRules, CheckReservedStoreSlugs, Store, StoreForm, DemoStoreSeeder, storefront, 4 test files). 37-K.2's own uncommitted files stay out of these commits (owner hasn't approved committing them).
-- e. Multi-tenant / host isolation covered by `HostIsolationTest` (each store only reachable on its own subdomain; platform hosts never resolve a store).
-- g. Tracker row added (In progress; final gate pending).
+- d. Diff = the 10 declared G1/G2 files (StoreSlugRules, CheckReservedStoreSlugs, Store, StoreForm, DemoStoreSeeder, storefront, 4 test files) + the 2 declared G6 files (helpers.php, CarrierSyncObservabilityTest). 37-K.2's own uncommitted files stay out of these commits (owner hasn't approved committing them).
+- e. Multi-tenant / host isolation covered by `HostIsolationTest` (each store only reachable on its own subdomain; platform hosts never resolve a store). Store-scoped permission isolation asserted by `RoleScopingTest` (decision #6).
+- g. Tracker row updated (Done - verified, `8e21c7d`).
 
-**Open issues** - G3 (`edz-notice`) and G4 (`wire:snapshot`) folded into G1; G6 = `RoleScopingTest` x1 + `CarrierSyncObservabilityTest` x2 (report output + risky no-assertions test).
+**Open issues** - none: G3 (`edz-notice`) and G4 (`wire:snapshot`) folded into G1; G6 (the last 2 failures + 1 risky) resolved and committed. Final suite 1298/0/0.
 
-**Decisions needed from owner** - none for G1/G2 (owner decisions from the two pre-task questions already applied end-to-end).
+**Decisions needed from owner** - none for G1/G2/G6 (owner decisions from the two pre-task questions already applied end-to-end).
 
 ## 11. Open decisions (owner to answer before the phase that needs them)
 
