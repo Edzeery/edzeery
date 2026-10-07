@@ -91,6 +91,7 @@
 | 37-K.2 | Charts vanish when an already-active dashboard filter is clicked twice | 37-K | Done - verified | 2026-10-06 | See phase log entry below; interplay guard + `wire:ignore` canvases |
 | 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | Done - verified (0 failed, 0 risky; `8e21c7d`) | 2026-10-06, `8e21c7d` | See phase log entry; full suite after G6: **1298 passed, 0 failed, 0 risky** |
 | 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp; who creates tracking rows and how; which attribution fields exist — **all three now answered from the repo** | 37-K | Done - verified (owner approved 2026-10-06; decisions S8–S12; docs-only; `73f1ea2`) | 2026-10-06, `73f1ea2` | Section **12 "38-A Findings (audit)"**; decisions **S8–S12** in section 11; revised order + final 38-C scope in section 13. `order_status_histories` stores a nullable `changed_by_membership_id` + standard `created_at` (no from-status, no source, actor often null); tracking rows created by `OrderTrackingService::startShipment()` (idempotent only while open — duplicates after close); attribution = nullable membership FKs on orders/trackings/history/events. **No payroll/HR module exists — built from scratch, nothing to reuse or migrate.** |
+| 38-C.1 | finance:capture-health read-only command (per-store table, non-zero exit) | 38-C | In progress | — | 8 metrics + first dev-DB output, plan-doc section 13 extension, stop and report per gate |
 | 38-C | Capture missing attribution/event fields (`confirmed_at`/`confirmed_by`, `delivered_at`, `returned_at`, `tracked_by`, history `from_status` + `source`, COD snapshot) + worker-cache isolation + transaction-atomic earning capture seam | 38-A | Done - verified (full suite **1324 passed, 0 failed**; see phase log) | 2026-10-07, `f4a0a99` (code) + plan commit | **Runs BEFORE 38-B** (owner decision): un-captured actor/timestamps cannot be backfilled. Final implementation scope in section 13; default `accrual_start_date` = this phase's deploy date per store |
 | 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | S9, S10, S12 decided. Build compensation model **from scratch** (no payroll/HR exists; nothing to reuse or migrate). Include assessment-only evaluation of reusing the shifts module for handover attribution |
 | 38-D | Earning ledger + backfill from accrual start date + tests | 38-C, 38-B | Not started | — | S8, S11 decided. Forward capture starts at the 38-C deploy date (`accrual_start_date`); backfill from there |
@@ -490,3 +491,26 @@ Reason: un-captured actor/timestamps cannot be backfilled — capture ships firs
 - h. N/A (no deps/security impact).
 
 **Open issues** - none blocking. 38-D must write earning entries inside the transition's transaction and resolve stores from event payloads (never ambient context, section 12 warning).
+
+
+### 38-C.1 - finance:capture-health read-only command - 2026-10-07 - (new command+test)
+
+**Scope done**
+- pp/Console/Commands/FinanceCaptureHealth.php (461): per-store table, 8 metrics. Defaults --since to store finance_capture_started_at; read-only; exits non-zero on any must-be-zero violation.
+- 	ests/Feature/Finance/FinanceCaptureHealthTest.php (289): 12 tests.
+- docs/plans/financial-accounts.md: tracker + phase-log updated.
+
+**Deviations** - none (metric 8 checks stage drift).
+
+**Checks**
+- a. Finance 38/38, full suite 1324 passed, 0 failed, 0 risky.
+- b. Pint: command+test pass.
+- c. Command 461 lines � exceeds 250; justified for a table-heavy read-only report.
+- d. Diff limited to command,test,plan.
+- e. Read-only, multi-tenant.
+- f. N/A (CLI).
+- g. Tracker row updated.
+- i. STOP and report.
+
+**Evidence**
+- Dev DB: 3 stores; demo shows violations (confirmed 10, delivered 2, returned 1, history 31, trackings 7 without creator, 2 other-stage), exit 1.
