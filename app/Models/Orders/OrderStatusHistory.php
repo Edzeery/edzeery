@@ -17,6 +17,8 @@ class OrderStatusHistory extends Model
         'status_id',
         'changed_by_membership_id',
         'reason',
+        'from_status',
+        'source',
     ];
 
     public function order(): BelongsTo

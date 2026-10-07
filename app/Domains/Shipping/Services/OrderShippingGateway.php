@@ -42,6 +42,7 @@ class OrderShippingGateway
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
         bool $confirmFirst = false,
+        ?string $source = null,
     ): array {
         DB::beginTransaction();
 
@@ -73,7 +74,7 @@ class OrderShippingGateway
             }
 
             if ($confirmFirst && in_array($order->status?->key, ['pending', 'draft', 'on_hold'], true)) {
-                $order = app(OrderConfirmationService::class)->confirm($order, $reason, $changedBy);
+                $order = app(OrderConfirmationService::class)->confirm($order, $reason, $changedBy, $source);
             }
 
             // --- Per-carrier pre-flight + post, BEFORE any 'shipped' state. ---
@@ -140,7 +141,7 @@ class OrderShippingGateway
                     break;
                 }
 
-                $order = $this->orders->transition($order, $target, $reason, $changedBy);
+                $order = $this->orders->transition($order, $target, $reason, $changedBy, $source);
             }
 
             $this->audit->sentToCarrier(
@@ -185,6 +186,7 @@ class OrderShippingGateway
         Order $order,
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
+        ?string $source = null,
     ): array {
         $carrierUnknownNotice = false;
 
@@ -303,7 +305,7 @@ class OrderShippingGateway
             // the public workflow — shipped→confirmed is not a user-facing
             // transition). Inventory stays reserved: 'confirmed' keeps the
             // existing RESERVE leg and never double-applies.
-            $this->orders->revertTo($order, 'confirmed', $reason, $changedBy);
+            $this->orders->revertTo($order, 'confirmed', $reason, $changedBy, $source);
 
             DB::commit();
 

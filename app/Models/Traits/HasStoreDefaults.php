@@ -10,6 +10,7 @@ trait HasStoreDefaults
             $this->created(function ($model) {
                 $model->settings()->updateOrCreate(
                     ['store_id' => $model->id],
+                    ['finance_capture_started_at' => now()],
                 );
             });
         }

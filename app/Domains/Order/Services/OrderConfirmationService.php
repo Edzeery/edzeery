@@ -45,6 +45,7 @@ class OrderConfirmationService
         Order $order,
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
+        ?string $source = null,
     ): Order {
         $missing = $this->completeness->missing($order);
 
@@ -52,16 +53,16 @@ class OrderConfirmationService
             throw OrderIncompleteException::fromMissing($missing);
         }
 
-        return $this->baseService->transition($order, 'confirmed', $reason, $changedBy);
+        return $this->baseService->transition($order, 'confirmed', $reason, $changedBy, $source);
     }
 
     /**
      * Move a confirmed order into preparation (fulfilment begins). This is a
      * confirmation-pipeline key; shipping keys are OrderTrackingService's.
      */
-    public function startPreparing(Order $order, ?StoreMembership $changedBy = null): Order
+    public function startPreparing(Order $order, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
-        return $this->baseService->transition($order, 'preparing', null, $changedBy);
+        return $this->baseService->transition($order, 'preparing', null, $changedBy, $source);
     }
 
     /**

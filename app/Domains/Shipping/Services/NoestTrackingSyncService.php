@@ -2,6 +2,7 @@
 
 namespace App\Domains\Shipping\Services;
 
+use App\Domains\Order\Support\OrderStatusCapture;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\OrderTracking;
 use App\Models\Orders\OrderTrackingHistory;
@@ -132,6 +133,16 @@ class NoestTrackingSyncService
 
         if ($deliveredAt) {
             $updates['delivered_at'] = $deliveredAt;
+        }
+
+        // PHASE 38-C — carrier-sourced delivery evidence. This service never
+        // transitions the ORDER status (that stays an operator action), it only
+        // records the physical proof: the first carrier-sourced delivered event
+        // lands in orders.delivery_evidence_at via an atomic CAS. A manual
+        // delivery (orders.delivered_at) is a separate stamp and never writes
+        // this column.
+        if ($deliveredAt && $tracking->order_id) {
+            OrderStatusCapture::stampDeliveryEvidence($tracking->order_id, $deliveredAt);
         }
 
         if ($returnedAt) {

@@ -8,6 +8,7 @@ use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
 use App\Support\StoreResolver;
+use App\Support\StoreScopedCache;
 use Illuminate\Support\Facades\Auth;
 
 if (! function_exists('user')) {
@@ -127,30 +128,30 @@ if (! function_exists('canStore')) {
         // memo resets as soon as a different user or store is resolved on the
         // same worker — a user switching stores mid-request (decision #6)
         // must never reuse another store's permission result.
-        static $memoUser = null;
-        static $memo = [];
-
-        $uid = (string) $user->getAuthIdentifier();
-
-        if ($memoUser !== $uid) {
-            $memoUser = $uid;
-            $memo = [];
+        //
+        // The memo lives in StoreScopedCache so a queue worker can flush it at
+        // job boundaries (PHASE 38-C) — a function-local static would be
+        // unreachable from the orchestrator.
+        if (StoreScopedCache::$canStoreUser !== (string) $user->getAuthIdentifier()) {
+            StoreScopedCache::$canStoreUser = (string) $user->getAuthIdentifier();
+            StoreScopedCache::$canStore = [];
         }
 
         // Store id is cheap here: StoreResolver is cached in the
         // request-scoped StoreContext after its first resolution.
         $storeKey = (string) currentStoreId();
+        $key = $storeKey.'|'.$permission;
 
-        if (array_key_exists($storeKey.'|'.$permission, $memo)) {
-            return $memo[$storeKey.'|'.$permission];
+        if (array_key_exists($key, StoreScopedCache::$canStore)) {
+            return StoreScopedCache::$canStore[$key];
         }
 
         // Super Admin / Platform Admin bypass (resolved once per user+request).
-        if (! array_key_exists('__super_admin__', $memo)) {
-            $memo['__super_admin__'] = $user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web');
+        if (! array_key_exists('__super_admin__', StoreScopedCache::$canStore)) {
+            StoreScopedCache::$canStore['__super_admin__'] = $user->hasAnyRoleForGuard(['super_admin', 'admin'], 'web');
         }
-        if ($memo['__super_admin__']) {
-            return $memo[$storeKey.'|'.$permission] = true;
+        if (StoreScopedCache::$canStore['__super_admin__']) {
+            return StoreScopedCache::$canStore[$key] = true;
         }
 
         $membership = currentMembership();
@@ -161,11 +162,11 @@ if (! function_exists('canStore')) {
         if ($membership) {
             $stored = $membership->permissionNames();
             if (! empty($stored)) {
-                return $memo[$storeKey.'|'.$permission] = in_array($permission, $stored, true);
+                return StoreScopedCache::$canStore[$key] = in_array($permission, $stored, true);
             }
         }
 
-        return $memo[$storeKey.'|'.$permission] = $user->can($permission, 'merchant');
+        return StoreScopedCache::$canStore[$key] = $user->can($permission, 'merchant');
     }
 }
 

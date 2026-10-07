@@ -37,6 +37,7 @@ class StoreSetting extends Model
         'contact_info',
         'distribution_overflow_enabled',
         'distribution_overflow_percentage',
+        'finance_capture_started_at',
     ];
 
     protected $casts = [
@@ -52,6 +53,7 @@ class StoreSetting extends Model
         'supported_languages' => 'array',
         'distribution_overflow_enabled' => 'boolean',
         'distribution_overflow_percentage' => 'integer',
+        'finance_capture_started_at' => 'datetime',
     ];
 
     /* ================= Relations ================= */

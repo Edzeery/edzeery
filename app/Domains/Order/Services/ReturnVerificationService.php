@@ -99,6 +99,7 @@ class ReturnVerificationService
                 'pending',
                 'Requeued after return verification (good condition)',
                 $requeuedBy,
+                'system',
             );
 
             $tracking->update([

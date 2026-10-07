@@ -22,6 +22,7 @@ class Status extends Model
         'is_system',
         'affects_inventory',
         'movement_type',
+        'stage',
         'icon',
         'display_mode',
         'sort_order',

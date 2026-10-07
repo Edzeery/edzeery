@@ -3,12 +3,14 @@
 namespace App\Observers;
 
 use App\Domains\Order\Services\OrderAuditService;
+use App\Domains\Order\Support\OrderStatusCapture;
+use App\Domains\Status\Support\OrderStatusStage;
 use App\Enums\Store\InventoryMovementType;
 use App\Models\InventoryMovement;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderStatusHistory;
-use App\Models\Stores\Team\StoreMembership;
 use App\Models\Status;
+use App\Models\Stores\Team\StoreMembership;
 use App\Services\InventoryService;
 use Illuminate\Support\Facades\DB;
 
@@ -81,7 +83,7 @@ class OrderObserver
 
             $changes[$field] = [
                 'from' => $order->getOriginal($field),
-                'to'   => $order->getAttribute($field),
+                'to' => $order->getAttribute($field),
             ];
         }
 
@@ -108,12 +110,36 @@ class OrderObserver
 
         $meta = Order::popTransitionMeta($order->id) ?? [];
 
+        // PHASE 38-C — provenance: every history row keeps what it transitioned
+        // FROM (NULL on creation) and WHO/WHAT triggered it (source bucket,
+        // defaulting to the automated/system bucket for unlabelled internal
+        // flows; every UI and bulk path passes an explicit source).
         OrderStatusHistory::create([
-            'order_id'                 => $order->id,
-            'status_id'                => $status->id,
+            'order_id' => $order->id,
+            'status_id' => $status->id,
+            'from_status' => $meta['from_key'] ?? null,
+            'source' => $meta['source'] ?? 'system',
             'changed_by_membership_id' => $meta['changed_by_membership_id'] ?? null,
-            'reason'                   => $meta['reason'] ?? null,
+            'reason' => $meta['reason'] ?? null,
         ]);
+
+        // PHASE 38-C — first-write-wins event stamps (C.1/C.2). Atomic CAS
+        // (WHERE <column> IS NULL) inside the SAME transaction as the status
+        // change, so a re-transition can never rewrite a stamp and two
+        // concurrent confirmations produce exactly one winner. A missing actor
+        // leaves the actor column NULL on purpose: "unattributed", never
+        // silently credited.
+        $actorId = $meta['changed_by_membership_id'] ?? null;
+
+        if (OrderStatusStage::isEarningConfirmation($status->key)) {
+            OrderStatusCapture::stampConfirmation($order, $actorId, now());
+        }
+
+        match ($status->key) {
+            'delivered' => OrderStatusCapture::stampDelivered($order, now()),
+            'returned' => OrderStatusCapture::stampReturned($order, now(), $meta['return_reason_key'] ?? null),
+            default => null,
+        };
 
         $actor = ! empty($meta['changed_by_membership_id'])
             ? StoreMembership::find($meta['changed_by_membership_id'])
@@ -196,10 +222,10 @@ class OrderObserver
         $service = app(\App\Domains\Order\Services\OrderTrackingService::class);
 
         match ($status->key) {
-            'shipped'   => $service->startShipment($order, null, $actorMembershipId),
+            'shipped' => $service->startShipment($order, null, $actorMembershipId),
             'delivered' => $service->markDelivered($order, $actorMembershipId),
-            'returned'  => $service->markReturned($order, $actorMembershipId),
-            default     => null,
+            'returned' => $service->markReturned($order, $actorMembershipId),
+            default => null,
         };
     }
 

@@ -7,22 +7,25 @@ use App\Domains\Billing\Events\PaymentSucceeded;
 use App\Domains\Billing\Gateways\ChargilyGateway;
 use App\Domains\Billing\Gateways\MockGateway;
 use App\Domains\Billing\Listeners\ActivateSubscriptionOnPaymentSucceeded;
-use App\Models\Orders\Order;
 use App\Models\billing\Subscription;
+use App\Models\Finance\DebtPayment;
+use App\Models\Orders\Order;
 use App\Models\Products\Product;
 use App\Models\Stores\Store;
+use App\Observers\Finance\DebtPaymentObserver;
 use App\Observers\OrderObserver;
 use App\Observers\ProductObserver;
 use App\Observers\StoreObserver;
 use App\Observers\SubscriptionObserver;
-use App\Models\Finance\DebtPayment;
-use App\Observers\Finance\DebtPaymentObserver;
 use App\Support\StoreContext;
+use App\Support\StoreScopedCache;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\View;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
                     secretKey: config('services.chargily.secret_key', ''),
                     mode: config('services.chargily.mode', 'test'),
                 ),
-                default => new MockGateway(),
+                default => new MockGateway,
             };
         });
     }
@@ -62,21 +65,37 @@ class AppServiceProvider extends ServiceProvider
         // Event-Listener bindings
         $this->app->events->listen(PaymentSucceeded::class, ActivateSubscriptionOnPaymentSucceeded::class);
 
+        foreach ([JobProcessing::class, JobProcessed::class, JobFailed::class] as $event) {
+            $this->app->events->listen($event, function (object $payload) {
+                /*
+                 * Only isolate at real queue-worker boundaries. Jobs dispatched
+                 * inline on the sync driver (dispatchSync / tests) share the
+                 * enclosing request's context by design and must not wipe the
+                 * active StoreContext. Scheduled commands run as their own
+                 * subprocess, so their statics start fresh naturally.
+                 */
+                if (strtolower((string) ($payload->connectionName ?? 'sync')) === 'sync') {
+                    return;
+                }
+
+                StoreScopedCache::flush();
+            });
+        }
+
         View::composer('*', function ($view) {
             $view->with('user', user());
             $store = currentStore();
             $view->with('store', $store);
             $view->with('currency', $store?->settings?->currency ?? 'DZD');
             $view->with('theme', user_setting('theme') ?? 'light');
-            $view->with('lang',  getCurrentLocale());
-            $view->with('languages',  getLanguages() ?? []);
-            $view->with('isRtl',  isRtl());
-            $view->with('alignment',  isRTL() ? 'left-0' : 'right-0');
+            $view->with('lang', getCurrentLocale());
+            $view->with('languages', getLanguages() ?? []);
+            $view->with('isRtl', isRtl());
+            $view->with('alignment', isRTL() ? 'left-0' : 'right-0');
             $view->with('iconPosition', isRTL() ? 'left-4' : 'right-4');
-            $view->with('dir',  setRTL());
-            $view->with('algin',  algin());
+            $view->with('dir', setRTL());
+            $view->with('algin', algin());
         });
-
 
         // 🔤 إعداد اللغات
         LanguageSwitch::configureUsing(function (LanguageSwitch $switch) {
@@ -86,10 +105,7 @@ class AppServiceProvider extends ServiceProvider
                 )
                 ->labels(getLanguagesArray())
                 ->flags(getLanguagesArrayFlags())
-                ->circular()
-
-
-            ;
+                ->circular();
         });
 
         Store::observe(StoreObserver::class);

@@ -6,6 +6,20 @@ use App\Models\Orders\Order;
 
 class OrderCompleteness
 {
+    /**
+     * Store-level dispatch readiness cache (see storeReadyForDispatch).
+     * Class-level static so the worker cache isolation hook can flush it;
+     * a function-local static could not be reset externally.
+     *
+     * @var array<string, bool>
+     */
+    private static array $dispatchReadyCache = [];
+
+    public static function flushCaches(): void
+    {
+        self::$dispatchReadyCache = [];
+    }
+
     public function missing(Order $order, bool $forSend = false): array
     {
         $missing = [];
@@ -81,10 +95,8 @@ class OrderCompleteness
             return false;
         }
 
-        static $cache = [];
-
-        if (array_key_exists($storeId, $cache)) {
-            return $cache[$storeId];
+        if (array_key_exists($storeId, self::$dispatchReadyCache)) {
+            return self::$dispatchReadyCache[$storeId];
         }
 
         $hasActiveProvider = \App\Domains\Shipping\Models\ShippingProvider::query()
@@ -93,10 +105,10 @@ class OrderCompleteness
             ->exists();
 
         if ($hasActiveProvider) {
-            return $cache[$storeId] = true;
+            return self::$dispatchReadyCache[$storeId] = true;
         }
 
-        return $cache[$storeId] = \App\Domains\Shipping\Models\DeliveryRider::query()
+        return self::$dispatchReadyCache[$storeId] = \App\Domains\Shipping\Models\DeliveryRider::query()
             ->where('store_id', $storeId)
             ->where('is_active', true)
             ->exists();

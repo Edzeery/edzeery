@@ -46,6 +46,8 @@ class OrderTracking extends Model
         'assignment_method',
         'assigned_by_membership_id',
         'over_capacity',
+        'created_by_membership_id',
+        'cod_amount',
     ];
 
     protected $casts = [
@@ -61,6 +63,7 @@ class OrderTracking extends Model
         'carrier_validated_at' => 'datetime',
         'assigned_at'     => 'datetime',
         'over_capacity'   => 'boolean',
+        'cod_amount'      => 'decimal:2',
     ];
 
     public function order(): BelongsTo

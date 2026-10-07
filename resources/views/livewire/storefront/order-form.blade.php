@@ -433,6 +433,8 @@ $submitOrder = function () {
         OrderStatusHistory::create([
             'order_id'  => $order->id,
             'status_id' => $status->id,
+            'from_status' => null,
+            'source'    => 'storefront',
             'reason'    => 'Order placed via storefront',
         ]);
 

@@ -11,6 +11,12 @@ class DeliveryRiderService
      */
     private static array $listCache = [];
 
+    /** PHASE 38-C — worker cache isolation reset (StoreScopedCache::flush). */
+    public static function flushCaches(): void
+    {
+        self::$listCache = [];
+    }
+
     public function listForStore(?string $storeId = null, bool $onlyActive = false)
     {
         $key = ($storeId ?? currentStoreId()).'|'.($onlyActive ? '1' : '0');

@@ -26,15 +26,23 @@ class Order extends Model
     use HasVisibilityScope;
     use SoftDeletes;
 
-    /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string, from_key: ?string}> */
+    /** @var array<int, array{changed_by_membership_id: ?string, reason: ?string, from_key: ?string, source: ?string, return_reason_key: ?string}> */
     private static array $transitionMeta = [];
 
-    public static function setTransitionMeta(int|string $orderId, ?string $changedByMembershipId, ?string $reason, ?string $fromKey = null): void
-    {
+    public static function setTransitionMeta(
+        int|string $orderId,
+        ?string $changedByMembershipId,
+        ?string $reason,
+        ?string $fromKey = null,
+        ?string $source = null,
+        ?string $returnReasonKey = null,
+    ): void {
         self::$transitionMeta[$orderId] = [
             'changed_by_membership_id' => $changedByMembershipId,
             'reason' => $reason,
             'from_key' => $fromKey,
+            'source' => $source,
+            'return_reason_key' => $returnReasonKey,
         ];
     }
 
@@ -78,6 +86,12 @@ class Order extends Model
         'meta',
         'send_from_carrier_warehouse',
         'over_capacity',
+        'confirmed_at',
+        'confirmed_by_membership_id',
+        'delivered_at',
+        'delivery_evidence_at',
+        'returned_at',
+        'return_reason_key',
     ];
 
     protected $casts = [
@@ -87,6 +101,10 @@ class Order extends Model
         'weight_kg' => 'decimal:2',
         'assigned_at' => 'datetime',
         'last_contact_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'delivery_evidence_at' => 'datetime',
+        'returned_at' => 'datetime',
         'confirmation_attempts' => 'integer',
         'meta' => 'array',
         'send_from_carrier_warehouse' => 'boolean',

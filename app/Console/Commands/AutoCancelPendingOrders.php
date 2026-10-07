@@ -40,7 +40,7 @@ class AutoCancelPendingOrders extends Command
 
         foreach ($orders as $order) {
             try {
-                $service->transition($order, 'cancelled', 'Auto-cancelled: pending for more than ' . $hours . 'h');
+                $service->transition($order, 'cancelled', 'Auto-cancelled: pending for more than ' . $hours . 'h', null, 'system');
                 $cancelled++;
             } catch (\Exception $e) {
                 $errors++;

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\Store\InventoryMovementType;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Domains\Order\Support\OrderWorkflow;
+use App\Domains\Status\Support\OrderStatusStage;
 use App\Models\Status;
 use Illuminate\Database\Seeder;
 
@@ -480,7 +481,16 @@ class SystemStatusesSeeder extends Seeder
                     'type' => $status['type'],
                     'key' => $status['key'],
                 ],
-                $status
+                array_merge($status, [
+                    // PHASE 38-C — lifecycle stage resolved from the single
+                    // source (DashboardStatusGroups via OrderStatusStage);
+                    // order statuses get their bucket, everything else the
+                    // neutral `other`. Re-seeding keeps stages aligned with
+                    // the resolver if a group ever changes.
+                    'stage' => $status['type'] === 'order'
+                        ? OrderStatusStage::forKey($status['key'])
+                        : OrderStatusStage::OTHER,
+                ])
             );
         }
     }

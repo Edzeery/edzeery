@@ -1356,6 +1356,7 @@ $confirmBulkSend = function (): void {
                 order: $order,
                 providerId: $order->shipping_provider_id ?: null,
                 changedBy: $membership,
+                source: 'bulk',
             );
 
             // Carrier rejection (returned, not thrown): the order keeps its
@@ -1600,7 +1601,7 @@ $transitionOrder = function (string $orderId, string $statusKey): void {
         return;
     }
 
-    $service->transition($order, $statusKey, null, $membership);
+    $service->transition($order, $statusKey, null, $membership, 'manual');
 
     $this->page = 1;
     $this->loadOrders();
@@ -1874,7 +1875,7 @@ $submitConfirmOnly = function (): void {
 
     $membership = $this->getCurrentMembership();
 
-    app(OrderService::class)->confirm($order, $membership);
+    app(OrderService::class)->confirm($order, $membership, 'manual');
 
     if ($membership && $this->confirmContacted) {
         $order->update(['last_contact_at' => now()]);
@@ -1976,6 +1977,7 @@ $submitConfirmAndSend = function (): void {
             providerId: $providerId ?: null,
             changedBy: $membership,
             confirmFirst: true,
+            source: 'manual',
         );
 
         // Carrier failure: the order stays confirmed (committed by the gateway)
@@ -2064,6 +2066,7 @@ $sendConfirmedOrder = function (string $orderId): void {
             order: $order,
             providerId: $order->shipping_provider_id ?: null,
             changedBy: $membership,
+            source: 'manual',
         );
 
         $this->loadOrders();
@@ -2214,7 +2217,7 @@ $markOrderDuplicate = function (string $orderId): void {
         ->first();
 
     if ($status && app(OrderService::class)->canTransition($order, 'duplicate')) {
-        app(OrderService::class)->transition($order, 'duplicate', 'Marked as duplicate', $membership);
+        app(OrderService::class)->transition($order, 'duplicate', 'Marked as duplicate', $membership, 'manual');
     }
 
     $this->closeConfirmModal();
@@ -2317,7 +2320,7 @@ $submitBulkStatus = function (): void {
                     return;
                 }
 
-                $service->transition($order, $statusKey, $this->bulkStatusReason, $membership);
+                $service->transition($order, $statusKey, $this->bulkStatusReason, $membership, 'bulk');
                 $done++;
             } catch (\Exception $e) {
                 $skipped++;

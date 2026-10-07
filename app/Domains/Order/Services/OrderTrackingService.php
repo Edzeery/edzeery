@@ -2,6 +2,7 @@
 
 namespace App\Domains\Order\Services;
 
+use App\Domains\Order\Support\OrderStatusCapture;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderTracking;
@@ -14,6 +15,13 @@ class OrderTrackingService
     /**
      * Create a new tracking record for an order being shipped.
      * Idempotent: returns existing open tracking if one exists.
+     *
+     * PHASE 38-C: the row captures `created_by_membership_id` (the actor who
+     * started the shipment) and `cod_amount` (the amount sent to the carrier,
+     * snapshotted once at creation — a later price change never rewrites what
+     * the carrier collected for). Exactly one shipping event per order ever:
+     * creation is guarded by the unanswered "no open tracking" check, so this
+     * is the single, durable shipment event the future ledger keys on.
      */
     public function startShipment(Order $order, ?string $trackingNumber = null, int|string|null $actorMembershipId = null): OrderTracking
     {
@@ -30,6 +38,8 @@ class OrderTrackingService
             'tracking_status' => OrderTrackingStatus::SHIPPED->value,
             'shipped_at' => now(),
             'webhook_token' => Str::random(40),
+            'created_by_membership_id' => $actorMembershipId,
+            'cod_amount' => OrderStatusCapture::codAmount($order),
         ]);
 
         $this->recordHistory(
@@ -58,7 +68,7 @@ class OrderTrackingService
         $type = $order->delivery_type === 'stopdesk' ? 'SD' : 'HM';
 
         do {
-            $candidate = $prefix . '-' . $type . '-' . random_int(100000, 999999);
+            $candidate = $prefix.'-'.$type.'-'.random_int(100000, 999999);
         } while (OrderTracking::where('store_id', $order->store_id)->where('tracking_number', $candidate)->exists());
 
         return $candidate;
@@ -97,8 +107,9 @@ class OrderTrackingService
      * current open row. A rider hand-off is never carrier-probed, so any stale
      * shipping_provider_id is cleared. Idempotent.
      */
-    public function ensureRiderTracking(Order $order, string $trackingNumber): OrderTracking
+    public function ensureRiderTracking(Order $order, string $trackingNumber, int|string|null $actorMembershipId = null): OrderTracking
     {
+        $actorMembershipId ??= $this->currentActorMembershipId();
         $open = $this->currentOpenTracking($order);
 
         if ($open) {
@@ -138,7 +149,20 @@ class OrderTrackingService
             return $open;
         }
 
-        return $this->startShipment($order, $trackingNumber);
+        return $this->startShipment($order, $trackingNumber, $actorMembershipId);
+    }
+
+    /**
+     * Resolve the acting membership from the request context (Livewire/store
+     * routes). Queue-driven flows have no authenticated member → NULL.
+     */
+    protected function currentActorMembershipId(): int|string|null
+    {
+        if (! function_exists('currentMembership')) {
+            return null;
+        }
+
+        return currentMembership()?->id;
     }
 
     /**
@@ -257,14 +281,14 @@ class OrderTrackingService
         Order $order,
     ): OrderTrackingHistory {
         $history = OrderTrackingHistory::create([
-            'store_id'                  => $tracking->store_id,
-            'order_id'                  => $tracking->order_id,
-            'order_tracking_id'         => $tracking->id,
-            'status'                    => $status,
-            'changed_by_membership_id'  => $actorMembershipId,
-            'notes'                     => $notes,
-            'payload'                   => $payload,
-            'created_at'                => now(),
+            'store_id' => $tracking->store_id,
+            'order_id' => $tracking->order_id,
+            'order_tracking_id' => $tracking->id,
+            'status' => $status,
+            'changed_by_membership_id' => $actorMembershipId,
+            'notes' => $notes,
+            'payload' => $payload,
+            'created_at' => now(),
         ]);
 
         $actor = null;

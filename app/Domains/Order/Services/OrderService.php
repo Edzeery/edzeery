@@ -12,6 +12,22 @@ use Illuminate\Support\Facades\DB;
 class OrderService
 {
     /**
+     * Store-custom status (functional branch of a linked original) lookups,
+     * memoized in availableTransitions(). Kept as a class-level static so the
+     * worker cache isolation (StoreScopedCache::flush) can reset it at the
+     * start and end of every queued job / scheduled command even though the
+     * function-scoped copy from older code could not be flushed externally.
+     *
+     * @var array<string, ?Status>
+     */
+    private static array $branchCache = [];
+
+    public static function flushCaches(): void
+    {
+        self::$branchCache = [];
+    }
+
+    /**
      * Transition an order to a new status by key and record history.
      */
     public function transition(
@@ -19,6 +35,8 @@ class OrderService
         string $newStatusKey,
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
+        ?string $source = null,
+        ?string $returnReasonKey = null,
     ): Order {
         // System keys always resolve to the system row (store overrides affect
         // display only). A store-custom status (no system row) — a functional
@@ -35,11 +53,18 @@ class OrderService
                 ->firstOrFail();
         }
 
-        return $this->transitionToStatus($order, $newStatus, $reason, $changedBy);
+        return $this->transitionToStatus($order, $newStatus, $reason, $changedBy, false, $source, $returnReasonKey);
     }
 
     /**
      * Transition an order to a status by status_id (supports store-custom statuses).
+     *
+     * @param  bool  $force  Skips the public workflow gate for internal
+     *                       services that own their own validation.
+     * @param  string|null  $source  Provenance bucket recorded on the history
+     *                               row (manual|bulk|carrier|webhook|api|storefront|system|userscript).
+     * @param  string|null  $returnReasonKey  Key of the store's return-reason
+     *                                        list, captured alongside the returned_at stamp.
      */
     public function transitionToStatus(
         Order $order,
@@ -47,6 +72,8 @@ class OrderService
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
         bool $force = false,
+        ?string $source = null,
+        ?string $returnReasonKey = null,
     ): Order {
         if (! $force && ! $this->canTransition($order, $newStatus->key)) {
             throw new \DomainException(
@@ -57,7 +84,7 @@ class OrderService
         DB::beginTransaction();
 
         try {
-            Order::setTransitionMeta($order->id, $changedBy?->id, $reason, $order->status?->key);
+            Order::setTransitionMeta($order->id, $changedBy?->id, $reason, $order->status?->key, $source, $returnReasonKey);
 
             $order->update(['status_id' => $newStatus->id]);
 
@@ -77,7 +104,7 @@ class OrderService
         }
     }
 
-public function availableTransitions(Order $order): array
+    public function availableTransitions(Order $order): array
     {
         // Use the relationship (lazy-loads if not eager-loaded).
         // This eliminates the N+1 when loadOrders() eager-loads 'status'.
@@ -88,19 +115,17 @@ public function availableTransitions(Order $order): array
         // Branch lookups are memoized per store+key because `availableTransitions`
         // runs once per row on the orders grid.
         if ($currentKey && $order->store_id) {
-            static $branchCache = [];
+            $cacheKey = $order->store_id.'|'.$currentKey;
 
-            $cacheKey = $order->store_id . '|' . $currentKey;
-
-            if (! array_key_exists($cacheKey, $branchCache)) {
-                $branchCache[$cacheKey] = Status::where('store_id', $order->store_id)
+            if (! array_key_exists($cacheKey, self::$branchCache)) {
+                self::$branchCache[$cacheKey] = Status::where('store_id', $order->store_id)
                     ->where('type', 'order')
                     ->where('key', $currentKey)
                     ->whereNotNull('linked_to')
                     ->first();
             }
 
-            $branch = $branchCache[$cacheKey];
+            $branch = self::$branchCache[$cacheKey];
 
             if ($branch?->linked_to) {
                 $currentKey = $branch->linked_to;
@@ -108,28 +133,28 @@ public function availableTransitions(Order $order): array
         }
 
         $systemTransitions = match ($currentKey) {
-            'draft'              => ['pending', 'cancelled'],
-            'pending'            => ['confirmed', 'cancelled', 'postponed', 'no_answer_1', 'wrong_number', 'out_of_stock', 'duplicate'],
-            'confirmed'          => ['pending', 'cancelled', 'postponed', 'preparing'],
-            'no_answer_1'        => ['confirmed','pending', 'no_answer_2', 'cancelled'],
-            'no_answer_2'        => ['confirmed','pending', 'no_answer_3', 'cancelled'],
-            'no_answer_3'        => ['confirmed','cancelled'],
-            'postponed'          => ['pending', 'confirmed','cancelled'],
-            'wrong_number'       => ['cancelled'],
-            'out_of_stock'       => ['cancelled', 'pending'],
-            'duplicate'          => ['cancelled'],
-            'on_hold'            => ['confirmed', 'preparing', 'cancelled'],
-            'preparing'          => ['shipped', 'cancelled'],
-            'shipped'            => ['in_transit', 'out_for_delivery', 'delivered', 'returned'],
-            'in_transit'         => ['out_for_delivery', 'delivered', 'returned'],
-            'out_for_delivery'   => ['delivered', 'returned'],
-            'delivered'          => ['returned', 'completed'],
-            'completed'          => [],
-            'returned'           => ['refunded', 'cancelled', 'pending'],
-            'refunded'           => [],
-            'cancelled'          => ['pending'],
-            'canceled'           => ['pending'],
-            default              => [],
+            'draft' => ['pending', 'cancelled'],
+            'pending' => ['confirmed', 'cancelled', 'postponed', 'no_answer_1', 'wrong_number', 'out_of_stock', 'duplicate'],
+            'confirmed' => ['pending', 'cancelled', 'postponed', 'preparing'],
+            'no_answer_1' => ['confirmed', 'pending', 'no_answer_2', 'cancelled'],
+            'no_answer_2' => ['confirmed', 'pending', 'no_answer_3', 'cancelled'],
+            'no_answer_3' => ['confirmed', 'cancelled'],
+            'postponed' => ['pending', 'confirmed', 'cancelled'],
+            'wrong_number' => ['cancelled'],
+            'out_of_stock' => ['cancelled', 'pending'],
+            'duplicate' => ['cancelled'],
+            'on_hold' => ['confirmed', 'preparing', 'cancelled'],
+            'preparing' => ['shipped', 'cancelled'],
+            'shipped' => ['in_transit', 'out_for_delivery', 'delivered', 'returned'],
+            'in_transit' => ['out_for_delivery', 'delivered', 'returned'],
+            'out_for_delivery' => ['delivered', 'returned'],
+            'delivered' => ['returned', 'completed'],
+            'completed' => [],
+            'returned' => ['refunded', 'cancelled', 'pending'],
+            'refunded' => [],
+            'cancelled' => ['pending'],
+            'canceled' => ['pending'],
+            default => [],
         };
 
         return $systemTransitions;
@@ -173,16 +198,17 @@ public function availableTransitions(Order $order): array
         string $newStatusKey,
         ?string $reason = null,
         ?StoreMembership $changedBy = null,
+        ?string $source = null,
     ): Order {
         $newStatus = Status::system()
             ->forType('order')
             ->where('key', $newStatusKey)
             ->firstOrFail();
 
-        return $this->transitionToStatus($order, $newStatus, $reason, $changedBy, true);
+        return $this->transitionToStatus($order, $newStatus, $reason, $changedBy, true, $source);
     }
 
-    public function confirm(Order $order, ?StoreMembership $changedBy = null): Order
+    public function confirm(Order $order, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
         $missing = app(OrderCompleteness::class)->missing($order);
 
@@ -190,27 +216,27 @@ public function availableTransitions(Order $order): array
             throw OrderIncompleteException::fromMissing($missing);
         }
 
-        return $this->transition($order, 'confirmed', null, $changedBy);
+        return $this->transition($order, 'confirmed', null, $changedBy, $source);
     }
 
-    public function startPreparing(Order $order, ?StoreMembership $changedBy = null): Order
+    public function startPreparing(Order $order, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
-        return $this->transition($order, 'preparing', null, $changedBy);
+        return $this->transition($order, 'preparing', null, $changedBy, $source);
     }
 
-    public function ship(Order $order, ?string $reason = null, ?StoreMembership $changedBy = null): Order
+    public function ship(Order $order, ?string $reason = null, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
-        return $this->transition($order, 'shipped', $reason, $changedBy);
+        return $this->transition($order, 'shipped', $reason, $changedBy, $source);
     }
 
-    public function deliver(Order $order, ?StoreMembership $changedBy = null): Order
+    public function deliver(Order $order, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
-        return $this->transition($order, 'delivered', null, $changedBy);
+        return $this->transition($order, 'delivered', null, $changedBy, $source);
     }
 
-    public function cancel(Order $order, ?string $reason = null, ?StoreMembership $changedBy = null): Order
+    public function cancel(Order $order, ?string $reason = null, ?StoreMembership $changedBy = null, ?string $source = null): Order
     {
-        return $this->transition($order, 'cancelled', $reason, $changedBy);
+        return $this->transition($order, 'cancelled', $reason, $changedBy, $source);
     }
 
     /**
@@ -256,6 +282,8 @@ public function availableTransitions(Order $order): array
                 OrderStatusHistory::create([
                     'order_id' => $order->id,
                     'status_id' => $status->id,
+                    'from_status' => null,
+                    'source' => 'manual',
                     'changed_by_membership_id' => $createdBy->id,
                     'reason' => 'Order created manually',
                 ]);
