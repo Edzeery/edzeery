@@ -3,6 +3,7 @@
 namespace App\Domains\Order\Services;
 
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
+use App\Domains\Order\Concerns\ResolvesProductOwnership;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\OrderItem;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class OrderTrackingAssignmentService
 {
-    use ResolvesCapacityBalancedCandidates;
+    use ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
 
     /**
      * Full auto-assignment pipeline for an order tracking.
@@ -29,22 +30,37 @@ class OrderTrackingAssignmentService
 
         $storeId = $store->id;
 
-        // 1. Resolve candidate pool (product ids of the underlying order drive
-        //    the visibility guard — tracking itself has no product dimension)
-        $candidates = $this->resolveCandidatePool($storeId, $this->orderProductIds($tracking));
+        // 1. Product ids of the underlying order drive both the visibility
+        //    guard and the ownership pool (tracking has no product dimension).
+        $productIds = $this->orderProductIds($tracking);
+        $candidates = $this->resolveCandidatePool($storeId, $productIds);
 
-        // 2. Balance: fewest open assignments, then oldest last assignment,
-        //    allowing store-configured overflow when no member fits strictly.
-        //    A single availability snapshot drives the whole selection round.
-        [$selected, $wasOverflow] = $this->bestCandidateWithOverflow(
-            $candidates,
-            $storeId,
-            'track',
-            $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues())),
-            $this->lastAssignedAt('order_trackings', $storeId),
-            $this->overflowPercentage($store),
-            $this->availabilitySnapshot($storeId, 'track', $candidates),
-        );
+        // 2. Ownership pool first (owners of the ordered products, ranked by
+        //    coverage then load then recency), then the general pool — strict
+        //    caps then store-configured overflow inside each pool, all driven
+        //    by one shared availability snapshot.
+        $ownership = $this->ownershipCounts($storeId, $productIds);
+        $openCounts = $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues()));
+        $lastAssigned = $this->lastAssignedAt('order_trackings', $storeId);
+        $overflowPercentage = $this->overflowPercentage($store);
+        $availability = $this->availabilitySnapshot($storeId, 'track', $candidates);
+
+        foreach ([true, false] as $owners) {
+            [$selected, $wasOverflow] = $this->bestCandidateWithOverflow(
+                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
+                $storeId,
+                'track',
+                $openCounts,
+                $lastAssigned,
+                $overflowPercentage,
+                $availability,
+                $ownership,
+            );
+
+            if ($selected) {
+                break;
+            }
+        }
 
         if (! $selected) {
             Log::warning('Order tracking auto-assignment skipped: no candidates on active shift', [
@@ -113,8 +129,9 @@ class OrderTrackingAssignmentService
     /**
      * Resolve candidate pool for a store: every active member holding the
      * CRM_ORDER_TRACKING permission whose visibility covers at least one of the
-     * order's products (no specialist tier — tracking has no product-matching
-     * model yet).
+     * order's products. Ownership tiering (which of those members own the
+     * ordered products) is decided later in assign() so a store without an
+     * ownership roster still falls back to general trackers.
      */
     private function resolveCandidatePool(string $storeId, array $productIds): Collection
     {

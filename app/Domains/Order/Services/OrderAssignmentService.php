@@ -3,7 +3,7 @@
 namespace App\Domains\Order\Services;
 
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
-use App\Domains\Order\Models\ConfirmationProductAssignment;
+use App\Domains\Order\Concerns\ResolvesProductOwnership;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class OrderAssignmentService
 {
-    use ResolvesCapacityBalancedCandidates;
+    use ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
 
     /**
      * Full auto-assignment pipeline for an order.
@@ -39,7 +39,8 @@ class OrderAssignmentService
         // 2. Resolve candidate pool
         $candidates = $this->resolveCandidatePool($storeId, $productIds);
 
-        // 3. Prioritize: specialists (product-matched) → general on-shift pool
+        // 3. Prioritize: ownership pool (owns ordered products, coverage-first)
+        //    → general on-shift pool
         [$selected, $wasOverflow] = $this->selectBest($store, $candidates, $storeId, $productIds);
 
         if (! $selected) {
@@ -134,9 +135,9 @@ class OrderAssignmentService
      * Resolve candidate pool for a store and set of product IDs.
      *
      * Returns every active ORDER_CONFIRM member whose visibility covers at
-     * least one of the order's products; tier selection (specialists vs
+     * least one of the order's products; tier selection (ownership pool vs
      * general) is decided later in selectBest() so a store with a narrow
-     * specialist roster still falls back to general confirmers.
+     * ownership roster still falls back to general confirmers.
      */
     private function resolveCandidatePool(string $storeId, array $productIds): Collection
     {
@@ -151,36 +152,20 @@ class OrderAssignmentService
 
         // Never hand an order to someone it would be invisible to: a manager
         // whose product scope misses every item would be unable to open it.
-        // Specialist tiering below is untouched — this is an extra exclusion.
+        // Ownership tiering below is untouched — this is an extra exclusion.
         return app(StoreProductScopeService::class)->filterByVisibility($candidates, $productIds);
     }
 
     /**
-     * Membership IDs assigned to any of the given products (specialists).
-     */
-    private function specialistMembershipIds(string $storeId, array $productIds): array
-    {
-        if (empty($productIds)) {
-            return [];
-        }
-
-        return ConfirmationProductAssignment::where('store_id', $storeId)
-            ->whereIn('product_id', $productIds)
-            ->pluck('membership_id')
-            ->unique()
-            ->values()
-            ->toArray();
-    }
-
-    /**
      * Select the best candidate following priority tiers:
-     *  1. On-shift specialists (product-matched to the order)
-     *  2. On-shift general confirmers
-     * Within each tier, balance by fewest open orders then oldest last
-     * assignment. Members who reached their time-aware max_concurrent_orders
-     * cap are skipped; when the store enables soft overflow, the cap is
-     * extended by the configured percentage before giving up (see
-     * ResolvesCapacityBalancedCandidates). Returns [selected, wasOverflow].
+     *  1. On-shift owners of the order's products, ranked by ownership
+     *     coverage (most ordered products owned), then fewest open orders,
+     *     then oldest last assignment
+     *  2. On-shift general confirmers, ranked by load then recency
+     * Members who reached their time-aware max_concurrent_orders cap are
+     * skipped inside their pool; when the store enables soft overflow, the
+     * cap is extended by the configured percentage before the pool gives up
+     * (see ResolvesCapacityBalancedCandidates). Returns [selected, wasOverflow].
      */
     private function selectBest(
         Store $store,
@@ -197,27 +182,28 @@ class OrderAssignmentService
         }
 
         $overflowPercentage = $this->overflowPercentage($store);
-        $specialistIds = $this->specialistMembershipIds($storeId, $productIds);
+        $ownership = $this->ownershipCounts($storeId, $productIds);
         $openCounts = $this->openAssignmentCounts('orders', $storeId, fn ($q) => $q
             ->join('statuses', 'orders.status_id', '=', 'statuses.id')
             ->whereNotIn('statuses.key', $this->terminalStatusKeys()));
         $lastAssigned = $this->lastAssignedAt('orders', $storeId);
 
         // One availability snapshot for both tier passes — the shifts do not
-        // change mid-call, so the specialist and general tiers must see the
+        // change mid-call, so the ownership and general tiers must see the
         // same on-shift/cap view (and it costs one query, not one per tier).
         $availability = $this->availabilitySnapshot($storeId, 'confirm', $candidates);
 
-        // Specialists (product-matched) first, then general confirmers.
-        foreach ([true, false] as $specialists) {
+        // Owners first (coverage-ranked), then general confirmers.
+        foreach ([true, false] as $owners) {
             [$best, $wasOverflow] = $this->bestCandidateWithOverflow(
-                $candidates->filter(fn (StoreMembership $m) => (in_array($m->id, $specialistIds)) === $specialists),
+                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
                 $storeId,
                 'confirm',
                 $openCounts,
                 $lastAssigned,
                 $overflowPercentage,
                 $availability,
+                $ownership,
             );
 
             if ($best) {

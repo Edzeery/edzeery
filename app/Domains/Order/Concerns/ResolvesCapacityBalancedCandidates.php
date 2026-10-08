@@ -14,11 +14,12 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Capacity-balanced candidate resolution shared by the confirmation and tracking
- * auto-assignment pipelines: on-shift filtering, time-aware shift caps, load
- * balancing (fewest open assignments, then oldest last assignment), optional
- * soft overflow (store-configured % headroom above a member's base cap) and the
- * capacity-exhausted alert (throttled per store + role scope). The consumer
- * supplies the permission-filtered candidate pool and may pass a
+ * auto-assignment pipelines: on-shift filtering, time-aware shift caps, product
+ * ownership coverage ranking, load balancing (fewest open assignments, then
+ * oldest last assignment), optional soft overflow (store-configured % headroom
+ * above a member's base cap) and the capacity-exhausted alert (throttled per
+ * store + role scope). The consumer supplies the permission-filtered candidate
+ * pool, the ownership-count map from ResolvesProductOwnership and may pass a
  * ShiftAvailabilityResolver snapshot shared by every selection pass of one
  * assignment call; without it a snapshot is resolved once per call.
  *
@@ -42,10 +43,10 @@ trait ResolvesCapacityBalancedCandidates
     }
 
     /**
-     * Overflow-aware selection: strict-quota pass first (unchanged), then a
-     * second pass with effective caps extended by the store's overflow
-     * percentage (capped members only — uncapped members are never affected).
-     * Returns [selected, wasOverflow].
+     * Overflow-aware selection: strict-quota pass first, then effective caps
+     * extended by the store's overflow percentage (capped members only).
+     * The ownership map (membership id => owned ordered products) ranks
+     * before load within the pool. Returns [selected, wasOverflow].
      */
     protected function bestCandidateWithOverflow(
         Collection $candidates,
@@ -55,6 +56,7 @@ trait ResolvesCapacityBalancedCandidates
         array $lastAssignedAt,
         ?int $overflowPercentage,
         ?array $availability = null,
+        array $ownership = [],
     ): array {
         $availability ??= $this->availabilitySnapshot($storeId, $roleScope, $candidates);
 
@@ -64,6 +66,7 @@ trait ResolvesCapacityBalancedCandidates
             $lastAssignedAt,
             $this->capsFromAvailability($candidates, $availability),
             $availability,
+            $ownership,
         );
 
         if ($selected) {
@@ -80,7 +83,7 @@ trait ResolvesCapacityBalancedCandidates
             $extendedCaps[$memberId] = max($cap, (int) ceil($cap * (1 + $overflowPercentage / 100)));
         }
 
-        $selected = $this->bestOnShiftWithinCaps($candidates, $openCounts, $lastAssignedAt, $extendedCaps, $availability);
+        $selected = $this->bestOnShiftWithinCaps($candidates, $openCounts, $lastAssignedAt, $extendedCaps, $availability, $ownership);
 
         return $selected ? [$selected, true] : [null, false];
     }
@@ -172,6 +175,7 @@ trait ResolvesCapacityBalancedCandidates
         array $lastAssignedAt,
         array $caps,
         array $availability,
+        array $ownership = [],
     ): ?StoreMembership {
         $best = null;
 
@@ -180,7 +184,7 @@ trait ResolvesCapacityBalancedCandidates
                 continue;
             }
 
-            if ($best === null || $this->outranks($member, $best, $openCounts, $lastAssignedAt)) {
+            if ($best === null || $this->outranks($member, $best, $openCounts, $lastAssignedAt, $ownership)) {
                 $best = $member;
             }
         }
@@ -215,12 +219,25 @@ trait ResolvesCapacityBalancedCandidates
         return $cap === null || (($openCounts[$member->id] ?? 0) < $cap);
     }
 
+    /**
+     * Ranking within a pool: most ordered products owned (coverage — counts
+     * compare exactly because the denominator is the order), then fewest open
+     * assignments, then oldest last assignment.
+     */
     protected function outranks(
         StoreMembership $member,
         StoreMembership $current,
         array $openCounts,
         array $lastAssignedAt,
+        array $ownership = [],
     ): bool {
+        $memberOwned = $ownership[$member->id] ?? 0;
+        $currentOwned = $ownership[$current->id] ?? 0;
+
+        if ($memberOwned !== $currentOwned) {
+            return $memberOwned > $currentOwned;
+        }
+
         $memberOpen = $openCounts[$member->id] ?? 0;
         $currentOpen = $openCounts[$current->id] ?? 0;
 
