@@ -2,46 +2,43 @@
 
 namespace App\Domains\Order\Concerns;
 
-use App\Domains\Order\Models\ConfirmationShift;
+use App\Domains\Order\Support\ShiftAvailabilityResolver;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Notifications\AssignmentCapacityExhaustedNotification;
 use Closure;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Capacity-balanced candidate resolution shared by the confirmation and tracking
- * auto-assignment pipelines: on-shift filtering, shift-role-scoped quota, load
+ * auto-assignment pipelines: on-shift filtering, time-aware shift caps, load
  * balancing (fewest open assignments, then oldest last assignment), optional
  * soft overflow (store-configured % headroom above a member's base cap) and the
  * capacity-exhausted alert (throttled per store + role scope). The consumer
- * supplies the permission-filtered candidate pool; the shared query helpers
- * build the source-specific open-count, last-assigned and unassigned maps for
- * both orders and order_trackings.
+ * supplies the permission-filtered candidate pool and may pass a
+ * ShiftAvailabilityResolver snapshot shared by every selection pass of one
+ * assignment call; without it a snapshot is resolved once per call.
+ *
+ * The shared query helpers build the source-specific open-count,
+ * last-assigned and unassigned maps for both orders and order_trackings.
  */
 trait ResolvesCapacityBalancedCandidates
 {
     /**
-     * Best on-shift candidate within quota for the role scope, or null when
-     * nobody can take the assignment.
+     * Availability snapshot for the pool: one query per assignment call
+     * instead of one per member. See ShiftAvailabilityResolver for the
+     * covering-shift/cap semantics.
      */
-    protected function bestCandidateOnShift(
-        Collection $candidates,
+    protected function availabilitySnapshot(
         string $storeId,
         string $roleScope,
-        array $openCounts,
-        array $lastAssignedAt,
-    ): ?StoreMembership {
-        return $this->bestOnShiftWithinCaps(
-            $candidates,
-            $roleScope,
-            $openCounts,
-            $lastAssignedAt,
-            $this->quotaCapsByMember($storeId, $roleScope, $candidates),
-        );
+        Collection $candidates,
+        ?Carbon $at = null,
+    ): array {
+        return app(ShiftAvailabilityResolver::class)->resolve($storeId, $roleScope, $candidates, $at);
     }
 
     /**
@@ -57,8 +54,17 @@ trait ResolvesCapacityBalancedCandidates
         array $openCounts,
         array $lastAssignedAt,
         ?int $overflowPercentage,
+        ?array $availability = null,
     ): array {
-        $selected = $this->bestCandidateOnShift($candidates, $storeId, $roleScope, $openCounts, $lastAssignedAt);
+        $availability ??= $this->availabilitySnapshot($storeId, $roleScope, $candidates);
+
+        $selected = $this->bestOnShiftWithinCaps(
+            $candidates,
+            $openCounts,
+            $lastAssignedAt,
+            $this->capsFromAvailability($candidates, $availability),
+            $availability,
+        );
 
         if ($selected) {
             return [$selected, false];
@@ -70,11 +76,11 @@ trait ResolvesCapacityBalancedCandidates
 
         $extendedCaps = [];
 
-        foreach ($this->quotaCapsByMember($storeId, $roleScope, $candidates) as $memberId => $cap) {
+        foreach ($this->capsFromAvailability($candidates, $availability) as $memberId => $cap) {
             $extendedCaps[$memberId] = max($cap, (int) ceil($cap * (1 + $overflowPercentage / 100)));
         }
 
-        $selected = $this->bestOnShiftWithinCaps($candidates, $roleScope, $openCounts, $lastAssignedAt, $extendedCaps);
+        $selected = $this->bestOnShiftWithinCaps($candidates, $openCounts, $lastAssignedAt, $extendedCaps, $availability);
 
         return $selected ? [$selected, true] : [null, false];
     }
@@ -129,7 +135,7 @@ trait ResolvesCapacityBalancedCandidates
 
         return $query
             ->when($table === 'orders', fn ($q) => $q->whereNull("$table.deleted_at"))
-            ->select("$table.assigned_to_membership_id", DB::raw("COUNT(*) as open_count"))
+            ->select("$table.assigned_to_membership_id", DB::raw('COUNT(*) as open_count'))
             ->groupBy("$table.assigned_to_membership_id")
             ->pluck('open_count', "$table.assigned_to_membership_id")
             ->toArray();
@@ -142,7 +148,7 @@ trait ResolvesCapacityBalancedCandidates
             ->when($table === 'orders', fn ($q) => $q->whereNull("$table.deleted_at"))
             ->whereNotNull("$table.assigned_to_membership_id")
             ->whereNotNull("$table.assigned_at")
-            ->select("$table.assigned_to_membership_id", DB::raw("MAX(assigned_at) as last_assigned"))
+            ->select("$table.assigned_to_membership_id", DB::raw('MAX(assigned_at) as last_assigned'))
             ->groupBy("$table.assigned_to_membership_id")
             ->pluck('last_assigned', "$table.assigned_to_membership_id")
             ->toArray();
@@ -162,15 +168,15 @@ trait ResolvesCapacityBalancedCandidates
 
     private function bestOnShiftWithinCaps(
         Collection $candidates,
-        string $roleScope,
         array $openCounts,
         array $lastAssignedAt,
         array $caps,
+        array $availability,
     ): ?StoreMembership {
         $best = null;
 
         foreach ($candidates as $member) {
-            if (! $this->isOnShift($member, $roleScope) || ! $this->withinQuota($member, $openCounts, $caps)) {
+            if (! ($availability[$member->id]['on_shift'] ?? false) || ! $this->withinQuota($member, $openCounts, $caps)) {
                 continue;
             }
 
@@ -183,42 +189,23 @@ trait ResolvesCapacityBalancedCandidates
     }
 
     /**
-     * Effective cap per member: highest max_concurrent_orders across their
-     * active shifts of the given role scope (a member owns the total, the cap
-     * is shift-scoped). Members with no capped shift are uncapped.
+     * Caps that apply at the snapshot instant, keyed by member. Members the
+     * snapshot reports as uncapped (or without a covering shift) are absent,
+     * and withinQuota() treats an absent cap as unlimited.
      */
-    protected function quotaCapsByMember(string $storeId, string $roleScope, Collection $candidates): array
+    private function capsFromAvailability(Collection $candidates, array $availability): array
     {
-        $memberIds = $candidates->pluck('id')->all();
+        $caps = [];
 
-        if (empty($memberIds)) {
-            return [];
+        foreach ($candidates as $member) {
+            $cap = $availability[$member->id]['cap'] ?? null;
+
+            if ($cap !== null) {
+                $caps[$member->id] = (int) $cap;
+            }
         }
 
-        return ConfirmationShift::query()
-            ->where('store_id', $storeId)
-            ->whereIn('membership_id', $memberIds)
-            ->where('is_active', true)
-            ->whereNotNull('max_concurrent_orders')
-            ->when($roleScope === 'track', fn ($q) => $q->track(), fn ($q) => $q->confirm())
-            ->selectRaw('membership_id, MAX(max_concurrent_orders) as cap')
-            ->groupBy('membership_id')
-            ->pluck('cap', 'membership_id')
-            ->toArray();
-    }
-
-    protected function isOnShift(StoreMembership $member, string $roleScope): bool
-    {
-        $onShift = $member->isOnActiveShift(roleScope: $roleScope);
-
-        if (! $onShift) {
-            Log::debug('Member not on active shift', [
-                'membership_id' => $member->id,
-                'user_id' => $member->user_id,
-            ]);
-        }
-
-        return $onShift;
+        return $caps;
     }
 
     protected function withinQuota(StoreMembership $member, array $openCounts, array $caps): bool

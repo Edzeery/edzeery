@@ -9,10 +9,23 @@
 
                 <div class="space-y-4">
                     <div class="edz-field">
+                        <label class="edz-field__label" for="shift-role">{{ __('merchant_panel.role') }} *</label>
+                        <x-edz.select
+                            wire:model="shiftForm.role_scope"
+                            wire:change="setShiftRole($event.target.value)"
+                            :options="[
+                                'confirm' => __('merchant_panel.queue_tab_confirmation'),
+                                'track' => __('merchant_panel.queue_tab_tracking'),
+                            ]"
+                            :error="$errors->first('shiftForm.role_scope')"
+                        />
+                    </div>
+
+                    <div class="edz-field">
                         <label class="edz-field__label" for="shift-agent">{{ __('merchant_panel.agent') }} *</label>
                         <x-edz.select
                             wire:model="shiftForm.membership_id"
-                            :options="$members"
+                            :options="$this->eligibleShiftMembers()[$shiftForm['role_scope']] ?? []"
                             option-value="id"
                             option-label="user.name"
                             placeholder="{{ __('merchant_panel.select_agent') }}"
@@ -46,6 +59,15 @@
                                 <span class="edz-field__error">{{ $message }}</span>
                             @enderror
                         </div>
+
+                        @if(($shiftForm['start_time'] ?? '') !== ''
+                            && ($shiftForm['end_time'] ?? '') !== ''
+                            && $shiftForm['start_time'] > $shiftForm['end_time'])
+                            <p class="edz-field__hint flex items-center gap-1">
+                                <x-edz.icon name="moon" class="w-3.5 h-3.5" />
+                                {{ __('merchant_panel.shift_ends_next_day') }}
+                            </p>
+                        @endif
                     </div>
 
                     <div class="edz-field">

@@ -2,7 +2,6 @@
 
 namespace App\Domains\Order\Support;
 
-use App\Domains\Order\Models\ConfirmationShift;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Team\StoreMembership;
@@ -18,10 +17,12 @@ use Illuminate\Support\Facades\DB;
  * order's product ids it returns the active members holding the matching
  * permission — excluding anyone whose product visibility scope would hide the
  * order — annotated with their current open-assignment count for that scope,
- * the effective role-scoped cap (null = uncapped, taken from their active
- * ConfirmationShifts), their on-shift state at the current store time, and
- * whether they hold BOTH permissions (dual-role). All lookups are batched —
- * no query per member.
+ * the time-aware role-scoped cap (null = uncapped, taken from the shifts
+ * covering the current instant), their on-shift state at the current store
+ * time, and whether they hold BOTH permissions (dual-role). The cap and
+ * on-shift annotation come from the same ShiftAvailabilityResolver snapshot
+ * the auto-assignment engine uses, so the modal always shows exactly what the
+ * engine enforces. All lookups are batched — no query per member.
  *
  * This is a read model for the reassign UI only. Manual reassignment itself
  * still bypasses eligibility checks (see the reassign() services); nothing here
@@ -30,9 +31,9 @@ use Illuminate\Support\Facades\DB;
 class AssignmentCandidateResolver
 {
     /**
-     * @param string $roleScope 'confirm' | 'track'
-     * @param string $permission Permission value the candidates must hold.
-     * @param array<int, string> $productIds Order product ids; empty = no visibility narrowing.
+     * @param  string  $roleScope  'confirm' | 'track'
+     * @param  string  $permission  Permission value the candidates must hold.
+     * @param  array<int, string>  $productIds  Order product ids; empty = no visibility narrowing.
      * @return Collection<int, array<string, mixed>>
      */
     public function resolve(string $storeId, string $roleScope, string $permission, array $productIds = []): Collection
@@ -66,11 +67,11 @@ class AssignmentCandidateResolver
 
         $memberIds = $members->pluck('id');
         $openCounts = $this->openCountsByMember($storeId, $roleScope, $memberIds);
-        $shiftInfo = $this->shiftInfoByMember($storeId, $roleScope, $memberIds);
         $currentTime = $this->currentTime($members);
+        $availability = app(ShiftAvailabilityResolver::class)->resolve($storeId, $roleScope, $members, $currentTime);
 
         return $members
-            ->map(function (StoreMembership $m) use ($openCounts, $shiftInfo, $otherPermission, $permissionsByMember, $currentTime) {
+            ->map(function (StoreMembership $m) use ($openCounts, $availability, $otherPermission, $permissionsByMember) {
                 $id = $m->id;
 
                 return [
@@ -78,8 +79,8 @@ class AssignmentCandidateResolver
                     'user_id' => $m->user_id,
                     'name' => $m->user?->name ?: '—',
                     'open' => (int) ($openCounts[$id] ?? 0),
-                    'cap' => $shiftInfo['caps'][$id] ?? null,
-                    'on_shift' => $this->onShift($shiftInfo['shifts'][$id] ?? [], $currentTime),
+                    'cap' => $availability[$id]['cap'] ?? null,
+                    'on_shift' => $availability[$id]['on_shift'] ?? false,
                     'dual_role' => $this->holdsPermission($m, $otherPermission, $permissionsByMember),
                 ];
             })
@@ -163,54 +164,6 @@ class AssignmentCandidateResolver
             ->groupBy('orders.assigned_to_membership_id')
             ->pluck('open_count', 'assigned_to_membership_id')
             ->toArray();
-    }
-
-    /**
-     * Single batched shift read yields both the per-member cap (highest
-     * max_concurrent_orders across their active role-scoped shifts, mirroring
-     * ResolvesCapacityBalancedCandidates::quotaCapsByMember) and the raw shift
-     * rows used to compute on-shift state.
-     */
-    private function shiftInfoByMember(string $storeId, string $roleScope, Collection $memberIds): array
-    {
-        $rows = ConfirmationShift::query()
-            ->where('store_id', $storeId)
-            ->whereIn('membership_id', $memberIds)
-            ->where('is_active', true)
-            ->when($roleScope === 'track', fn ($q) => $q->track(), fn ($q) => $q->confirm())
-            ->get(['membership_id', 'days_of_week', 'start_time', 'end_time', 'is_active', 'max_concurrent_orders']);
-
-        $caps = [];
-        $shifts = [];
-
-        foreach ($rows as $shift) {
-            $memberId = $shift->membership_id;
-            $shifts[$memberId][] = $shift;
-
-            if ($shift->max_concurrent_orders !== null) {
-                $caps[$memberId] = max($caps[$memberId] ?? 0, (int) $shift->max_concurrent_orders);
-            }
-        }
-
-        return ['caps' => $caps, 'shifts' => $shifts];
-    }
-
-    /**
-     * Whether any of the member's role-scoped shifts covers "now" in the
-     * store's timezone (same rule as StoreMembership::isOnActiveShift).
-     */
-    private function onShift(array $shifts, Carbon $at): bool
-    {
-        $dayOfWeek = $at->dayOfWeekIso;
-        $time = $at->format('H:i');
-
-        foreach ($shifts as $shift) {
-            if ($shift->coversDayTime($dayOfWeek, $time)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

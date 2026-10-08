@@ -60,6 +60,7 @@ class OrderAssignmentService
 
             $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedAssignmentCount(Order::class, $storeId, fn ($q) => $q
                 ->whereHas('status', fn ($q) => $q->where('key', 'pending'))));
+
             return $order;
         }
 
@@ -176,9 +177,9 @@ class OrderAssignmentService
      *  1. On-shift specialists (product-matched to the order)
      *  2. On-shift general confirmers
      * Within each tier, balance by fewest open orders then oldest last
-     * assignment. Members who reached their max_concurrent_orders cap are
-     * skipped; when the store enables soft overflow, the cap is extended by
-     * the configured percentage before giving up (see
+     * assignment. Members who reached their time-aware max_concurrent_orders
+     * cap are skipped; when the store enables soft overflow, the cap is
+     * extended by the configured percentage before giving up (see
      * ResolvesCapacityBalancedCandidates). Returns [selected, wasOverflow].
      */
     private function selectBest(
@@ -191,6 +192,7 @@ class OrderAssignmentService
             Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
                 'store_id' => $storeId,
             ]);
+
             return [null, false];
         }
 
@@ -201,6 +203,11 @@ class OrderAssignmentService
             ->whereNotIn('statuses.key', $this->terminalStatusKeys()));
         $lastAssigned = $this->lastAssignedAt('orders', $storeId);
 
+        // One availability snapshot for both tier passes — the shifts do not
+        // change mid-call, so the specialist and general tiers must see the
+        // same on-shift/cap view (and it costs one query, not one per tier).
+        $availability = $this->availabilitySnapshot($storeId, 'confirm', $candidates);
+
         // Specialists (product-matched) first, then general confirmers.
         foreach ([true, false] as $specialists) {
             [$best, $wasOverflow] = $this->bestCandidateWithOverflow(
@@ -210,6 +217,7 @@ class OrderAssignmentService
                 $openCounts,
                 $lastAssigned,
                 $overflowPercentage,
+                $availability,
             );
 
             if ($best) {

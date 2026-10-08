@@ -48,13 +48,16 @@ class ConfirmationShift extends Model
     }
 
     /**
-     * Whether this shift overlaps an existing shift of the same member.
-     * Renders both windows into per-day minute blocks (overnight spans two blocks).
+     * Whether this shift overlaps an existing shift of the same member within
+     * the same role scope — a member may run an identical window for
+     * confirmation and for tracking. Renders both windows into per-day minute
+     * blocks (overnight spans two blocks).
      */
     public static function overlapsActiveShift(array $candidate, ?string $excludeId = null): bool
     {
         $existing = static::query()
             ->where('membership_id', $candidate['membership_id'])
+            ->where('role_scope', $candidate['role_scope'] ?? 'confirm')
             ->where('is_active', true)
             ->when($excludeId, fn (Builder $q, $id) => $q->where('id', '!=', $id))
             ->get(['days_of_week', 'start_time', 'end_time']);

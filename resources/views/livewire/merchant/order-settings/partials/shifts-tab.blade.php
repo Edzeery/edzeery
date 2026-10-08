@@ -1,5 +1,10 @@
 {{-- Shifts Tab --}}
     @if($tab === 'shifts')
+        @php
+            $visibleShifts = $this->visibleShifts();
+            $setupGaps = $this->setupGapDetails();
+        @endphp
+
         <div class="flex items-center justify-between mb-4">
             <p class="text-sm text-ink-muted">{{ __('merchant_panel.tab_shifts_desc') }}</p>
             <button wire:click="openShiftModal" class="edz-btn edz-btn--primary edz-btn--sm">
@@ -8,13 +13,53 @@
             </button>
         </div>
 
+        {{-- Setup gap: an eligible member with no active shift of a role can never be auto-assigned. --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            @foreach($setupGaps as $roleScope => $gap)
+                @php
+                    $roleLabel = $roleScope === 'track'
+                        ? __('merchant_panel.queue_tab_tracking')
+                        : __('merchant_panel.queue_tab_confirmation');
+                    $hasGap = ! empty($gap['missing']);
+                @endphp
+                <x-edz.alert :type="$hasGap ? 'warning' : 'info'">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="text-sm space-y-1">
+                            <p class="font-semibold text-ink">{{ $roleLabel }} — {{ __('merchant_panel.setup_gap_title') }}</p>
+                            @if($hasGap)
+                                <p class="text-ink-muted">{{ __('merchant_panel.setup_gap_missing', ['names' => implode(', ', $gap['missing'])]) }}</p>
+                            @else
+                                <p class="text-ink-muted">{{ __('merchant_panel.setup_gap_ok', ['count' => $gap['holders']]) }}</p>
+                            @endif
+                        </div>
+                        <span class="edz-badge {{ $gap['on_shift_now'] > 0 ? 'edz-badge--success' : 'edz-badge--neutral' }}"
+                              title="{{ __('merchant_panel.agents_on_shift_now', ['count' => $gap['on_shift_now']]) }}">
+                            {{ $gap['on_shift_now'] }}/{{ $gap['holders'] }}
+                        </span>
+                    </div>
+                </x-edz.alert>
+            @endforeach
+        </div>
+
         @if(!empty($shifts))
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-xs font-semibold text-ink-muted uppercase tracking-wide">{{ __('merchant_panel.role') }}</span>
+                @foreach(['all' => __('merchant_panel.all_roles'), 'confirm' => __('merchant_panel.queue_tab_confirmation'), 'track' => __('merchant_panel.queue_tab_tracking')] as $filterKey => $filterLabel)
+                    <button type="button" wire:click="setShiftRoleFilter('{{ $filterKey }}')"
+                            class="cursor-pointer {{ $shiftRoleFilter === $filterKey ? 'edz-badge edz-badge--brand' : 'edz-badge edz-badge--neutral' }}">
+                        {{ $filterLabel }}
+                    </button>
+                @endforeach
+            </div>
+
+            @if(count($visibleShifts))
             <div class="edz-card overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="edz-table">
                         <thead>
                             <tr>
                                 <th>{{ __('merchant_panel.agent') }}</th>
+                                <th>{{ __('merchant_panel.role') }}</th>
                                 <th>{{ __('merchant_panel.type') }}</th>
                                 <th>{{ __('merchant_panel.hours') }}</th>
                                 <th>{{ __('merchant_panel.days') }}</th>
@@ -24,8 +69,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($shifts as $shift)
-                                <tr wire:key="shift-{{ $shift['id'] }}">
+                            @foreach($visibleShifts as $shift)
+                                @php $shiftRole = $shift['role_scope'] ?? 'confirm'; @endphp
+                                <tr wire:key="shift-{{ $shiftRole }}-{{ $shift['id'] }}">
                                     <td class="font-medium text-ink">
                                         <div class="flex items-center gap-2">
                                             {{ $shift['membership']['user']['name'] ?? '—' }}
@@ -33,6 +79,11 @@
                                                 <span class="edz-badge edz-badge--neutral">{{ __('merchant_panel.member_inactive') }}</span>
                                             @endif
                                         </div>
+                                    </td>
+                                    <td>
+                                        <span class="edz-badge {{ $shiftRole === 'track' ? 'edz-badge--info' : 'edz-badge--brand' }}">
+                                            {{ $shiftRole === 'track' ? __('merchant_panel.queue_tab_tracking') : __('merchant_panel.queue_tab_confirmation') }}
+                                        </span>
                                     </td>
                                     <td class="capitalize">
                                         {{ $SHIFT_TYPES[$shift['shift_type']] ?? $shift['shift_type'] }}
@@ -89,6 +140,11 @@
                     </table>
                 </div>
             </div>
+            @else
+                <div class="edz-card p-8 text-center text-sm text-ink-muted">
+                    {{ __('merchant_panel.no_shifts_for_role') }}
+                </div>
+            @endif
         @else
             <div class="edz-card p-12 text-center">
                 <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">

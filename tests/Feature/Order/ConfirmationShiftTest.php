@@ -168,3 +168,49 @@ test('editing a shift excluded itself from the overlap check', function () {
 
     expect(ConfirmationShift::overlapsActiveShift($candidate, $shift->id))->toBeFalse();
 });
+
+test('overnight boundaries include the start minute and exclude the end minute', function () {
+    [$membership] = membershipWithShifts();
+
+    ConfirmationShift::create([
+        'store_id' => $membership->store_id,
+        'membership_id' => $membership->id,
+        'shift_type' => 'custom',
+        'start_time' => '22:00',
+        'end_time' => '06:00',
+        'days_of_week' => [1],
+        'is_active' => true,
+    ]);
+
+    // 2026-05-04 is a Monday, 2026-05-05 a Tuesday.
+    $at = fn (int $day, int $hour, int $minute) => \Illuminate\Support\Carbon::create(2026, 5, $day, $hour, $minute, 0);
+
+    expect($membership->isOnActiveShift($at(4, 21, 59)))->toBeFalse()
+        ->and($membership->isOnActiveShift($at(4, 22, 0)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(4, 23, 59)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(5, 0, 0)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(5, 5, 59)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(5, 6, 0)))->toBeFalse();
+});
+
+test('an overnight Sunday shift carries into Monday and nowhere else', function () {
+    [$membership] = membershipWithShifts();
+
+    ConfirmationShift::create([
+        'store_id' => $membership->store_id,
+        'membership_id' => $membership->id,
+        'shift_type' => 'custom',
+        'start_time' => '22:00',
+        'end_time' => '06:00',
+        'days_of_week' => [7],
+        'is_active' => true,
+    ]);
+
+    // 2026-05-10 Sunday, 05-11 Monday, 05-12 Tuesday.
+    $at = fn (int $day, int $hour, int $minute) => \Illuminate\Support\Carbon::create(2026, 5, $day, $hour, $minute, 0);
+
+    expect($membership->isOnActiveShift($at(10, 23, 0)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(11, 3, 0)))->toBeTrue()
+        ->and($membership->isOnActiveShift($at(11, 23, 0)))->toBeFalse()
+        ->and($membership->isOnActiveShift($at(12, 3, 0)))->toBeFalse();
+});

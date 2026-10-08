@@ -35,6 +35,7 @@ class OrderTrackingAssignmentService
 
         // 2. Balance: fewest open assignments, then oldest last assignment,
         //    allowing store-configured overflow when no member fits strictly.
+        //    A single availability snapshot drives the whole selection round.
         [$selected, $wasOverflow] = $this->bestCandidateWithOverflow(
             $candidates,
             $storeId,
@@ -42,6 +43,7 @@ class OrderTrackingAssignmentService
             $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues())),
             $this->lastAssignedAt('order_trackings', $storeId),
             $this->overflowPercentage($store),
+            $this->availabilitySnapshot($storeId, 'track', $candidates),
         );
 
         if (! $selected) {
