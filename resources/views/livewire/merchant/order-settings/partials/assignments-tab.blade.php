@@ -1,17 +1,39 @@
 {{-- Product Assignments Tab --}}
     @if($tab === 'products')
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <p class="text-sm text-ink-muted">{{ __('merchant_panel.tab_product_assignments_desc') }}</p>
-            <button wire:click="openAssignModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                <x-edz.icon name="check-circle" class="w-4 h-4" />
-                {{ __('merchant_panel.assign_products') }}
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="relative w-full sm:w-64">
+                    <input type="text" wire:model.live.debounce.300ms="assignSearch"
+                        placeholder="{{ __('merchant_panel.search_assignments') }}"
+                        class="edz-input text-sm ps-8 pe-8">
+                    <x-edz.icon name="search"
+                        class="absolute start-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+                    @if ($this->assignSearch !== '')
+                        <button wire:click="$set('assignSearch', '')" type="button"
+                            class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                            aria-label="Clear search">
+                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                        </button>
+                    @endif
+                </div>
+                <button wire:click="openAssignModal" class="edz-btn edz-btn--primary edz-btn--sm shrink-0">
+                    <x-edz.icon name="check-circle" class="w-4 h-4" />
+                    {{ __('merchant_panel.assign_products') }}
+                </button>
+            </div>
         </div>
 
         @if(!empty($assignments))
             @php
-                $grouped = collect($assignments)->groupBy(fn($a) => $a['membership_id']);
+                $visibleAssignments = $this->visibleAssignments();
+                $grouped = collect($visibleAssignments)->groupBy(fn($a) => $a['membership_id']);
             @endphp
+            @if($grouped->isEmpty())
+                <div class="edz-card p-8 text-center text-sm text-ink-muted">
+                    {{ __('merchant_panel.no_search_results') }}
+                </div>
+            @else
             <div class="space-y-4">
                 @foreach($grouped as $memberId => $items)
                     @php
@@ -52,6 +74,7 @@
                     </div>
                 @endforeach
             </div>
+            @endif
         @else
             <div class="edz-card p-12 text-center">
                 <div class="w-16 h-16 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-4">

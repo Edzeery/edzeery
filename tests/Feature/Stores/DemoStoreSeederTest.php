@@ -42,3 +42,28 @@ test('re-running the demo store seeder is idempotent and keeps the reserved demo
     expect(Store::where('slug', 'demo')->count())->toBe(1);
     expect(Store::where('slug', 'demo')->exists())->toBeTrue();
 });
+
+test('demo trackings assign only crm-holding agents with auto assignment semantics', function () {
+    $this->seed(DemoStoreSeeder::class);
+
+    $store = Store::where('slug', 'demo')->sole();
+    $trackings = \App\Models\Orders\OrderTracking::where('store_id', $store->id)
+        ->whereNotNull('assigned_to_membership_id')
+        ->get();
+
+    expect($trackings)->not->toBeEmpty();
+
+    $assigneeIds = [];
+
+    foreach ($trackings as $tracking) {
+        expect($tracking->assignedTo?->can(\App\Enums\Store\StorePermissionEnum::CRM_ORDER_TRACKING))->toBeTrue()
+            ->and($tracking->assignment_method)->toBe('auto')
+            ->and($tracking->over_capacity)->toBeFalse()
+            ->and($tracking->assigned_by_membership_id)->toBeNull();
+
+        $assigneeIds[] = $tracking->assigned_to_membership_id;
+    }
+
+    // Both the pure tracker and the dual-role member stay exercised.
+    expect(array_unique($assigneeIds))->toHaveCount(2);
+});

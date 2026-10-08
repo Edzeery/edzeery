@@ -7,6 +7,7 @@
        $reassignTargetId    (string) currently selected membership id
        $reassignCandidates  (array)  candidate rows from AssignmentCandidateResolver
        $reassignTitle       (string) modal heading --}}
+<div class="contents" @edz-modal-closed="$wire.set('{{ $reassignCloseSet }}', false)">
 @if ($reassignOpen)
     <x-edz.modal :isOpen="true" :showCloseButton="false" wire:key="shared-reassign-modal">
         <div class="p-6 space-y-4">
@@ -28,7 +29,7 @@
                     <div class="space-y-2 max-h-72 overflow-y-auto pe-1">
                         @foreach ($reassignCandidates as $candidate)
                             <label wire:key="candidate-{{ $candidate['id'] }}"
-                                class="flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors {{ $candidate['id'] === $reassignTargetId ? 'border-brand-500 bg-brand-500/5' : 'border-surface-border hover:border-brand-300 bg-white' }}">
+                                class="flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors {{ $candidate['id'] === $reassignTargetId ? 'border-brand-500 bg-brand-500/5' : 'border-surface-border hover:border-brand-300 bg-surface-tertiary/30' }}">
                                 <input type="radio" class="sr-only" wire:model.live="{{ $reassignModel }}"
                                     value="{{ $candidate['id'] }}">
                                 <span class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-tertiary text-ink-muted text-sm font-semibold shrink-0">
@@ -38,7 +39,7 @@
                                     <span class="flex items-center gap-2 flex-wrap">
                                         <span class="text-sm font-medium text-ink truncate">{{ $candidate['name'] }}</span>
                                         @if ($candidate['on_shift'])
-                                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-success-700 bg-success-500/10 rounded-full px-1.5 py-0.5">
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-success-700 dark:text-success-400 bg-success-500/10 rounded-full px-1.5 py-0.5">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-success-500"></span>
                                                 {{ __('merchant_panel.on_shift') }}
                                             </span>
@@ -72,7 +73,7 @@
             @if ($reassignOverCap)
                 <div class="flex items-start gap-2 rounded-xl border border-warning-300/60 bg-warning-500/5 px-3 py-2.5">
                     <x-edz.icon name="exclamation-triangle" class="w-4 h-4 shrink-0 mt-0.5 text-warning-600" />
-                    <p class="text-sm text-warning-800">{{ __('merchant_panel.reassign_over_capacity_warning') }}</p>
+                    <p class="text-sm text-warning-800 dark:text-warning-400">{{ __('merchant_panel.reassign_over_capacity_warning') }}</p>
                 </div>
             @endif
 
@@ -87,3 +88,4 @@
         </div>
     </x-edz.modal>
 @endif
+</div>

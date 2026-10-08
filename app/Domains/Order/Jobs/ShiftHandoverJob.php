@@ -3,6 +3,7 @@
 namespace App\Domains\Order\Jobs;
 
 use App\Domains\Order\Services\OrderAssignmentService;
+use App\Domains\Order\Services\OrderTrackingAssignmentService;
 use App\Models\Stores\Store;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,10 +20,12 @@ class ShiftHandoverJob implements ShouldQueue
     ) {}
 
     public int $tries = 3;
+
     public int $timeout = 120;
 
-    public function handle(OrderAssignmentService $assignmentService): void
+    public function handle(OrderAssignmentService $assignmentService, OrderTrackingAssignmentService $trackingService): void
     {
         $assignmentService->handleShiftHandover($this->store);
+        $trackingService->handleShiftHandover($this->store);
     }
 }

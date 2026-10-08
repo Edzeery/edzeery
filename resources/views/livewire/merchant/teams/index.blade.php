@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Order\Jobs\ShiftHandoverJob;
 use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Locations\City;
@@ -213,6 +214,10 @@ $saveEdit = function (): void {
 $toggleActive = function (StoreMembership $membership): void {
     abort_unless($this->canModify($membership), 403);
     $membership->update(['is_active' => ! $membership->is_active]);
+    // Activation state changes eligibility: sweep the store's assignments now.
+    if ($store = $membership->store) {
+        ShiftHandoverJob::dispatch($store);
+    }
 };
 
 $remove = function (StoreMembership $membership): void {

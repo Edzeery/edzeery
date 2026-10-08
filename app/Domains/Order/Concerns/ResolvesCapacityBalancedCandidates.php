@@ -178,8 +178,8 @@ trait ResolvesCapacityBalancedCandidates
         array $ownership = [],
     ): ?StoreMembership {
         $best = null;
-
-        foreach ($candidates as $member) {
+        // Full ties (coverage/load/recency) scan shuffled: uniform winner.
+        foreach ($candidates->shuffle() as $member) {
             if (! ($availability[$member->id]['on_shift'] ?? false) || ! $this->withinQuota($member, $openCounts, $caps)) {
                 continue;
             }

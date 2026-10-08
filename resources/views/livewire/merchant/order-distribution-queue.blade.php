@@ -32,6 +32,7 @@ state([
     'trackingPagination' => [],
     'confirmationPage' => 1,
     'trackingPage' => 1,
+    'queueSearch' => '',
 
     // Reassign modal (P34.4) — one shared state set, driven by whichever tab
     // opened it (kind is snapshotted at open time so a tab switch mid-modal
@@ -57,6 +58,12 @@ $setTab = function (string $tab): void {
 };
 
 $refresh = function (): void {
+    $this->loadQueue();
+};
+
+$updatedQueueSearch = function (): void {
+    $this->confirmationPage = 1;
+    $this->trackingPage = 1;
     $this->loadQueue();
 };
 
@@ -147,6 +154,20 @@ $submitReassign = function (): void {
         <x-edz.page-header title="{{ __('merchant_panel.order_distribution_queue') }}"
             description="{{ __('merchant_panel.order_distribution_queue_desc') }}">
         </x-edz.page-header>
+        <div class="relative w-full sm:w-72 lg:w-80">
+            <input type="text" wire:model.live.debounce.300ms="queueSearch"
+                placeholder="{{ __('merchant_panel.search_queue') }}"
+                class="edz-input text-sm ps-8 pe-8">
+            <x-edz.icon name="search"
+                class="absolute start-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+            @if ($this->queueSearch !== '')
+                <button wire:click="$set('queueSearch', '')" type="button"
+                    class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                    aria-label="Clear search">
+                    <x-edz.icon name="x-mark" class="w-4 h-4" />
+                </button>
+            @endif
+        </div>
     </div>
 
     @include('livewire.merchant.order-distribution-queue.partials.tabs')

@@ -1,6 +1,6 @@
 {{-- Full order event-log popup (P29.4), opened from the row dropdown's "show more". --}}
 @if ($this->eventsFullOrderId)
-    <x-edz.modal :is-open="$this->eventsFullOrderId !== null" @close="$wire.closeOrderEventsModal()"
+    <x-edz.modal :is-open="$this->eventsFullOrderId !== null" @edz-modal-closed="$event.target === $event.currentTarget && $wire.closeOrderEventsModal()"
         size="md" wire:key="order-events-modal-{{ $this->eventsFullOrderId }}">
         <div class="p-6">
             @if ($this->eventsFullLabel)

@@ -8,10 +8,10 @@ use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\State;
+use App\Models\Orders\Concerns\HasVisibilityScope;
 use App\Models\Status;
 use App\Models\Stores\Store;
 use App\Models\User;
-use App\Models\Orders\Concerns\HasVisibilityScope;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,6 +50,7 @@ class Order extends Model
     {
         $meta = self::$transitionMeta[$orderId] ?? null;
         unset(self::$transitionMeta[$orderId]);
+
         return $meta;
     }
 
@@ -86,6 +87,7 @@ class Order extends Model
         'meta',
         'send_from_carrier_warehouse',
         'over_capacity',
+        'stranded_at',
         'confirmed_at',
         'confirmed_by_membership_id',
         'delivered_at',
@@ -95,7 +97,7 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'total_amount'  => 'decimal:2',
+        'total_amount' => 'decimal:2',
         'shipping_cost' => 'decimal:2',
         'discount_value' => 'decimal:2',
         'weight_kg' => 'decimal:2',
@@ -109,9 +111,11 @@ class Order extends Model
         'meta' => 'array',
         'send_from_carrier_warehouse' => 'boolean',
         'over_capacity' => 'boolean',
+        'stranded_at' => 'datetime',
     ];
 
-    const DELIVERY_HOME    = 'home';
+    const DELIVERY_HOME = 'home';
+
     const DELIVERY_STOPDESK = 'stopdesk';
 
     // Fallback ceiling for an order's total weight (kg) when no shipping

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\Store\OrderStatus;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
@@ -384,4 +383,42 @@ test('the queue query stays flat as rows grow (no N+1)', function () {
 
     expect($dataGrown)->toBeLessThanOrEqual($dataBase + 2)
         ->and($dataBase)->toBeGreaterThan(1);
+});
+
+test('the queue search filters rows by order number, customer, and tracking number on both tabs', function () {
+    [$user, $store] = dqUser();
+
+    $needle = dqOrder($store, 'pending', null, false, now()->subDay());
+    $other = dqOrder($store, 'pending', null, false, now()->subDay());
+
+    $needleTracking = dqTracking($needle, OrderTrackingStatus::SHIPPED->value);
+    dqTracking($other, OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    $component = Volt::test('merchant.order-distribution-queue')
+        ->assertSet('confirmationCount', 2)
+        ->assertSet('trackingCount', 2);
+
+    // By order number on the confirmation tab.
+    $component->set('queueSearch', $needle->number)
+        ->assertSet('confirmationCount', 1)
+        ->assertSet('confirmationQueue.0.id', (string) $needle->id);
+
+    // By customer name, restricted to the matching order.
+    $component->set('queueSearch', $needle->customer->name)
+        ->assertSet('confirmationCount', 1)
+        ->assertSet('confirmationQueue.0.id', (string) $needle->id);
+
+    // The tracking tab searches the tracking number too.
+    $component->set('queueSearch', $needleTracking->tracking_number)
+        ->call('setTab', 'tracking')
+        ->assertSet('trackingCount', 1)
+        ->assertSet('trackingQueue.0.id', (string) $needleTracking->id);
+
+    // Clearing the search restores the full tab.
+    $component->set('queueSearch', '')
+        ->assertSet('trackingCount', 2);
+
+    expect($needle->fresh()->id)->not->toBe($other->id);
 });

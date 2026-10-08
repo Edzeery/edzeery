@@ -2,6 +2,8 @@
 
 namespace App\Domains\Order\Services;
 
+use App\Domains\Order\Concerns\GuardsDistributionLock;
+use App\Domains\Order\Concerns\HandlesShiftHandover;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
 use App\Domains\Order\Concerns\ResolvesProductOwnership;
 use App\Enums\Store\StorePermissionEnum;
@@ -14,10 +16,12 @@ use Illuminate\Support\Facades\Log;
 
 class OrderAssignmentService
 {
-    use ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
+    use GuardsDistributionLock, HandlesShiftHandover, ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
 
     /**
-     * Full auto-assignment pipeline for an order.
+     * Full auto-assignment pipeline for an order. The critical section is
+     * serialised per store + role scope (see GuardsDistributionLock) so a
+     * concurrent dispatcher or handover sweep cannot double-book a member.
      */
     public function assign(Order $order): Order
     {
@@ -27,58 +31,42 @@ class OrderAssignmentService
             return $order;
         }
 
-        $storeId = $store->id;
+        $result = $this->withDistributionLock($store->id, 'confirm', function () use ($order, $store) {
+            [$selected, $wasOverflow] = $this->selectReplacement($order, $store);
 
-        // 1. Get product IDs from order items
-        $productIds = $order->items()
-            ->whereNotNull('product_id')
-            ->pluck('product_id')
-            ->unique()
-            ->toArray();
+            if (! $selected) {
+                $order->update([
+                    'assigned_to_membership_id' => null,
+                    'assigned_at' => null,
+                    'assigned_by_membership_id' => null,
+                    'assignment_method' => null,
+                ]);
 
-        // 2. Resolve candidate pool
-        $candidates = $this->resolveCandidatePool($storeId, $productIds);
+                $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedAssignmentCount(Order::class, $store->id, fn ($q) => $q
+                    ->whereHas('status', fn ($q) => $q->where('key', 'pending'))));
 
-        // 3. Prioritize: ownership pool (owns ordered products, coverage-first)
-        //    → general on-shift pool
-        [$selected, $wasOverflow] = $this->selectBest($store, $candidates, $storeId, $productIds);
-
-        if (! $selected) {
-            Log::warning('Order auto-assignment skipped: no candidates on active shift', [
-                'order_id' => $order->id,
-                'store_id' => $storeId,
-                'candidate_count' => $candidates->count(),
-                'candidate_ids' => $candidates->pluck('id')->toArray(),
-                'product_ids' => $productIds,
-            ]);
+                return $order;
+            }
 
             $order->update([
-                'assigned_to_membership_id' => null,
-                'assigned_at' => null,
-                'assigned_by_membership_id' => null,
-                'assignment_method' => null,
+                'assigned_to_membership_id' => $selected->id,
+                'assigned_at' => now(),
+                'assignment_method' => 'auto',
+                ...($wasOverflow ? ['over_capacity' => true] : []),
             ]);
 
-            $this->notifyCapacityExhausted($store, 'confirm', $this->unassignedAssignmentCount(Order::class, $storeId, fn ($q) => $q
-                ->whereHas('status', fn ($q) => $q->where('key', 'pending'))));
+            Log::info('Order auto-assigned', [
+                'order_id' => $order->id,
+                'membership_id' => $selected->id,
+                'user_id' => $selected->user_id,
+            ]);
 
             return $order;
-        }
+        });
 
-        $order->update([
-            'assigned_to_membership_id' => $selected->id,
-            'assigned_at' => now(),
-            'assignment_method' => 'auto',
-            ...($wasOverflow ? ['over_capacity' => true] : []),
-        ]);
-
-        Log::info('Order auto-assigned', [
-            'order_id' => $order->id,
-            'membership_id' => $selected->id,
-            'user_id' => $selected->user_id,
-        ]);
-
-        return $order;
+        // Lock timeout: the order keeps its previous state untouched and the
+        // next scheduled sweep retries it.
+        return $result ?? $order;
     }
 
     /**
@@ -107,28 +95,36 @@ class OrderAssignmentService
     }
 
     /**
-     * Reassignment sweep at shift boundaries.
+     * Pool build + ownership-ranked selection for one order, without any
+     * write — shared by the dispatcher (assign) and the handover sweep
+     * (HandlesShiftHandover), which differ only in what they do with the
+     * result. Returns [selected, wasOverflow].
      */
-    public function handleShiftHandover(Store $store): void
+    private function selectReplacement(Order $order, Store $store): array
     {
-        $openOrders = Order::where('store_id', $store->id)
-            ->whereNotNull('assigned_to_membership_id')
-            ->whereHas('status', fn ($q) => $q->whereNotIn('key', $this->terminalStatusKeys()))
-            ->with('store.settings')
-            ->get();
+        $storeId = $store->id;
 
-        foreach ($openOrders as $order) {
-            $assignedMembership = $order->assignedMembership;
+        $productIds = $order->items()
+            ->whereNotNull('product_id')
+            ->pluck('product_id')
+            ->unique()
+            ->toArray();
 
-            if ($assignedMembership && ! $assignedMembership->isOnActiveShift()) {
-                $this->assign($order);
+        $candidates = $this->resolveCandidatePool($storeId, $productIds);
 
-                Log::info('Order reassigned during shift handover', [
-                    'order_id' => $order->id,
-                    'previous_membership_id' => $assignedMembership->id,
-                ]);
-            }
+        $selected = $this->selectBest($store, $candidates, $storeId, $productIds);
+
+        if (! $selected[0]) {
+            Log::warning('Order auto-assignment skipped: no candidates on active shift', [
+                'order_id' => $order->id,
+                'store_id' => $storeId,
+                'candidate_count' => $candidates->count(),
+                'candidate_ids' => $candidates->pluck('id')->toArray(),
+                'product_ids' => $productIds,
+            ]);
         }
+
+        return $selected;
     }
 
     /**

@@ -46,24 +46,26 @@ class OrderTracking extends Model
         'assignment_method',
         'assigned_by_membership_id',
         'over_capacity',
+        'stranded_at',
         'created_by_membership_id',
         'cod_amount',
     ];
 
     protected $casts = [
-        'shipped_at'      => 'datetime',
-        'delivered_at'    => 'datetime',
-        'returned_at'     => 'datetime',
-        'last_synced_at'  => 'datetime',
+        'shipped_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'returned_at' => 'datetime',
+        'last_synced_at' => 'datetime',
         'carrier_unknown_at' => 'datetime',
-        'carrier_raw'     => 'array',
-        'verified_at'     => 'datetime',
-        'processed_at'    => 'datetime',
-        'requeued_at'     => 'datetime',
+        'carrier_raw' => 'array',
+        'verified_at' => 'datetime',
+        'processed_at' => 'datetime',
+        'requeued_at' => 'datetime',
         'carrier_validated_at' => 'datetime',
-        'assigned_at'     => 'datetime',
-        'over_capacity'   => 'boolean',
-        'cod_amount'      => 'decimal:2',
+        'assigned_at' => 'datetime',
+        'over_capacity' => 'boolean',
+        'stranded_at' => 'datetime',
+        'cod_amount' => 'decimal:2',
     ];
 
     public function order(): BelongsTo

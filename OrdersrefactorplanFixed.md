@@ -488,3 +488,14 @@
 - **البرومت 29.6 — توحيد الحرّاس توست بدل 403 (الكل):** تحويل كل `abort_unless(...403)` في إجراءات orders index (دفق الإرسال + delete/assign/confirm/manage/transition) إلى `if (! canStore(...)) → توست `messages.permission_denied` + return`؛ بقي 403 في `mount` فقط (مستوى صفحة). حارس `HasInlineEdit::saveEdit` (البنية المشتركة brand/product/order) تحوّل هو الآخر. **لا بقايا `messages.unauthorized` في livewire/merchant.**
 - **البرومت 29.7 — قائمة «المزيد» المتنقلة:** أيقونة `general.more` (ellipsis) في بطاقة الموبايل → لوحة `orderMoreMenu` (fixed top/left، `@click.away`) صفوف confirm/send/edit/reassign/delete عند `ORDER_*` المناسب **بأهداف 44px** (`min-h-[44px]`) تُغلق بعد الفعل (`confirmDelete(); close()`). `OrdersMobileMoreMenuTest` **2** (مالك: menu+44px وجميع الصفوف؛ STAFF: menu بلا أي صف).
 - **التحقّق النهائي:** السويت كاملة **348 ناجح (1268 assertions)** — صفر انحدار. `npm run build` ناجح، `view:cache` ناجح + `git checkout -- storage/framework/views/`.
+
+---
+
+## تذييل 2026-10-08 — **جولة 35.2 (واجهة التوزيع): مودالات تُعاد فتحها + دارك موحّد + بحث/تصفية**
+
+> يُقرأ فوق كل ما قبله. التفاصيل الكاملة في `Todos.md` (Phase 35.2). هذا التذييل يوثّق النمط المعتمَد ليُتبع في أي مودال جديد.
+
+- **نمط «افتح/أغلق/افتح» الصحيح للمودال:** أي مودال يُعرض عبر `@if(state)` + `:isOpen="true"` **يجب أن يزامن إغلاقه** مع Livewire: `@edz-modal-closed.window="$wire.set('اسم_الحالة', false)"` داخل غلاف `<div class="contents">` (بلا إعادة تحميل صفحة). بدونها يبقي X/backdrop/ESC يغلق Alpine فقط بينما تبقى الحالة `true`، فلا يعاد فتحه إلا بعد التحديث. طُبّق على `shift-modal` و`reassign-modal` المشترك (عبر `{{ $reassignCloseSet }}`) و`order-events-modal` (تصحيح `@close` الميت → `@edz-modal-closed`)، مع فحص grepl: **صفر `x-edz.modal` غير متزامن** في `livewire/merchant`.
+- **دارك المودالات:** لوحة المودال تعتمد رموز `--edz-color-surface/secondary/tertiary` (تتبدل تحت `.dark`)؛ أي `bg-white` ثابت داخل جسم مودال يسبب شذوذًا — يستبدل بـ `bg-surface-tertiary/30`. وشارات الحالات (success/warning) تحتاج تغيير النغمة الداكنة (`text-success-700 dark:text-success-400` …).
+- **البحث/التصفية:** تبويb المناوبات `shiftSearch` + `visibleShifts()`، تبويب تعيينات المنتجات `assignSearch` + computed `$visibleAssignments` (صفّي على المصفوفة المحمّلة بلا استعلام)، والطابور `queueSearch` **خادميًا** في `DistributionQueueConcern` (يشمل `tracking_number` في التتبع + `updatedQueueSearch` يعيد الصفحة لـ1) — الأداء: `like` على مفاتيح + debounce 300ms، والعد/الصفوف يستخدمان المُنشئ نفسه فتبقى الشارات دقيقة. ترجمات ×4 (5 مفاتيح + `no_search_results`).
+- **الأدلة:** `OrderSettingsShiftRoleTest` 8/8، `OrderSettingsAssignmentsSearchTest` 1/1، `OrderDistributionQueueTest` 11/11 — المجموع **19 ناجح (142 assertions)**: صفر انحدار. `view:cache` سليم؛ الأسطر تحت الأسقف (Concerns 199/93، blade 301 < 400 Volt، partials < 300). اختبار تتبّع «حفظ مناوبة من الواجهة» الذي كان ⚠️ فاشلًا سابقًا صار أخضر بعد تحصين المحرك (الجزأين ب/ج — عمل المالك) لا من هذه الجولة.

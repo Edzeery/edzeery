@@ -2,12 +2,15 @@
 
 namespace App\Domains\Order\Services;
 
+use App\Domains\Order\Concerns\GuardsDistributionLock;
+use App\Domains\Order\Concerns\HandlesTrackingHandover;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
 use App\Domains\Order\Concerns\ResolvesProductOwnership;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\OrderItem;
 use App\Models\Orders\OrderTracking;
+use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Services\Stores\StoreProductScopeService;
 use Illuminate\Support\Collection;
@@ -15,10 +18,12 @@ use Illuminate\Support\Facades\Log;
 
 class OrderTrackingAssignmentService
 {
-    use ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
+    use GuardsDistributionLock, HandlesTrackingHandover, ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
 
     /**
-     * Full auto-assignment pipeline for an order tracking.
+     * Full auto-assignment pipeline for an order tracking. Serialised per
+     * store + role scope like the confirmation pipeline (see
+     * GuardsDistributionLock).
      */
     public function assign(OrderTracking $tracking): OrderTracking
     {
@@ -28,77 +33,42 @@ class OrderTrackingAssignmentService
             return $tracking;
         }
 
-        $storeId = $store->id;
+        $result = $this->withDistributionLock($store->id, 'track', function () use ($tracking, $store) {
+            [$selected, $wasOverflow] = $this->selectReplacement($tracking, $store);
 
-        // 1. Product ids of the underlying order drive both the visibility
-        //    guard and the ownership pool (tracking has no product dimension).
-        $productIds = $this->orderProductIds($tracking);
-        $candidates = $this->resolveCandidatePool($storeId, $productIds);
+            if (! $selected) {
+                $tracking->update([
+                    'assigned_to_membership_id' => null,
+                    'assigned_at' => null,
+                    'assigned_by_membership_id' => null,
+                    'assignment_method' => null,
+                    'over_capacity' => false,
+                ]);
 
-        // 2. Ownership pool first (owners of the ordered products, ranked by
-        //    coverage then load then recency), then the general pool — strict
-        //    caps then store-configured overflow inside each pool, all driven
-        //    by one shared availability snapshot.
-        $ownership = $this->ownershipCounts($storeId, $productIds);
-        $openCounts = $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues()));
-        $lastAssigned = $this->lastAssignedAt('order_trackings', $storeId);
-        $overflowPercentage = $this->overflowPercentage($store);
-        $availability = $this->availabilitySnapshot($storeId, 'track', $candidates);
+                $this->notifyCapacityExhausted($store, 'track', $this->unassignedAssignmentCount(OrderTracking::class, $store->id, fn ($q) => $q
+                    ->whereIn('tracking_status', $this->openTrackingStatusValues())));
 
-        foreach ([true, false] as $owners) {
-            [$selected, $wasOverflow] = $this->bestCandidateWithOverflow(
-                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
-                $storeId,
-                'track',
-                $openCounts,
-                $lastAssigned,
-                $overflowPercentage,
-                $availability,
-                $ownership,
-            );
-
-            if ($selected) {
-                break;
+                return $tracking;
             }
-        }
-
-        if (! $selected) {
-            Log::warning('Order tracking auto-assignment skipped: no candidates on active shift', [
-                'tracking_id' => $tracking->id,
-                'order_id' => $tracking->order_id,
-                'store_id' => $storeId,
-                'candidate_count' => $candidates->count(),
-                'candidate_ids' => $candidates->pluck('id')->toArray(),
-            ]);
 
             $tracking->update([
-                'assigned_to_membership_id' => null,
-                'assigned_at' => null,
-                'assigned_by_membership_id' => null,
-                'assignment_method' => null,
-                'over_capacity' => false,
+                'assigned_to_membership_id' => $selected->id,
+                'assigned_at' => now(),
+                'assignment_method' => 'auto',
+                ...($wasOverflow ? ['over_capacity' => true] : []),
             ]);
 
-            $this->notifyCapacityExhausted($store, 'track', $this->unassignedAssignmentCount(OrderTracking::class, $storeId, fn ($q) => $q
-                ->whereIn('tracking_status', $this->openTrackingStatusValues())));
+            Log::info('Order tracking auto-assigned', [
+                'tracking_id' => $tracking->id,
+                'membership_id' => $selected->id,
+                'user_id' => $selected->user_id,
+            ]);
 
             return $tracking;
-        }
+        });
 
-        $tracking->update([
-            'assigned_to_membership_id' => $selected->id,
-            'assigned_at' => now(),
-            'assignment_method' => 'auto',
-            ...($wasOverflow ? ['over_capacity' => true] : []),
-        ]);
-
-        Log::info('Order tracking auto-assigned', [
-            'tracking_id' => $tracking->id,
-            'membership_id' => $selected->id,
-            'user_id' => $selected->user_id,
-        ]);
-
-        return $tracking;
+        // Lock timeout: the tracking keeps its previous state untouched.
+        return $result ?? $tracking;
     }
 
     /**
@@ -124,6 +94,63 @@ class OrderTrackingAssignmentService
         ]);
 
         return $tracking;
+    }
+
+    /**
+     * Pool build + ownership-ranked selection for one tracking, without any
+     * write — shared by the dispatcher (assign) and the handover sweep
+     * (HandlesTrackingHandover). Returns [selected, wasOverflow].
+     */
+    private function selectReplacement(OrderTracking $tracking, Store $store): array
+    {
+        $storeId = $store->id;
+
+        // Product ids of the underlying order drive both the visibility
+        // guard and the ownership pool (tracking has no product dimension).
+        $productIds = $this->orderProductIds($tracking);
+        $candidates = $this->resolveCandidatePool($storeId, $productIds);
+
+        // Ownership pool first (owners of the ordered products, ranked by
+        // coverage then load then recency), then the general pool — strict
+        // caps then store-configured overflow inside each pool, all driven
+        // by one shared availability snapshot.
+        $ownership = $this->ownershipCounts($storeId, $productIds);
+        $openCounts = $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues()));
+        $lastAssigned = $this->lastAssignedAt('order_trackings', $storeId);
+        $overflowPercentage = $this->overflowPercentage($store);
+        $availability = $this->availabilitySnapshot($storeId, 'track', $candidates);
+
+        $selected = [null, false];
+
+        foreach ([true, false] as $owners) {
+            $pass = $this->bestCandidateWithOverflow(
+                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
+                $storeId,
+                'track',
+                $openCounts,
+                $lastAssigned,
+                $overflowPercentage,
+                $availability,
+                $ownership,
+            );
+
+            if ($pass[0]) {
+                $selected = $pass;
+                break;
+            }
+        }
+
+        if (! $selected[0]) {
+            Log::warning('Order tracking auto-assignment skipped: no candidates on active shift', [
+                'tracking_id' => $tracking->id,
+                'order_id' => $tracking->order_id,
+                'store_id' => $storeId,
+                'candidate_count' => $candidates->count(),
+                'candidate_ids' => $candidates->pluck('id')->toArray(),
+            ]);
+        }
+
+        return $selected;
     }
 
     /**

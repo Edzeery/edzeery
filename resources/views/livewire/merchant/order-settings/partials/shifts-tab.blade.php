@@ -5,12 +5,28 @@
             $setupGaps = $this->setupGapDetails();
         @endphp
 
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <p class="text-sm text-ink-muted">{{ __('merchant_panel.tab_shifts_desc') }}</p>
-            <button wire:click="openShiftModal" class="edz-btn edz-btn--primary edz-btn--sm">
-                <x-edz.icon name="check-circle" class="w-4 h-4" />
-                {{ __('merchant_panel.new_shift') }}
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="relative w-full sm:w-56">
+                    <input type="text" wire:model.live.debounce.300ms="shiftSearch"
+                        placeholder="{{ __('merchant_panel.search_agent') }}"
+                        class="edz-input text-sm ps-8 pe-8">
+                    <x-edz.icon name="search"
+                        class="absolute start-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted pointer-events-none" />
+                    @if ($this->shiftSearch !== '')
+                        <button wire:click="$set('shiftSearch', '')" type="button"
+                            class="absolute end-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-accent-500 transition"
+                            aria-label="Clear search">
+                            <x-edz.icon name="x-mark" class="w-3.5 h-3.5" />
+                        </button>
+                    @endif
+                </div>
+                <button wire:click="openShiftModal" class="edz-btn edz-btn--primary edz-btn--sm shrink-0">
+                    <x-edz.icon name="check-circle" class="w-4 h-4" />
+                    {{ __('merchant_panel.new_shift') }}
+                </button>
+            </div>
         </div>
 
         {{-- Setup gap: an eligible member with no active shift of a role can never be auto-assigned. --}}
@@ -142,7 +158,11 @@
             </div>
             @else
                 <div class="edz-card p-8 text-center text-sm text-ink-muted">
-                    {{ __('merchant_panel.no_shifts_for_role') }}
+                    @if ($this->shiftSearch !== '')
+                        {{ __('merchant_panel.no_search_results') }}
+                    @else
+                        {{ __('merchant_panel.no_shifts_for_role') }}
+                    @endif
                 </div>
             @endif
         @else

@@ -11,9 +11,13 @@
 
 @if (empty($queueRows))
     <div class="rounded-2xl border border-surface-border bg-surface p-10 text-center">
-        <x-edz.icon name="list-bullet" class="w-8 h-8 mx-auto mb-3 text-ink-muted" />
-        <p class="text-sm text-ink">{{ $queueEmpty }}</p>
-        <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.queue_empty_hint') }}</p>
+        <x-edz.icon name="search" class="w-8 h-8 mx-auto mb-3 text-ink-muted" />
+        @if ($this->queueSearch !== '')
+            <p class="text-sm text-ink">{{ __('merchant_panel.no_search_results') }}</p>
+        @else
+            <p class="text-sm text-ink">{{ $queueEmpty }}</p>
+            <p class="text-xs text-ink-muted mt-1">{{ __('merchant_panel.queue_empty_hint') }}</p>
+        @endif
     </div>
 @else
     <div class="overflow-hidden rounded-2xl border border-surface-border bg-surface">
@@ -32,7 +36,11 @@
                 <tbody class="divide-y divide-surface-border">
                     @foreach ($queueRows as $queueRow)
                         <tr wire:key="queue-{{ $kind }}-{{ $queueRow['id'] }}" class="hover:bg-surface-secondary/50">
-                            <td class="px-4 py-3 font-mono font-semibold text-ink">#{{ $queueRow['number'] }}</td>
+                            <td class="px-4 py-3 font-mono font-semibold text-ink">#{{ $queueRow['number'] }}
+                            @if ($kind === 'track' && ! empty($queueRow['tracking_number']))
+                                <span class="ms-1 text-[11px] font-normal text-ink-muted">{{ $queueRow['tracking_number'] }}</span>
+                            @endif
+                        </td>
                             <td class="px-4 py-3 text-ink">{{ $queueRow['customer'] }}</td>
                             <td class="px-4 py-3">
                                 @if ($kind === 'confirm')

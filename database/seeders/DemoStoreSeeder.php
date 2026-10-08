@@ -26,7 +26,6 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Finance\Debt;
 use App\Models\Finance\DebtPayment;
-use App\Models\Plans\Plan;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -36,6 +35,7 @@ use App\Models\Orders\OrderItem;
 use App\Models\Orders\OrderStatusHistory;
 use App\Models\Orders\OrderTracking;
 use App\Models\Orders\OrderTrackingHistory;
+use App\Models\Plans\Plan;
 use App\Models\Products\Product;
 use App\Models\Products\ProductOption;
 use App\Models\Products\ProductOptionValue;
@@ -55,13 +55,19 @@ use Spatie\Permission\Models\Role;
 
 class DemoStoreSeeder extends Seeder
 {
+    /**
+     * Alternates seeded tracking assignments across the CRM-holding demo
+     * agents so both a tracker and the dual-role member stay exercised.
+     */
+    private int $seededTrackingAssignments = 0;
+
     public function run(): void
     {
         $user = User::firstOrCreate(
             ['email' => 'demo@edzeery.com'],
             [
-                'name'              => 'Demo Merchant',
-                'password'          => Hash::make('password'),
+                'name' => 'Demo Merchant',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -81,18 +87,18 @@ class DemoStoreSeeder extends Seeder
             return Store::firstOrCreate(
                 ['slug' => 'demo'],
                 [
-                    'user_id'          => $user->id,
-                    'name'             => 'Edzeery Demo Store',
-                    'description'      => 'Welcome to the Edzeery demo store. Browse our curated collection to see how your storefront could look.',
+                    'user_id' => $user->id,
+                    'name' => 'Edzeery Demo Store',
+                    'description' => 'Welcome to the Edzeery demo store. Browse our curated collection to see how your storefront could look.',
                     'landing_template' => LandingTemplateEnum::CATALOG,
-                    'status'           => StoreStatusEnum::ACTIVE,
+                    'status' => StoreStatusEnum::ACTIVE,
                 ]
             );
         });
 
         $themeContent = StorefrontSections::normalize([
             'hero' => [
-                'title'       => 'مرحباً بكم في المتجر التجريبي',
+                'title' => 'مرحباً بكم في المتجر التجريبي',
                 'description' => 'اكتشف تشكيلتنا المختارة مع توصيل سريع عبر كامل التراب الوطني والدفع عند الاستلام.',
                 'button_text' => 'تسوق الآن',
             ],
@@ -113,7 +119,7 @@ class DemoStoreSeeder extends Seeder
                 ],
             ],
             'cta' => [
-                'title'       => 'جاهز للطلب؟',
+                'title' => 'جاهز للطلب؟',
                 'description' => 'ابدأ التسوق الآن واستمتع بتجربة شراء مميزة.',
                 'button_text' => 'اطلب الآن',
             ],
@@ -122,44 +128,44 @@ class DemoStoreSeeder extends Seeder
         $store->theme()->updateOrCreate(
             ['store_id' => $store->id],
             [
-                'primary_color'     => '#6366f1',
-                'secondary_color'   => '#8b5cf6',
-                'font_family'       => 'Cairo',
+                'primary_color' => '#6366f1',
+                'secondary_color' => '#8b5cf6',
+                'font_family' => 'Cairo',
                 'homepage_sections' => StorefrontSections::defaultSectionsFor('catalog'),
-                'section_content'   => $themeContent,
+                'section_content' => $themeContent,
             ]
         );
 
         $store->seo()->updateOrCreate(
             ['store_id' => $store->id],
             [
-                'meta_title'       => 'المتجر التجريبي — إدزيري',
+                'meta_title' => 'المتجر التجريبي — إدزيري',
                 'meta_description' => 'اكتشف تشكيلة مختارة من الإلكترونيات، الألبسة والإكسسوارات مع توصيل سريع عبر كامل التراب الوطني والدفع عند الاستلام.',
-                'meta_keywords'    => 'متجر الكتروني, تسوق, الكترونيات, البسة, اكسسوارات, توصيل, الدفع عند الاستلام, الجزائر',
-                'og_image'         => 'img/icons/noimg.png',
-                'favicon'          => 'img/icons/noimg.png',
+                'meta_keywords' => 'متجر الكتروني, تسوق, الكترونيات, البسة, اكسسوارات, توصيل, الدفع عند الاستلام, الجزائر',
+                'og_image' => 'img/icons/noimg.png',
+                'favicon' => 'img/icons/noimg.png',
             ]
         );
 
         $store->settings()->updateOrCreate(
             ['store_id' => $store->id],
             [
-                'currency'            => 'DZD',
-                'currency_symbol'     => 'DA',
-                'language'            => 'ar',
+                'currency' => 'DZD',
+                'currency_symbol' => 'DA',
+                'language' => 'ar',
                 'supported_languages' => ['ar', 'fr', 'en'],
-                'timezone'            => 'Africa/Algiers',
-                'phone'               => '021 60 45 78',
-                'guest_checkout'      => true,
-                'inventory_tracking'  => true,
-                'show_out_of_stock'   => true,
-                'allow_backorder'     => false,
-                'min_order_qty'       => 1,
-                'max_order_qty'       => 50,
-                'payment_methods'     => ['cod'],
-                'contact_info'        => [
-                    'email'    => 'demo@edzeery.com',
-                    'phone'    => '021 60 45 78',
+                'timezone' => 'Africa/Algiers',
+                'phone' => '021 60 45 78',
+                'guest_checkout' => true,
+                'inventory_tracking' => true,
+                'show_out_of_stock' => true,
+                'allow_backorder' => false,
+                'min_order_qty' => 1,
+                'max_order_qty' => 50,
+                'payment_methods' => ['cod'],
+                'contact_info' => [
+                    'email' => 'demo@edzeery.com',
+                    'phone' => '021 60 45 78',
                     'whatsapp' => '0550123456',
                 ],
             ]
@@ -169,8 +175,8 @@ class DemoStoreSeeder extends Seeder
             ['store_id' => $store->id, 'user_id' => $user->id],
             [
                 'invited_by' => $user->id,
-                'is_active'  => true,
-                'role'       => StoreRoleEnum::OWNER->value,
+                'is_active' => true,
+                'role' => StoreRoleEnum::OWNER->value,
             ]
         );
 
@@ -204,9 +210,9 @@ class DemoStoreSeeder extends Seeder
             $memberMembership = StoreMembership::firstOrCreate(
                 ['store_id' => $store->id, 'user_id' => $memberUser->id],
                 [
-                    'invited_by'               => $user->id,
-                    'is_active'                => true,
-                    'role'                     => $member['role']->value,
+                    'invited_by' => $user->id,
+                    'is_active' => true,
+                    'role' => $member['role']->value,
                     'supervisor_membership_id' => $member['role'] === StoreRoleEnum::MANAGER
                         ? null
                         : $managerMembership?->id,
@@ -258,8 +264,8 @@ class DemoStoreSeeder extends Seeder
         $user = User::firstOrCreate(
             ['email' => $email],
             [
-                'name'              => $name,
-                'password'          => Hash::make('password'),
+                'name' => $name,
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -299,28 +305,28 @@ class DemoStoreSeeder extends Seeder
             ['user_id' => $user->id, 'plan_id' => $plan->id],
             [
                 'plan_price_id' => $planPrice->id,
-                'is_trial'      => false,
-                'starts_at'     => now()->subDays(12),
-                'ends_at'       => now()->addDays(18),
-                'status'        => StatusSubscriptionEnum::ACTIVE,
+                'is_trial' => false,
+                'starts_at' => now()->subDays(12),
+                'ends_at' => now()->addDays(18),
+                'status' => StatusSubscriptionEnum::ACTIVE,
             ]
         );
 
         Payment::updateOrCreate(
             [
-                'user_id'         => $user->id,
-                'store_id'        => $store->id,
+                'user_id' => $user->id,
+                'store_id' => $store->id,
                 'subscription_id' => $subscription->id,
-                'transaction_id'  => 'DEMO-TRX-PRO-001',
+                'transaction_id' => 'DEMO-TRX-PRO-001',
             ],
             [
                 'plan_price_id' => $planPrice->id,
-                'gateway'       => 'chargily',
-                'status'        => StatusPaymentEnum::PAID,
-                'amount'        => (float) $planPrice->price,
-                'currency'      => $planPrice->currency ?? 'DZD',
-                'meta'          => ['demo' => true, 'note' => 'Demo seeding — settled subscription payment.'],
-                'paid_at'       => now()->subDays(12),
+                'gateway' => 'chargily',
+                'status' => StatusPaymentEnum::PAID,
+                'amount' => (float) $planPrice->price,
+                'currency' => $planPrice->currency ?? 'DZD',
+                'meta' => ['demo' => true, 'note' => 'Demo seeding — settled subscription payment.'],
+                'paid_at' => now()->subDays(12),
             ]
         );
     }
@@ -331,8 +337,8 @@ class DemoStoreSeeder extends Seeder
         $customer = User::firstOrCreate(
             ['email' => 'customer@edzeery.com'],
             [
-                'name'              => 'Demo Customer',
-                'password'          => Hash::make('password'),
+                'name' => 'Demo Customer',
+                'password' => Hash::make('password'),
                 'email_verified_at' => now(),
             ]
         );
@@ -378,60 +384,60 @@ class DemoStoreSeeder extends Seeder
     private function seedProducts(Store $store): void
     {
         $brands = Brand::where('store_id', $store->id)->get()->keyBy('slug');
-        $cats   = Category::where('store_id', $store->id)->get()->keyBy('slug');
+        $cats = Category::where('store_id', $store->id)->get()->keyBy('slug');
 
         $products = [
             [
-                'name'              => 'Wireless Earbuds Pro',
-                'slug'              => 'demo-wireless-earbuds-pro',
-                'sku'               => 'DEMO-EAR-001',
-                'type'              => 'variable',
+                'name' => 'Wireless Earbuds Pro',
+                'slug' => 'demo-wireless-earbuds-pro',
+                'sku' => 'DEMO-EAR-001',
+                'type' => 'variable',
                 'short_description' => 'Premium wireless earbuds with active noise cancellation and 30-hour battery life.',
-                'description'       => "Experience crystal-clear audio with our flagship wireless earbuds. Featuring active noise cancellation, IPX5 water resistance, and up to 30 hours of total battery life.\n\nKey Features:\n• Active Noise Cancellation\n• IPX5 Water Resistant\n• 30-hour battery life\n• Bluetooth 5.3\n• Touch controls",
-                'price'             => 4500.00,
-                'cost_price'        => 2200.00,
-                'is_active'         => true,
-                'is_featured'       => true,
-                'brand_slug'        => 'techvibe',
-                'category_slugs'    => ['demo-electronics', 'demo-accessories'],
-                'variants'          => [
+                'description' => "Experience crystal-clear audio with our flagship wireless earbuds. Featuring active noise cancellation, IPX5 water resistance, and up to 30 hours of total battery life.\n\nKey Features:\n• Active Noise Cancellation\n• IPX5 Water Resistant\n• 30-hour battery life\n• Bluetooth 5.3\n• Touch controls",
+                'price' => 4500.00,
+                'cost_price' => 2200.00,
+                'is_active' => true,
+                'is_featured' => true,
+                'brand_slug' => 'techvibe',
+                'category_slugs' => ['demo-electronics', 'demo-accessories'],
+                'variants' => [
                     ['name' => 'Black', 'sku' => 'DEMO-EAR-001-BK', 'price' => 4500.00, 'stock' => 50, 'weight' => 0.150, 'option_values' => [['Color', 'Black']]],
                     ['name' => 'White', 'sku' => 'DEMO-EAR-001-WH', 'price' => 4500.00, 'stock' => 35, 'weight' => 0.150, 'option_values' => [['Color', 'White']]],
                     ['name' => 'Blue',  'sku' => 'DEMO-EAR-001-BL', 'price' => 4800.00, 'stock' => 20, 'weight' => 0.150, 'option_values' => [['Color', 'Blue']]],
                 ],
             ],
             [
-                'name'              => 'Smart Watch Ultra',
-                'slug'              => 'demo-smart-watch-ultra',
-                'sku'               => 'DEMO-WATCH-001',
-                'type'              => 'variable',
+                'name' => 'Smart Watch Ultra',
+                'slug' => 'demo-smart-watch-ultra',
+                'sku' => 'DEMO-WATCH-001',
+                'type' => 'variable',
                 'short_description' => 'Feature-packed smartwatch with health monitoring and GPS tracking.',
-                'description'       => "Stay connected and track your fitness with our advanced smartwatch.\n\nKey Features:\n• Heart Rate & SpO2 Monitoring\n• Built-in GPS\n• AMOLED Display\n• 7-day battery life\n• 5 ATM water resistance",
-                'price'             => 8900.00,
-                'cost_price'        => 4500.00,
-                'is_active'         => true,
-                'is_featured'       => true,
-                'brand_slug'        => 'techvibe',
-                'category_slugs'    => ['demo-electronics'],
-                'variants'          => [
+                'description' => "Stay connected and track your fitness with our advanced smartwatch.\n\nKey Features:\n• Heart Rate & SpO2 Monitoring\n• Built-in GPS\n• AMOLED Display\n• 7-day battery life\n• 5 ATM water resistance",
+                'price' => 8900.00,
+                'cost_price' => 4500.00,
+                'is_active' => true,
+                'is_featured' => true,
+                'brand_slug' => 'techvibe',
+                'category_slugs' => ['demo-electronics'],
+                'variants' => [
                     ['name' => '42mm - Silver', 'sku' => 'DEMO-WATCH-001-SV', 'price' => 8900.00, 'stock' => 15, 'weight' => 0.210, 'option_values' => [['Size', '42mm'], ['Color', 'Silver']]],
                     ['name' => '46mm - Black',  'sku' => 'DEMO-WATCH-001-BK', 'price' => 9500.00, 'stock' => 20, 'weight' => 0.210, 'option_values' => [['Size', '46mm'], ['Color', 'Black']]],
                 ],
             ],
             [
-                'name'              => 'Classic Cotton T-Shirt',
-                'slug'              => 'demo-classic-cotton-tshirt',
-                'sku'               => 'DEMO-TSHIRT-001',
-                'type'              => 'variable',
+                'name' => 'Classic Cotton T-Shirt',
+                'slug' => 'demo-classic-cotton-tshirt',
+                'sku' => 'DEMO-TSHIRT-001',
+                'type' => 'variable',
                 'short_description' => 'Premium 100% organic cotton t-shirt with a modern relaxed fit.',
-                'description'       => "Our signature organic cotton t-shirt is designed for everyday comfort.\n\nKey Features:\n• 100% organic cotton\n• Relaxed modern fit\n• Pre-shrunk fabric\n• Reinforced stitching\n• Eco-friendly dyes",
-                'price'             => 1800.00,
-                'cost_price'        => 600.00,
-                'is_active'         => true,
-                'is_featured'       => false,
-                'brand_slug'        => 'urbanedge',
-                'category_slugs'    => ['demo-clothing'],
-                'variants'          => [
+                'description' => "Our signature organic cotton t-shirt is designed for everyday comfort.\n\nKey Features:\n• 100% organic cotton\n• Relaxed modern fit\n• Pre-shrunk fabric\n• Reinforced stitching\n• Eco-friendly dyes",
+                'price' => 1800.00,
+                'cost_price' => 600.00,
+                'is_active' => true,
+                'is_featured' => false,
+                'brand_slug' => 'urbanedge',
+                'category_slugs' => ['demo-clothing'],
+                'variants' => [
                     ['name' => 'Small - Black',  'sku' => 'DEMO-TSHIRT-001-SB', 'price' => 1800.00, 'stock' => 40, 'weight' => 0.250, 'option_values' => [['Size', 'Small'], ['Color', 'Black']]],
                     ['name' => 'Medium - Black', 'sku' => 'DEMO-TSHIRT-001-MB', 'price' => 1800.00, 'stock' => 60, 'weight' => 0.250, 'option_values' => [['Size', 'Medium'], ['Color', 'Black']]],
                     ['name' => 'Large - Black',  'sku' => 'DEMO-TSHIRT-001-LB', 'price' => 1800.00, 'stock' => 50, 'weight' => 0.250, 'option_values' => [['Size', 'Large'], ['Color', 'Black']]],
@@ -440,89 +446,89 @@ class DemoStoreSeeder extends Seeder
                 ],
             ],
             [
-                'name'              => 'Leather Crossbody Bag',
-                'slug'              => 'demo-leather-crossbody-bag',
-                'sku'               => 'DEMO-BAG-001',
-                'type'              => 'simple',
+                'name' => 'Leather Crossbody Bag',
+                'slug' => 'demo-leather-crossbody-bag',
+                'sku' => 'DEMO-BAG-001',
+                'type' => 'simple',
                 'short_description' => 'Handcrafted genuine leather crossbody bag with adjustable strap.',
-                'description'       => "A timeless crossbody bag handcrafted from premium genuine leather.\n\nKey Features:\n• Genuine leather\n• Adjustable shoulder strap\n• Multiple compartments\n• Magnetic closure\n• Dimensions: 25cm × 18cm × 8cm",
-                'price'             => 5500.00,
-                'cost_price'        => 2500.00,
-                'is_active'         => true,
-                'is_featured'       => true,
-                'brand_slug'        => 'urbanedge',
-                'category_slugs'    => ['demo-accessories'],
-                'variants'          => [
+                'description' => "A timeless crossbody bag handcrafted from premium genuine leather.\n\nKey Features:\n• Genuine leather\n• Adjustable shoulder strap\n• Multiple compartments\n• Magnetic closure\n• Dimensions: 25cm × 18cm × 8cm",
+                'price' => 5500.00,
+                'cost_price' => 2500.00,
+                'is_active' => true,
+                'is_featured' => true,
+                'brand_slug' => 'urbanedge',
+                'category_slugs' => ['demo-accessories'],
+                'variants' => [
                     ['name' => 'Default', 'sku' => 'DEMO-BAG-001-DF', 'price' => 5500.00, 'stock' => 25, 'weight' => 0.600],
                 ],
             ],
             [
-                'name'              => 'Bamboo Sunglasses',
-                'slug'              => 'demo-bamboo-sunglasses',
-                'sku'               => 'DEMO-SUN-001',
-                'type'              => 'simple',
+                'name' => 'Bamboo Sunglasses',
+                'slug' => 'demo-bamboo-sunglasses',
+                'sku' => 'DEMO-SUN-001',
+                'type' => 'simple',
                 'short_description' => 'Eco-friendly bamboo frame sunglasses with UV400 protection.',
-                'description'       => "Stylish and sustainable sunglasses with frames made from natural bamboo.\n\nKey Features:\n• Natural bamboo frames\n• Polarized UV400 lenses\n• Lightweight (28g)\n• Comes with bamboo case\n• Eco-friendly packaging",
-                'price'             => 3200.00,
-                'cost_price'        => 1200.00,
-                'is_active'         => true,
-                'is_featured'       => false,
-                'brand_slug'        => 'purenature',
-                'category_slugs'    => ['demo-accessories'],
-                'variants'          => [
+                'description' => "Stylish and sustainable sunglasses with frames made from natural bamboo.\n\nKey Features:\n• Natural bamboo frames\n• Polarized UV400 lenses\n• Lightweight (28g)\n• Comes with bamboo case\n• Eco-friendly packaging",
+                'price' => 3200.00,
+                'cost_price' => 1200.00,
+                'is_active' => true,
+                'is_featured' => false,
+                'brand_slug' => 'purenature',
+                'category_slugs' => ['demo-accessories'],
+                'variants' => [
                     ['name' => 'Default', 'sku' => 'DEMO-SUN-001-DF', 'price' => 3200.00, 'stock' => 30, 'weight' => 0.050],
                 ],
             ],
             [
-                'name'              => 'Portable Bluetooth Speaker',
-                'slug'              => 'demo-portable-bt-speaker',
-                'sku'               => 'DEMO-SPK-001',
-                'type'              => 'simple',
+                'name' => 'Portable Bluetooth Speaker',
+                'slug' => 'demo-portable-bt-speaker',
+                'sku' => 'DEMO-SPK-001',
+                'type' => 'simple',
                 'short_description' => 'Waterproof portable speaker with 360-degree surround sound.',
-                'description'       => "Take your music anywhere with this rugged portable speaker.\n\nKey Features:\n• 360-degree surround sound\n• IPX7 waterproof\n• 20-hour battery\n• Bluetooth 5.0\n• Built-in microphone",
-                'price'             => 6200.00,
-                'cost_price'        => 3000.00,
-                'is_active'         => true,
-                'is_featured'       => true,
-                'brand_slug'        => 'techvibe',
-                'category_slugs'    => ['demo-electronics'],
-                'variants'          => [
+                'description' => "Take your music anywhere with this rugged portable speaker.\n\nKey Features:\n• 360-degree surround sound\n• IPX7 waterproof\n• 20-hour battery\n• Bluetooth 5.0\n• Built-in microphone",
+                'price' => 6200.00,
+                'cost_price' => 3000.00,
+                'is_active' => true,
+                'is_featured' => true,
+                'brand_slug' => 'techvibe',
+                'category_slugs' => ['demo-electronics'],
+                'variants' => [
                     ['name' => 'Default', 'sku' => 'DEMO-SPK-001-DF', 'price' => 6200.00, 'stock' => 18, 'weight' => 0.700],
                 ],
             ],
             [
-                'name'              => 'Linen Summer Shirt',
-                'slug'              => 'demo-linen-summer-shirt',
-                'sku'               => 'DEMO-SHIRT-001',
-                'type'              => 'variable',
+                'name' => 'Linen Summer Shirt',
+                'slug' => 'demo-linen-summer-shirt',
+                'sku' => 'DEMO-SHIRT-001',
+                'type' => 'variable',
                 'short_description' => 'Lightweight linen blend shirt perfect for warm weather.',
-                'description'       => "Stay cool and stylish with our linen blend summer shirt.\n\nKey Features:\n• Linen-cotton blend\n• Breathable and lightweight\n• Relaxed fit\n• Mother-of-pearl buttons\n• Machine washable",
-                'price'             => 2800.00,
-                'cost_price'        => 900.00,
-                'is_active'         => true,
-                'is_featured'       => false,
-                'brand_slug'        => 'urbanedge',
-                'category_slugs'    => ['demo-clothing'],
-                'variants'          => [
+                'description' => "Stay cool and stylish with our linen blend summer shirt.\n\nKey Features:\n• Linen-cotton blend\n• Breathable and lightweight\n• Relaxed fit\n• Mother-of-pearl buttons\n• Machine washable",
+                'price' => 2800.00,
+                'cost_price' => 900.00,
+                'is_active' => true,
+                'is_featured' => false,
+                'brand_slug' => 'urbanedge',
+                'category_slugs' => ['demo-clothing'],
+                'variants' => [
                     ['name' => 'Medium - Beige',  'sku' => 'DEMO-SHIRT-001-MB', 'price' => 2800.00, 'stock' => 25, 'weight' => 0.300, 'option_values' => [['Size', 'Medium'], ['Color', 'Beige']]],
                     ['name' => 'Large - Beige',   'sku' => 'DEMO-SHIRT-001-LB', 'price' => 2800.00, 'stock' => 20, 'weight' => 0.300, 'option_values' => [['Size', 'Large'], ['Color', 'Beige']]],
                     ['name' => 'Medium - Green',  'sku' => 'DEMO-SHIRT-001-MG', 'price' => 2800.00, 'stock' => 15, 'weight' => 0.300, 'option_values' => [['Size', 'Medium'], ['Color', 'Green']]],
                 ],
             ],
             [
-                'name'              => 'Organic Green Tea Set',
-                'slug'              => 'demo-organic-green-tea-set',
-                'sku'               => 'DEMO-TEA-001',
-                'type'              => 'simple',
+                'name' => 'Organic Green Tea Set',
+                'slug' => 'demo-organic-green-tea-set',
+                'sku' => 'DEMO-TEA-001',
+                'type' => 'simple',
                 'short_description' => 'Premium organic green tea collection with bamboo infuser.',
-                'description'       => "A curated set of 6 premium organic green teas.\n\nSet includes:\n• Sencha (25g)\n• Matcha (30g)\n• Jasmine Pearls (25g)\n• Gunpowder (25g)\n• Mint Green (25g)\n• Bamboo infuser",
-                'price'             => 3800.00,
-                'cost_price'        => 1500.00,
-                'is_active'         => true,
-                'is_featured'       => false,
-                'brand_slug'        => 'purenature',
-                'category_slugs'    => ['demo-accessories'],
-                'variants'          => [
+                'description' => "A curated set of 6 premium organic green teas.\n\nSet includes:\n• Sencha (25g)\n• Matcha (30g)\n• Jasmine Pearls (25g)\n• Gunpowder (25g)\n• Mint Green (25g)\n• Bamboo infuser",
+                'price' => 3800.00,
+                'cost_price' => 1500.00,
+                'is_active' => true,
+                'is_featured' => false,
+                'brand_slug' => 'purenature',
+                'category_slugs' => ['demo-accessories'],
+                'variants' => [
                     ['name' => 'Default', 'sku' => 'DEMO-TEA-001-DF', 'price' => 3800.00, 'stock' => 40, 'weight' => 0.400],
                 ],
             ],
@@ -537,16 +543,16 @@ class DemoStoreSeeder extends Seeder
             $product = Product::withoutGlobalScopes()->firstOrCreate(
                 ['store_id' => $store->id, 'slug' => $data['slug']],
                 [
-                    'name'              => $data['name'],
-                    'sku'               => $data['sku'],
-                    'type'              => $data['type'],
+                    'name' => $data['name'],
+                    'sku' => $data['sku'],
+                    'type' => $data['type'],
                     'short_description' => $data['short_description'],
-                    'description'       => $data['description'],
-                    'price'             => $data['price'],
-                    'cost_price'        => $data['cost_price'],
-                    'is_active'         => $data['is_active'],
-                    'is_featured'       => $data['is_featured'],
-                    'brand_id'          => $brand?->id,
+                    'description' => $data['description'],
+                    'price' => $data['price'],
+                    'cost_price' => $data['cost_price'],
+                    'is_active' => $data['is_active'],
+                    'is_featured' => $data['is_featured'],
+                    'brand_id' => $brand?->id,
                     'primary_category_id' => $primaryCategory?->id,
                 ]
             );
@@ -574,11 +580,11 @@ class DemoStoreSeeder extends Seeder
                     ['store_id' => $store->id, 'sku' => $vData['sku']],
                     [
                         'product_id' => $product->id,
-                        'name'       => $vData['name'],
-                        'price'      => $vData['price'],
-                        'stock'      => $vData['stock'],
-                        'weight'     => $vData['weight'] ?? null,
-                        'is_active'  => true,
+                        'name' => $vData['name'],
+                        'price' => $vData['price'],
+                        'stock' => $vData['stock'],
+                        'weight' => $vData['weight'] ?? null,
+                        'is_active' => true,
                         'is_default' => $i === 0,
                     ]
                 );
@@ -609,8 +615,8 @@ class DemoStoreSeeder extends Seeder
 
             if (! $product->images()->exists()) {
                 $product->images()->create([
-                    'path'       => 'img/icons/noimg.png',
-                    'store_id'   => $store->id,
+                    'path' => 'img/icons/noimg.png',
+                    'store_id' => $store->id,
                     'sort_order' => 0,
                     'is_primary' => true,
                 ]);
@@ -652,7 +658,7 @@ class DemoStoreSeeder extends Seeder
         //   • demo.dual@edzeery.com      → confirm + track + dispatch.carrier + own-status
         $scopedMembers = [
             'demo.confirmer@edzeery.com' => [
-                'name'  => 'Demo Confirmer',
+                'name' => 'Demo Confirmer',
                 'perms' => [
                     StorePermissionEnum::ORDER_VIEW->value,
                     StorePermissionEnum::ORDER_CONFIRM->value,
@@ -664,7 +670,7 @@ class DemoStoreSeeder extends Seeder
                 ],
             ],
             'demo.tracker@edzeery.com' => [
-                'name'  => 'Demo Tracker',
+                'name' => 'Demo Tracker',
                 'perms' => [
                     StorePermissionEnum::ORDER_VIEW->value,
                     StorePermissionEnum::CRM_ORDER_TRACKING->value,
@@ -679,7 +685,7 @@ class DemoStoreSeeder extends Seeder
                 ],
             ],
             'demo.dual@edzeery.com' => [
-                'name'  => 'Demo Confirm + Track',
+                'name' => 'Demo Confirm + Track',
                 'perms' => [
                     StorePermissionEnum::ORDER_VIEW->value,
                     StorePermissionEnum::ORDER_CONFIRM->value,
@@ -707,9 +713,9 @@ class DemoStoreSeeder extends Seeder
             $membership = StoreMembership::firstOrCreate(
                 ['store_id' => $store->id, 'user_id' => $memberUser->id],
                 [
-                    'invited_by'               => $store->user_id,
-                    'is_active'                => true,
-                    'role'                     => StoreRoleEnum::STAFF->value,
+                    'invited_by' => $store->user_id,
+                    'is_active' => true,
+                    'role' => StoreRoleEnum::STAFF->value,
                     'supervisor_membership_id' => $manager?->id,
                 ]
             );
@@ -733,9 +739,9 @@ class DemoStoreSeeder extends Seeder
         // Toggles that make the overflow fallback, the "over capacity" badge
         // and the in-table price editor demo-able out of the box.
         $store->settings()->updateOrCreate([], [
-            'distribution_overflow_enabled'    => true,
+            'distribution_overflow_enabled' => true,
             'distribution_overflow_percentage' => 20,
-            'allow_price_edit'                 => true,
+            'allow_price_edit' => true,
         ]);
     }
 
@@ -761,16 +767,16 @@ class DemoStoreSeeder extends Seeder
 
             ConfirmationShift::firstOrCreate(
                 [
-                    'store_id'      => $store->id,
+                    'store_id' => $store->id,
                     'membership_id' => $membership->id,
-                    'role_scope'    => $shift['scope'],
-                    'shift_type'    => 'morning',
+                    'role_scope' => $shift['scope'],
+                    'shift_type' => 'morning',
                 ],
                 [
-                    'start_time'            => $shift['start'],
-                    'end_time'              => $shift['end'],
-                    'days_of_week'          => [7, 1, 2, 3, 4],
-                    'is_active'             => true,
+                    'start_time' => $shift['start'],
+                    'end_time' => $shift['end'],
+                    'days_of_week' => [7, 1, 2, 3, 4],
+                    'is_active' => true,
                     'max_concurrent_orders' => $shift['cap'],
                 ]
             );
@@ -794,15 +800,15 @@ class DemoStoreSeeder extends Seeder
             ShippingProvider::updateOrCreate(
                 ['store_id' => $store->id, 'code' => $provider['code']],
                 [
-                    'name'                   => $provider['name'],
-                    'carrier_platform_id'    => $carrier?->platform_id,
-                    'carrier_id'             => $carrier?->id,
-                    'credentials'            => [],
+                    'name' => $provider['name'],
+                    'carrier_platform_id' => $carrier?->platform_id,
+                    'carrier_id' => $carrier?->id,
+                    'credentials' => [],
                     'shipment_types_enabled' => ['delivery'],
-                    'is_active'              => true,
-                    'is_default'             => $provider['is_default'],
-                    'max_weight_kg'          => $provider['max_weight_kg'],
-                    'flat_rate'              => $provider['flat_rate'],
+                    'is_active' => true,
+                    'is_default' => $provider['is_default'],
+                    'max_weight_kg' => $provider['max_weight_kg'],
+                    'flat_rate' => $provider['flat_rate'],
                 ]
             );
         }
@@ -827,9 +833,9 @@ class DemoStoreSeeder extends Seeder
 
         ConfirmationProductAssignment::firstOrCreate(
             [
-                'store_id'      => $store->id,
+                'store_id' => $store->id,
                 'membership_id' => $dual->id,
-                'product_id'    => $product->id,
+                'product_id' => $product->id,
             ]
         );
     }
@@ -842,10 +848,10 @@ class DemoStoreSeeder extends Seeder
     {
         $country = Country::where('code', 'DZ')->first()
             ?? Country::create([
-                'name'             => 'Algeria',
-                'arabic_name'      => 'الجزائر',
-                'code'             => 'DZ',
-                'is_active'        => true,
+                'name' => 'Algeria',
+                'arabic_name' => 'الجزائر',
+                'code' => 'DZ',
+                'is_active' => true,
                 'is_cod_available' => true,
             ]);
 
@@ -853,19 +859,19 @@ class DemoStoreSeeder extends Seeder
 
         $state = State::where('country_id', $country->id)->where('state_code', $stateCode)->first()
             ?? State::create([
-                'country_id'       => $country->id,
-                'name'             => $stateNames[$stateCode] ?? $stateCode,
-                'state_code'       => $stateCode,
-                'is_active'        => true,
+                'country_id' => $country->id,
+                'name' => $stateNames[$stateCode] ?? $stateCode,
+                'state_code' => $stateCode,
+                'is_active' => true,
                 'is_cod_available' => true,
             ]);
 
         $city = City::where('state_id', $state->id)->where('name', $cityName)->first()
             ?? City::create([
-                'state_id'         => $state->id,
-                'name'             => $cityName,
-                'post_code'        => $postCode,
-                'is_active'        => true,
+                'state_id' => $state->id,
+                'name' => $cityName,
+                'post_code' => $postCode,
+                'is_active' => true,
                 'is_cod_available' => true,
             ]);
 
@@ -888,13 +894,13 @@ class DemoStoreSeeder extends Seeder
             $customer = Customer::firstOrCreate(
                 ['store_id' => $store->id, 'phone' => $data['phone']],
                 [
-                    'name'       => $data['name'],
-                    'email'      => $data['email'],
-                    'address'    => $data['address'],
+                    'name' => $data['name'],
+                    'email' => $data['email'],
+                    'address' => $data['address'],
                     'country_id' => $loc['country']->id,
-                    'state_id'   => $loc['state']->id,
-                    'city_id'    => $loc['city']->id,
-                    'status'     => true,
+                    'state_id' => $loc['state']->id,
+                    'city_id' => $loc['city']->id,
+                    'status' => true,
                 ]
             );
 
@@ -902,9 +908,9 @@ class DemoStoreSeeder extends Seeder
             // already-seeded customers point to the real commune.
             $locMap = [
                 'country_id' => $loc['country']->id,
-                'state_id'   => $loc['state']->id,
-                'city_id'    => $loc['city']->id,
-                'address'    => $data['address'],
+                'state_id' => $loc['state']->id,
+                'city_id' => $loc['city']->id,
+                'address' => $data['address'],
             ];
             $locMap = array_filter(
                 $locMap,
@@ -917,27 +923,27 @@ class DemoStoreSeeder extends Seeder
 
     private function seedDemoOrders(Store $store): void
     {
-        $statuses  = Status::system()->forType('order')->get()->keyBy('key');
-        $members   = StoreMembership::where('store_id', $store->id)->with('user')->get()
+        $statuses = Status::system()->forType('order')->get()->keyBy('key');
+        $members = StoreMembership::where('store_id', $store->id)->with('user')->get()
             ->keyBy(fn (StoreMembership $m) => strtolower($m->user->email));
         $providers = ShippingProvider::where('store_id', $store->id)->get()->keyBy('code');
-        $riders    = DeliveryRider::where('store_id', $store->id)->get()->keyBy('phone');
+        $riders = DeliveryRider::where('store_id', $store->id)->get()->keyBy('phone');
         $customers = Customer::where('store_id', $store->id)->get()->keyBy('phone');
-        $variants  = ProductVariant::withoutGlobalScopes()->where('store_id', $store->id)->get()->keyBy('sku');
+        $variants = ProductVariant::withoutGlobalScopes()->where('store_id', $store->id)->get()->keyBy('sku');
         $stopdesks = StopdeskPoint::where('store_id', $store->id)->get()->keyBy('external_code');
 
         $ctx = [
-            'statuses'  => $statuses,
-            'members'   => $members,
+            'statuses' => $statuses,
+            'members' => $members,
             'providers' => $providers,
-            'riders'    => $riders,
+            'riders' => $riders,
             'customers' => $customers,
-            'variants'  => $variants,
+            'variants' => $variants,
             'stopdesks' => $stopdesks,
-            'owner'     => $members->get('demo@edzeery.com'),
+            'owner' => $members->get('demo@edzeery.com'),
             'confirmer' => $members->get('demo.confirmer@edzeery.com'),
-            'tracker'   => $members->get('demo.tracker@edzeery.com'),
-            'dual'      => $members->get('demo.dual@edzeery.com'),
+            'tracker' => $members->get('demo.tracker@edzeery.com'),
+            'dual' => $members->get('demo.dual@edzeery.com'),
         ];
 
         $specs = [
@@ -952,7 +958,7 @@ class DemoStoreSeeder extends Seeder
                 'assign_to' => 'demo.confirmer@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'manual',
                 'events' => [
                     ['type' => 'reassigned', 'hours' => 1, 'by' => 'demo@edzeery.com',
-                     'message' => __('order_flow.event_reassigned', [], 'ar'), 'payload' => ['to' => 'Demo Confirmer']],
+                        'message' => __('order_flow.event_reassigned', [], 'ar'), 'payload' => ['to' => 'Demo Confirmer']],
                 ],
             ],
             [ // 21003 — pending, auto-assigned to the dual member
@@ -969,7 +975,7 @@ class DemoStoreSeeder extends Seeder
                 'history' => [['no_answer_1', 'demo.confirmer@edzeery.com', 'First confirmation attempt — no answer', 26]],
                 'events' => [
                     ['type' => 'contact', 'hours' => 26, 'by' => 'demo.confirmer@edzeery.com',
-                     'message' => __('order_flow.event_contact', ['outcome' => 'no answer'], 'ar'), 'payload' => ['outcome' => 'no answer']],
+                        'message' => __('order_flow.event_contact', ['outcome' => 'no answer'], 'ar'), 'payload' => ['outcome' => 'no answer']],
                 ],
             ],
             [ // 21005 — postponed on request
@@ -986,7 +992,7 @@ class DemoStoreSeeder extends Seeder
                 'history' => [['confirmed', 'demo.confirmer@edzeery.com', 'Customer confirmed details by phone', 14]],
                 'events' => [
                     ['type' => 'contact', 'hours' => 14, 'by' => 'demo.confirmer@edzeery.com',
-                     'message' => __('order_flow.event_contact', ['outcome' => 'answered'], 'ar'), 'payload' => ['outcome' => 'answered']],
+                        'message' => __('order_flow.event_contact', ['outcome' => 'answered'], 'ar'), 'payload' => ['outcome' => 'answered']],
                 ],
             ],
             [ // 21007 — confirmed, auto-assigned to the confirmer
@@ -1064,7 +1070,7 @@ class DemoStoreSeeder extends Seeder
                 ],
                 'events' => [
                     ['type' => 'note', 'hours' => 162, 'by' => 'demo.tracker@edzeery.com',
-                     'message' => 'COD amount collected and marked as paid.', 'payload' => []],
+                        'message' => 'COD amount collected and marked as paid.', 'payload' => []],
                 ],
             ],
             [ // 21012 — returned, barcode verified + processed (returns scan demo)
@@ -1185,16 +1191,16 @@ class DemoStoreSeeder extends Seeder
             foreach ($providers as $provider) {
                 DeliveryRate::updateOrCreate(
                     [
-                        'store_id'             => $store->id,
+                        'store_id' => $store->id,
                         'shipping_provider_id' => $provider->id,
-                        'state_id'             => $state->id,
+                        'state_id' => $state->id,
                     ],
                     [
-                        'label'       => "{$provider->name} — {$state->name}",
-                        'home_cost'   => $homeCost,
+                        'label' => "{$provider->name} — {$state->name}",
+                        'home_cost' => $homeCost,
                         'office_cost' => $officeCost,
-                        'source'      => 'seeded',
-                        'is_active'   => true,
+                        'source' => 'seeded',
+                        'is_active' => true,
                     ]
                 );
             }
@@ -1209,8 +1215,8 @@ class DemoStoreSeeder extends Seeder
         $points = [
             ['provider' => 'ecotrack',    'state' => '16', 'city' => 'Bab Azzouar', 'code' => 'EC-ALG-01', 'name' => 'Ecotrack — Hub Alger',       'address' => "Zone d'activite de Bab Azzouar, Alger",   'phone' => '023 80 12 34'],
             ['provider' => 'ecotrack',    'state' => '31', 'city' => 'Bir El Djir', 'code' => 'EC-ORN-01', 'name' => 'Ecotrack — Agence Oran',      'address' => "Rue de l'ANP, Bir El Djir, Oran",         'phone' => '041 55 44 33'],
-            ['provider' => 'zrexpress_v2','state' => '16', 'city' => 'Bab Azzouar', 'code' => 'ZR-ALG-01', 'name' => 'ZR Express — Agence Alger',   'address' => 'Cite 5 Juillet, Bab Azzouar, Alger',       'phone' => '023 90 21 43'],
-            ['provider' => 'zrexpress_v2','state' => '31', 'city' => 'Bir El Djir', 'code' => 'ZR-ORN-01', 'name' => 'ZR Express — Agence Oran',    'address' => 'Rue El Karma, Bir El Djir, Oran',          'phone' => '041 55 44 88'],
+            ['provider' => 'zrexpress_v2', 'state' => '16', 'city' => 'Bab Azzouar', 'code' => 'ZR-ALG-01', 'name' => 'ZR Express — Agence Alger',   'address' => 'Cite 5 Juillet, Bab Azzouar, Alger',       'phone' => '023 90 21 43'],
+            ['provider' => 'zrexpress_v2', 'state' => '31', 'city' => 'Bir El Djir', 'code' => 'ZR-ORN-01', 'name' => 'ZR Express — Agence Oran',    'address' => 'Rue El Karma, Bir El Djir, Oran',          'phone' => '041 55 44 88'],
         ];
 
         foreach ($points as $point) {
@@ -1227,12 +1233,12 @@ class DemoStoreSeeder extends Seeder
                 ['store_id' => $store->id, 'name' => $point['name']],
                 [
                     'shipping_provider_id' => $provider->id,
-                    'state_id'             => $state->id,
-                    'city_id'              => $city?->id,
-                    'address'              => $point['address'],
-                    'phone'                => $point['phone'],
-                    'external_code'        => $point['code'],
-                    'is_active'            => true,
+                    'state_id' => $state->id,
+                    'city_id' => $city?->id,
+                    'address' => $point['address'],
+                    'phone' => $point['phone'],
+                    'external_code' => $point['code'],
+                    'is_active' => true,
                 ]
             );
         }
@@ -1263,18 +1269,18 @@ class DemoStoreSeeder extends Seeder
 
             $debt = Debt::updateOrCreate(
                 [
-                    'store_id'          => $store->id,
-                    'type'              => DebtTypeEnum::OWING,
+                    'store_id' => $store->id,
+                    'type' => DebtTypeEnum::OWING,
                     'counterparty_name' => $provider->name,
                 ],
                 [
-                    'user_id'        => $user?->id ?? $store->user_id,
-                    'total_amount'   => (float) $row->fees,
-                    'due_date'       => now()->addDays(7),
-                    'reminder_date'  => now()->addDays(3),
-                    'description'    => "Transport invoice — {$provider->name}",
-                    'notes'          => 'Total derived from the shipped demo orders.',
-                    'status'         => DebtStatusEnum::ACTIVE,
+                    'user_id' => $user?->id ?? $store->user_id,
+                    'total_amount' => (float) $row->fees,
+                    'due_date' => now()->addDays(7),
+                    'reminder_date' => now()->addDays(3),
+                    'description' => "Transport invoice — {$provider->name}",
+                    'notes' => 'Total derived from the shipped demo orders.',
+                    'status' => DebtStatusEnum::ACTIVE,
                 ]
             );
 
@@ -1284,11 +1290,11 @@ class DemoStoreSeeder extends Seeder
             // finance screens show a progressing debt; Ecotrack stays open.
             if ($provider->code === 'zrexpress_v2') {
                 DebtPayment::create([
-                    'debt_id'      => $debt->id,
-                    'store_id'     => $store->id,
-                    'amount'       => 150.00,
+                    'debt_id' => $debt->id,
+                    'store_id' => $store->id,
+                    'amount' => 150.00,
                     'payment_date' => now()->subDays(3),
-                    'notes'        => 'Partial settlement',
+                    'notes' => 'Partial settlement',
                 ]);
             }
         }
@@ -1307,27 +1313,27 @@ class DemoStoreSeeder extends Seeder
 
             $owedDebt = Debt::updateOrCreate(
                 [
-                    'store_id'          => $store->id,
-                    'type'              => DebtTypeEnum::OWED,
+                    'store_id' => $store->id,
+                    'type' => DebtTypeEnum::OWED,
                     'counterparty_name' => 'Amine Bensaïd',
                 ],
                 [
-                    'user_id'       => $user?->id ?? $store->user_id,
-                    'total_amount'  => (float) $codOrder->total_amount,
-                    'due_date'      => $deliveredAt,
-                    'description'   => "COD collection — order {$codOrder->number}",
-                    'notes'         => 'Amount collected by the carrier on delivery.',
-                    'status'        => DebtStatusEnum::ACTIVE,
+                    'user_id' => $user?->id ?? $store->user_id,
+                    'total_amount' => (float) $codOrder->total_amount,
+                    'due_date' => $deliveredAt,
+                    'description' => "COD collection — order {$codOrder->number}",
+                    'notes' => 'Amount collected by the carrier on delivery.',
+                    'status' => DebtStatusEnum::ACTIVE,
                 ]
             );
 
             $owedDebt->payments()->delete();
             DebtPayment::create([
-                'debt_id'      => $owedDebt->id,
-                'store_id'     => $store->id,
-                'amount'       => (float) $codOrder->total_amount,
+                'debt_id' => $owedDebt->id,
+                'store_id' => $store->id,
+                'amount' => (float) $codOrder->total_amount,
                 'payment_date' => $deliveredAt,
-                'notes'        => 'Full COD collection',
+                'notes' => 'Full COD collection',
             ]);
         }
     }
@@ -1405,7 +1411,7 @@ class DemoStoreSeeder extends Seeder
 
         $assignedAt = $assignTo ? $createdAt->copy()->addMinutes(25) : null;
 
-        $order = new Order();
+        $order = new Order;
         $order->store_id = $store->id;
         $order->customer_id = $customer->id;
         $order->status_id = $status->id;
@@ -1448,13 +1454,13 @@ class DemoStoreSeeder extends Seeder
 
         foreach ($itemsData as [$variant, $qty, $price]) {
             OrderItem::create([
-                'store_id'           => $store->id,
-                'order_id'           => $order->id,
+                'store_id' => $store->id,
+                'order_id' => $order->id,
                 'product_variant_id' => $variant->id,
-                'product_id'         => $variant->product_id,
-                'quantity'           => $qty,
-                'price'              => $price,
-                'subtotal'           => $price * $qty,
+                'product_id' => $variant->product_id,
+                'quantity' => $qty,
+                'price' => $price,
+                'subtotal' => $price * $qty,
             ]);
         }
 
@@ -1497,16 +1503,32 @@ class DemoStoreSeeder extends Seeder
         }
 
         if (! empty($spec['tracking'])) {
-            $this->seedOrderTracking($store, $order, $spec, $ctx, $createdAt, $provider, $assignTo);
+            $this->seedOrderTracking($store, $order, $spec, $ctx, $createdAt, $provider);
         }
     }
 
-    private function seedOrderTracking(Store $store, Order $order, array $spec, array $ctx, Carbon $createdAt, ?ShippingProvider $provider, ?StoreMembership $assignTo): void
+    private function seedOrderTracking(Store $store, Order $order, array $spec, array $ctx, Carbon $createdAt, ?ShippingProvider $provider): void
     {
         $t = $spec['tracking'];
         $hoursOf = fn (string $key, $default) => (int) ($t[$key] ?? $default);
 
-        $tracking = new OrderTracking();
+        // Trackings are assigned by the tracking pipeline: only members that
+        // actually hold CRM_ORDER_TRACKING qualify (the order's confirmer may
+        // hold no tracking permission at all), and the assignment records
+        // auto semantics — no human actor, no overflow, never copied from
+        // the confirmation-side assignment of the order.
+        $eligibleTrackers = array_values(array_filter([
+            $ctx['tracker'] ?? null,
+            $ctx['dual'] ?? null,
+        ], fn ($member) => $member instanceof StoreMembership
+            && $member->is_active
+            && $member->can(StorePermissionEnum::CRM_ORDER_TRACKING)));
+
+        $assignee = $eligibleTrackers === []
+            ? null
+            : $eligibleTrackers[$this->seededTrackingAssignments++ % count($eligibleTrackers)];
+
+        $tracking = new OrderTracking;
         $tracking->store_id = $store->id;
         $tracking->order_id = $order->id;
         $tracking->shipping_provider_id = $provider?->id;
@@ -1514,11 +1536,11 @@ class DemoStoreSeeder extends Seeder
         $tracking->tracking_status = $t['status'];
         $tracking->shipped_at = $createdAt->copy()->addHours($hoursOf('shipped_hours', 24));
         $tracking->webhook_token = Str::random(40);
-        $tracking->assigned_to_membership_id = $assignTo?->id;
-        $tracking->assigned_by_membership_id = $ctx['owner']?->id;
-        $tracking->assigned_at = $tracking->shipped_at;
-        $tracking->assignment_method = $order->assignment_method;
-        $tracking->over_capacity = $order->over_capacity;
+        $tracking->assigned_to_membership_id = $assignee?->id;
+        $tracking->assigned_at = $assignee ? $tracking->shipped_at : null;
+        $tracking->assignment_method = $assignee ? 'auto' : null;
+        $tracking->assigned_by_membership_id = null;
+        $tracking->over_capacity = false;
         $tracking->carrier_raw = ['carrier' => $provider?->code, 'last_check' => 'seeded'];
         $tracking->notes = $t['notes'] ?? null;
 
@@ -1592,10 +1614,10 @@ class DemoStoreSeeder extends Seeder
         }
 
         $history = new OrderStatusHistory([
-            'order_id'                  => $order->id,
-            'status_id'                 => $status->id,
-            'changed_by_membership_id'  => $byId,
-            'reason'                    => $reason,
+            'order_id' => $order->id,
+            'status_id' => $status->id,
+            'changed_by_membership_id' => $byId,
+            'reason' => $reason,
         ]);
         $history->created_at = $at;
         $history->updated_at = $at;
@@ -1605,27 +1627,27 @@ class DemoStoreSeeder extends Seeder
     private function addTrackingHistory(Order $order, OrderTracking $tracking, string $status, ?string $byId, ?string $notes, Carbon $at): void
     {
         OrderTrackingHistory::create([
-            'store_id'                => $order->store_id,
-            'order_id'                => $order->id,
-            'order_tracking_id'       => $tracking->id,
-            'status'                  => $status,
+            'store_id' => $order->store_id,
+            'order_id' => $order->id,
+            'order_tracking_id' => $tracking->id,
+            'status' => $status,
             'changed_by_membership_id' => $byId,
-            'notes'                   => $notes,
-            'created_at'              => $at,
+            'notes' => $notes,
+            'created_at' => $at,
         ]);
     }
 
     private function addAuditEvent(Order $order, string $eventType, string $message, array $payload, ?string $byId, Carbon $at): void
     {
         OrderEvent::create([
-            'store_id'             => $order->store_id,
-            'order_id'             => $order->id,
-            'actor_membership_id'  => $byId,
-            'actor_type'           => $byId ? OrderEvent::ACTOR_MEMBERSHIP : OrderEvent::ACTOR_SYSTEM,
-            'event_type'           => $eventType,
-            'message'              => $message,
-            'payload'              => $payload,
-            'occurred_at'          => $at,
+            'store_id' => $order->store_id,
+            'order_id' => $order->id,
+            'actor_membership_id' => $byId,
+            'actor_type' => $byId ? OrderEvent::ACTOR_MEMBERSHIP : OrderEvent::ACTOR_SYSTEM,
+            'event_type' => $eventType,
+            'message' => $message,
+            'payload' => $payload,
+            'occurred_at' => $at,
         ]);
     }
 }

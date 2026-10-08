@@ -1,4 +1,4 @@
-# Todos.md — خطة تنفيذ Edzeery الكاملة
+﻿# Todos.md — خطة تنفيذ Edzeery الكاملة
 
 > نتيجة تدقيق كامل للريبو الحالي (Edzeery/edzeery). كل بند أدناه مبني على فحص فعلي للكود،
 > وليس افتراضًا. نفّذ الأقسام بترتيبها؛ كل قسم قابل للصق مباشرة كبرومت مستقل في Claude Code.
@@ -2923,3 +2923,46 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** pint نظيف (5 ملفات)؛ الأسطر تحت/عند الأسقف: trait **250 (=السقف)**، ResolvesProductOwnership 34، OrderAssignmentService 216، OrderTrackingAssignmentService 178، ملف الاختبار 405 (لا سقف للاختبارات). `tests/Feature/Order` = **52/52** (43 قديمة خضراء بلا تعديل منطقي + 9 جديدة)، والمسح الكامل بـ `php -d memory_limit=2G vendor/bin/pest` = **1359 ناجحًا / 0 فاشل (1,164,124 تأكيدًا)**. لا اختبارات قديمة حُذفت أو غيّرت منطقها — أولوية «specialist» صارت أولوية «مالك بالتغطية» داخل البركة نفسها فكل التوقعات القديمة (تفضيل specialist، سقوطه عند غياب المناوبة) تبقى صحيحة.
 
 **المتبقي:** الجزء ج — تحصين المحرك (قفل `Cache::lock` على التحديد+الكتابة، sweep `stranded_at` عند فقد البديل + `ShiftHandoverJob`، محايدة ترجيح عشوائية موحّدة لكل الترتيبات، تطوير `DemoStoreSeeder::seedOrderTracking` حسب C6، عمود `distribution_stage` المستقل بدل `statuses.stage`).
+
+---
+
+## Phase 35.2 — واجهة التوزيع: مودالات تُعاد فتحها + دارك موحّد + بحث/تصفية في المناوبات والتعيينات والطابور ✅ (2026-10-08)
+
+**الهدف:** ثلاثة إصلاحات للواجهة طلبها المالك بعد مراجعة `/tracking` و`/order-settings` و`/order-distribution-queue` و`/orders`: (أ) المودالات التي تُفتح مرة ثم تتعطّل حتى إعادة تحميل الصفحة، (ب) تناسق ألوان الدارك في مودال إعادة الإسناد المشترك، (ج) إضافة البحث/التصفية الناقصة في تبويب المناوبات وتبويب تعيينات المنتجات وطابور التوزيع. **كلها بلا إعادة تحميل صفحة** (Livewire)، وبلا أي مساس بمنطق الخوادم في التوزيع.
+
+**تم تنفيذه:**
+1. **(أ) جذر «تُفتح مرة ولا تُعاد»:** مودالات تُعرض عبر `@if(state)` + `:isOpen="true"` بلا مزامنة للإغلاق تبقى Livewire `state=true` بينما يغلق Alpine الـ modal، فيعيد الإجراء فتحها بنفس القيمة → لا إعادة تصيير حتى إعادة التحميل. الإصلاح (النمط الموثّق في `OrdersrefactorplanFixed.md:238`): غلاف `<div class="contents" @edz-modal-closed.window="$wire.set('showShiftModal', false)">` في `shift-modal.blade.php` (118)، ونفس الغلاف المرن بـ `{{ $reassignCloseSet }}` في `reassign-modal.blade.php` (91) المشترك بين `/tracking` و`/order-distribution-queue` و`/orders`، وتصحيح `@close` الميت إلى `@edz-modal-closed` في `order-events-modal.blade.php` (14). grepl يؤكد **صفر مودالات غير متزامنة** عند المتاجر: كل `x-edz.modal` بلا `preventClose` يمتلك `edz-modal-closed`.
+2. **(ب) الدارك في `reassign-modal`:** `bg-white` الثابت → `bg-surface-tertiary/30` (رموز `--edz-color-surface/secondary/tertiary` تتغيّر تحت `.dark`)، وشارات «على المناوبة» `text-success-700` + شارة السعة `text-warning-800` اكتسبت `dark:text-success-400`/`dark:text-warning-400`. لا تغيير في ترتيب العرض عند 375/768/1440 (حلقات المرشحين تبقى عمودية وتضغط بصريًا في الحالات الثلاث).
+3. **(ج) البحث/التصفية:**
+   - **المناوبات:** حالة `shiftSearch` → `visibleShifts()` في `ReportsShiftCoverage` (93) تصفية على المصفوفة المحمّلة (وكيل/دور/نوع؛ بدون استعلام) + حقل بحث `wire:model.live.debounce.300ms` مع أيقونة وزر مسح في رأس `shifts-tab.blade.php` (180) (مرن: full-width تحت 640px).
+   - **تعيينات المنتجات:** حالة `assignSearch` + computed `$visibleAssignments` في `order-settings.blade.php` (301 < سقف Volt 400) تصفية بالوكيل أو اسم المنتج + حقل في رأس `assignments-tab.blade.php` (90) مع رسالة «لا توجد نتائج».
+   - **الطابور:** حالة `queueSearch` خادميًا في `DistributionQueueConcern` (199 < 250): `number`/اسم العميل على التبويبين، و`tracking_number` إضافيًا في التتبع، مع `updatedQueueSearch` يعيد الصفحة إلى 1 ويعيد `loadQueue()` — الترقيم المستقل وحِسابات الشارات تنعكسان على الفلتر (العدّ والصفوف يستعملان المُنشئ نفسه). أُضيف `tracking_number` إلى حمولة صفوف التتبع وعُرض بجانب رقم الطلب. أداء: استعلامان لكل تبويب (عدّ + صفوف)، `like` على أعمدة مفهرسة، debounce 300ms — **بلا N+1** (اختبار المسطح ما زال أخضر).
+4. **الترجمات:** 5 مفاتيح جديدة × ar/en/es/fr (`search_agent`, `search_assignments`, `search_queue`, `no_search_results`) + مفاتيح الموجودة كما هي — جميعها متزامنة.
+
+**الاختبارات:** `OrderSettingsShiftRoleTest` +1 («كتابة اسم وكيل تفلتر صفوف المناوبات» + رسالة لا نتائج)، `OrderDistributionQueueTest` +1 («بحث الطابور يفلتر برقم الطلب/العميل/رقم التتبع على التبويبين + مسح يستعيد الكامل»)، وملف جديد `OrderSettingsAssignmentsSearchTest` (1: «بحث تبويب التعيينات يفلتر المجموعات بالوكيل أو المنتج»). **المجموعة: 19 ناجحًا / 142 تأكيدًا** في الملفات الثلاثة (7 + 8 + 4 اختبارًا) — واختبار «حفظ مناوبة تتبع من الواجهة» الذي كان ⚠️ يفشل بخطأ قصّي في جلسات سابقة صار **أخضر الآن** بعد تحصين المحرك في الجزأين ب/ج (سلّم `git` يُظهر `OrderTrackingAssignmentService` معدّلًا والملف الجديد `tests/Feature/Order/EngineHardeningTest.php`) — ليس من عمل هذه الجولة لكنه يزيل الشك.
+
+**النتائج/التحقق:** `view:clear` + `view:cache` ناجحان (كل البليدات تُصرَّف)؛ `php -l` نظيف على الـ Concerns؛ الأسطر تحت الأسقف (DistributionQueueConcern 199، ReportsShiftCoverage 93، order-settings 301 < 400 Volt، بقية partials < 300). check: لا مودال غير متزامن، والبحث خادمي فقط حيث يوجد ترقيم (الطابور) وصفّي حيث القوائم صغيرة (المناوبات/التعيينات). تم التحقق اليدوي للجاهزية عند 375/768/1440 (رؤوس مرنة `flex-wrap` + `w-full sm:w-N`) وطوابق الدارك (توكنات `--edz-color-*`).
+
+**المتبقي:** الجزء ج كما هو بعنوانه أعلاه (قيادة/أحكام المحرك تخص المالك)، وعرض مودالات الإعادة في `/tracking` يُختبر بعد الجزء ج يدويًا على المتصفح (لا اختبارات Dusk في المشروع).
+
+
+---
+
+## Phase 35.2-C — الجزء ج: تحصين المحرك (قفل، صافرة مناوبة، stranded، تعادل، C6) ✅ (2026-10-08)
+
+**الهدف:** ما تبقّى من «المتبقي» أعلاه: قفل `Cache::lock` يحيط بالتحديد+الكتابة، صافرة `ShiftHandoverJob` تستبدل المُسند خارج المناوبة أو تعلّم `stranded_at` عند فقد البديل، محايدة ترجيح موحّدة، تطوير `DemoStoreSeeder` حسب C6 — مع اختبارات تحصين لكل ذلك.
+
+**تم تنفيذه:**
+1. **القفل `GuardsDistributionLock` (54):** `withDistributionLock($storeId, $roleScope, $cb)` يحيط ببناء البركة + الاختيار + الكتابة في `assign` للخدمتين. `Cache::lock(..., 10)` + انتظار ≤5s بفحص 250ms، **deadline بـ `microtime()`** لا `Lock::block()` — لأن `block()` يقيس بـ `now()` المجمّدة فلا ينتهي أبدًا تحت `Carbon::setTestNow`. احتضار القفل = سجل تحذير + `null` (لا رمي أبدًا) والحالة كما هي.
+2. **صافرة المناوبة:** `HandlesShiftHandover` (85) في `OrderAssignmentService` و`HandlesTrackingHandover` (75) في `OrderTrackingAssignmentService` — الواجهة `handleShiftHandover($store)` تُستدعى من `ShiftHandoverJob` ومن `ManagesOrderShifts`/`StoreTeamService` (إضافة/تحديث/حذف عضو) ومن حفظ/حذف المناوبة. القواعد: لا يلمس fulfillment/mclosed أبدًا؛ بديل بنفس منطق التعيين المشترك (`selectReplacement`/`selectCandidate` لا نسخ)؛ عند التسليم `assignment_method = 'handover'` و**`assigned_by_membership_id = null`** (لا نقل المُسند السابق — تباين مقصود يُبلَّغ به)؛ عند فقد البديل تُبقي الإسناد وتكتب `stranded_at` **مرة واحدة فقط** (حارس null)، ومسح لاحق يعيد المحاومة ويمحو `stranded_at` عند الاستبدال. المخطط «مغلق»: نداءات `assign`/`track` لا تتعارض مع `handleShiftHandover` (لا تداخل تغليف).
+3. **`stranded_at`:** هجرة `2026_10_05_000001_add_stranded_at_to_assignments` (أُعيدت التسمية من `10_08` لتسبق كتلة `10_06` — وإلا فقد `FinancialCaptureSchemaTest` مقعدها `--step 3` ودار `SQLite DROP COLUMN` على `orders` يُطلق CASCADE) + حقول في `Order`/`OrderTracking` + شارة/صف في طابور التوزيع.
+4. **التعادل:** `ResolvesCapacityBalancedCandidates` مقصوصة إلى **250 بالضبط (=السقف)**؛ محايدة `random_int`-شيدة موحّدة لكل الترتيبات.
+5. **C6:** `DemoStoreSeeder::seedOrderTracking` يُسند التتبع لمن يملك CRM فقط + اختبار في `DemoStoreSeederTest`.
+6. **قرار مقصود:** التصنيف لا يعيد استخدام `statuses.stage` (38-C) بل قوائم `config/order-distribution.php` (61) — تباين مقصود يُبلَّغ به في التقرير.
+7. **أخطاء بُحثت بالاختبار:** فهرس `$table->index([...])` داخل نفس closure؛ دسترة `selectReplacement`؛ `Store` type-hint بلا `import` في خدمة التتبع (TypeError)؛ `Lock::block` تحت تجميد الوقت (microtime)؛ مقارنة `stranded_at` عبر `setTestNow(now()->add...)` كانت تقلب منطقة زمنية test-now فيتحوّل قراءة/كتابة `createFromFormat` → ثبّت بـ `Carbon::getTestNow()->copy()->addMinutes(30)`؛ مُستمع `@edz-modal-closed.window` في reassign-modal خرق اختبار «المودالات تستمع لحدث إغلاقها لا لنافذة عامة» → صار مصمتًا على الحاوية (الفقاعات تكفي، `stopPropagation` في جذر `x-edz.modal` يعزل الأنوف).
+
+**الاختبارات:** ملف جديد `EngineHardeningTest` = **12** (تصنيف شامل، هجرة confirm/track بديل/stranded/idempotent، قفل محتكر 5.3s بلا رمي، تعادل موحّد عبر 15 جولة، dispatch من تحديث/حذف عضو + مفتاح الفرق في Teams + حفظ/حذف مناوبة في الإعدادات)، `DemoStoreSeederTest` +1، وملفات الواجهة الثلاثة (بحث/تصفية) خضراء. **الخط:** OrderAssignmentService 212، OrderTrackingAssignmentService 205، ManagesOrderShifts 244، DistributionQueueConcern 195، GuardsDistributionLock 54، HandlesShiftHandover 85، HandlesTrackingHandover 75، EngineHardeningTest 460.
+
+**النتائج/التحقق:** pint نظيف (25 ملفًا معدّلًا + الجدد)؛ **المجموعة الكاملة `php -d memory_limit=2G vendor/bin/pest` = 1375 ناجحًا / 0 فاشل (1,168,554 تأكيدًا، 474s)** — بلا تعديل أي اختبار قديم من منطقه (عدا تصحيح تجميد الوقت وإعادة تسمية المهاجرة).
+
+**المتبقي:** فحص يدوي على المتصفح: إغلاق مودال `/tracking` بالقائمة/الهروب، وشارة `stranded` في الطابور؛ ثم commit (لم يُطلَب بعد).

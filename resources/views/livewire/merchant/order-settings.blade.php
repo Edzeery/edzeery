@@ -38,6 +38,7 @@ state([
         'max_concurrent_orders' => null,
     ],
     'shiftRoleFilter' => 'all',
+    'shiftSearch' => '',
 
     'showAssignModal' => false,
     'assignForm' => [
@@ -46,6 +47,7 @@ state([
     ],
     'productSearch' => '',
     'assignProductNames' => [],
+    'assignSearch' => '',
     'storeTimezone' => null,
     'onShiftNow' => 0,
 
@@ -164,6 +166,21 @@ $searchAssignProducts = computed(function (): array {
             'price' => (float) $p->price,
             'image_url' => $p->getPrimaryImagePathAttribute(),
         ])
+        ->values()
+        ->all();
+});
+
+$visibleAssignments = computed(function (): array {
+    $search = trim($this->assignSearch);
+    if ($search === '') {
+        return $this->assignments;
+    }
+
+    $needle = mb_strtolower($search);
+
+    return collect($this->assignments)
+        ->filter(fn (array $a) => str_contains(mb_strtolower($a['membership']['user']['name'] ?? ''), $needle)
+            || str_contains(mb_strtolower($a['product']['name'] ?? ''), $needle))
         ->values()
         ->all();
 });

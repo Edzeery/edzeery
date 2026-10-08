@@ -2,6 +2,7 @@
 
 namespace App\Services\Stores;
 
+use App\Domains\Order\Jobs\ShiftHandoverJob;
 use App\Domains\Plan\Services\FeatureUsageService;
 use App\Enums\Store\StoreRoleEnum;
 use App\Mail\StoreMembershipCredentialsMail;
@@ -29,16 +30,16 @@ class StoreTeamService
             $member_user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
-                    'name'     => $data['name'],
+                    'name' => $data['name'],
                     'password' => Hash::make(Str::random(16)),
                 ]
             );
 
             $updateData = [
-                'name'       => $data['name'],
+                'name' => $data['name'],
                 'country_id' => $data['country_id'] ?? $member_user->country_id,
-                'state_id'   => $data['state_id'] ?? $member_user->state_id,
-                'city_id'    => $data['city_id'] ?? $member_user->city_id,
+                'state_id' => $data['state_id'] ?? $member_user->state_id,
+                'city_id' => $data['city_id'] ?? $member_user->city_id,
             ];
 
             if (! empty($data['password']) && ! $member_user->wasRecentlyCreated) {
@@ -51,8 +52,8 @@ class StoreTeamService
 
             if (
                 StoreMembership::where('store_id', $store->id)
-                ->where('user_id', $member_user->id)
-                ->exists()
+                    ->where('user_id', $member_user->id)
+                    ->exists()
             ) {
                 throw new \Exception(__('teams.member_already_exists'));
             }
@@ -60,11 +61,11 @@ class StoreTeamService
             $role = StoreRoleEnum::from($data['store_role']);
 
             $member = StoreMembership::create([
-                'store_id'                 => $store->id,
-                'user_id'                  => $member_user->id,
-                'invited_by'               => user()->id,
-                'is_active'                => $data['is_active'] ?? true,
-                'role'                     => $role->value,
+                'store_id' => $store->id,
+                'user_id' => $member_user->id,
+                'invited_by' => user()->id,
+                'is_active' => $data['is_active'] ?? true,
+                'role' => $role->value,
                 'supervisor_membership_id' => $this->resolveSupervisorId($store, $data),
             ]);
 
@@ -94,16 +95,16 @@ class StoreTeamService
 
     public function updateMember(Store $store, StoreMembership $membership, array $data): StoreMembership
     {
-        return DB::transaction(function () use ($store, $membership, $data) {
+        $membership = DB::transaction(function () use ($store, $membership, $data) {
 
             $user = $membership->user;
 
             $userData = [
-                'name'       => $data['name'],
-                'email'      => $data['email'],
+                'name' => $data['name'],
+                'email' => $data['email'],
                 'country_id' => $data['country_id'] ?? $user->country_id,
-                'state_id'   => $data['state_id'] ?? $user->state_id,
-                'city_id'    => $data['city_id'] ?? $user->city_id,
+                'state_id' => $data['state_id'] ?? $user->state_id,
+                'city_id' => $data['city_id'] ?? $user->city_id,
             ];
 
             if (! empty($data['password'])) {
@@ -137,10 +138,18 @@ class StoreTeamService
 
             return $membership->refresh();
         });
+
+        // Roles/permissions/active state may have just changed: sweep the
+        // store's open assignments now instead of waiting for the cron.
+        ShiftHandoverJob::dispatch($store);
+
+        return $membership;
     }
 
     public function removeMember(StoreMembership $membership): void
     {
+        $store = $membership->store;
+
         DB::transaction(function () use ($membership): void {
             $user = $membership->user;
 
@@ -161,13 +170,18 @@ class StoreTeamService
             $user->syncRoles([]);
             $user->syncPermissions([]);
         });
+
+        // The removed member's assigned orders must be swept immediately.
+        if ($store !== null) {
+            ShiftHandoverJob::dispatch($store);
+        }
     }
 
     protected function ensureUserIsNotPlatformStaff(string $email): void
     {
         $user = User::where('email', $email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -216,9 +230,9 @@ class StoreTeamService
         } catch (\Throwable $e) {
             Log::warning('Failed to send team member credentials email.', [
                 'store_membership_id' => $member->id,
-                'store_id'            => $store->id,
-                'member'              => $data['email'],
-                'error'               => $e->getMessage(),
+                'store_id' => $store->id,
+                'member' => $data['email'],
+                'error' => $e->getMessage(),
             ]);
         }
     }

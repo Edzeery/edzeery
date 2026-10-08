@@ -25,14 +25,26 @@ trait ReportsShiftCoverage
      */
     public function visibleShifts(): array
     {
-        if ($this->shiftRoleFilter === 'all') {
-            return $this->shifts;
+        $shifts = collect($this->shifts);
+
+        if ($this->shiftRoleFilter !== 'all') {
+            $shifts = $shifts->filter(fn (array $shift) => ($shift['role_scope'] ?? 'confirm') === $this->shiftRoleFilter);
         }
 
-        return collect($this->shifts)
-            ->filter(fn (array $shift) => ($shift['role_scope'] ?? 'confirm') === $this->shiftRoleFilter)
-            ->values()
-            ->all();
+        $search = trim($this->shiftSearch ?? '');
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+
+            $shifts = $shifts->filter(function (array $shift) use ($needle) {
+                $role = $shift['role_scope'] ?? 'confirm';
+
+                return str_contains(mb_strtolower($shift['membership']['user']['name'] ?? ''), $needle)
+                    || str_contains(mb_strtolower($role), $needle)
+                    || str_contains(mb_strtolower((string) ($shift['shift_type'] ?? '')), $needle);
+            });
+        }
+
+        return $shifts->values()->all();
     }
 
     /**

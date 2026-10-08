@@ -254,3 +254,36 @@ test('the shifts tab filters its rows by role', function () {
         ->assertSee('Table Confirmer')
         ->assertDontSee('Table Tracker');
 });
+
+test('typing an agent name filters the shifts rows', function () {
+    [$user, $store] = shiftRoleSettingsStore();
+    $confirmer = shiftRoleMember($store, 'Searchable Zoe', [StorePermissionEnum::ORDER_CONFIRM->value]);
+    $tracker = shiftRoleMember($store, 'Searchable Omar', [StorePermissionEnum::CRM_ORDER_TRACKING->value]);
+
+    foreach ([
+        ['membership_id' => $confirmer->id, 'role_scope' => 'confirm', 'start_time' => '08:00', 'end_time' => '12:00'],
+        ['membership_id' => $tracker->id, 'role_scope' => 'track', 'start_time' => '13:00', 'end_time' => '17:00'],
+    ] as $shift) {
+        ConfirmationShift::create(array_merge([
+            'store_id' => $store->id,
+            'shift_type' => 'custom',
+            'days_of_week' => [1, 2, 3, 4, 5],
+            'is_active' => true,
+        ], $shift));
+    }
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.order-settings')
+        ->assertSee('Searchable Zoe')
+        ->assertSee('Searchable Omar')
+        ->set('shiftSearch', 'omar')
+        ->assertSet('shiftSearch', 'omar')
+        ->assertSee('Searchable Omar')
+        ->assertDontSee('Searchable Zoe')
+        ->set('shiftSearch', 'zoe')
+        ->assertSee('Searchable Zoe')
+        ->assertDontSee('Searchable Omar')
+        ->set('shiftSearch', 'nobody')
+        ->assertSee(__('merchant_panel.no_search_results'));
+});

@@ -69,8 +69,6 @@ trait DistributionQueueConcern
     }
 
     /**
-     * @param string $storeId
-     * @param bool $countOnly
      * @return array<string, mixed>|int
      */
     private function confirmationRows(string $storeId, bool $countOnly = false): array|int
@@ -83,6 +81,14 @@ trait DistributionQueueConcern
                     ->orWhere('over_capacity', true);
             })
             ->whereHas('status', fn ($q) => $q->whereNotIn('key', $this->terminalOrderStatusKeys()))
+            ->when(trim((string) ($this->queueSearch ?? '')) !== '', function ($query) {
+                $search = trim((string) $this->queueSearch);
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
 
         if ($countOnly) {
@@ -108,8 +114,6 @@ trait DistributionQueueConcern
     }
 
     /**
-     * @param string $storeId
-     * @param bool $countOnly
      * @return array<string, mixed>|int
      */
     private function trackingRows(string $storeId, bool $countOnly = false): array|int
@@ -124,6 +128,19 @@ trait DistributionQueueConcern
             ->where(function ($q) {
                 $q->whereNull('assigned_to_membership_id')
                     ->orWhere('over_capacity', true);
+            })
+            ->when(trim((string) ($this->queueSearch ?? '')) !== '', function ($query) {
+                $search = trim((string) $this->queueSearch);
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('tracking_number', 'like', "%{$search}%")
+                        ->orWhereHas('order', function ($o) use ($search) {
+                            $o->where(function ($inner) use ($search) {
+                                $inner->where('number', 'like', "%{$search}%")
+                                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
+                            });
+                        });
+                });
             })
             ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
 
@@ -141,6 +158,7 @@ trait DistributionQueueConcern
                     'id' => (string) $tracking->id,
                     'number' => $order?->number ?? '—',
                     'customer' => $order?->customer?->name ?? '—',
+                    'tracking_number' => $tracking->tracking_number,
                     'tracking_status' => $tracking->tracking_status,
                     'assigned_to' => $tracking->assignedTo?->user?->name,
                     'over_capacity' => (bool) $tracking->over_capacity,
@@ -151,7 +169,7 @@ trait DistributionQueueConcern
     }
 
     /**
-     * @param array<string, mixed> $pagination
+     * @param  array<string, mixed>  $pagination
      * @return array<string, mixed>
      */
     private function pageMeta(array $pagination): array

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Concerns;
 
+use App\Domains\Order\Jobs\ShiftHandoverJob;
 use App\Domains\Order\Models\ConfirmationShift;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Team\StoreMembership;
@@ -181,6 +182,7 @@ trait ManagesOrderShifts
             ConfirmationShift::create($data);
         }
 
+        $this->dispatchShiftHandover();
         $this->dispatch('swal', type: 'success', title: __('merchant_panel.shift_saved'));
         $this->showShiftModal = false;
         $this->loadData();
@@ -190,6 +192,7 @@ trait ManagesOrderShifts
     {
         abort_unless(canStore(StorePermissionEnum::ORDER_MANAGE->value), 403);
         ConfirmationShift::where('store_id', currentStoreId())->findOrFail($shiftId)->delete();
+        $this->dispatchShiftHandover();
         $this->loadData();
         $this->dispatch('swal', type: 'success', title: __('merchant_panel.shift_deleted'));
     }
@@ -198,7 +201,19 @@ trait ManagesOrderShifts
     {
         $shift = ConfirmationShift::where('store_id', currentStoreId())->findOrFail($shiftId);
         $shift->update(['is_active' => ! $shift->is_active]);
+        $this->dispatchShiftHandover();
         $this->loadData();
+    }
+
+    /**
+     * The shift changed, so who is on shift changed: sweep the store's open
+     * assignments right away instead of waiting for the 15-minute cron.
+     */
+    private function dispatchShiftHandover(): void
+    {
+        if ($store = currentStore()) {
+            ShiftHandoverJob::dispatch($store);
+        }
     }
 
     /**

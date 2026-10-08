@@ -1,4 +1,5 @@
 {{-- Shift Modal --}}
+    <div class="contents" @edz-modal-closed.window="$wire.set('showShiftModal', false)">
     @if($showShiftModal)
     <x-edz.modal :isOpen="true" wire:key="shift-modal-{{ $showShiftModal ? 'open' : 'closed' }}">
         <form wire:submit="saveShift">
@@ -114,3 +115,4 @@
         </form>
     </x-edz.modal>
     @endif
+    </div>
