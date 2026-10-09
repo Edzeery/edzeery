@@ -23,6 +23,7 @@ class Status extends Model
         'affects_inventory',
         'movement_type',
         'stage',
+        'distribution_stage',
         'icon',
         'display_mode',
         'sort_order',

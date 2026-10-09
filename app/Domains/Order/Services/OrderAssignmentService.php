@@ -5,6 +5,7 @@ namespace App\Domains\Order\Services;
 use App\Domains\Order\Concerns\GuardsDistributionLock;
 use App\Domains\Order\Concerns\HandlesShiftHandover;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
+use App\Domains\Order\Support\OrderDistributionStage;
 use App\Domains\Order\Support\ProductOwnershipRouter;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
@@ -180,7 +181,9 @@ class OrderAssignmentService
         $overflowPercentage = $this->overflowPercentage($store);
         $openCounts = $this->openAssignmentCounts('orders', $storeId, fn ($q) => $q
             ->join('statuses', 'orders.status_id', '=', 'statuses.id')
-            ->whereNotIn('statuses.key', $this->terminalStatusKeys()));
+            ->where(fn ($q) => $q
+                ->where('statuses.distribution_stage', OrderDistributionStage::CONFIRMATION)
+                ->orWhereNull('statuses.distribution_stage')));
         $lastAssigned = $this->lastAssignedAt('orders', $storeId);
         $availability = $this->availabilitySnapshot($storeId, 'confirm', $pool);
 

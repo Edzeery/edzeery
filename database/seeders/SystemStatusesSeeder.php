@@ -2,10 +2,11 @@
 
 namespace Database\Seeders;
 
-use App\Enums\Store\InventoryMovementType;
-use App\Enums\Store\OrderTrackingStatus;
+use App\Domains\Order\Support\OrderDistributionStage;
 use App\Domains\Order\Support\OrderWorkflow;
 use App\Domains\Status\Support\OrderStatusStage;
+use App\Enums\Store\InventoryMovementType;
+use App\Enums\Store\OrderTrackingStatus;
 use App\Models\Status;
 use Illuminate\Database\Seeder;
 
@@ -490,6 +491,12 @@ class SystemStatusesSeeder extends Seeder
                     'stage' => $status['type'] === 'order'
                         ? OrderStatusStage::forKey($status['key'])
                         : OrderStatusStage::OTHER,
+                    // PHASE 35.3 — distribution stage from the single source
+                    // (OrderDistributionStage); order statuses get their bucket,
+                    // non-order statuses stay NULL (orders never reference them).
+                    'distribution_stage' => $status['type'] === 'order'
+                        ? OrderDistributionStage::forKey($status['key'])
+                        : null,
                 ])
             );
         }

@@ -118,14 +118,6 @@ trait ResolvesCapacityBalancedCandidates
         $store->owner?->notify(new AssignmentCapacityExhaustedNotification($store, $roleScope, $unassignedCount));
     }
 
-    /**
-     * Status keys terminal to the confirmation pipeline; never counted as open.
-     */
-    protected function terminalStatusKeys(): array
-    {
-        return ['cancelled', 'canceled', 'delivered', 'returned', 'completed', 'refunded'];
-    }
-
     protected function openAssignmentCounts(string $table, string $storeId, ?Closure $statusScope = null): array
     {
         $query = DB::table($table)

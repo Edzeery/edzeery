@@ -2987,3 +2987,25 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** `pint --dirty` نظيف (أصلح 13 ملفًا، نمطان)؛ الأسطر تحت الأسقف. `tests/Feature/Order` = **64/64**؛ `ProductScopeDuplicateReviewTest` + `MembershipProductScopeBackfillTest` + `StoreProductScopeServiceTest` + `DemoStoreSeederTest` = **18/18**؛ `NoMojibakeTest` 3/3 (الترجمة العربية سليمة)؛ **المجموعة الكاملة = 1375 ناجحًا / 0 فاشل (1,171,218 تأكيدًا، 520s)**. لم يُعدَّل أي اختبار قديم منطقيًا خارج تفسير R2 أعلاه.
 
 **المتبقي (باقي Phase 35.3):** الجزء 2 (`statuses.distribution_stage` + الحِمل + handover)، الجزء 3 (stranded/visibility/perf في الطابور)، الجزء 4 (أهلية handover + uniqueness + perf)، الجزء 5 (docs + Todoles). الحزمة الحالية **غير مُودَعة (uncommitted)** بانتظار طلب المالك.
+
+---
+
+## Phase 35.3 (الجزء 2) — تعرّف الحِمل والتسليم عبر `distribution_stage` بدلًا من قوائم الإعداد ✅ (2026-10-09)
+
+**الهدف:** فصل تصنيف حالة الطلبية الخاص بمحرك التوزيع عن `statuses.stage` (38-C) وعن `config/order-distribution.php`: عمود `statuses.distribution_stage` (confirmation/fulfillment/closed) يصير **المصدر الوحيد** للحِمل (الطلبات المفتوحة) ولأهلية التسليم عند انتهاء المناوبة.
+
+**تم تنفيذه:**
+1. **`OrderDistributionStage` (123، جديد):** ثوابت `CONFIRMATION`/`FULFILLMENT`/`CLOSED` + `confirmationKeys()`/`fulfillmentKeys()`/`closedKeys()` (نفس تصنيف الإعداد المنقول) + `all()` + `forKey()` (مفتاح غير معروف/مخصّص → `confirmation`). دالة نقية بلا memo — لا تتسرب بين المتاجر/الطلبات.
+2. **الهجرة `2026_10_05_000003_add_distribution_stage_to_statuses_table` (48):** عمود نصي nullable بعد `movement_type`، وbackfill لصفوف `type='order'` عبر `forKey`؛ صفوف غير الطلبات تبقى NULL. التاريخ قبل `2026_10_06_000003` (حجز `--step 3`).
+3. **`SystemStatusesSeeder`:** يضبط `distribution_stage` لحالات الطلبات عبر `forKey` وNULL لغيرها (إلى جانب `stage` القائم) — إعادة البذر تُبقِي alignment.
+4. **`Status`:** `distribution_stage` ضمن `$fillable`.
+5. **الحِمل = طلبات بإسناد وحالة `distribution_stage='confirmation'` (أو NULL):** `OrderAssignmentService::selectBest` (join statuses) و`AssignmentCandidateResolver::openCountsByMember` (join statuses) — بدلًا من قائمة `terminalStatusKeys()` الثابتة. **الحِمل يخص التتبع بلا تغيير** (`OrderTrackingStatus::open()`).
+6. **التسليم (`HandlesShiftHandover`):** `whereHas('status', stage=confirmation OR NULL)` بدل قائمة `confirmation_statuses` من الإعداد (تتبع التسليم بلا تغيير: `open()`).
+7. **حذف `config/order-distribution.php`** بالكامل (المصدر صار العمود + `OrderDistributionStage`). لا مرجع متبقٍّ (`grep` نظيف).
+8. **إزالة `terminalStatusKeys()`** من `ResolvesCapacityBalancedCandidates` (242، صار غير مستخدم) ومن `AssignmentCandidateResolver` (183) — لا تكرار لقوائم حالات ثانية.
+
+**الاختبارات:** إعادة كتابة اختبار التصنيف في `EngineHardeningTest` (460) إلى «كل حالة طلب مزروعة تحمل `distribution_stage`» — لا NULL، والمجموعة تطابق `OrderDistributionStage::all()`، وفحص `pending→confirmation` و`confirmed→fulfillment` و`paid→closed` و`forKey('store_custom_hold')→confirmation`. باقي اختبارات Order الـ64 خضراء بلا تعديل منطقي (بما فيها التسليم: fulfillment/closed لا تُمَس، والأحمال تختبرها الحالات القائمة).
+
+**النتائج/التحقق:** `pint --dirty` نظيف (أصلح 9 ملفات، نمط `ordered_imports`)؛ الأسطر: OrderDistributionStage 123، migration 48، AssignmentCandidateResolver 183، ResolvesCapacityBalancedCandidates 242 (< 250)، HandlesShiftHandover 87، OrderAssignmentService 201 (< 250). **مجموعة مستهدفة 55/55** (Finance schema + Seeder + Queue + Settings + StatusLabelPrecedence + OrderStatusCapture + DashboardFilter)؛ **المجموعة الكاملة = 1375 ناجحًا / 0 فاشل (1,172,113 تأكيدًا، 492s)**.
+
+**المتبقي:** الأجزاء 3 (stranded/visibility/perf في الطابور) و4 (أهلية handover + uniqueness + perf) و5 (docs + Todoles).

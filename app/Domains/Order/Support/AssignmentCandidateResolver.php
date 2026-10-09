@@ -159,10 +159,12 @@ class AssignmentCandidateResolver
             ->where('orders.store_id', $storeId)
             ->whereNull('orders.deleted_at')
             ->whereIn('orders.assigned_to_membership_id', $memberIds)
-            ->whereNotIn('statuses.key', $this->terminalStatusKeys())
+            ->where(fn ($q) => $q
+                ->where('statuses.distribution_stage', OrderDistributionStage::CONFIRMATION)
+                ->orWhereNull('statuses.distribution_stage'))
             ->selectRaw('orders.assigned_to_membership_id, COUNT(*) as open_count')
             ->groupBy('orders.assigned_to_membership_id')
-            ->pluck('open_count', 'assigned_to_membership_id')
+            ->pluck('open_count', 'orders.assigned_to_membership_id')
             ->toArray();
     }
 
@@ -177,10 +179,5 @@ class AssignmentCandidateResolver
             ?? config('app.timezone');
 
         return now($timezone);
-    }
-
-    private function terminalStatusKeys(): array
-    {
-        return ['cancelled', 'delivered', 'returned', 'completed', 'refunded', 'canceled'];
     }
 }

@@ -4,6 +4,7 @@ use App\Domains\Order\Jobs\ShiftHandoverJob;
 use App\Domains\Order\Models\ConfirmationShift;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Domains\Order\Services\OrderTrackingAssignmentService;
+use App\Domains\Order\Support\OrderDistributionStage;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
@@ -178,21 +179,20 @@ function hardenTracking(Order $order, StoreMembership $member): OrderTracking
     ]);
 }
 
-test('the distribution classification covers every seeded order status exactly once', function () {
-    $seeded = Status::system()->forType('order')->pluck('key')->all();
-    $class = config('order-distribution');
+test('every seeded order status carries a distribution stage', function () {
+    $seeded = Status::system()->forType('order')->pluck('distribution_stage', 'key');
 
-    $classified = array_merge(
-        $class['confirmation_statuses'],
-        $class['fulfillment_statuses'],
-        $class['closed_statuses'],
-    );
+    // No system order status may be left unclassified (NULL would silently
+    // fall back to the confirmation pipeline and could be reassigned).
+    expect($seeded->filter(fn ($stage) => $stage === null))->toBeEmpty()
+        ->and($seeded->unique()->values()->sort()->values()->all())
+        ->toEqualCanonicalizing(OrderDistributionStage::all());
 
-    expect(array_diff($seeded, $classified))->toBe([])
-        ->and(array_diff($classified, $seeded))->toBe([])
-        ->and($classified)->toHaveCount(count(array_unique($classified)))
-        ->and($class['confirmation_statuses'])->toContain('pending', 'no_answer_1', 'no_answer_3', 'postponed', 'on_hold')
-        ->and($class['closed_statuses'])->toContain('paid', 'draft', 'wrong_number');
+    // Spot-check the three buckets and the custom-key fallback.
+    expect($seeded['pending'])->toBe(OrderDistributionStage::CONFIRMATION)
+        ->and($seeded['confirmed'])->toBe(OrderDistributionStage::FULFILLMENT)
+        ->and($seeded['paid'])->toBe(OrderDistributionStage::CLOSED)
+        ->and(OrderDistributionStage::forKey('store_custom_hold'))->toBe(OrderDistributionStage::CONFIRMATION);
 });
 
 test('shift handover replaces an off-shift confirmation assignee with method handover', function () {

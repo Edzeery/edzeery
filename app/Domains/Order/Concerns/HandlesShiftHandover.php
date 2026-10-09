@@ -2,6 +2,7 @@
 
 namespace App\Domains\Order\Concerns;
 
+use App\Domains\Order\Support\OrderDistributionStage;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use Illuminate\Support\Facades\Log;
@@ -12,21 +13,22 @@ use Illuminate\Support\Facades\Log;
  * Composed into OrderAssignmentService, which supplies selectReplacement()
  * (pool + ownership-ranked selection, no write) and withDistributionLock()
  * from GuardsDistributionLock. Contract: only confirmation-stage statuses
- * (config order-distribution) are touched — fulfillment and closed orders
- * keep their assignment; an off-shift assignee is replaced with
- * assignment_method 'handover'; when nobody eligible remains the
- * assignment is kept and flagged stranded_at once instead of cleared.
+ * (statuses.distribution_stage = confirmation, NULL treated as confirmation)
+ * are touched — fulfillment and closed orders keep their assignment; an
+ * off-shift assignee is replaced with assignment_method 'handover'; when
+ * nobody eligible remains the assignment is kept and flagged stranded_at once
+ * instead of cleared.
  */
 trait HandlesShiftHandover
 {
     public function handleShiftHandover(Store $store): void
     {
-        $confirmationKeys = config('order-distribution.confirmation_statuses', []);
-
-        $this->withDistributionLock($store->id, 'confirm', function () use ($store, $confirmationKeys): void {
+        $this->withDistributionLock($store->id, 'confirm', function () use ($store): void {
             $openOrders = Order::where('store_id', $store->id)
                 ->whereNotNull('assigned_to_membership_id')
-                ->whereHas('status', fn ($q) => $q->whereIn('key', $confirmationKeys))
+                ->whereHas('status', fn ($q) => $q
+                    ->where('distribution_stage', OrderDistributionStage::CONFIRMATION)
+                    ->orWhereNull('distribution_stage'))
                 ->with('assignedMembership')
                 ->get();
 
