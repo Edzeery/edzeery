@@ -434,6 +434,7 @@ return [
     'queue_empty_hint' => 'ستظهر هنا العناصر التي تحتاج إلى قرار أو إعادة إسناد.',
     'queue_empty_tracking' => 'لا توجد شحنات قيد التتبع بحاجة إلى انتباه',
     'queue_over_capacity' => 'تجاوز السعة',
+    'queue_stranded' => 'عالق',
     'queue_tab_confirmation' => 'التأكيد',
     'queue_tab_tracking' => 'التتبع',
     'queue_unassigned' => 'غير مُسنَد',

@@ -24,6 +24,16 @@ trait HandlesShiftHandover
     public function handleShiftHandover(Store $store): void
     {
         $this->withDistributionLock($store->id, 'confirm', function () use ($store): void {
+            // Stale out-of-scope flags (P35.3): a stranded row whose status
+            // moved out of the confirmation stage no longer needs attention —
+            // clear in one batched UPDATE instead of per-row in the loop.
+            Order::where('store_id', $store->id)
+                ->whereNotNull('stranded_at')
+                ->whereHas('status', fn ($q) => $q
+                    ->whereNotNull('distribution_stage')
+                    ->where('distribution_stage', '!=', OrderDistributionStage::CONFIRMATION))
+                ->update(['stranded_at' => null]);
+
             $openOrders = Order::where('store_id', $store->id)
                 ->whereNotNull('assigned_to_membership_id')
                 ->whereHas('status', fn ($q) => $q
@@ -35,7 +45,13 @@ trait HandlesShiftHandover
             foreach ($openOrders as $order) {
                 // On-shift assignees keep their orders; a removed membership
                 // resolves to null and counts as off-shift (reassigned here).
+                // An eligible assignee that was previously stranded is no
+                // longer in that state — clear the flag (P35.3).
                 if ($order->assignedMembership?->isOnActiveShift()) {
+                    if ($order->stranded_at !== null) {
+                        $order->update(['stranded_at' => null]);
+                    }
+
                     continue;
                 }
 

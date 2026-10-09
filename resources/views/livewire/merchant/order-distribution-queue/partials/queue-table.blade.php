@@ -65,6 +65,12 @@
                                     @else
                                         <span class="font-medium text-ink">{{ __('merchant_panel.queue_unassigned') }}</span>
                                     @endif
+                                    @if (! empty($queueRow['stranded']))
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-accent-500/10 text-accent-700 dark:text-accent-400 text-[10px] font-semibold px-2 py-0.5">
+                                            <x-edz.icon name="clock" class="w-3 h-3" />
+                                            {{ __('merchant_panel.queue_stranded') }}
+                                        </span>
+                                    @endif
                                     @if (! empty($queueRow['over_capacity']))
                                         <span class="inline-flex items-center gap-1 rounded-full bg-warning-500/10 text-warning-700 dark:text-warning-400 text-[10px] font-semibold px-2 py-0.5">
                                             <x-edz.icon name="exclamation-triangle" class="w-3 h-3" />

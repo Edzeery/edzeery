@@ -3009,3 +3009,25 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** `pint --dirty` نظيف (أصلح 9 ملفات، نمط `ordered_imports`)؛ الأسطر: OrderDistributionStage 123، migration 48، AssignmentCandidateResolver 183، ResolvesCapacityBalancedCandidates 242 (< 250)، HandlesShiftHandover 87، OrderAssignmentService 201 (< 250). **مجموعة مستهدفة 55/55** (Finance schema + Seeder + Queue + Settings + StatusLabelPrecedence + OrderStatusCapture + DashboardFilter)؛ **المجموعة الكاملة = 1375 ناجحًا / 0 فاشل (1,172,113 تأكيدًا، 492s)**.
 
 **المتبقي:** الأجزاء 3 (stranded/visibility/perf في الطابور) و4 (أهلية handover + uniqueness + perf) و5 (docs + Todoles).
+
+---
+
+## 35.3-3: stranded visibility في الطابور + تصفية stranded_at
+
+**الهدف:** الطابور يُظهر كل صف يحتاج انتباهًا: غير مُسنَد أو عالق (stranded) أو فوق السعة — بترتيب «غير المُسنَد (الأقدم) ثم العالق (أقدم stranded_at) ثم فوق السعة». التصفيح الكامل للكشة العالقة عند نهاية دورة الحياة.
+
+**الأجزاء:**
+1. **مصادر الطابور (`DistributionQueueConcern` 195):** إضافة `OR stranded_at IS NOT NULL` في التبويبين (confirmation بترتيب `whereNotIn terminal` بدون تغيير، والـ tracking بترتيب `open()`)، وترتيب ثلاثي:
+   `CASE WHEN assigned IS NULL THEN 0 WHEN stranded_at IS NOT NULL THEN 1 ELSE 2 END ASC` ثم `CASE WHEN assigned IS NULL THEN created_at ELSE COALESCE(stranded_at, created_at) END ASC`. إضافة حقل `stranded` للصف.
+2. **شارة «Stranded»** (عالق) في `partials/queue-table.blade.php` بجوار شارة فوق السعة (أيقونة clock)؛ مفتاح `queue_stranded` × ar/en/fr/es. إعادة الإسناد تعمل لهذه الصفوف (نفس modal).
+3. **تصفية stranded_at:**
+   - في `reassign()` بالخدمتين (OrderAssignmentService 201 وOrderTrackingAssignmentService 199): `stranded_at => null` (يُنظف حتى خارج الطابور).
+   - في مسح `HandlesShiftHandover` (87)/`HandlesTrackingHandover` (75): عند عودة المُسنَد المُسنَد للأهلية يُمحى العلم؛ وإزالة الأعلام القديمة خارج النطاق كـ **UPDATE مجمَّع** واحد قبل الحلقة (confirmation: statuses `distribution_stage != confirmation` وليست NULL؛ tracking: statuses خارج `open()`).
+
+**الاختبارات:** `OrderDistributionQueueTest` (424→13 اختبارًا): تَرتيب confirmation — غير مُسنَد أقدم، ثم عالق أقدم ثم فوق السعة مع شارة «Stranded»؛ التَبويب tracking يضمّ العالق بعد غير المُسنَد مع الشارة؛ إعادة إسناد عنصر عالق تصفّي stranded_at وتزيله فوريًا. `EngineHardeningTest` (460→13): مسح الخيط ​​يمسح stranded_at عند عودة المُسنَد للأهلية (بلا استبدال)، ويمسح الأعلام القديمة المجمَّعة عند خروج الطلب من مرحلة التأكيد (شحن) وخروج التتبع من الحالات المفتوحة (delivered) دون لمس الإسناد.
+
+**النطاقات:** لم تُمسّ مرحلة statuses الجُدَولية للتتبع (ما زالت جميع أعمدة `form_*` مدفونة، فقط tracking_status مثبَّت في dqTracking)، ومصفوفة الفروق في التَبويبات كاملة.
+
+**النتائج/التحقق:** `pint --dirty` نظيف (11 ملفًا)؛ **مجموعة مستهدفة 88/88** (Order كلها + Queue + OrderSettingsShiftRole)؛ المجموعة الفردية للطابور 13/13. السطور: DistributionQueueConcern 203، HandlesShiftHandover 103، HandlesTrackingHandover 90، OrderAssignmentService 202، OrderTrackingAssignmentService 200.
+
+**المتبقي:** الجزء 4 (أهلية handover: membership فعّال + صلاحيات ممتدة + perf + uniqueness `ShouldBeUniqueUntilProcessing` لكل متجر) ثم الجزء 5 (docs + Todoles).

@@ -84,6 +84,7 @@ class OrderAssignmentService
             'assigned_at' => now(),
             'assignment_method' => 'manual',
             'assigned_by_membership_id' => $by->id,
+            'stranded_at' => null,
         ]);
 
         Log::info('Order manually reassigned', [

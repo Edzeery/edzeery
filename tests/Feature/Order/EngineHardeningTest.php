@@ -367,6 +367,67 @@ test('shift handover keeps the tracking and flags stranded_at when no tracker is
         ->and($fresh->stranded_at)->not->toBeNull();
 });
 
+test('shift handover clears stranded_at once the stranded assignee is on shift again', function () {
+    $store = hardenStore();
+    $agent = hardenMember($store, hardenPermissions());
+    hardenShift($store, $agent, [2, 3, 4, 5, 6, 7]); // off-shift today (Monday)
+
+    $order = hardenClaim(hardenOrder($store), $agent);
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect($order->fresh()->stranded_at)->not->toBeNull();
+
+    // Agent comes back on-shift today; the sweep only clears the stale flag.
+    Carbon::setTestNow(Carbon::getTestNow()->copy()->addMinutes(30));
+    ConfirmationShift::where('membership_id', $agent->id)->update(['days_of_week' => [1, 2, 3, 4, 5]]);
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    $fresh = $order->fresh();
+
+    expect($fresh->assigned_to_membership_id)->toBe($agent->id)
+        ->and($fresh->assignment_method)->toBe('auto')
+        ->and($fresh->stranded_at)->toBeNull();
+});
+
+test('shift handover clears stale stranded flags when the order leaves the confirmation stage', function () {
+    $store = hardenStore();
+    $offShift = hardenMember($store, hardenPermissions());
+    hardenShift($store, $offShift, [2, 3, 4, 5, 6, 7]);
+
+    $pending = hardenClaim(hardenOrder($store), $offShift);
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect($pending->fresh()->stranded_at)->not->toBeNull();
+
+    // The order moves into fulfillment — its stale flag must be wiped by the
+    // batched UPDATE even though the sweep never row-touches it.
+    $shipped = Status::system()->forType('order')->where('key', 'shipped')->first();
+    $pending->update(['status_id' => $shipped?->id]);
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect($pending->fresh()->stranded_at)->toBeNull()
+        ->and($pending->fresh()->assigned_to_membership_id)->toBe($offShift->id);
+});
+
+test('shift handover clears stale stranded flags when the tracking leaves the open set', function () {
+    $store = hardenStore();
+    $offShift = hardenMember($store, hardenTrackPermissions());
+    hardenShift($store, $offShift, [2, 3, 4, 5, 6, 7], 'track');
+
+    $tracking = hardenTracking(hardenOrder($store), $offShift);
+    app(OrderTrackingAssignmentService::class)->handleShiftHandover($store);
+
+    expect($tracking->fresh()->stranded_at)->not->toBeNull();
+
+    $tracking->update(['tracking_status' => OrderTrackingStatus::DELIVERED->value]);
+    app(OrderTrackingAssignmentService::class)->handleShiftHandover($store);
+
+    expect($tracking->fresh()->stranded_at)->toBeNull()
+        ->and($tracking->fresh()->assigned_to_membership_id)->toBe($offShift->id);
+});
+
 test('team member updates and removals dispatch the shift handover sweep', function () {
     Bus::fake([ShiftHandoverJob::class]);
 

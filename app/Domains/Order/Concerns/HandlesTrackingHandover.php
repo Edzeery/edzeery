@@ -18,6 +18,14 @@ trait HandlesTrackingHandover
     public function handleShiftHandover(Store $store): void
     {
         $this->withDistributionLock($store->id, 'track', function () use ($store): void {
+            // Stale out-of-scope flags (P35.3): a stranded row whose tracking
+            // left the open set no longer needs attention — clear in one
+            // batched UPDATE instead of per-row in the loop.
+            OrderTracking::where('store_id', $store->id)
+                ->whereNotNull('stranded_at')
+                ->whereNotIn('tracking_status', $this->openTrackingStatusValues())
+                ->update(['stranded_at' => null]);
+
             $openTrackings = OrderTracking::where('store_id', $store->id)
                 ->whereNotNull('assigned_to_membership_id')
                 ->whereIn('tracking_status', $this->openTrackingStatusValues())
@@ -25,7 +33,14 @@ trait HandlesTrackingHandover
                 ->get();
 
             foreach ($openTrackings as $tracking) {
+                // On-shift assignees keep their rows; an eligible assignee
+                // that was previously stranded is no longer in that state —
+                // clear the flag (P35.3).
                 if ($tracking->assignedTo?->isOnActiveShift(null, 'track')) {
+                    if ($tracking->stranded_at !== null) {
+                        $tracking->update(['stranded_at' => null]);
+                    }
+
                     continue;
                 }
 

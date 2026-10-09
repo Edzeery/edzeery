@@ -65,7 +65,7 @@ function dqMember(Store $store, array $permissions): StoreMembership
     return $membership;
 }
 
-function dqOrder(Store $store, string $statusKey, ?StoreMembership $assignedTo = null, bool $overCapacity = false, ?Carbon $createdAt = null): Order
+function dqOrder(Store $store, string $statusKey, ?StoreMembership $assignedTo = null, bool $overCapacity = false, ?Carbon $createdAt = null, ?Carbon $strandedAt = null): Order
 {
     $customer = Customer::create([
         'store_id' => $store->id,
@@ -90,12 +90,13 @@ function dqOrder(Store $store, string $statusKey, ?StoreMembership $assignedTo =
         'assigned_at' => $assignedTo ? now() : null,
         'assignment_method' => $assignedTo ? 'automatic' : null,
         'over_capacity' => $overCapacity,
+        'stranded_at' => $strandedAt,
         'created_at' => $createdAt ?? now(),
         'updated_at' => $createdAt ?? now(),
     ]);
 }
 
-function dqTracking(Order $order, string $trackingStatus, ?StoreMembership $assignedTo = null, bool $overCapacity = false): OrderTracking
+function dqTracking(Order $order, string $trackingStatus, ?StoreMembership $assignedTo = null, bool $overCapacity = false, ?Carbon $strandedAt = null): OrderTracking
 {
     return OrderTracking::create([
         'store_id' => $order->store_id,
@@ -107,6 +108,7 @@ function dqTracking(Order $order, string $trackingStatus, ?StoreMembership $assi
         'assigned_at' => $assignedTo ? now() : null,
         'assignment_method' => $assignedTo ? 'automatic' : null,
         'over_capacity' => $overCapacity,
+        'stranded_at' => $strandedAt,
         'shipped_at' => now()->subDay(),
         'created_at' => now()->subDay(),
         'updated_at' => now()->subDay(),
@@ -181,6 +183,73 @@ test('the tracking tab includes open unassigned and over-capacity shipments, exc
         ->assertSet('trackingQueue.1.id', (string) $inTransitOver->id)
         ->assertSet('trackingQueue.1.over_capacity', true)
         ->assertSet('trackingQueue.0.assigned_to', null);
+});
+
+test('the confirmation tab includes stranded orders, ordering unassigned then stranded (oldest) then over-capacity', function () {
+    [$user, $store] = dqUser();
+    $assignee = dqMember($store, [StorePermissionEnum::ORDER_CONFIRM->value]);
+
+    $unassignedOld = dqOrder($store, 'pending', null, false, now()->subDays(6));
+    $strandedOld = dqOrder($store, 'pending', $assignee, false, now()->subDays(5), now()->subDays(5));
+    $overCapacity = dqOrder($store, 'pending', $assignee, true, now()->subDays(3));
+    $strandedNew = dqOrder($store, 'pending', $assignee, false, now()->subDays(1), now()->subDays(1));
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.order-distribution-queue')
+        ->assertOk()
+        ->assertSet('confirmationCount', 4)
+        ->assertSet('confirmationQueue.0.id', (string) $unassignedOld->id)
+        ->assertSet('confirmationQueue.1.id', (string) $strandedOld->id)
+        ->assertSet('confirmationQueue.2.id', (string) $strandedNew->id)
+        ->assertSet('confirmationQueue.3.id', (string) $overCapacity->id)
+        ->assertSet('confirmationQueue.1.stranded', true)
+        ->assertSet('confirmationQueue.1.assigned_to', $assignee->user->name)
+        ->assertSet('confirmationQueue.3.over_capacity', true)
+        ->assertSee('Stranded');
+});
+
+test('the tracking tab includes stranded shipments with the stranded badge, after unassigned', function () {
+    [$user, $store] = dqUser();
+    $tracker = dqMember($store, [StorePermissionEnum::CRM_ORDER_TRACKING->value]);
+
+    $stranded = dqTracking(dqOrder($store, 'shipped'), OrderTrackingStatus::SHIPPED->value, $tracker, false, now()->subDays(2));
+    $unassigned = dqTracking(dqOrder($store, 'shipped'), OrderTrackingStatus::SHIPPED->value);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.order-distribution-queue')
+        ->assertSet('trackingCount', 2)
+        ->call('setTab', 'tracking')
+        ->assertSet('trackingQueue.0.id', (string) $unassigned->id)
+        ->assertSet('trackingQueue.1.id', (string) $stranded->id)
+        ->assertSet('trackingQueue.1.stranded', true)
+        ->assertSet('trackingQueue.1.assigned_to', $tracker->user->name)
+        ->assertSee('Stranded');
+});
+
+test('reassigning a stranded confirmation item clears stranded_at and removes it from the queue live', function () {
+    [$user, $store, $ownerMembership] = dqUser();
+    $confirmAgent = dqMember($store, [StorePermissionEnum::ORDER_CONFIRM->value]);
+
+    $stranded = dqOrder($store, 'pending', $confirmAgent, false, now()->subDays(2), now()->subDay());
+    $unassigned = dqOrder($store, 'pending', null, false);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    Volt::test('merchant.order-distribution-queue')
+        ->assertSet('confirmationCount', 2)
+        ->call('openReassignModal', (string) $stranded->id)
+        ->assertSet('reassignKind', 'confirm')
+        ->set('reassignMembershipId', (string) $ownerMembership->id)
+        ->call('submitReassign')
+        ->assertSet('reassignOpen', false)
+        ->assertSet('confirmationCount', 1)
+        ->assertSet('confirmationQueue.0.id', (string) $unassigned->id)
+        ->assertDispatched('swal:toast', fn ($name, $params) => dqToastIcon($params) === 'success');
+
+    expect($stranded->fresh()->assigned_to_membership_id)->toBe($ownerMembership->id)
+        ->and($stranded->fresh()->stranded_at)->toBeNull();
 });
 
 test('reassigning an over-capacity confirmation item clears the flag and removes it from the queue live', function () {

@@ -434,6 +434,7 @@ return [
     'queue_empty_hint' => 'Items that need a decision or reassignment will appear here.',
     'queue_empty_tracking' => 'No tracking shipments need attention',
     'queue_over_capacity' => 'Over capacity',
+    'queue_stranded' => 'Stranded',
     'queue_tab_confirmation' => 'Confirmation',
     'queue_tab_tracking' => 'Tracking',
     'queue_unassigned' => 'Unassigned',

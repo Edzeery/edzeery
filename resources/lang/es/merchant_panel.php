@@ -434,6 +434,7 @@ return [
     'queue_empty_hint' => 'Los elementos que necesitan una decisión o reasignación aparecerán aquí.',
     'queue_empty_tracking' => 'No hay envíos en seguimiento que requieran atención',
     'queue_over_capacity' => 'Sobre capacidad',
+    'queue_stranded' => 'Ataskado',
     'queue_tab_confirmation' => 'Confirmación',
     'queue_tab_tracking' => 'Seguimiento',
     'queue_unassigned' => 'Sin asignar',

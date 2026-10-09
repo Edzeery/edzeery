@@ -434,6 +434,7 @@ return [
     'queue_empty_hint' => 'Les éléments nécessitant une décision ou une réassignation apparaîtront ici.',
     'queue_empty_tracking' => 'Aucun envoi suivi ne requiert votre attention',
     'queue_over_capacity' => 'Au-delà de la capacité',
+    'queue_stranded' => 'En attente',
     'queue_tab_confirmation' => 'Confirmation',
     'queue_tab_tracking' => 'Suivi',
     'queue_unassigned' => 'Non assigné',

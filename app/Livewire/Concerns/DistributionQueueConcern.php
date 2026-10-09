@@ -8,12 +8,14 @@ use App\Models\Orders\Order;
 use App\Models\Orders\OrderTracking;
 
 /**
- * Row sources for the merchant distribution queue (P34.5). Both tabs list only
- * items that need attention: unassigned (assigned_to_membership_id IS NULL) or
+ * Row sources for the merchant distribution queue (P34.5, extended P35.3).
+ * Both tabs list only items that need attention: unassigned
+ * (assigned_to_membership_id IS NULL), stranded (stranded_at IS NOT NULL) or
  * flagged over capacity — excluding closed/terminal records. Unassigned items
- * float to the top, oldest first, since they are the most urgent. Each tab
- * paginates independently (50 per page); the tab badge shows the TOTAL match
- * count from a separate lightweight count query.
+ * float to the top (oldest first), then stranded items (oldest stranded first),
+ * then over-capacity items. Each tab paginates independently (50 per page); the
+ * tab badge shows the TOTAL match count from a separate lightweight count
+ * query.
  */
 trait DistributionQueueConcern
 {
@@ -78,6 +80,7 @@ trait DistributionQueueConcern
             ->whereNull('deleted_at')
             ->where(function ($q) {
                 $q->whereNull('assigned_to_membership_id')
+                    ->orWhereNotNull('stranded_at')
                     ->orWhere('over_capacity', true);
             })
             ->whereHas('status', fn ($q) => $q->whereNotIn('key', $this->terminalOrderStatusKeys()))
@@ -89,7 +92,8 @@ trait DistributionQueueConcern
                         ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$search}%"));
                 });
             })
-            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 WHEN stranded_at IS NOT NULL THEN 1 ELSE 2 END ASC')
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN created_at ELSE COALESCE(stranded_at, created_at) END ASC');
 
         if ($countOnly) {
             return $query->count();
@@ -108,6 +112,7 @@ trait DistributionQueueConcern
                 ],
                 'assigned_to' => $order->assignedMembership?->user?->name,
                 'over_capacity' => (bool) $order->over_capacity,
+                'stranded' => $order->stranded_at !== null,
                 'created_ago' => $order->created_at?->diffForHumans() ?? '—',
             ])
             ->toArray();
@@ -127,6 +132,7 @@ trait DistributionQueueConcern
             ->whereIn('tracking_status', $openStatuses)
             ->where(function ($q) {
                 $q->whereNull('assigned_to_membership_id')
+                    ->orWhereNotNull('stranded_at')
                     ->orWhere('over_capacity', true);
             })
             ->when(trim((string) ($this->queueSearch ?? '')) !== '', function ($query) {
@@ -142,7 +148,8 @@ trait DistributionQueueConcern
                         });
                 });
             })
-            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 ELSE 1 END ASC, created_at ASC');
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN 0 WHEN stranded_at IS NOT NULL THEN 1 ELSE 2 END ASC')
+            ->orderByRaw('CASE WHEN assigned_to_membership_id IS NULL THEN created_at ELSE COALESCE(stranded_at, created_at) END ASC');
 
         if ($countOnly) {
             return $query->count();
@@ -162,6 +169,7 @@ trait DistributionQueueConcern
                     'tracking_status' => $tracking->tracking_status,
                     'assigned_to' => $tracking->assignedTo?->user?->name,
                     'over_capacity' => (bool) $tracking->over_capacity,
+                    'stranded' => $tracking->stranded_at !== null,
                     'created_ago' => $order?->created_at?->diffForHumans() ?? '—',
                 ];
             })
