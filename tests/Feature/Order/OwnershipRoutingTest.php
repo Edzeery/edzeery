@@ -135,12 +135,13 @@ function ownerClaim(Order $order, StoreMembership $member): Order
     return $order;
 }
 
-function ownsProduct(Store $store, StoreMembership $member, Product $product): ConfirmationProductAssignment
+function ownsProduct(Store $store, StoreMembership $member, Product $product, string $roleScope = 'confirm'): ConfirmationProductAssignment
 {
     return ConfirmationProductAssignment::create([
         'store_id' => $store->id,
         'membership_id' => $member->id,
         'product_id' => $product->id,
+        'role_scope' => $roleScope,
     ]);
 }
 
@@ -206,7 +207,7 @@ test('equal coverage falls back to the load balancer', function () {
     expect($order->fresh()->assigned_to_membership_id)->toBe($free->id);
 });
 
-test('a capped owner falls through to the general pool when overflow is off', function () {
+test('a capped owner stays unassigned: the strict ownership pool never falls back to general', function () {
     $store = ownerStore();
     $capped = ownerMember($store, confirmPermissions());
     $general = ownerMember($store, confirmPermissions());
@@ -222,11 +223,14 @@ test('a capped owner falls through to the general pool when overflow is off', fu
     $order = ownerOrder($store, $product);
     app(OrderAssignmentService::class)->assign($order);
 
-    expect($order->fresh()->assigned_to_membership_id)->toBe($general->id)
+    // Justification: R2 — the order owns a product so the pool is exactly
+    // {capped}; with overflow off and the owner at cap the order waits, and the
+    // general confirmer (outside the pool) is never consulted.
+    expect($order->fresh()->assigned_to_membership_id)->toBeNull()
         ->and($order->fresh()->over_capacity)->toBeFalse();
 });
 
-test('overflow extends an owner inside the ownership pool before the general pool', function () {
+test('overflow extends an owner inside the ownership pool (no general fallback)', function () {
     $store = ownerStore();
     $capped = ownerMember($store, confirmPermissions());
     $general = ownerMember($store, confirmPermissions());
@@ -246,8 +250,8 @@ test('overflow extends an owner inside the ownership pool before the general poo
     $order = ownerOrder($store, $product);
     app(OrderAssignmentService::class)->assign($order);
 
-    // The overloaded owner beats the idle general confirmer: overflow is
-    // tried inside the ownership pool before any fallback.
+    // The overloaded owner beats the idle general confirmer: overflow is tried
+    // inside the ownership pool, which is the only pool R2 allows.
     expect($order->fresh()->assigned_to_membership_id)->toBe($capped->id)
         ->and($order->fresh()->over_capacity)->toBeTrue();
 });
@@ -280,9 +284,9 @@ test('tracking prefers the tracker owning more of the order products over lighte
     $p1 = ownerProduct($store, 'Tracked Router');
     $p2 = ownerProduct($store, 'Tracked Cable');
 
-    ownsProduct($store, $owner, $p1);
-    ownsProduct($store, $owner, $p2);
-    ownsProduct($store, $general, $p2);
+    ownsProduct($store, $owner, $p1, 'track');
+    ownsProduct($store, $owner, $p2, 'track');
+    ownsProduct($store, $general, $p2, 'track');
 
     // The full-coverage owner already carries one open tracking, the
     // partial one none — coverage (2 of 2 vs 1 of 2) must still decide.
@@ -311,7 +315,7 @@ test('tracking prefers the tracker owning more of the order products over lighte
     expect($tracking->fresh()->assigned_to_membership_id)->toBe($owner->id);
 });
 
-test('tracking falls back to the general pool when the owner has no track shift', function () {
+test('tracking stays unassigned when the only track owner is off-shift', function () {
     $store = ownerStore();
     $offShiftOwner = ownerMember($store, trackPermissions());
     $general = ownerMember($store, trackPermissions());
@@ -320,8 +324,8 @@ test('tracking falls back to the general pool when the owner has no track shift'
     $p1 = ownerProduct($store, 'Unshifted Modem');
     $p2 = ownerProduct($store, 'Unshifted Antenna');
 
-    ownsProduct($store, $offShiftOwner, $p1);
-    ownsProduct($store, $offShiftOwner, $p2);
+    ownsProduct($store, $offShiftOwner, $p1, 'track');
+    ownsProduct($store, $offShiftOwner, $p2, 'track');
 
     $order = ownerOrder($store, $p1, $p2);
     $tracking = OrderTracking::create([
@@ -333,7 +337,10 @@ test('tracking falls back to the general pool when the owner has no track shift'
 
     app(OrderTrackingAssignmentService::class)->assign($tracking);
 
-    expect($tracking->fresh()->assigned_to_membership_id)->toBe($general->id);
+    // Justification: R2 (track) — the tracking owns products and its only owner
+    // is off-shift, so the tracking waits; the on-shift general tracker is
+    // outside the ownership pool and is never consulted.
+    expect($tracking->fresh()->assigned_to_membership_id)->toBeNull();
 });
 
 test('ownership resolves in one query regardless of how many owners exist', function () {

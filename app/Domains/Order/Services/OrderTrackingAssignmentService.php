@@ -5,7 +5,7 @@ namespace App\Domains\Order\Services;
 use App\Domains\Order\Concerns\GuardsDistributionLock;
 use App\Domains\Order\Concerns\HandlesTrackingHandover;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
-use App\Domains\Order\Concerns\ResolvesProductOwnership;
+use App\Domains\Order\Support\ProductOwnershipRouter;
 use App\Enums\Store\OrderTrackingStatus;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\OrderItem;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 
 class OrderTrackingAssignmentService
 {
-    use GuardsDistributionLock, HandlesTrackingHandover, ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
+    use GuardsDistributionLock, HandlesTrackingHandover, ResolvesCapacityBalancedCandidates;
 
     /**
      * Full auto-assignment pipeline for an order tracking. Serialised per
@@ -108,36 +108,33 @@ class OrderTrackingAssignmentService
         // Product ids of the underlying order drive both the visibility
         // guard and the ownership pool (tracking has no product dimension).
         $productIds = $this->orderProductIds($tracking);
-        $candidates = $this->resolveCandidatePool($storeId, $productIds);
 
-        // Ownership pool first (owners of the ordered products, ranked by
-        // coverage then load then recency), then the general pool — strict
-        // caps then store-configured overflow inside each pool, all driven
-        // by one shared availability snapshot.
-        $ownership = $this->ownershipCounts($storeId, $productIds);
-        $openCounts = $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues()));
-        $lastAssigned = $this->lastAssignedAt('order_trackings', $storeId);
-        $overflowPercentage = $this->overflowPercentage($store);
-        $availability = $this->availabilitySnapshot($storeId, 'track', $candidates);
+        $roleMembers = $this->roleMembers($storeId);
+        $candidates = app(StoreProductScopeService::class)->filterByVisibility($roleMembers, $productIds);
+
+        $routed = app(ProductOwnershipRouter::class)
+            ->route($storeId, 'track', $roleMembers, $candidates, $productIds);
+
+        $pool = $routed['pool'];
 
         $selected = [null, false];
 
-        foreach ([true, false] as $owners) {
-            $pass = $this->bestCandidateWithOverflow(
-                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
+        if ($pool->isNotEmpty()) {
+            $openCounts = $this->openAssignmentCounts('order_trackings', $storeId, fn ($q) => $q->whereIn('tracking_status', $this->openTrackingStatusValues()));
+            $lastAssigned = $this->lastAssignedAt('order_trackings', $storeId);
+            $overflowPercentage = $this->overflowPercentage($store);
+            $availability = $this->availabilitySnapshot($storeId, 'track', $pool);
+
+            $selected = $this->bestCandidateWithOverflow(
+                $pool,
                 $storeId,
                 'track',
                 $openCounts,
                 $lastAssigned,
                 $overflowPercentage,
                 $availability,
-                $ownership,
+                $routed['coverage'],
             );
-
-            if ($pass[0]) {
-                $selected = $pass;
-                break;
-            }
         }
 
         if (! $selected[0]) {
@@ -154,23 +151,20 @@ class OrderTrackingAssignmentService
     }
 
     /**
-     * Resolve candidate pool for a store: every active member holding the
-     * CRM_ORDER_TRACKING permission whose visibility covers at least one of the
-     * order's products. Ownership tiering (which of those members own the
-     * ordered products) is decided later in assign() so a store without an
-     * ownership roster still falls back to general trackers.
+     * Active members holding CRM_ORDER_TRACKING — the ownership authority and
+     * the superset the strict track pool is drawn from. One query; visibility
+     * narrowing happens on top of this collection.
+     *
+     * @return Collection<int, StoreMembership>
      */
-    private function resolveCandidatePool(string $storeId, array $productIds): Collection
+    private function roleMembers(string $storeId): Collection
     {
-        // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
-        $candidates = StoreMembership::where('store_id', $storeId)
+        return StoreMembership::where('store_id', $storeId)
             ->where('is_active', true)
             ->with('storeWithTimezone')
             ->get()
             ->filter(fn (StoreMembership $m) => $m->can(StorePermissionEnum::CRM_ORDER_TRACKING))
             ->values();
-
-        return app(StoreProductScopeService::class)->filterByVisibility($candidates, $productIds);
     }
 
     /**

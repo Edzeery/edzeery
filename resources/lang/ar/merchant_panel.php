@@ -554,6 +554,7 @@ return [
     'settings_saved' => 'تم حفظ الإعدادات',
     'setup_gap_missing' => 'مندوبون بلا مناوبة نشطة: :names',
     'setup_gap_ok' => ':count مندوب(ات) بمناوبات نشطة',
+    'setup_gap_ownership' => 'مندوبون لا يملكون أي منتج: :count',
     'setup_gap_title' => 'فجوة الإعداد',
     'shift_afternoon' => 'مساءً',
     'shift_custom' => 'مخصص',

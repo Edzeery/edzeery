@@ -554,6 +554,7 @@ return [
     'settings_saved' => 'Settings saved',
     'setup_gap_missing' => 'Agents with no active shift: :names',
     'setup_gap_ok' => ':count agent(s) with active shifts',
+    'setup_gap_ownership' => 'Agents owning no products: :count',
     'setup_gap_title' => 'Setup gap',
     'shift_afternoon' => 'Afternoon',
     'shift_custom' => 'Custom',

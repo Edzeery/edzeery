@@ -63,6 +63,7 @@ $duplicatedSpecialist = computed(function (): array {
     return ConfirmationProductAssignment::query()
         ->where('store_id', currentStoreId())
         ->where('membership_id', $membership->id)
+        ->where('role_scope', 'confirm')
         ->whereIn('product_id', $scopeIds)
         ->with('product:id,name,sku')
         ->get()
@@ -156,6 +157,7 @@ $removeSpecialistDuplicate = function (string $productId): void {
     ConfirmationProductAssignment::query()
         ->where('store_id', currentStoreId())
         ->where('membership_id', $membership->id)
+        ->where('role_scope', 'confirm')
         ->where('product_id', $productId)
         ->delete();
 

@@ -4,10 +4,10 @@ use App\Domains\Order\Models\ConfirmationProductAssignment;
 use App\Domains\Order\Models\ConfirmationShift;
 use App\Domains\Order\Services\OrderAssignmentService;
 use App\Enums\Store\StorePermissionEnum;
+use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
-use App\Models\Customer;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Models\Products\Product;
@@ -192,12 +192,12 @@ test('specialist on active shift is preferred over general confirmer', function 
     expect($order->fresh()->assigned_to_membership_id)->toBe($specialist->id);
 });
 
-test('general confirmer is used when no specialist is on active shift', function () {
+test('order waits when the only product owner is off shift (no general fallback)', function () {
     $store = assignmentStore();
     $specialist = assignmentMembership($store, 'staff');
     $general = assignmentMembership($store, 'staff');
 
-    // The specialist is NOT on shift (no shift row), general IS on shift.
+    // The owner is NOT on shift (no shift row), general IS on shift.
     ConfirmationShift::create([
         'store_id' => $store->id,
         'membership_id' => $general->id,
@@ -221,7 +221,10 @@ test('general confirmer is used when no specialist is on active shift', function
     $service = app(OrderAssignmentService::class);
     $service->assign($order);
 
-    expect($order->fresh()->assigned_to_membership_id)->toBe($general->id);
+    // Justification: R2 — the order owns a product, so its pool is exactly the
+    // product's owner(s); the off-shift owner means the order waits, and the
+    // on-shift general confirmer is never consulted as a fallback.
+    expect($order->fresh()->assigned_to_membership_id)->toBeNull();
 });
 
 test('load balances between two general confirmers on shift', function () {
@@ -372,7 +375,8 @@ test('all capped members leave the order unassigned', function () {
     $service->assign($orderC);
 
     expect($orderC->fresh()->assigned_to_membership_id)->toBeNull();
-});test('overflow extends a capped confirmer when the store enables headroom', function () {
+});
+test('overflow extends a capped confirmer when the store enables headroom', function () {
     $store = assignmentStore();
     $a = assignmentMembership($store, 'staff');
     $b = assignmentMembership($store, 'staff');

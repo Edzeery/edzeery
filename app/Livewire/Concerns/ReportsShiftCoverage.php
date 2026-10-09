@@ -58,7 +58,7 @@ trait ReportsShiftCoverage
 
         $members = StoreMembership::where('store_id', currentStoreId())
             ->where('is_active', true)
-            ->with(['user:id,name', 'permissions', 'confirmationShifts'])
+            ->with(['user:id,name', 'permissions', 'confirmationShifts', 'productAssignments'])
             ->get();
 
         $details = [];
@@ -80,11 +80,20 @@ trait ReportsShiftCoverage
                 fn (ConfirmationShift $s) => $s->coversDayTime($now->dayOfWeekIso, $now->format('H:i'))
             ));
 
+            // Ownership coverage for this role: eligible members who own no
+            // product of the role. Under strict routing they form the general
+            // pool, so the owner should see who is unassigned.
+            $ownsRole = fn (StoreMembership $m) => $m->productAssignments
+                ->contains(fn ($a) => ($a->role_scope ?? 'confirm') === $roleScope);
+            $unowned = $eligible->reject($ownsRole);
+
             $details[$roleScope] = [
                 'role' => $roleScope,
                 'missing' => $missing->map(fn (StoreMembership $m) => $m->user?->name ?: '—')->values()->all(),
                 'holders' => $eligible->count() - $missing->count(),
                 'on_shift_now' => $onShiftNow->count(),
+                'unowned' => $unowned->count(),
+                'unowned_names' => $unowned->map(fn (StoreMembership $m) => $m->user?->name ?: '—')->values()->all(),
             ];
         }
 

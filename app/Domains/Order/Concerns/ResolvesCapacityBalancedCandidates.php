@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\DB;
  * oldest last assignment), optional soft overflow (store-configured % headroom
  * above a member's base cap) and the capacity-exhausted alert (throttled per
  * store + role scope). The consumer supplies the permission-filtered candidate
- * pool, the ownership-count map from ResolvesProductOwnership and may pass a
- * ShiftAvailabilityResolver snapshot shared by every selection pass of one
- * assignment call; without it a snapshot is resolved once per call.
+ * pool, the ownership-coverage map resolved by ProductOwnershipRouter and may
+ * pass a ShiftAvailabilityResolver snapshot shared by every selection pass of
+ * one assignment call; without it a snapshot is resolved once per call.
  *
  * The shared query helpers build the source-specific open-count,
  * last-assigned and unassigned maps for both orders and order_trackings.

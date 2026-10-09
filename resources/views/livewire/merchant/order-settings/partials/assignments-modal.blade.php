@@ -9,6 +9,19 @@
 
                 <div class="space-y-4">
                     <div class="edz-field">
+                        <label class="edz-field__label" for="assign-role">{{ __('merchant_panel.role') }} *</label>
+                        <x-edz.select
+                            wire:model="assignForm.role_scope"
+                            wire:change="changeAssignRole($event.target.value)"
+                            :options="[
+                                'confirm' => __('merchant_panel.queue_tab_confirmation'),
+                                'track' => __('merchant_panel.queue_tab_tracking'),
+                            ]"
+                            :error="$errors->first('assignForm.role_scope')"
+                        />
+                    </div>
+
+                    <div class="edz-field">
                         <label class="edz-field__label" for="assign-agent">{{ __('merchant_panel.agent') }} *</label>
                         <x-edz.select
                             wire:model="assignForm.membership_id"

@@ -554,6 +554,7 @@ return [
     'settings_saved' => 'Configuración guardada',
     'setup_gap_missing' => 'Agentes sin turno activo: :names',
     'setup_gap_ok' => ':count agente(s) con turnos activos',
+    'setup_gap_ownership' => 'Agentes sin productos asignados: :count',
     'setup_gap_title' => 'Configuración incompleta',
     'shift_afternoon' => 'Tarde',
     'shift_custom' => 'Personalizado',

@@ -42,12 +42,14 @@ state([
 
     'showAssignModal' => false,
     'assignForm' => [
+        'role_scope' => 'confirm',
         'membership_id' => '',
         'product_ids' => [],
     ],
     'productSearch' => '',
     'assignProductNames' => [],
     'assignSearch' => '',
+    'assignRoleFilter' => 'all',
     'storeTimezone' => null,
     'onShiftNow' => 0,
 
@@ -123,8 +125,11 @@ $benefitsMembership = function (string $membershipId): bool {
 
 // ——— Product Assignments ———
 
-$openAssignModal = function (?string $membershipId = null): void {
+$openAssignModal = function (?string $membershipId = null, string $roleScope = 'confirm'): void {
+    $roleScope = in_array($roleScope, ['confirm', 'track'], true) ? $roleScope : 'confirm';
+
     $this->assignForm = [
+        'role_scope' => $roleScope,
         'membership_id' => $membershipId ?? '',
         'product_ids' => [],
     ];
@@ -133,6 +138,7 @@ $openAssignModal = function (?string $membershipId = null): void {
     if ($membershipId) {
         $existing = ConfirmationProductAssignment::where('store_id', currentStoreId())
             ->where('membership_id', $membershipId)
+            ->where('role_scope', $roleScope)
             ->with('product:id,name')
             ->get();
 
@@ -171,19 +177,75 @@ $searchAssignProducts = computed(function (): array {
 });
 
 $visibleAssignments = computed(function (): array {
+    $items = collect($this->assignments);
+
+    if ($this->assignRoleFilter !== 'all') {
+        $items = $items->filter(fn (array $a) => ($a['role_scope'] ?? 'confirm') === $this->assignRoleFilter);
+    }
+
     $search = trim($this->assignSearch);
     if ($search === '') {
-        return $this->assignments;
+        return $items->values()->all();
     }
 
     $needle = mb_strtolower($search);
 
-    return collect($this->assignments)
+    return $items
         ->filter(fn (array $a) => str_contains(mb_strtolower($a['membership']['user']['name'] ?? ''), $needle)
             || str_contains(mb_strtolower($a['product']['name'] ?? ''), $needle))
         ->values()
         ->all();
 });
+
+/**
+ * Per-role ownership setup gap: eligible members who hold the role permission
+ * but own no product of that role. Under strict ownership routing those members
+ * form the general pool — unowned-product orders will land on it (or wait when
+ * nobody eligible is on shift), so the owner should see the roster at a glance.
+ */
+$assignSetupGaps = computed(function (): array {
+    $storeId = currentStoreId();
+
+    $members = StoreMembership::where('store_id', $storeId)
+        ->where('is_active', true)
+        ->with('user:id,name')
+        ->get();
+
+    $assignedByRole = ConfirmationProductAssignment::where('store_id', $storeId)
+        ->get(['membership_id', 'role_scope'])
+        ->groupBy('role_scope')
+        ->map(fn ($rows) => $rows->pluck('membership_id')->unique()->all());
+
+    $gaps = [];
+
+    foreach (['confirm', 'track'] as $role) {
+        $permission = $role === 'track'
+            ? StorePermissionEnum::CRM_ORDER_TRACKING->value
+            : StorePermissionEnum::ORDER_CONFIRM->value;
+
+        $eligible = $members->filter(fn (StoreMembership $m) => $m->can($permission));
+
+        if ($eligible->isEmpty()) {
+            continue;
+        }
+
+        $assignedIds = $assignedByRole[$role] ?? [];
+        $unowned = $eligible->reject(fn (StoreMembership $m) => in_array($m->id, $assignedIds, true));
+
+        $gaps[$role] = [
+            'role' => $role,
+            'eligible' => $eligible->count(),
+            'unowned' => $unowned->count(),
+            'names' => $unowned->map(fn (StoreMembership $m) => $m->user?->name ?: '—')->values()->all(),
+        ];
+    }
+
+    return $gaps;
+});
+
+$changeAssignRole = function (string $roleScope): void {
+    $this->openAssignModal($this->assignForm['membership_id'] ?: null, $roleScope);
+};
 
 $toggleAssignProduct = function (string $productId): void {
     $product = Product::where('store_id', currentStoreId())
@@ -210,6 +272,9 @@ $saveAssignments = function (): void {
 
     $storeId = currentStoreId();
     $membershipId = $this->assignForm['membership_id'];
+    $roleScope = in_array($this->assignForm['role_scope'] ?? 'confirm', ['confirm', 'track'], true)
+        ? $this->assignForm['role_scope']
+        : 'confirm';
 
     if (! $membershipId) {
         $this->dispatch('swal', type: 'error', title: __('merchant_panel.select_member_first'));
@@ -233,9 +298,10 @@ $saveAssignments = function (): void {
         return;
     }
 
-    DB::transaction(function () use ($storeId, $membershipId, $productIds) {
+    DB::transaction(function () use ($storeId, $membershipId, $productIds, $roleScope) {
         ConfirmationProductAssignment::where('store_id', $storeId)
             ->where('membership_id', $membershipId)
+            ->where('role_scope', $roleScope)
             ->delete();
 
         foreach ($productIds as $productId) {
@@ -243,6 +309,7 @@ $saveAssignments = function (): void {
                 'store_id' => $storeId,
                 'membership_id' => $membershipId,
                 'product_id' => $productId,
+                'role_scope' => $roleScope,
             ]);
         }
     });

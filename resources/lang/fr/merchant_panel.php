@@ -554,6 +554,7 @@ return [
     'settings_saved' => 'Paramètres enregistrés',
     'setup_gap_missing' => 'Agents sans créneau actif : :names',
     'setup_gap_ok' => ':count agent(s) avec créneaux actifs',
+    'setup_gap_ownership' => 'Agents sans produits assignés : :count',
     'setup_gap_title' => 'Configuration incomplète',
     'shift_afternoon' => 'Après-midi',
     'shift_custom' => 'Personnalisé',

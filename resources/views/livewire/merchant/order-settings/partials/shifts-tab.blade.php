@@ -47,6 +47,9 @@
                             @else
                                 <p class="text-ink-muted">{{ __('merchant_panel.setup_gap_ok', ['count' => $gap['holders']]) }}</p>
                             @endif
+                            @if(($gap['unowned'] ?? 0) > 0)
+                                <p class="text-ink-muted">{{ __('merchant_panel.setup_gap_ownership', ['count' => $gap['unowned']]) }}</p>
+                            @endif
                         </div>
                         <span class="edz-badge {{ $gap['on_shift_now'] > 0 ? 'edz-badge--success' : 'edz-badge--neutral' }}"
                               title="{{ __('merchant_panel.agents_on_shift_now', ['count' => $gap['on_shift_now']]) }}">

@@ -2966,3 +2966,24 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** pint نظيف (25 ملفًا معدّلًا + الجدد)؛ **المجموعة الكاملة `php -d memory_limit=2G vendor/bin/pest` = 1375 ناجحًا / 0 فاشل (1,168,554 تأكيدًا، 474s)** — بلا تعديل أي اختبار قديم من منطقه (عدا تصحيح تجميد الوقت وإعادة تسمية المهاجرة).
 
 **المتبقي:** فحص يدوي على المتصفح: إغلاق مودال `/tracking` بالقائمة/الهروب، وشارة `stranded` في الطابور؛ ثم commit (لم يُطلَب بعد).
+
+---
+
+## Phase 35.3 (الجزء 1) — قواعد التوزيع: الملكية الصارمة للدورين + نطاق الدور في تعيينات المنتجات ✅ (2026-10-09)
+
+**الهدف:** أول أجزاء «إكمال قواعد التوزيع»: فصل ملكية المنتجات بحسب الدور (تأكيد/تتبع) عبر عمود `role_scope`، وتنفيذ قواعد R1–R7 (الملكية الصارمة، بركة المالكين بلا تراجع، البركة العامة، الترتيب تغطية→حِمل→أقدم إسناد، بلا إعادة رجعية) في المحركين، مع واجهة اختيار/شارة/تصفية الدور وفلترة مراجعة التكرارات على `confirm` فقط.
+
+**تم تنفيذه:**
+1. **الهجرة `2026_10_05_000002_add_role_scope_to_confirmation_product_assignments` (61):** إضافة `role_scope` (default `'confirm'`) بعد `product_id`، إسقاط الفهرس الفريد القديم `cpa_store_member_prod` وإضافة `cpa_store_member_prod_scope` (store_id, membership_id, product_id, role_scope) + فهرس `cpa_store_scope_product_idx` (store_id, role_scope, product_id). التاريخ قبل `2026_10_06_000003` (حجز مقعد `--step 3` في `FinancialCaptureSchemaTest`).
+2. **النموذج `ConfirmationProductAssignment` (56):** `role_scope` ضمن `$fillable`، `$attributes = ['role_scope' => 'confirm']`، `$casts`، و `scopeConfirm()`/`scopeTrack()`.
+3. **`ProductOwnershipRouter` (142 < سقف 200):** استعلام واحد مجمَّع يجيب الملكية (R1) وتحديد «أعضاء عامّون» (لا صفوف بأي منتج لهذا الدور)، ويصنّف الطلب: `owner` (بركة المالكين، R2 بلا تراجع)، `general` (R3)، `all` (الجميع يملكون شيئًا → كل المؤهلين)، `empty`. لا استعلام لكل منتج/عضو.
+4. **المحركان:** `OrderAssignmentService` (198) و`OrderTrackingAssignmentService` (199) استبدلا trait `ResolvesProductOwnership` (المحذوف) بـ `ProductOwnershipRouter`، ويحسبان `roleMembers()` (نشط + يملك الصلاحية + `storeWithTimezone`) ثم مسارًا واحدًا مفردًا: `selectBest()` يوجّه مرة ثم نداء `bestCandidateWithOverflow(...)` واحد بمعامل التغطية (أُزيلت حلقة الـ tiering ذات المستويين `[true,false]`). التسجيل: تحذيرات «لا مرشحين» و«بركة فارغة».
+5. **الواجهة:** `order-settings.blade.php` (368 < 400) — `assignForm.role_scope` + `assignRoleFilter` + `changeAssignRole()`؛ `saveAssignments` يتحقق من الدور ويحذف/ينشئ **لهذا الدور فقط**؛ `visibleAssignments` تصفّي بالدور. `assignments-modal.blade.php` (62) — اختيار الدور قسريًا. `assignments-tab.blade.php` (121) — أزرار تصفية الدور + شارة الدور لكل مجموعة (تجميع `membership::role_scope`) + تنبيه فجوة الملكية لكل دور. `product-scope-modal.blade.php` — إضافة `role_scope = 'confirm'` في `duplicatedSpecialist` و`removeSpecialistDuplicate` (المراجعة للتأكيد فقط، لا تمس نطاق التتبع).
+6. **تمديد تنبيه فجوة الإعداد (تفسير موثّق):** لا يوجد نصّ صريح في المستودع، فعُلِّم كالتالي — `ReportsShiftCoverage::setupGapDetails()` (102) صار يحمّل `productAssignments` ويحسب لكل دور `unowned` (مؤهلون يملكون الصلاحية ولا يملكون أي منتج من الدور = يشكّلون البركة العامة). يعرضه تبويب المناوبات **بالعدد فقط** `setup_gap_ownership` (عرض الأسماء كان يكسر اختبارات تصفية المناوبات)، ويعرض تبويب التعيينات الأسماء في بنر لكل دور. **مطلوب مراجعة المالك لهذا التفسير.**
+7. **الترجمات:** مفتاح `setup_gap_ownership` × ar/en/es/fr (متزامن) — والباقي يعيد استخدام `queue_tab_confirmation`/`queue_tab_tracking`/`all_roles` الموجودة.
+
+**الاختبارات (الجزء 1.4):** `OwnershipRoutingTest` (412) — معامل `roleScope` في `ownsProduct()` (صفوف التتبع تُنشأ بـ `role_scope='track'`)، وإعادة كتابة اختبارين بقواعد R2 («مالك مقيّد يبقى بلا إسناد: البركة الصارمة لا ترجع للعام أبدًا» و«تتبع يبقى بلا إسناد حين المالك الوحيد خارج المناوبة»). `OrderAssignmentServiceTest` (414) — إعادة كتابة «عام يُستخدم حين لا متخصص على مناوبة» إلى «الطلب ينتظر حين المالك الوحيد خارج المناوبة (لا تراجع للعام)». **لا اختبارات مُزالة.** `OrderSettingsShiftRoleTest` + `OrderSettingsAssignmentsSearchTest` + `OrderDistributionQueueTest` خضراء (19).
+
+**النتائج/التحقق:** `pint --dirty` نظيف (أصلح 13 ملفًا، نمطان)؛ الأسطر تحت الأسقف. `tests/Feature/Order` = **64/64**؛ `ProductScopeDuplicateReviewTest` + `MembershipProductScopeBackfillTest` + `StoreProductScopeServiceTest` + `DemoStoreSeederTest` = **18/18**؛ `NoMojibakeTest` 3/3 (الترجمة العربية سليمة)؛ **المجموعة الكاملة = 1375 ناجحًا / 0 فاشل (1,171,218 تأكيدًا، 520s)**. لم يُعدَّل أي اختبار قديم منطقيًا خارج تفسير R2 أعلاه.
+
+**المتبقي (باقي Phase 35.3):** الجزء 2 (`statuses.distribution_stage` + الحِمل + handover)، الجزء 3 (stranded/visibility/perf في الطابور)، الجزء 4 (أهلية handover + uniqueness + perf)، الجزء 5 (docs + Todoles). الحزمة الحالية **غير مُودَعة (uncommitted)** بانتظار طلب المالك.

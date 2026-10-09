@@ -5,7 +5,7 @@ namespace App\Domains\Order\Services;
 use App\Domains\Order\Concerns\GuardsDistributionLock;
 use App\Domains\Order\Concerns\HandlesShiftHandover;
 use App\Domains\Order\Concerns\ResolvesCapacityBalancedCandidates;
-use App\Domains\Order\Concerns\ResolvesProductOwnership;
+use App\Domains\Order\Support\ProductOwnershipRouter;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class OrderAssignmentService
 {
-    use GuardsDistributionLock, HandlesShiftHandover, ResolvesCapacityBalancedCandidates, ResolvesProductOwnership;
+    use GuardsDistributionLock, HandlesShiftHandover, ResolvesCapacityBalancedCandidates;
 
     /**
      * Full auto-assignment pipeline for an order. The critical section is
@@ -110,9 +110,10 @@ class OrderAssignmentService
             ->unique()
             ->toArray();
 
-        $candidates = $this->resolveCandidatePool($storeId, $productIds);
+        $roleMembers = $this->roleMembers($storeId);
+        $candidates = app(StoreProductScopeService::class)->filterByVisibility($roleMembers, $productIds);
 
-        $selected = $this->selectBest($store, $candidates, $storeId, $productIds);
+        $selected = $this->selectBest($store, $roleMembers, $candidates, $storeId, $productIds);
 
         if (! $selected[0]) {
             Log::warning('Order auto-assignment skipped: no candidates on active shift', [
@@ -128,46 +129,36 @@ class OrderAssignmentService
     }
 
     /**
-     * Resolve candidate pool for a store and set of product IDs.
+     * Active members holding ORDER_CONFIRM — the ownership authority and the
+     * superset the strict pool is drawn from. One query; visibility narrowing
+     * happens on top of this collection.
      *
-     * Returns every active ORDER_CONFIRM member whose visibility covers at
-     * least one of the order's products; tier selection (ownership pool vs
-     * general) is decided later in selectBest() so a store with a narrow
-     * ownership roster still falls back to general confirmers.
+     * @return Collection<int, StoreMembership>
      */
-    private function resolveCandidatePool(string $storeId, array $productIds): Collection
+    private function roleMembers(string $storeId): Collection
     {
-        // Members with ORDER_CONFIRM permission in this store
-        // Eager load storeWithTimezone to avoid N+1 in isOnActiveShift
-        $candidates = StoreMembership::where('store_id', $storeId)
+        return StoreMembership::where('store_id', $storeId)
             ->where('is_active', true)
             ->with('storeWithTimezone')
             ->get()
             ->filter(fn (StoreMembership $m) => $m->can(StorePermissionEnum::ORDER_CONFIRM))
             ->values();
-
-        // Never hand an order to someone it would be invisible to: a manager
-        // whose product scope misses every item would be unable to open it.
-        // Ownership tiering below is untouched — this is an extra exclusion.
-        return app(StoreProductScopeService::class)->filterByVisibility($candidates, $productIds);
     }
 
     /**
-     * Select the best candidate following priority tiers:
-     *  1. On-shift owners of the order's products, ranked by ownership
-     *     coverage (most ordered products owned), then fewest open orders,
-     *     then oldest last assignment
-     *  2. On-shift general confirmers, ranked by load then recency
-     * Members who reached their time-aware max_concurrent_orders cap are
-     * skipped inside their pool; when the store enables soft overflow, the
-     * cap is extended by the configured percentage before the pool gives up
-     * (see ResolvesCapacityBalancedCandidates). Returns [selected, wasOverflow].
+     * Route the order through the strict ownership rules (ProductOwnershipRouter)
+     * and pick one candidate inside the resulting pool: owners ranked by coverage
+     * then fewest open orders then oldest last assignment; general/all candidates
+     * by load then recency. Caps apply inside the pool; overflow extends caps
+     * inside the same pool. There is NO fallback outside the routed pool.
+     * Returns [selected, wasOverflow].
      */
     private function selectBest(
         Store $store,
+        Collection $roleMembers,
         Collection $candidates,
         string $storeId,
-        array $productIds
+        array $productIds,
     ): array {
         if ($candidates->isEmpty()) {
             Log::warning('Order auto-assignment skipped: no members with ORDER_CONFIRM permission', [
@@ -177,36 +168,31 @@ class OrderAssignmentService
             return [null, false];
         }
 
+        $routed = app(ProductOwnershipRouter::class)
+            ->route($storeId, 'confirm', $roleMembers, $candidates, $productIds);
+
+        $pool = $routed['pool'];
+
+        if ($pool->isEmpty()) {
+            return [null, false];
+        }
+
         $overflowPercentage = $this->overflowPercentage($store);
-        $ownership = $this->ownershipCounts($storeId, $productIds);
         $openCounts = $this->openAssignmentCounts('orders', $storeId, fn ($q) => $q
             ->join('statuses', 'orders.status_id', '=', 'statuses.id')
             ->whereNotIn('statuses.key', $this->terminalStatusKeys()));
         $lastAssigned = $this->lastAssignedAt('orders', $storeId);
+        $availability = $this->availabilitySnapshot($storeId, 'confirm', $pool);
 
-        // One availability snapshot for both tier passes — the shifts do not
-        // change mid-call, so the ownership and general tiers must see the
-        // same on-shift/cap view (and it costs one query, not one per tier).
-        $availability = $this->availabilitySnapshot($storeId, 'confirm', $candidates);
-
-        // Owners first (coverage-ranked), then general confirmers.
-        foreach ([true, false] as $owners) {
-            [$best, $wasOverflow] = $this->bestCandidateWithOverflow(
-                $candidates->filter(fn (StoreMembership $m) => isset($ownership[$m->id]) === $owners),
-                $storeId,
-                'confirm',
-                $openCounts,
-                $lastAssigned,
-                $overflowPercentage,
-                $availability,
-                $ownership,
-            );
-
-            if ($best) {
-                return [$best, $wasOverflow];
-            }
-        }
-
-        return [null, false];
+        return $this->bestCandidateWithOverflow(
+            $pool,
+            $storeId,
+            'confirm',
+            $openCounts,
+            $lastAssigned,
+            $overflowPercentage,
+            $availability,
+            $routed['coverage'],
+        );
     }
 }
