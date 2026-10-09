@@ -3,8 +3,12 @@
 namespace App\Domains\Order\Concerns;
 
 use App\Domains\Order\Support\OrderDistributionStage;
+use App\Domains\Order\Support\ShiftAvailabilityResolver;
+use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
+use App\Models\Stores\Team\StoreMembership;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,9 +19,10 @@ use Illuminate\Support\Facades\Log;
  * from GuardsDistributionLock. Contract: only confirmation-stage statuses
  * (statuses.distribution_stage = confirmation, NULL treated as confirmation)
  * are touched — fulfillment and closed orders keep their assignment; an
- * off-shift assignee is replaced with assignment_method 'handover'; when
- * nobody eligible remains the assignment is kept and flagged stranded_at once
- * instead of cleared.
+ * assignee who is no longer a valid keep-candidate (inactive membership, lost
+ * ORDER_CONFIRM permission, or off-shift) is replaced with assignment_method
+ * 'handover'; when nobody eligible remains the assignment is kept and flagged
+ * stranded_at once instead of cleared.
  */
 trait HandlesShiftHandover
 {
@@ -42,12 +47,22 @@ trait HandlesShiftHandover
                 ->with('assignedMembership')
                 ->get();
 
+            $eligible = $this->eligibleKeepMap(
+                $store,
+                'confirm',
+                StorePermissionEnum::ORDER_CONFIRM->value,
+                $openOrders,
+            );
+
             foreach ($openOrders as $order) {
-                // On-shift assignees keep their orders; a removed membership
-                // resolves to null and counts as off-shift (reassigned here).
+                $assignee = $order->assignedMembership;
+
+                // On-shift assignees who are still active members holding the
+                // role permission keep their orders; a removed membership
+                // resolves to null and counts as ineligible (reassigned here).
                 // An eligible assignee that was previously stranded is no
                 // longer in that state — clear the flag (P35.3).
-                if ($order->assignedMembership?->isOnActiveShift()) {
+                if ($assignee !== null && ($eligible[$assignee->id] ?? false)) {
                     if ($order->stranded_at !== null) {
                         $order->update(['stranded_at' => null]);
                     }
@@ -58,6 +73,49 @@ trait HandlesShiftHandover
                 $this->strandOrReplaceOrder($order, $store);
             }
         });
+    }
+
+    /**
+     * Membership eligibility for KEEPING an assignment during the sweep, keyed
+     * by membership id: the member must still be an active store member who
+     * holds the role permission and is on an active shift of this role scope.
+     * The permission rows and the shift/cap availability are both batch-read
+     * (one query each) instead of per-row isOnActiveShift() checks.
+     *
+     * @param  Collection<int, Order>  $rows
+     * @return array<int, bool>
+     */
+    private function eligibleKeepMap(Store $store, string $roleScope, string $permission, Collection $rows): array
+    {
+        $memberIds = $rows
+            ->map(fn (Order $order) => $order->assignedMembership?->id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($memberIds->isEmpty()) {
+            return [];
+        }
+
+        $memberships = StoreMembership::with(['permissions', 'storeWithTimezone.settings'])
+            ->whereIn('id', $memberIds->all())
+            ->get();
+
+        $availability = app(ShiftAvailabilityResolver::class)->resolve(
+            $store->id,
+            $roleScope,
+            $memberships,
+        );
+
+        $eligible = [];
+
+        foreach ($memberships as $member) {
+            $eligible[$member->id] = (bool) $member->is_active
+                && $member->can($permission)
+                && ($availability[$member->id]['on_shift'] ?? false);
+        }
+
+        return $eligible;
     }
 
     /**

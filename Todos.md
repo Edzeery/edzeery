@@ -3031,3 +3031,22 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** `pint --dirty` نظيف (11 ملفًا)؛ **مجموعة مستهدفة 88/88** (Order كلها + Queue + OrderSettingsShiftRole)؛ المجموعة الفردية للطابور 13/13. السطور: DistributionQueueConcern 203، HandlesShiftHandover 103، HandlesTrackingHandover 90، OrderAssignmentService 202، OrderTrackingAssignmentService 200.
 
 **المتبقي:** الجزء 4 (أهلية handover: membership فعّال + صلاحيات ممتدة + perf + uniqueness `ShouldBeUniqueUntilProcessing` لكل متجر) ثم الجزء 5 (docs + Todoles).
+
+---
+
+## 35.3-4: أهلية التسليم الموسّعة + الأداء + تفرد الوظيفة
+
+**الهدف:** تعزيز شرط «الإبقاء» في مسح المناوبة ليطابق أهلية المرشّحين (العضوية فعّالة + تحمل صلاحية الدور + مناوبة نشطة), وتجميع فحص الأهلية في استعلامين بدلًا من N+1، وجعل `ShiftHandoverJob` فريدًا لكل متجر حتى اكتمال المعالجة.
+
+**الأجزاء:**
+1. **أهلية الإبقاء (`eligibleKeepMap` في `HandlesShiftHandover` 103→161 و`HandlesTrackingHandover` 90→147):** خريطة eligibility مفتاحية بالـ membership id = `is_active && can(permission) && on_shift`. تُقرأ العضويات مع `permissions` و`storeWithTimezone.settings` في استعلام واحد، ثم `ShiftAvailabilityResolver::resolve` يقدّم snapshot on-shift واحدًا (استعلام واحد) — بدل `isOnActiveShift()` برابطتين لكل صف. المسح الآن يستبدل المُسند غير الفعّال أو من سقطت صلاحيته أو خارج المناوبة (كان يحتفظ بالإسناد ما دامت مناوبة تغطيه). confirm: `ORDER_CONFIRM`؛ track: `CRM_ORDER_TRACKING`.
+2. **تفرد الوظيفة (`ShiftHandoverJob` 31→45):** `ShouldBeUniqueUntilProcessing` + `uniqueId() = "shift-handover:{store_id}"` + `uniqueFor = 600`. اندفاعات التحديثات (حفظ/حذف مناوبة، تعديل/حذف عضو) تنضم في مسح واحد لكل متجر — مع بقاء jobs المتاجر المختلفة مستقلة.
+3. **Perf test:** مسح الأهلية ثابت الاستعلامات مع نمو الصفوف (العلاقيات مجمّعة).
+
+**الاختبارات:** `EngineHardeningTest` (13→21): استبدال مُسنَد تم تعطيله رغم وجود مناوبة نشطة؛ استبدال من سقطت صلاحيته (syncPermissions → ORDER_VIEW فقط)؛ استبدال tracker معطَّل؛ ثبات استعلامات الأهلية مع نمو الصفوف؛ `uniqueId` لكل متجر وفريدية `ShouldBeUniqueUntilProcessing`؛ عدّاد الـ Bus المنهار: تحديث+حذف عضو → 1 (بدل 2) وsave/toggle/delete مناوبة → 1 (بدل 3)؛ متاجر مختلفة → وظيفتان. `isOnActiveShift` بقي API عامًا في الموديل (لم يُستخدم في المسح).
+
+**المخاطر النحوية:** `expect(new Foo()->bar())` انكسر في PHP 8.3 داخل Pest → خُزّنت كائنات الوظائف بمتغيرات صريحة.
+
+**النتائج/التحقق:** `pint --dirty` نظيف (أصلح ShiftHandoverJob: ordered_interfaces)؛ **مجموعة مستهدفة 98/98** (Order كلها + Queue + OrderSettings + DemoSeeder)؛ **المجموعة الكاملة = 1387 ناجحًا / 0 فاشل (1,173,977 تأكيدًا, 525s)**. السطور الأخيرة: HandlesShiftHandover 161، HandlesTrackingHandover 147، ShiftHandoverJob 45، OrderAssignmentService 202.
+
+**المتبقي:** الجزء 5 (docs): إنشاء `docs/plans/order-distribution-rules.md` (المصدر الوحيد لقواعد التوزيع) + إكمال Todos.

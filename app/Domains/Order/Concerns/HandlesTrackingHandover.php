@@ -2,16 +2,22 @@
 
 namespace App\Domains\Order\Concerns;
 
+use App\Domains\Order\Support\ShiftAvailabilityResolver;
+use App\Enums\Store\StorePermissionEnum;
 use App\Models\Orders\OrderTracking;
 use App\Models\Stores\Store;
+use App\Models\Stores\Team\StoreMembership;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
  * PHASE 35.2-C — shift-boundary sweep for open order trackings: the tracking
  * twin of HandlesShiftHandover with the same keep-and-strand /
  * replace-with-'handover' contract, scoped to open tracking statuses and the
- * 'track' role scope. Composed into OrderTrackingAssignmentService, which
- * supplies selectReplacement() and withDistributionLock().
+ * 'track' role scope. A keep-candidate must be an active member holding
+ * CRM_ORDER_TRACKING on an active track shift. Composed into
+ * OrderTrackingAssignmentService, which supplies selectReplacement() and
+ * withDistributionLock().
  */
 trait HandlesTrackingHandover
 {
@@ -32,11 +38,21 @@ trait HandlesTrackingHandover
                 ->with('assignedTo')
                 ->get();
 
+            $eligible = $this->eligibleKeepMap(
+                $store,
+                'track',
+                StorePermissionEnum::CRM_ORDER_TRACKING->value,
+                $openTrackings,
+            );
+
             foreach ($openTrackings as $tracking) {
-                // On-shift assignees keep their rows; an eligible assignee
+                $assignee = $tracking->assignedTo;
+
+                // On-role-shift assignees who are still active members holding
+                // the tracking permission keep their rows; an eligible assignee
                 // that was previously stranded is no longer in that state —
                 // clear the flag (P35.3).
-                if ($tracking->assignedTo?->isOnActiveShift(null, 'track')) {
+                if ($assignee !== null && ($eligible[$assignee->id] ?? false)) {
                     if ($tracking->stranded_at !== null) {
                         $tracking->update(['stranded_at' => null]);
                     }
@@ -47,6 +63,47 @@ trait HandlesTrackingHandover
                 $this->strandOrReplaceTracking($tracking, $store);
             }
         });
+    }
+
+    /**
+     * Tracking twin of the confirmation eligibleKeepMap: active member + role
+     * permission + active track-role shift, both batch-read instead of
+     * per-row isOnActiveShift(null, 'track') checks.
+     *
+     * @param  Collection<int, OrderTracking>  $rows
+     * @return array<int, bool>
+     */
+    private function eligibleKeepMap(Store $store, string $roleScope, string $permission, Collection $rows): array
+    {
+        $memberIds = $rows
+            ->map(fn (OrderTracking $tracking) => $tracking->assignedTo?->id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($memberIds->isEmpty()) {
+            return [];
+        }
+
+        $memberships = StoreMembership::with(['permissions', 'storeWithTimezone.settings'])
+            ->whereIn('id', $memberIds->all())
+            ->get();
+
+        $availability = app(ShiftAvailabilityResolver::class)->resolve(
+            $store->id,
+            $roleScope,
+            $memberships,
+        );
+
+        $eligible = [];
+
+        foreach ($memberships as $member) {
+            $eligible[$member->id] = (bool) $member->is_active
+                && $member->can($permission)
+                && ($availability[$member->id]['on_shift'] ?? false);
+        }
+
+        return $eligible;
     }
 
     /**

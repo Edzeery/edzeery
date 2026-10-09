@@ -428,7 +428,110 @@ test('shift handover clears stale stranded flags when the tracking leaves the op
         ->and($tracking->fresh()->assigned_to_membership_id)->toBe($offShift->id);
 });
 
-test('team member updates and removals dispatch the shift handover sweep', function () {
+test('shift handover replaces a deactivated assignee even though an active shift exists', function () {
+    $store = hardenStore();
+    $deactivated = hardenMember($store, hardenPermissions());
+    hardenShift($store, $deactivated, [1, 2, 3, 4, 5]); // would be on-shift today
+    $onShift = hardenMember($store, hardenPermissions());
+    hardenShift($store, $onShift, [1, 2, 3, 4, 5]);
+
+    $order = hardenClaim(hardenOrder($store), $deactivated);
+    $deactivated->update(['is_active' => false]);
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect($order->fresh())
+        ->assigned_to_membership_id->toBe($onShift->id)
+        ->assignment_method->toBe('handover')
+        ->stranded_at->toBeNull();
+});
+
+test('shift handover replaces an assignee who lost the role permission', function () {
+    $store = hardenStore();
+    $noPerm = hardenMember($store, hardenPermissions());
+    hardenShift($store, $noPerm, [1, 2, 3, 4, 5]);
+    $onShift = hardenMember($store, hardenPermissions());
+    hardenShift($store, $onShift, [1, 2, 3, 4, 5]);
+
+    $order = hardenClaim(hardenOrder($store), $noPerm);
+    $noPerm->syncPermissions([StorePermissionEnum::ORDER_VIEW->value]);
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect($order->fresh())
+        ->assigned_to_membership_id->toBe($onShift->id)
+        ->assignment_method->toBe('handover')
+        ->stranded_at->toBeNull();
+});
+
+test('shift handover replaces a deactivated tracker regardless of track shifts', function () {
+    $store = hardenStore();
+    $deactivated = hardenMember($store, hardenTrackPermissions());
+    hardenShift($store, $deactivated, [1, 2, 3, 4, 5], 'track');
+    $onShift = hardenMember($store, hardenTrackPermissions());
+    hardenShift($store, $onShift, [1, 2, 3, 4, 5], 'track');
+
+    $tracking = hardenTracking(hardenOrder($store), $deactivated);
+    $deactivated->update(['is_active' => false]);
+
+    app(OrderTrackingAssignmentService::class)->handleShiftHandover($store);
+
+    expect($tracking->fresh())
+        ->assigned_to_membership_id->toBe($onShift->id)
+        ->assignment_method->toBe('handover')
+        ->stranded_at->toBeNull();
+});
+
+test('the eligibility pass of the handover sweep is constant-time as rows grow', function () {
+    $store = hardenStore();
+    $onShift = hardenMember($store, hardenPermissions());
+    hardenShift($store, $onShift, [1, 2, 3, 4, 5]);
+
+    $makeRows = function (int $count) use ($store, $onShift): void {
+        foreach (range(1, $count) as $i) {
+            hardenClaim(hardenOrder($store), $onShift);
+        }
+    };
+
+    $makeRows(2);
+
+    $first = [];
+    DB::listen(function ($q) use (&$first) {
+        $first[] = $q->sql;
+    });
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    $makeRows(2);
+
+    $second = [];
+    DB::listen(function ($q) use (&$second) {
+        $second[] = $q->sql;
+    });
+
+    app(OrderAssignmentService::class)->handleShiftHandover($store);
+
+    expect(count($second))->toBeLessThanOrEqual(count($first) + 2);
+});
+
+test('the shift handover job is unique per store until processed', function () {
+    $store = hardenStore();
+    $other = hardenStore();
+
+    $job = new ShiftHandoverJob($store);
+
+    expect($job)
+        ->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing::class)
+        ->uniqueId()->toBe("shift-handover:{$store->id}");
+
+    $otherJob = new ShiftHandoverJob($other);
+    $repeatJob = new ShiftHandoverJob($store);
+
+    expect($otherJob->uniqueId())->not->toBe($job->uniqueId())
+        ->and($repeatJob->uniqueId())->toBe($job->uniqueId());
+});
+
+test('team member updates and removals dispatch a single collapsed handover sweep per store', function () {
     Bus::fake([ShiftHandoverJob::class]);
 
     $store = hardenStore();
@@ -440,11 +543,27 @@ test('team member updates and removals dispatch the shift handover sweep', funct
         'is_active' => true,
     ]);
 
-    Bus::assertDispatched(ShiftHandoverJob::class, fn (ShiftHandoverJob $job) => $job->store->is($store));
-
     app(StoreTeamService::class)->removeMember($member);
 
+    // The unique-per-store contract collapses both same-store dispatches into
+    // one queued sweep — but the sweep is still dispatched for that store.
+    Bus::assertDispatchedTimes(ShiftHandoverJob::class, 1);
+    Bus::assertDispatched(ShiftHandoverJob::class, fn (ShiftHandoverJob $job) => $job->store->is($store));
+});
+
+test('distinct stores each receive their own shift handover sweep', function () {
+    Bus::fake([ShiftHandoverJob::class]);
+
+    $storeA = hardenStore();
+    $storeB = hardenStore();
+
+    ShiftHandoverJob::dispatch($storeA);
+    ShiftHandoverJob::dispatch($storeB);
+    ShiftHandoverJob::dispatch($storeA);
+
     Bus::assertDispatchedTimes(ShiftHandoverJob::class, 2);
+    Bus::assertDispatched(ShiftHandoverJob::class, fn (ShiftHandoverJob $job) => $job->store->is($storeA));
+    Bus::assertDispatched(ShiftHandoverJob::class, fn (ShiftHandoverJob $job) => $job->store->is($storeB));
 });
 
 test('the teams ui member toggle dispatches the shift handover sweep', function () {
@@ -517,5 +636,7 @@ test('order-settings shift save toggle and delete dispatch the shift handover sw
     Volt::test('merchant.order-settings')->call('toggleShiftActive', $shift->id);
     Volt::test('merchant.order-settings')->call('deleteShift', $shift->id);
 
-    Bus::assertDispatchedTimes(ShiftHandoverJob::class, 3);
+    // All three actions hit the same store — the unique-per-store contract
+    // collapses them into one queued sweep.
+    Bus::assertDispatchedTimes(ShiftHandoverJob::class, 1);
 });
