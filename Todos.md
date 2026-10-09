@@ -3050,3 +3050,15 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** `pint --dirty` نظيف (أصلح ShiftHandoverJob: ordered_interfaces)؛ **مجموعة مستهدفة 98/98** (Order كلها + Queue + OrderSettings + DemoSeeder)؛ **المجموعة الكاملة = 1387 ناجحًا / 0 فاشل (1,173,977 تأكيدًا, 525s)**. السطور الأخيرة: HandlesShiftHandover 161، HandlesTrackingHandover 147، ShiftHandoverJob 45، OrderAssignmentService 202.
 
 **المتبقي:** الجزء 5 (docs): إنشاء `docs/plans/order-distribution-rules.md` (المصدر الوحيد لقواعد التوزيع) + إكمال Todos.
+
+---
+
+## 35.3-5: توثيق قواعد التوزيع
+
+**الهدف:** `docs/plans/order-distribution-rules.md` — المصدر الوحيد الموثّق لقواعد التوزيع، يطابق التنفيذ حرفيًا بعد الجزأين 4 و5.
+
+**الأجزاء:** النطاقات (`confirm`/`track` + صلاتهما)؛ أهلية المرشّح من 4 شروط (نشِط + صلاحية الدور الممنوحة + مناوبة نشطة من نفس النطاق + صلة رؤية المنتجات)؛ التوجيه R1–R3 (سلطة الملكية — حيازة المنتج من العضويات النشطة الحاملة للصلاحية — حارس ثابت بلا مسار بديل)؛ الترتيب (coverage ثم أقل المفتوح ثم الأقدم إسنادًا مع تشويش الروابط الكاملة)؛ السعة الزائدة الاختيارية؛ التزامن (قفل per-store + per-scope) والوظيفة الفريدة `ShouldBeUniqueUntilProcessing` لكل متجر؛ إعادة الإسناد اليدوي؛ دورة حياة التسليم/التعليّق (pass مجمَّع للأعلام القديمة + keep/strand/replace مع كتابة stranded_at لمرة واحدة وإبقاء الإسناد عند غياب البديل)؛ الطابور (3 صفوف + ترتيب ثلاثي الأطوار + 50/صفحة)؛ تصنيف `statuses.distribution_stage` (قوائم confirmation/fulfillment/closed + افتراض المخصص لإمر confirmation)؛ غير-أهداف صريحة؛ ملفات المفاتيح.
+
+**النتائج/التحقق:** مراجعة يدوية تقاطعت مع السطر الأخير لكل مكوّن التزامن (ProductOwnershipRouter 141، OrderDistributionStage 123، HandlesShiftHandover 161، HandlesTrackingHandover 147، DistributionQueueConcern 203، ShiftHandoverJob 45، OrderAssignmentService 202)؛ لا تغيير في PHP — doc-only.
+
+**المتبقي:** لا شيء — اكتمال PHASE 35.3 بالكامل (‎Commits: 9334e4e «35.3-1»، 8b26647 «35.3-2»، 46b41a8 «35.3-3»، d8e89fb «35.3-4»، وهذا التوثيق «35.3-5»).
