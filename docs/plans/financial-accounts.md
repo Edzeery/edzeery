@@ -36,7 +36,9 @@
 | payments, advances, deductions, bonuses | finance-manager |
 | expenses, cash accounts, carrier remittance reconciliation | finance-manager |
 | balances (earned minus paid) | finance-manager (computed in one place only) |
+| debts (merchant-facing), `Debt`/`DebtPayment` modules | finance-manager |
 
+- **Debts are removed from Edzeery permanently** (owner decision 2026-10-09, remediation F-02): the `Debt`/`DebtPayment` modules belong to finance-manager only and are deleted from Edzeery's domain **before any 38-B finance feature ships**.
 - Edzeery pushes earning entries to finance-manager through an **outbox with idempotency keys**; finance-manager stores them read-only.
 - Edzeery's **"الحسابات المالية"** page reads balances from the finance-manager API and **degrades gracefully** (last cached balances + banner) when the API is unavailable.
 - Advanced reports and zakat open in finance-manager's own UI via SSO.
@@ -91,9 +93,9 @@
 | 37-K.2 | Charts vanish when an already-active dashboard filter is clicked twice | 37-K | Done - verified | 2026-10-06 | See phase log entry below; interplay guard + `wire:ignore` canvases |
 | 37-K.3 | Restore a fully green test suite (groups G1-G6) | — | Done - verified (0 failed, 0 risky; `8e21c7d`) | 2026-10-06, `8e21c7d` | See phase log entry; full suite after G6: **1298 passed, 0 failed, 0 risky** |
 | 38-A | Audit: existing payroll/accounting modules; does `order_status_histories` store the acting user and exact timestamp; who creates tracking rows and how; which attribution fields exist — **all three now answered from the repo** | 37-K | Done - verified (owner approved 2026-10-06; decisions S8–S12; docs-only; `73f1ea2`) | 2026-10-06, `73f1ea2` | Section **12 "38-A Findings (audit)"**; decisions **S8–S12** in section 11; revised order + final 38-C scope in section 13. `order_status_histories` stores a nullable `changed_by_membership_id` + standard `created_at` (no from-status, no source, actor often null); tracking rows created by `OrderTrackingService::startShipment()` (idempotent only while open — duplicates after close); attribution = nullable membership FKs on orders/trackings/history/events. **No payroll/HR module exists — built from scratch, nothing to reuse or migrate.** |
-| 38-C.1 | finance:capture-health read-only command (per-store table, non-zero exit) | 38-C | In progress | — | 8 metrics + first dev-DB output, plan-doc section 13 extension, stop and report per gate |
+| 38-C.1 | finance:capture-health read-only command (per-store table, non-zero exit) | 38-C | Done - verified | 2026-10-07, `57b7e6f` | 8 metrics + first dev-DB output, plan-doc section 13 extension; stopped and reported per gate |
 | 38-C | Capture missing attribution/event fields (`confirmed_at`/`confirmed_by`, `delivered_at`, `returned_at`, `tracked_by`, history `from_status` + `source`, COD snapshot) + worker-cache isolation + transaction-atomic earning capture seam | 38-A | Done - verified (full suite **1324 passed, 0 failed**; see phase log) | 2026-10-07, `f4a0a99` (code) + plan commit | **Runs BEFORE 38-B** (owner decision): un-captured actor/timestamps cannot be backfilled. Final implementation scope in section 13; default `accrual_start_date` = this phase's deploy date per store |
-| 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | S9, S10, S12 decided. Build compensation model **from scratch** (no payroll/HR exists; nothing to reuse or migrate). Include assessment-only evaluation of reusing the shifts module for handover attribution |
+| 38-B | Member compensation plan + member add/edit form + store finance settings | 38-A | Not started | — | S9, S10, S12 decided. Build compensation model **from scratch** (no payroll/HR exists; nothing to reuse or migrate). Include assessment-only evaluation of reusing the shifts module for handover attribution. **Starts only after remediation T-02 (StoreScope on every `store_id` model) and F-01** (see §9.b go-live gate) |
 | 38-D | Earning ledger + backfill from accrual start date + tests | 38-C, 38-B | Not started | — | S8, S11 decided. Forward capture starts at the 38-C deploy date (`accrual_start_date`); backfill from there |
 | 38-E | "الحسابات المالية" page shell, navigation, permissions, Overview tab | 38-D | Not started | — | |
 | 38-F | Confirmation-team accounting, then tracking-team accounting | 38-E | Not started | — | |
@@ -102,7 +104,7 @@
 | 38-G | Delivery accounts and remittance reconciliation | 38-F | Not started | — | |
 | 38-H | Profit ledger (product cost, ad spend) = 37-O | 38-E | Not started | — | |
 | 38-I | Business-manager organization | 38-E | Not started | — | |
-| 38-J | finance-manager workspace provisioning + API v1 + outbox push + reconciliation command | 38-D | Not started | — | Start only after finance-manager's own audit remediation is finished |
+| 38-J | finance-manager workspace provisioning + API v1 + outbox push + reconciliation command | 38-D | Not started | — | Start only after finance-manager's own audit remediation is finished. Debts belong to finance-manager **only** — `Debt`/`DebtPayment` were removed from Edzeery permanently (owner decision 2026-10-09, remediation F-02) |
 | 38-K | finance-manager UI: payroll runs, payments, advances, period close | 38-J | Not started | — | |
 | 38-L | Payslips, member portal, objections, exports, alerts (= 37-R, 37-S) | 38-K | Not started | — | |
 | 37-M | Time analytics (its history part is needed earlier for event dates) | 37-K | Not started | — | 38-A resolved the contingency: history/events already carry event dates (`order_status_histories.created_at`, `order_events.occurred_at`) — the history part does NOT need to be pulled forward |
@@ -128,6 +130,28 @@ j. Where the phase touches the dashboard filters or charts, run the interaction 
 Test discipline when restoring a red suite (37-K.3 and any later green-suite work): fix root causes first — production bug → fix product code and keep/strengthen the test; stale or broken test → fix the test without skipping, deleting, or loosening its assertions. Commit per group (`G1`, `G2`, ...), run the full suite after each group, and record counts in the phase log. Do not fix symptoms, do not change expectations to match broken output.
 
 Also, before starting a phase: confirm that its dependencies show "Done - verified"; if not, stop and say so.
+
+## 9.b Go-live gate (remediation program prerequisites)
+
+**No finance feature (38-B onward) is deployed to production until ALL of the
+remediation program items below are done and marked as such in
+`docs/plans/2026-10-remediation/STATUS.md`:**
+
+- **Security (P1, mandatory before any money-facing UI ships):**
+  `docs/plans/2026-10-remediation/01-security.md` — **S-05** (upload mime/type rules on every
+  `->store('…','public')`), **S-06** (unprotected login / password-guessing hardening),
+  **S-07** (SSRF via carrier `api_base` and card proxy).
+- **Ops / deps / infra (mandatory before production deploy):**
+  `docs/plans/2026-10-remediation/05-ops-deps-infra.md` — the O-* tasks (TLS production
+  posture, dependency upgrades, infra).
+- **Tenant isolation:** `docs/plans/2026-10-remediation/04-tenant-isolation.md` — **T-02**
+  (StoreScope on every `store_id` model); 38-B explicitly depends on it (see tracker row).
+- **Fintech program gates:** `docs/plans/2026-10-remediation/08-fintech-program.md` —
+  **F-01** (`finance_capture_started_at` for new/seeded stores) and **F-02** (debts removed)
+  must both be done before 38-B starts.
+
+A phase whose remediation prerequisites are not marked done must **NOT** be started —
+stop and report to the owner.
 
 ## 10. Phase log (append-only)
 
@@ -505,7 +529,7 @@ Reason: un-captured actor/timestamps cannot be backfilled — capture ships firs
 **Checks**
 - a. Finance 38/38, full suite 1324 passed, 0 failed, 0 risky.
 - b. Pint: command+test pass.
-- c. Command 461 lines � exceeds 250; justified for a table-heavy read-only report.
+- c. Command 461 lines � exceeds 250; justified for a table-heavy read-only report.
 - d. Diff limited to command,test,plan.
 - e. Read-only, multi-tenant.
 - f. N/A (CLI).
