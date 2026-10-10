@@ -7,7 +7,6 @@ use App\Domains\Order\Services\OrderTrackingService;
 use App\Domains\Shipping\Models\DeliveryRate;
 use App\Domains\Shipping\Models\DeliveryRider;
 use App\Domains\Shipping\Models\ShippingProvider;
-use App\Domains\Shipping\Models\StopdeskPoint;
 use App\Domains\Shipping\Services\OrderShippingGateway;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Customer;

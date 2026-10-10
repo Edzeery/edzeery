@@ -2,6 +2,7 @@
 
 namespace App\Models\Finance;
 
+use App\Models\Concerns\BelongsToStore;
 use App\Models\Stores\Store;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
@@ -9,11 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DebtPayment extends Model
 {
+    use BelongsToStore;
     use HasUlids;
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new \App\Scopes\StoreScope);
-    }
 
     protected $fillable = [
         'debt_id',

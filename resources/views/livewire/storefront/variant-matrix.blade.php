@@ -93,7 +93,7 @@ $orderGroups = computed(function (): Collection {
             // Beyond-stock ordering is allowed only when the merchant turned
             // on backorder; with tracking disabled stock is simply irrelevant.
             'preorder' => $out && $this->allowsBackorder && $this->tracksInventory,
-            'cap' => OrderRules::lineCap($variant),
+            'cap' => OrderRules::lineCap($variant, $this->product?->store, $this->product),
         ];
     };
 

@@ -61,7 +61,7 @@ $addToCart = function (): void {
     }
 
     // Merchant max + stock policy (tracking / backorder) in one number.
-    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant);
+    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant, $this->product->store, $this->product);
 
     if ($lineCap !== null && $lineCap <= 0) {
         $this->dispatch('edz-notice', title: __('storefront.out_of_stock'), tone: 'danger');
@@ -102,7 +102,7 @@ $incrementQuantity = function (): void {
         return;
     }
 
-    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant);
+    $lineCap = \App\Domains\Cart\Support\OrderRules::lineCap($variant, $this->product->store, $this->product);
 
     if ($lineCap !== null) {
         $this->quantity = min((int) $this->quantity + 1, max(1, $lineCap));
@@ -150,7 +150,7 @@ $decrementQuantity = function (): void {
                     'threshold' => (int) $__v->low_stock_threshold,
                     'out_of_stock' => (int) $__v->stock <= 0,
                     // Effective per-line cap: merchant max + stock policy.
-                    'cap' => \App\Domains\Cart\Support\OrderRules::lineCap($__v),
+                    'cap' => \App\Domains\Cart\Support\OrderRules::lineCap($__v, $this->product->store, $this->product),
                     'option_values' => $__v->optionValues
                         ->map(fn($ov) => $ov->option?->name . ': ' . $ov->value)
                         ->filter()

@@ -47,7 +47,7 @@ class OrderTracking extends Model
         'assigned_by_membership_id',
         'over_capacity',
         'stranded_at',
-        'created_by_membership_id',
+        'tracked_by_membership_id',
         'cod_amount',
     ];
 

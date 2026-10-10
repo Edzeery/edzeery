@@ -5,8 +5,8 @@ namespace App\Models\Products;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\CategoryProduct;
+use App\Models\Concerns\BelongsToStore;
 use App\Models\Stores\Store;
-use App\Scopes\StoreScope;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,8 +17,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
+    use BelongsToStore;
     use HasUlids;
     use SoftDeletes;
+
     protected $fillable = [
         'store_id',
         'brand_id',
@@ -50,11 +52,6 @@ class Product extends Model
     ];
 
     /* Relations */
-    protected static function booted()
-    {
-        static::addGlobalScope(new StoreScope());
-    }
-
     // المتجر الرئيسي للمنتج
     public function store(): BelongsTo
     {
@@ -80,13 +77,11 @@ class Product extends Model
             ->withPivot('store_id');
     }
 
-
     public function images(): MorphMany
     {
         return $this->morphMany(ProductImage::class, 'imageable')
             ->orderBy('sort_order');
     }
-
 
     // 👑 الصورة الأساسية
     public function primaryImage(): MorphOne
@@ -109,7 +104,7 @@ class Product extends Model
 
     public function hasVariants(): bool
     {
-        return  $this->type === 'variable';
+        return $this->type === 'variable';
     }
 
     // Optional: إظهار اسم الفئة الرئيسية مع الهيراركية

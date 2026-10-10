@@ -32,6 +32,8 @@ beforeEach(function () {
         'status' => 'active',
     ]);
 
+    app(\App\Support\StoreContext::class)->set($this->store);
+
     $this->country = Country::create([
         'name' => 'Algeria',
         'code' => 'DZ',

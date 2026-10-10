@@ -28,6 +28,8 @@ function fmtUser(): array
         'status' => 'active',
     ]);
 
+    app(\App\Support\StoreContext::class)->set($store);
+
     return [$user, $store];
 }
 

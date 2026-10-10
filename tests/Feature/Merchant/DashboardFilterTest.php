@@ -55,6 +55,8 @@ beforeEach(function () {
     // A store_settings row is created with the store; the timezone lives there.
     $this->store->settings()->update(['timezone' => 'Africa/Algiers']);
 
+    app(\App\Support\StoreContext::class)->set($this->store);
+
     // Statuses are global reference rows and are not seeded by RefreshDatabase.
     $this->status = collect(['pending', 'confirmed', 'delivered', 'returned'])
         ->mapWithKeys(function ($key) {

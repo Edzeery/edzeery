@@ -1,9 +1,7 @@
 <?php
 
 use App\Domains\Cart\Support\OrderRules;
-use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StoreRoleEnum;
-use App\Models\Customer;
 use App\Models\Locations\City;
 use App\Models\Locations\Country;
 use App\Models\Locations\State;
@@ -44,6 +42,8 @@ function qtyUser(string $storeRole = 'owner'): array
         'is_active' => true,
         'role' => $storeRole,
     ]);
+
+    app(\App\Support\StoreContext::class)->set($store);
 
     return [$user, $store];
 }
@@ -247,5 +247,29 @@ test('adding an out-of-stock variant is blocked when backorders are disabled', f
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error');
 
     $volt = qtyVolt([$user, $store])->call('addFormItem', $variant->id);
+    expect($volt->get('form.items'))->toHaveCount(0);
+});
+
+test('addFormItem ignores a variant whose product was soft-deleted', function () {
+    [$user, $store] = qtyUser(StoreRoleEnum::OWNER->value);
+    [$product, $variant] = qtyVariant($store, 5);
+
+    $product->delete();
+
+    $volt = qtyVolt([$user, $store]);
+    $volt->call('addFormItem', $variant->id);
+
+    expect($volt->get('form.items'))->toHaveCount(0);
+});
+
+test('addFormItemByBarcode ignores a variant whose product was soft-deleted', function () {
+    [$user, $store] = qtyUser(StoreRoleEnum::OWNER->value);
+    [$product, $variant] = qtyVariant($store, 5);
+
+    $product->delete();
+
+    $volt = qtyVolt([$user, $store]);
+    $volt->call('addFormItemByBarcode', $variant->sku);
+
     expect($volt->get('form.items'))->toHaveCount(0);
 });

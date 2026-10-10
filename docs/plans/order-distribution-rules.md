@@ -191,7 +191,7 @@ bucket is **never** keyed by an assignment column:
 | --- | --- | --- | --- | --- |
 | Work (roster) | `orders.assigned_to_membership_id` / `order_trackings.assigned_to_membership_id` | who currently carries the row | reassign / handover / sweep (never a credit) | queue, shifts, "assigned" (المُسند) column |
 | Credit (confirmation) | `orders.confirmed_by_membership_id` | who confirmed the order — the dispatcher to delivery | never after first write (38-C) | `confirmed` / `delivered` / `returned` / revenue in BOTH tabs + KPIs + 38-D settlements |
-| Tracking actor | `order_trackings.created_by_membership_id` → planned `tracked_by_membership_id` | who acted to start the shipment | never (snapshot) | future Phase 38-F tracking-team tab only |
+| Tracking actor | `order_trackings.tracked_by_membership_id` | who acted to start the shipment | never (snapshot) | future Phase 38-F tracking-team tab only |
 
 Rules:
 
@@ -241,12 +241,10 @@ the rendered rows and the member filter options of the active dimension:
 
 ### Deferred — documented, NOT implemented (decision: revisit later, only if needed)
 
-Rename `order_trackings.created_by_membership_id` → `tracked_by_membership_id`
-so it can never be confused with `orders.created_by_membership_id` (who
-*entered* the order). Would land as a new migration dated AFTER
-`2026_10_06_000004`, plus `FinancialCaptureSchemaTest` (`--step` booking),
-`FinanceCaptureHealth`, `OrderTrackingService::startShipment`,
-`OrderStatusCaptureTest`, the demo seeder, and the docs. Bundled with the
-deferred actor-threading of `CarrierOrderPostService::postToCarrier` (today the
-carrier path writes the row with a NULL tracking actor). Awaiting
-Phase 38-F.
+Actor-threading of `CarrierOrderPostService::postToCarrier` (today the carrier
+path writes the row with a NULL tracking actor). The rename that disambiguates
+the tracking actor from `orders.created_by_membership_id` (who *entered* the
+order) shipped as **38-C.2**: `order_trackings.tracked_by_membership_id`, via a
+new migration dated AFTER `2026_10_06_000004`, plus `FinancialCaptureSchemaTest`
+(`--step` booking), `FinanceCaptureHealth`, `OrderTrackingService::startShipment`,
+`OrderStatusCaptureTest`, and the docs. Awaiting Phase 38-F.

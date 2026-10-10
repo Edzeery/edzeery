@@ -3078,7 +3078,7 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 
 **المصطلحات الموحدة (5 مفاتيح):** `orders.created_by` = «سجّله» (يبقى) · `orders.confirmed_by` = «أكّده/أرسلها» (الرصيد) · `orders.assigned_to` = «مُسند إلى» (عمل) · `order_trackings.assigned_to` = «مُسند لتتبع» · `order_trackings.created_by` → **`tracked_by`** (مؤجل).
 
-**مؤجَّل موثَّق (قرار «لاحقًا إن لزم») — لا يُنفَّذ الآن:** إعادة تسمية `order_trackings.created_by_membership_id` → `tracked_by_membership_id` (هجرة جديدة بعد `2026_10_06_000004` + تحديث `FinancialCaptureSchemaTest`/خطوة `--step`، `FinanceCaptureHealth`، `OrderTrackingService`، `OrderStatusCaptureTest`، السيدر، الوثائق) + ترسيخ فاعل `CarrierOrderPostService::postToCarrier` (اليوم يكتب `created_by=NULL`). يُطوَّق بموعد 38-F.
+**مؤجَّل موثَّق (قرار «لاحقًا إن لزم») — لا يُنفَّذ الآن:** ترسيخ فاعل `CarrierOrderPostService::postToCarrier` (اليوم يكتب `created_by=NULL`). أُنجز في 38-C.2: إعادة تسمية عمود فاعل التتبع في `order_trackings` إلى `tracked_by_membership_id` (هجرة `2026_10_06_000006` بعد `2026_10_06_000004` + تحديث `FinancialCaptureSchemaTest`/خطوة `--step`، `FinanceCaptureHealth`، `OrderTrackingService`، `OrderStatusCaptureTest`، الوثائق). يُطوَّق بموعد 38-F.
 
 **مراحل 35.4:** P1 التوثيق ✅ (هذا القسم + §11 في `order-distribution-rules.md`) — P2 خلفية (المفاتيح/الأعمدة/التصفية/إزالة latestMembership) — P3 واجهة (أعمدة الجدولين + فلتر «بلا رصيد» + i18n×4 + 375/768/1440) — P4 اختبارات (سيناريو مؤكِّد≠مُسند، فلتر بلا-رصيد، + `DashboardQueryBudgetTest`، pint، المجموعة الكاملة) — P5 مؤجَّل (أعلاه).
 
@@ -3164,3 +3164,22 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **الاختبارات:**
 - جديد في `DashboardTeamPerformanceTest`: «the confirmation view never names a tracking-only member and managers run both cohorts» — عضو تتبّع فقط (طلبية مُوجَّهة إليه بحالة `CONFIRMED`، بيانات غير صحيحة عن قصد) **لا يظهر** في تبويب التأكيد، بينما العضو المزدوج و`manager` (قالب دوره بلا `ORDER_CONFIRM`) يظهران؛ وعضو التتبّع **يظهر شرعًا** في تبويب التوصيل. ولا يرد اسم عضو التتبّع في HTML التأكيد ككّل (قائمة الخيارات مقصوصة).
 - **النتائج:** `DashboardTeamPerformanceTest` 14/14، `DashboardFilterTest` 16/16، `DashboardFilterWiringTest` 19/19، `DashboardQueryBudgetTest` 4/4 — و**سقف الاستعلامات لم يرتفع** (51/52، الشرط EXISTS لا يُضيف استعلامًا). مجموعة `tests\Feature\Merchant` + `DemoStoreSeederTest` + `DashboardTeamPerformanceViewModelTest`: **878 ناجحًا، 11 فشلًا سابقًا فقط** (`DeliverySettingsTest` ×10 + `OrderFinancialSummaryTest` ×1 — انفصال كود `ecotrack` في نطاق الشحن، خارج 35.4). pint نظيف على الملفّات المعدَّلة.
+
+---
+
+### 35.5: إصلاح جذري لانهيار السلة في الفرونت (`OrderRules::limits` بمنتج null)
+
+**البلاغ:** عند زيادة الكمية أو الإضافة إلى السلة في صفحة منتج الفرونت (`/product/{slug}`) يظهر:
+`OrderRules::limits(): Argument #1 ($product) must be of type Product, null given, called in OrderRules.php on line 73`.
+
+**السبب الجذري (مُثبَت بإعادة إنتاج حرفية في الاختبار):** مكوّن `storefront.product-detail` يحمّل في `mount()` المتغيرات **بدون** علاقة `product`، فتُستدعى `OrderRules::lineCap($variant)` التي تُحمّل `$variant->product` **lazy**. وتحديثات Livewire تذهب إلى `/livewire/update` — وهو مسار عام **خارج** مجموعة `{store}.domain` (التي تحمل `resolve.store`) — فلا يوجد `StoreContext` أثناء التحديث، فيُغلق `StoreScope` **fail-closed** (`whereRaw('1 = 0')`) → `$variant->product` = null → انهيار. لم يكن تلوّث بيانات (فحص قاعدة demo: 17 متغيرًا، صفر يتيم/محذوف-ناعم/غير-نشط/مغاير-للمتجر) بل مشكلة **سياق**.
+
+**الإصلاح (طبقتان جذريتان، لا ترقيع):**
+1. **نظامي:** ميدلوير جديد `App\Http\Middleware\ResolveStoreContextFromHost` مُسجَّل في `web(append:)` (`bootstrap/app.php`) — يُعيد سياق المتجر من **الـ host** على كل طلب web (بما فيه `/livewire/update`) **فقط** عندما يكون السياق فارغًا والمُضيف `{slug}.{domain}` نشطًا، مع تجاهل المُضيفات المحجوزة (`www/app/admin/api/mail`) والمتاجر غير النشطة/المجهولة. لا يتجاوز سياقًا قائمًا (آمن ضد التزامن مع ميدلوير `resolve.store`).
+2. **حتمي في القوالب:** تمرير المنتج/المتجر المثبَّت صراحةً بدل lazy — `product-detail` (3 مواضع: `addToCart`, `incrementQuantity`, وتحميل الـpayload) و`variant-matrix` (سطر `cap`) صارت `OrderRules::lineCap($variant, $this->product?->store, $this->product)`. أُبقي النوع `Product` صارمًا في `OrderRules` (تأكيد الثابت).
+
+**درس تزامني:** أول محاولة في `variant-matrix` مرّرت `currentStore()` فأدخل خطأ إعدادات قديمة (`allow_backorder`) — استُبدلت بمتجر المنتج الطازج `$this->product?->store` وأُعيد التست `stock caps lines until backorder is enabled` إلى النجاح.
+
+**الاختبارات (انحدار دائم):** ملف جديد `tests/Feature/Storefront/StorefrontProductCapContextTest.php` (4 اختبارات/15 تأكيدًا): (أ) زيادة الكمية + الإضافة للسلة دون انهيار؛ (ب) تقييم السقف من المنتج المثبَّت بلا سياق وبدون استعلام علاقة `product`؛ (ج) الميدلوير يُثبّت المستأجر من الـ host؛ (د) لا يختلق سياقًا للمُضيفات المحجوزة/المجهولة/غير النشطة.
+
+**التحقق:** مجموعة `tests\Feature\Storefront` **130 ناجحًا (450 تأكيدًا)** (كان 126 قبل الملف الجديد)؛ `OrderQuantityCapTest` 7/7؛ `php -l` + `view:cache` + Pint نظيف على الملفات الثلاثة. ينبغي تشغيل المجموعة الكاملة (الميدلوير عام) — معلَّق بموافقة المستخدم بسبب توقف مرتين سابقًا وحد ذاكرة PHP (`-d memory_limit=1536M` مطلوب).

@@ -106,7 +106,7 @@ function fchTracking(Order $order, ?string $providerId = null, ?string $actorId 
         'shipping_provider_id' => $providerId,
         'tracking_status' => 'shipped',
         'shipped_at' => now(),
-        'created_by_membership_id' => $actorId,
+        'tracked_by_membership_id' => $actorId,
     ]);
 }
 

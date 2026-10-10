@@ -16,7 +16,7 @@ class OrderTrackingService
      * Create a new tracking record for an order being shipped.
      * Idempotent: returns existing open tracking if one exists.
      *
-     * PHASE 38-C: the row captures `created_by_membership_id` (the actor who
+     * PHASE 38-C: the row captures `tracked_by_membership_id` (the actor who
      * started the shipment) and `cod_amount` (the amount sent to the carrier,
      * snapshotted once at creation — a later price change never rewrites what
      * the carrier collected for). Exactly one shipping event per order ever:
@@ -38,7 +38,7 @@ class OrderTrackingService
             'tracking_status' => OrderTrackingStatus::SHIPPED->value,
             'shipped_at' => now(),
             'webhook_token' => Str::random(40),
-            'created_by_membership_id' => $actorMembershipId,
+            'tracked_by_membership_id' => $actorMembershipId,
             'cod_amount' => OrderStatusCapture::codAmount($order),
         ]);
 

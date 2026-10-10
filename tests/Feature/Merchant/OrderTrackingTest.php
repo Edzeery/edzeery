@@ -28,6 +28,7 @@ function otStore(): Store
 
     config(['app.domain' => 'example.test']);
     test()->withSession(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $store;
 }

@@ -55,6 +55,8 @@ function fcsActor(): array
         'role' => 'owner',
     ]);
 
+    app(\App\Support\StoreContext::class)->set($store);
+
     return [$user, $store, $membership];
 }
 

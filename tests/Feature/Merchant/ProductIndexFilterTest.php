@@ -43,6 +43,7 @@ function filterOwner(): array
 
     Auth::login($owner);
     session(['current_store_id' => $store->id]);
+    app(\App\Support\StoreContext::class)->set($store);
 
     return [$owner, $store];
 }

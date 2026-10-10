@@ -46,6 +46,8 @@ function fcoActor(): array
         'role' => 'owner',
     ]);
 
+    app(\App\Support\StoreContext::class)->set($store);
+
     return [$user, $store, $membership];
 }
 
@@ -132,6 +134,8 @@ function fcoOrder(Store $store, array $opts = []): Order
         'price' => 800,
         'subtotal' => ($opts['quantity'] ?? 1) * 800,
     ]);
+
+    app(\App\Support\StoreContext::class)->set($store);
 
     return $order->fresh();
 }
@@ -309,7 +313,7 @@ test('cod_amount is snapshotted when the shipment starts and never rewritten', f
 
     // 800 subtotal + 100 shipping - 50 discount, floored at 0.
     expect((string) $tracking->cod_amount)->toBe('850.00')
-        ->and((string) $tracking->created_by_membership_id)->toBe((string) $member->id);
+        ->and((string) $tracking->tracked_by_membership_id)->toBe((string) $member->id);
 
     // A later price change never rewrites what the carrier collects for.
     $order->update(['total_amount' => 5000]);
@@ -318,7 +322,7 @@ test('cod_amount is snapshotted when the shipment starts and never rewritten', f
 
     expect($order->trackings()->count())->toBe(1)
         ->and((string) $order->trackings()->first()->cod_amount)->toBe('850.00')
-        ->and((string) $order->trackings()->first()->created_by_membership_id)->toBe((string) $member->id);
+        ->and((string) $order->trackings()->first()->tracked_by_membership_id)->toBe((string) $member->id);
 });
 
 test('non-COD orders keep the carrier cod_amount collection NULL', function () {
@@ -351,5 +355,5 @@ test('exactly one shipping event per order ever despite a cancelled and re-sent 
 
     $trackings = $order->trackings()->get();
     expect($trackings)->toHaveCount(1)
-        ->and((string) $trackings->first()->created_by_membership_id)->toBe((string) $member->id);
+        ->and((string) $trackings->first()->tracked_by_membership_id)->toBe((string) $member->id);
 });

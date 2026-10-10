@@ -44,7 +44,7 @@ test('the capture columns and their indexes exist after the 38-C migrations', fu
     expect(Schema::hasColumn('order_status_histories', 'from_status'))->toBeTrue()
         ->and(Schema::hasColumn('order_status_histories', 'source'))->toBeTrue();
 
-    expect(Schema::hasColumn('order_trackings', 'created_by_membership_id'))->toBeTrue()
+    expect(Schema::hasColumn('order_trackings', 'tracked_by_membership_id'))->toBeTrue()
         ->and(Schema::hasColumn('order_trackings', 'cod_amount'))->toBeTrue();
 
     expect(Schema::hasColumn('store_settings', 'finance_capture_started_at'))->toBeTrue();
@@ -116,7 +116,7 @@ test('the capture migrations roll back and forward cleanly preserving pre-existi
     // preservation is only asserted for the tables whose capture columns are
     // rolled back directly (tracking/history/store settings). The orders/status
     // migrations are asserted for reversibility only.
-    expect(Artisan::call('migrate:rollback', ['--step' => 3, '--force' => true]))->toBe(0);
+    expect(Artisan::call('migrate:rollback', ['--step' => 4, '--force' => true]))->toBe(0);
 
     expect(Schema::hasColumn('order_status_histories', 'source'))->toBeFalse()
         ->and(Schema::hasColumn('order_trackings', 'cod_amount'))->toBeFalse()
@@ -134,7 +134,7 @@ test('the capture migrations roll back and forward cleanly preserving pre-existi
         ->and($order->fresh()->delivered_at)->toBeNull()
         ->and($order->fresh()->returned_at)->toBeNull()
         ->and(DB::table('order_status_histories')->where('id', $history->id)->whereNull('from_status')->whereNull('source')->count())->toBe(1)
-        ->and(DB::table('order_trackings')->where('id', $tracking->id)->whereNull('created_by_membership_id')->whereNull('cod_amount')->count())->toBe(1);
+        ->and(DB::table('order_trackings')->where('id', $tracking->id)->whereNull('tracked_by_membership_id')->whereNull('cod_amount')->count())->toBe(1);
 
     // Re-applying the migrations backfilled the bookkeeping columns again.
     expect(DB::table('store_settings')->where('store_id', $store->id)->whereNotNull('finance_capture_started_at')->count())->toBe(1)

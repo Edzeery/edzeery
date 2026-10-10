@@ -161,7 +161,16 @@ trait HasOrderProductPicker
             ->where('store_id', currentStoreId())
             ->findOrFail($variantId);
 
-        $store = $variant->product?->store;
+        // A variant is orderable only while its product still resolves
+        // inside this store (e.g. soft-deleted product): bail out of the
+        // pick instead of computing limits against a null product.
+        if (! $variant->product) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.product_not_found')]);
+
+            return;
+        }
+
+        $store = $variant->product->store;
         $cap = OrderRules::lineCap($variant, $store);
         $available = (int) $variant->stock;
         $tracks = OrderRules::tracksInventory($store);
@@ -231,7 +240,15 @@ trait HasOrderProductPicker
             return;
         }
 
-        $store = $variant->product?->store;
+        // Same guard as addFormItem(): a variant whose product no longer
+        // resolves (soft-deleted / removed) is not orderable.
+        if (! $variant->product) {
+            $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('merchant_panel.product_not_found')]);
+
+            return;
+        }
+
+        $store = $variant->product->store;
         $cap = OrderRules::lineCap($variant, $store);
         $available = (int) $variant->stock;
         $tracks = OrderRules::tracksInventory($store);

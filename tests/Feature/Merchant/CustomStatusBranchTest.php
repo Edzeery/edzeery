@@ -26,12 +26,16 @@ beforeEach(function () {
 
 function branchStore(): Store
 {
-    return Store::create([
+    $store = Store::create([
         'user_id' => \App\Models\User::factory()->create()->id,
         'name' => 'Branch Store',
         'slug' => 'brn-'.uniqid(),
         'status' => 'active',
     ]);
+
+    app(\App\Support\StoreContext::class)->set($store);
+
+    return $store;
 }
 
 function branchVariant(Store $store, int $stock = 10, int $price = 500): ProductVariant

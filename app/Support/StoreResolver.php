@@ -17,6 +17,14 @@ class StoreResolver
             return $store;
         }
 
+        // T-03: API requests resolve ONLY through the explicit X-Store-Id
+        // header / store_id query param. There is never a subdomain fallback
+        // for authenticated API traffic, and a foreign or unknown store is a
+        // hard 403 (no silent downgrade to another tenant).
+        if (request()->is('api/*')) {
+            return self::resolveFromApi();
+        }
+
         if (auth()->check() && $id = session('current_store_id')) {
             $store = Store::find($id);
 
@@ -34,22 +42,34 @@ class StoreResolver
             session()->forget('current_store_id');
         }
 
-        if (request()->is('api/*')) {
-            if ($id = request()->header('X-Store-Id') ?: request()->query('store_id')) {
-                $store = Store::find($id);
-
-                if ($store && auth()->user()?->stores()->where('stores.id', $store->id)->exists()) {
-                    app(StoreContext::class)->set($store);
-
-                    return $store;
-                }
-            }
-        }
-
         $store = self::resolveFromSubdomain();
         if ($store) {
             app(StoreContext::class)->set($store);
         }
+
+        return $store;
+    }
+
+    private static function resolveFromApi(): ?Store
+    {
+        $id = request()->header('X-Store-Id') ?: request()->query('store_id');
+
+        if (! $id) {
+            return null;
+        }
+
+        $store = Store::find($id);
+
+        $isMember = $store && auth()->user()?->storeMemberships()
+            ->where('store_id', $store->id)
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $isMember) {
+            abort(403, 'Forbidden: you are not an active member of the requested store.');
+        }
+
+        app(StoreContext::class)->set($store);
 
         return $store;
     }

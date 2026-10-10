@@ -177,3 +177,48 @@ test('apply coupon persists coupon code', function () {
 test('add item aborts 404 for invalid variant', function () {
     $this->cart->addItem($this->storeId, '01HXYZ000000000000000000000', 1);
 })->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+
+test('add item aborts 404 when its product no longer resolves (soft-deleted)', function () {
+    $this->product->delete();
+
+    try {
+        $this->cart->addItem($this->storeId, $this->variant->id, 1);
+        test()->fail('Expected an HTTP 404 exception.');
+    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        expect($e->getStatusCode())->toBe(404);
+    }
+});
+
+test('update quantity purges a stale line whose product was soft-deleted', function () {
+    $this->cart->addItem($this->storeId, $this->variant->id, 2);
+
+    $this->product->delete();
+
+    // updateQuantity() must not resolve order rules against a vanished
+    // product: the stale line is removed instead of throwing.
+    $this->cart->updateQuantity($this->storeId, $this->variant->id, 5);
+
+    expect($this->cart->isEmpty($this->storeId))->toBeTrue()
+        ->and($this->cart->getCount($this->storeId))->toBe(0);
+});
+
+test('update quantity purges a stale line whose product left the cart store', function () {
+    $this->cart->addItem($this->storeId, $this->variant->id, 2);
+
+    $otherStore = Store::create([
+        'user_id' => $this->user->id,
+        'name' => 'Other Store',
+        'slug' => 'other-store-' . uniqid(),
+        'status' => 'active',
+    ]);
+
+    // A cross-tenant move (product reassigned after the line was added).
+    \Illuminate\Support\Facades\DB::table('products')
+        ->where('id', $this->product->id)
+        ->update(['store_id' => $otherStore->id]);
+
+    $this->cart->updateQuantity($this->storeId, $this->variant->id, 5);
+
+    expect($this->cart->isEmpty($this->storeId))->toBeTrue()
+        ->and($this->cart->getCount($this->storeId))->toBe(0);
+});

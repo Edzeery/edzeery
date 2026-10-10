@@ -27,7 +27,8 @@ class CartService
     public function addItem(string $storeId, string $variantId, int $quantity = 1): array
     {
         $cart = $this->getStoreCart($storeId);
-        $variant = ProductVariant::with('product')->findOrFail($variantId);
+        $variant = ProductVariant::with(['product' => fn ($query) => $query->withoutStoreScope()])
+            ->findOrFail($variantId);
 
         if (! $variant->product || (string) $variant->product->store_id !== (string) $storeId) {
             abort(404);
@@ -84,14 +85,22 @@ class CartService
             return $this->removeItem($storeId, $variantId);
         }
 
-        $variant = ProductVariant::find($variantId);
+        $variant = ProductVariant::with(['product' => fn ($query) => $query->withoutStoreScope()])
+            ->find($variantId);
 
-        if (! $variant) {
+        // The cart is derived from the live catalog: a line is only valid
+        // while its variant AND product still resolve inside the cart's
+        // store. A stale product (soft-deleted, hard-deleted, or moved to
+        // another tenant) must not survive — purge the line instead of
+        // crashing price/limit rules against a null product.
+        $product = $variant?->product;
+
+        if (! $variant || ! $product || (string) $product->store_id !== (string) $storeId) {
             return $this->removeItem($storeId, $variantId);
         }
 
-        $cap = OrderRules::lineCap($variant);
-        $minQty = OrderRules::limits($variant->product)['min'];
+        $cap = OrderRules::lineCap($variant, $product->store, $product);
+        $minQty = OrderRules::limits($product)['min'];
 
         $effectiveMin = $cap !== null ? min($minQty, max(1, $cap)) : $minQty;
         $final = max($quantity, $effectiveMin);

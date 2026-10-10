@@ -78,14 +78,14 @@ class InventoryService
 
             // Ledger entry
             InventoryMovement::create([
-                'store_id'           => $variant->product->store_id,
+                'store_id' => $variant->store_id,
                 'product_variant_id' => $variant->id,
-                'quantity'           => $quantity,
-                'balance_after'      => $delta !== 0 ? $newStock : $variant->stock,
-                'type'               => $type->value,
-                'user_id'            => $user?->id ?? auth()->id(),
-                'source_type' => $source ? (is_object($source) ? get_class($source) : (string)$source) : null,
-                'source_id'   => is_object($source) && method_exists($source, 'getKey') ? $source->getKey() : null,
+                'quantity' => $quantity,
+                'balance_after' => $delta !== 0 ? $newStock : $variant->stock,
+                'type' => $type->value,
+                'user_id' => $user?->id ?? auth()->id(),
+                'source_type' => $source ? (is_object($source) ? get_class($source) : (string) $source) : null,
+                'source_id' => is_object($source) && method_exists($source, 'getKey') ? $source->getKey() : null,
             ]);
             // 🔔 Low stock notification
             if (
@@ -96,7 +96,6 @@ class InventoryService
                 $variant->updateQuietly([
                     'last_low_stock_notified_at' => now(),
                 ]);
-
 
                 // User::query()
                 //     ->each(

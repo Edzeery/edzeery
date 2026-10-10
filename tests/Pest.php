@@ -55,3 +55,25 @@ function roleUser(string $role): \App\Models\User
 
     return \App\Models\User::factory()->create()->assignRole($role);
 }
+
+/**
+ * تشغيل اختبار داخل سياق متجر صريح (T-02). يضبط StoreContext ثم يعيده.
+ * يمكن استخدامه كالتفاف: actingInStore($store, fn () => ...) أو كإعداد مباشر.
+ */
+function actingInStore(\App\Models\Stores\Store $store, ?\Closure $callback = null): mixed
+{
+    $context = app(\App\Support\StoreContext::class);
+    $previous = $context->get();
+
+    $context->set($store);
+
+    if ($callback === null) {
+        return null;
+    }
+
+    try {
+        return $callback();
+    } finally {
+        $previous ? $context->set($previous) : $context->clear();
+    }
+}

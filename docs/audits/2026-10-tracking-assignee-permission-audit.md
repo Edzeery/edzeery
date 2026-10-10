@@ -35,7 +35,7 @@ SELECT
     t.assigned_at,
     t.assigned_by_membership_id,
     t.created_at,
-    t.created_by_membership_id
+    t.tracked_by_membership_id
 FROM order_trackings t
 LEFT JOIN store_memberships m ON m.id = t.assigned_to_membership_id
 LEFT JOIN users u ON u.id = m.user_id
@@ -81,8 +81,8 @@ Only 1 of 3 stores has any tracking rows; the entire dataset lives in the demo s
 | `assigned_at` | 2026-09-27 15:00:00 |
 | `assigned_by_membership_id` | `01m4b2env4tfzk67nfpj4zkf67` (`demo@edzeery.com`, owner) |
 | `created_at` (tracking row) | 2026-09-26 09:00:00 |
-| `created_by_membership_id` | **NULL** |
-| assignee == creator? | No — `created_by_membership_id` is NULL, so the literal "assignee is the shipper" symptom is **not** reproduced; the practical symptom (confirmation-only member shown as tracking assignee) is. |
+| `tracked_by_membership_id` | **NULL** |
+| assignee == creator? | No — `tracked_by_membership_id` is NULL, so the literal "assignee is the shipper" symptom is **not** reproduced; the practical symptom (confirmation-only member shown as tracking assignee) is. |
 
 ### Context — the other 6 assigned rows (all valid)
 

@@ -30,12 +30,16 @@ beforeEach(function () {
 
 function agwStore(): Store
 {
-    return Store::create([
+    $store = Store::create([
         'user_id' => \App\Models\User::factory()->create()->id,
         'name' => 'Agw Store',
         'slug' => 'agw-'.uniqid(),
         'status' => 'active',
     ]);
+
+    app(\App\Support\StoreContext::class)->set($store);
+
+    return $store;
 }
 
 function agwProvider(Store $store): ShippingProvider

@@ -344,7 +344,7 @@ class FinanceCaptureHealth extends Command
 
         $trackings = DB::table('order_trackings as ot')
             ->whereIn('ot.order_id', $orderIds)
-            ->whereNull('ot.created_by_membership_id')
+            ->whereNull('ot.tracked_by_membership_id')
             ->get(['ot.order_id', 'ot.shipping_provider_id']);
 
         $paths = [];
