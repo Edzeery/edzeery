@@ -470,19 +470,25 @@ test('member select options follow the existing scope rules and hint the role', 
     $ownerOption = collect($options)->firstWhere('value', $membership->id);
     expect($ownerOption['hint'])->toBe(StoreRoleEnum::OWNER->label());
 
-    // A member with neither team-view nor team-view-own sees only themselves.
+    // A member with neither team-view nor team-view-own sees only themselves,
+    // plus the «بلا رصيد» sentinel pick everyone can choose.
     $staff = roleUser('merchant');
     $staffMembership = dfwMembership($store, $staff, StoreRoleEnum::STAFF);
 
     $staffOptions = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)
         ->memberSelectOptions($staffMembership);
 
-    expect($staffOptions)->toHaveCount(2)
-        ->and(array_column($staffOptions, 'value'))->toBe(['', $staffMembership->id]);
+    expect($staffOptions)->toHaveCount(3)
+        ->and(array_column($staffOptions, 'value'))
+        ->toBe(['', $staffMembership->id, \App\Domains\Analytics\DTOs\DashboardFilter::UNATTRIBUTED]);
 
-    // An inactive or absent membership yields only the "all" entry.
+    // An inactive or absent membership yields the "all" entry too, but the
+    // sentinel pick stays available, so it has no members to list.
     expect(app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)->memberSelectOptions(null))
-        ->toHaveCount(1);
+        ->toHaveCount(2)
+        ->and(collect(app(\App\Domains\Analytics\Support\DashboardFilterOptions::class)->memberSelectOptions(null))
+            ->pluck('value')->all())
+        ->toBe(['', \App\Domains\Analytics\DTOs\DashboardFilter::UNATTRIBUTED]);
 });
 
 test('the aov card appears exactly once per view', function () {

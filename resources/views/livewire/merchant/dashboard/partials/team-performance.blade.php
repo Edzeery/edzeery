@@ -20,11 +20,15 @@
                 ['label' => 'dashboard.col_in_progress', 'key' => 'in_progress'],
             ]
             : [
+                // Workload ("المُسند") first, then credit: what was handed to the
+                // member, then what the member's confirmed base turned into.
                 ['label' => 'dashboard.col_assigned', 'key' => 'assigned'],
-                ['label' => 'dashboard.col_confirmed', 'key' => 'confirmed'],
                 ['label' => 'dashboard.col_pending', 'key' => 'pending'],
                 ['label' => 'dashboard.col_canceled', 'key' => 'canceled'],
                 ['label' => 'dashboard.col_other', 'key' => 'other'],
+                ['label' => 'dashboard.col_confirmed', 'key' => 'confirmed'],
+                ['label' => 'dashboard.col_delivered', 'key' => 'delivered'],
+                ['label' => 'dashboard.col_returned', 'key' => 'returned'],
             ];
 
         // Bar colours reuse the KPI thresholds: high confirmation and delivery
@@ -69,7 +73,7 @@
                             'border-b border-surface-border last:border-0',
                             'hover:bg-surface-secondary/50' => $row['type'] === 'member',
                             'bg-surface-secondary font-bold' => $row['type'] === 'total',
-                            'text-ink-muted italic' => $row['type'] === 'unassigned',
+                            'text-ink-muted italic' => $row['type'] === 'unattributed',
                         ])>
                             <td class="sticky start-0 z-10 px-4 py-3 whitespace-nowrap {{ $row['type'] === 'total' ? 'bg-surface-secondary' : 'bg-surface' }}">{{ $row['name'] }}</td>
                             @foreach ($countColumns as $column)

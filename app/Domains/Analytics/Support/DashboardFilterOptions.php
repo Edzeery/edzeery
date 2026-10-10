@@ -2,6 +2,7 @@
 
 namespace App\Domains\Analytics\Support;
 
+use App\Domains\Analytics\DTOs\DashboardFilter;
 use App\Domains\Shipping\Models\ShippingProvider;
 use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
@@ -104,6 +105,14 @@ final class DashboardFilterOptions
                 'hint' => $hint,
             ];
         }
+
+        // The unattributed cohort («بلا رصيد») is always a store-wide option:
+        // orders whose confirmed member is NULL, exposed to any member who may
+        // pick another member.
+        $options[] = [
+            'value' => DashboardFilter::UNATTRIBUTED,
+            'label' => __('dashboard.team_unattributed'),
+        ];
 
         return $options;
     }

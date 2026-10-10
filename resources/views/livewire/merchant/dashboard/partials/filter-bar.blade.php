@@ -17,7 +17,10 @@
         ? $filterOptions['carriers']->firstWhere('id', $filter->carrierId)
         : null;
 
-    $activeMember = $filter->memberId
+    // The sentinel is not a membership, so it never matches a real row.
+    $unattributedSelected = $filter->memberId === \App\Domains\Analytics\DTOs\DashboardFilter::UNATTRIBUTED;
+
+    $activeMember = ! $unattributedSelected && $filter->memberId
         ? $filterOptions['members']->firstWhere('id', $filter->memberId)
         : null;
 
@@ -32,6 +35,7 @@
     $hasActiveFilters = $filter->period !== 'today'
         || filled($activeCarrier)
         || filled($activeMember)
+        || $unattributedSelected
         || $dimensionIsOverridden;
 @endphp
 
@@ -154,6 +158,10 @@
 
             @if ($activeMember)
                 <span class="edz-badge edz-badge--neutral">{{ $activeMember->name }}</span>
+            @endif
+
+            @if ($unattributedSelected)
+                <span class="edz-badge edz-badge--neutral">{{ __('dashboard.team_unattributed') }}</span>
             @endif
 
             @if ($dimensionIsOverridden)

@@ -207,6 +207,7 @@ it('answers period, carrier and member filters the same way on both charts', fun
     $todayDelivered = dcvOrder($store, $statuses, 'delivered', [
         'shipping_provider_id' => $carrierA->id,
         'assigned_to_membership_id' => $member->id,
+        'confirmed_by_membership_id' => $member->id,
     ]);
     dcvOrder($store, $statuses, 'pending', ['shipping_provider_id' => $carrierB->id]);
     dcvOrder($store, $statuses, 'delivered', [
@@ -249,7 +250,8 @@ it('answers period, carrier and member filters the same way on both charts', fun
 
     expect(array_sum(dcvTrend($service->trendSeries($scoped), 'received')))->toBe(1)
         ->and($service->statusBreakdown($scoped)->sum('count'))->toBe(1)
-        ->and($todayDelivered->assigned_to_membership_id)->toBe($member->id);
+        ->and($todayDelivered->assigned_to_membership_id)->toBe($member->id)
+        ->and($todayDelivered->confirmed_by_membership_id)->toBe($member->id);
 });
 
 it('keeps an axis of empty buckets when a window holds no orders', function () {

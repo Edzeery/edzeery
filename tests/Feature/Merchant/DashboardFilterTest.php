@@ -384,9 +384,9 @@ it('filters every block by carrier and discards a carrier from another store', f
         ->and($this->service->summary($discarded)['total_orders'])->toBe(2);
 });
 
-it('filters the confirmation dimension by the assigned member', function () {
-    $mine = ($this->order)(['assigned_to_membership_id' => $this->memberA->id]);
-    ($this->order)(['assigned_to_membership_id' => $this->memberB->id]);
+it('filters the confirmation dimension by the confirmed member', function () {
+    $mine = ($this->order)(['confirmed_by_membership_id' => $this->memberA->id]);
+    ($this->order)(['confirmed_by_membership_id' => $this->memberB->id]);
 
     $filter = ($this->filter)(['memberId' => $this->memberA->id, 'memberDimension' => 'confirmation']);
 
@@ -397,37 +397,31 @@ it('filters the confirmation dimension by the assigned member', function () {
         ->and($this->service->ordersByState($filter)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($filter)->sum('count'))->toBe(1)
         // The other member's order is untouched on disk.
-        ->and($mine->fresh()->assigned_to_membership_id)->toBe($this->memberA->id);
+        ->and($mine->fresh()->confirmed_by_membership_id)->toBe($this->memberA->id);
 });
 
-it('filters the delivery dimension by the tracking assignee', function () {
-    $trackedByB = ($this->order)(['assigned_to_membership_id' => $this->memberA->id]);
-    ($this->order)(['assigned_to_membership_id' => $this->memberB->id]);
+it('filters the delivery dimension by the confirmed member', function () {
+    $mine = ($this->order)(['confirmed_by_membership_id' => $this->memberA->id]);
+    ($this->order)(['confirmed_by_membership_id' => $this->memberB->id]);
 
-    // A tracking row on another store must not satisfy the delivery dimension.
+    // The delivery pipeline only reads tracked orders (D3), and the member
+    // scope stays the confirmed member: the delivery KPI row must agree with
+    // the team table, not with who handled the shipment.
     OrderTracking::query()->create([
-        'store_id' => $this->foreignStore->id,
-        'order_id' => $trackedByB->id,
+        'store_id' => $this->store->id,
+        'order_id' => $mine->id,
         'shipping_provider_id' => $this->carrierA->id,
-        'assigned_to_membership_id' => $this->foreignMember->id,
+        'assigned_to_membership_id' => $this->memberB->id,
     ]);
 
     $forA = ($this->filter)(['memberId' => $this->memberA->id, 'memberDimension' => 'delivery']);
     expect($forA->memberDimension)->toBe('delivery')
-        ->and($this->service->summary($forA)['total_orders'])->toBe(0);
-
-    OrderTracking::query()->create([
-        'store_id' => $this->store->id,
-        'order_id' => $trackedByB->id,
-        'shipping_provider_id' => $this->carrierA->id,
-        'assigned_to_membership_id' => $this->memberA->id,
-    ]);
-
-    // Now the tracking row on this store matches: both delivery blocks read
-    // the tracked cohort and count the order once.
-    expect($this->service->summary($forA)['total_orders'])->toBe(1)
+        ->and($forA->memberScopeIds)->toBe([$this->memberA->id])
+        ->and($this->service->summary($forA)['total_orders'])->toBe(1)
         ->and(array_sum(dftValues($this->service->trendSeries($forA), 'delivered')))->toBe(1)
-        ->and($this->service->statusBreakdown($forA)->sum('count'))->toBe(1);
+        ->and($this->service->statusBreakdown($forA)->sum('count'))->toBe(1)
+        // The other member's order is untouched on disk.
+        ->and($mine->fresh()->confirmed_by_membership_id)->toBe($this->memberA->id);
 });
 
 it('keeps pending confirmations outside the date window but inside carrier and member', function () {
@@ -501,11 +495,11 @@ it('scopes top selling products by carrier and confirmation member', function ()
     $widget = makeProduct('Widget');
 
     $mine = ($this->order)([
-        'assigned_to_membership_id' => $this->memberA->id,
+        'confirmed_by_membership_id' => $this->memberA->id,
         'shipping_provider_id' => $this->carrierA->id,
     ]);
     $theirs = ($this->order)([
-        'assigned_to_membership_id' => $this->memberB->id,
+        'confirmed_by_membership_id' => $this->memberB->id,
         'shipping_provider_id' => $this->carrierB->id,
     ]);
 

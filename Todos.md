@@ -3082,4 +3082,43 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 
 **مراحل 35.4:** P1 التوثيق ✅ (هذا القسم + §11 في `order-distribution-rules.md`) — P2 خلفية (المفاتيح/الأعمدة/التصفية/إزالة latestMembership) — P3 واجهة (أعمدة الجدولين + فلتر «بلا رصيد» + i18n×4 + 375/768/1440) — P4 اختبارات (سيناريو مؤكِّد≠مُسند، فلتر بلا-رصيد، + `DashboardQueryBudgetTest`، pint، المجموعة الكاملة) — P5 مؤجَّل (أعلاه).
 
-**الحالة:** doc-only (بدون أي سطر كود). بانتظار موافقة المستخدم على بدء P2.
+**الحالة:** P2/P3/P4 منفَّذة ✅ (تبويب الإنجاز أدناه)، و**توافق MySQL** مُصلَح وموثَّق في §35.4-5 (هجرة 1553 + only_full_group_by 1055). P5 مؤجَّل كما هو موثَّق أعلاه — لم يُنفَّذ أي سطر منه.
+
+---
+
+### 35.4-2 .. 35.4-4: فصل «الرصيد» عن «العمل» — الإنجاز والتحقق
+
+**الخلفية المنجزة (P2):** `DashboardFilter::UNATTRIBUTED = '__unattributed__'` + `memberUnattributedOnly` (بنفس الاتفاق مع `memberLocked` في ctor `toArray`/`buildPrevious`). `DashboardFilterFactory::resolveMember` → خماسية `[المفتاح، البُعد، النطاق، القفل، بلا-رصيد-فقط]`؛ **شرط الحارس لـ «بلا رصيد» مقصود = `$hasTeamView && $memberId === UNATTRIBUTED`** (فقط صاحب الرؤية الكاملة يُكرَّم بها؛ الباقي يسقط إلى فرع دوره)، وبقية الفروع كما هي (كل-الفريق / رؤية-الفريق-الخاصة / مقفل). `DashboardOrderScope::applyMember` → `confirmed_by_membership_id` في البُعدين كليهما (معاملة sentinel عبر `memberScopeIds` مخرجات فيه + fail-closed `whereIn([])`)، و`applyPendingMember` → `assigned_to_membership_id` (الحارس وحيد: بلا شرط). `DashboardTeamPerformanceQuery::run()` → مصفوفة `['credit','work']`: credit تُجمِّع بـ `confirmed_by` (confirmed بدلالة مجموعة `CONFIRMED`، لا `COUNT(*)`)؛ work تُجمِّع بـ `assigned_to` (تأكيد) أو `latestMembership` الترابطي (توصيل) — مع **إصلاح ارتباطات `groupByRaw($groupKey, [$storeId])`** (سابقًا كان `?` التجميع يلتقط ربطًا خاطئًا فيحشر كل الطلبيات في عضو واحد) ومساعد `aggregate()`/`cast(?? 0)`. `DashboardTeamPerformance` (presenter): merge بمفتاح `$id ?? ''`، فرع sentinel يعيد تصفير عمل الصف ثم يجمّع كل صفوف العمل، النسب §11 (`conversion = أكّدت÷المُسند`، `delivery = توصّلت÷أُكِّدت`، `return = رُجّعت÷(توصّلت+رُجّعت)`، سقف 100)، صف `type 'unattributed'` يتلوّن تسمية `team_unattributed`، `showsUnattributed/showsTotal`. `DashboardFilterOptions::memberSelectOptions` يلحق sentinel دائمًا (+ استيراد DTO).
+
+**الواجهة (P3):** جدول التأكيد أعمدة = المُسند/معلَّق/ملغى/أخرى/أكِّدها/توصّلت/رُجّعت/conversion؛ جدول التوصيل = المُسند/delivered/returned/قيد التوصيل/revenue/نسبة delivery/نسبة return؛ شارة «بلا رصيد» في شريط التصفية (`$unattributedSelected` عبر FQCN + `$hasActiveFilters` + badge)؛ i18n×4: `team_unattributed` (ar «بلا رصيد» / fr «Non attribué» / en «Unattributed» / es «Sin atribuir») + إعادة صياغة `team_performance_delivery` (ar/fr/es، en بلا تغيير).
+
+**الاختبارات (P4):**
+- `tests/Feature/Merchant/DashboardTeamPerformanceTest.php` إعادة كتابة: السيناريو يكتب `confirmed_by` (وفق إغلاق التسليم أيضًا) + سيناريوهان جديدان (مؤكِّد≠مُسنِد التتبع — Alpha مال، Gamma عمل؛ الحارس يُخرج طائفة بلا-رصيد وحدها بجمع عملها) + توقّعات Exact لكل صف (اعتمدت في المحادثة).
+- `DashboardFilterTest` إعادة مفتاح البُعدين للـ`confirmed_by` (توصيل بلا trackings؛ اختبار `topSellingProducts` يكتب `confirmed_by`)؛ `DashboardFilterWiringTest` عدّ خيارات STAFF=3 (`['', staffId, sentinel]`) وnull=2، `DashboardQueryBudgetTest` baseline=51/سقف 52 مع تعليق شرح.
+- `DashboardAnalyticsTimezoneTest` + `DashboardChartsPerViewTest` إعادة توافق مع مفتاح تأكيد واحد.
+- **النتائج:** وحدة `DashboardTeamPerformanceViewModelTest` 15/15 (98 تأكيدًا)؛ ميزات 35.4 مجتمعة 62/62 (413 تأكيدًا)؛ pint نظيف بعد التهذيب.
+- **المجموعة الكاملة:** 1405 ناجحًا، 11 فشلًا كلها **سابقة وليست من 35.4** ومُعاد إنتاجها على HEAD غير معدَّل (فحص stash-baseline: 11 فشلًا/17 ناجحًا على الملفين): `DeliverySettingsTest` ×10 + `OrderFinancialSummaryTest` ×1 بسبب بحث `Carrier::where('code','ecotrack')` — والسيدر الالتزامي (CarrierCatalogSeeder) لا يُنشئ رمزًا بهذا الاسم (ovred.ecotrack فقط) = انفصال كتالوج السيدر عن توقّع الاختبارات (نطاق الشحن، خارج 35.4).
+- **مُلاحظة تشغيل:** `artisan test` يفتح عملية PHP بلا `-d`، فحُدِّد `-d memory_limit=1G` مع `vendor\bin\pest` مباشرة (بعد 512M كان الجزء التجاري ينزف ذاكرة في عرض view مُصرَّف).
+
+**المتبقي من 35.4:** لا شيء سوى P5 المؤجَّل أعلاه (إعادة تسمية `tracked_by` + ترسيخ فاعل الإرسال، بوعدٍ بمَوعد 38-F). يُرفع التنبيه للمستخدم بشأن الانفصال الحالي لكود `ecotrack` في `DeliverySettingsTest`/`OrderFinancialSummaryTest` (نطاق شحن، خارج هذا العمل) قبل أي إشعار «أخضر كامل».
+
+---
+
+### 35.4-5: توافق MySQL — هجرة `role_scope` (خطأ 1553) وتجميع `only_full_group_by` (خطأ 1055)
+
+**السياق:** الاختبارات تعمل على SQLite (`DB_DATABASE=:memory:`) فتُخفي قيود MySQL. تشغيل `php artisan migrate` على قاعدة التطوير `edzeery` (127.0.0.1:3306) فشل في موضعين مستقلّين؛ أُصلحا وأُثبتا على MySQL الحقيقي نفسه.
+
+**1) الهجرة `2026_10_05_000002_add_role_scope_to_confirmation_product_assignments`**
+- **الخطأ:** `SQLSTATE[HY000]: General error: 1553 Cannot drop index 'cpa_store_member_prod': needed in a foreign key constraint` على `alter table confirmation_product_assignments drop index cpa_store_member_prod`.
+- **السبب:** InnoDB كان قد اختار الفهرس الفريد القديم `cpa_store_member_prod` (يسار صدري `store_id`) ليسند المفتاح الخارجي `confirmation_product_assignments_store_id_foreign`، فيرفض حذف فهرس ما زال قيدٌ يعتمد عليه. الفحص عبر `information_schema` أكّد الحالة الجزئية: `role_scope` أُضيف فعلًا قبل الفشل، والمفاتيح الخارجية الثلاثة قائمة، والفهرس القديم باقٍ، والهجرة عندئذٍ **Pending**.
+- **الإصلاح:** إسقاط المفاتيح الخارجية الثلاثة (`store_id`/`membership_id`/`product_id`) **قبل** `dropUnique('cpa_store_member_prod')`، ثم إنشاء `cpa_store_member_prod_scope` (store_id, membership_id, product_id, role_scope) و`cpa_store_scope_product_idx`، ثم **إعادة بناء المفاتيح الخارجية**. و`down()` تعكس الترتيب نفسه: FK → الفهارس الجديدة → الفهرس القديم → FK → إسقاط العمود.
+- **قابلية إعادة التشغيل:** لأن DDL في MySQL بلا معاملات فقد بقي العمود بعد الفشل رغم أن الهجرة ما زالت Pending؛ فحُرس إضافة `role_scope` بـ`Schema::hasColumn` كي تعمل `php artisan migrate` بلا خطأ «Duplicate column».
+- **التحقق:** `php artisan migrate` على `edzeery` نفّذ الهجرة (139.19ms DONE) ثم ست هجرات معلّقة تالية بلا خطأ (`2026_10_05_000003` … `2026_10_06_000005`).
+
+**2) `DashboardTeamPerformanceQuery::aggregate()` — مسار التوصيل**
+- **الخطأ:** `SQLSTATE[42000] … 1055 Expression #1 of SELECT list is not in GROUP BY clause … 'edzeery.orders.id' … incompatible with sql_mode=only_full_group_by` عند `app/Domains/Analytics/Support/DashboardTeamPerformanceQuery.php:109`.
+- **السبب:** الاستعلام يضع فحصًا ترابطيًا مستعارًا `(select … MAX(m.id) …) as membership_id` في `SELECT`، وكانت `GROUP BY` تكرر نصّ الفحص نفسه. لكن MySQL يوقف تحليل الاعتماد الوظيفي عند حدّ الاستعلام الفرعي فلا يعتبر تعبير `SELECT` مطابقًا لتعبير `GROUP BY` (ولو تطابقا نصًّا) ⇒ 1055.
+- **الإصلاح:** في حالة `$rawGroup` فقط، التجميع بالاسم المستعار `groupByRaw('membership_id')` بدل تكرار الفحص، فيقبل MySQL اسم العمود المستعار في `GROUP BY` (وSQLite كذلك)، ولم يعد للتجميع ربط (`?`) خاص به. أُبقي إلصاق `$filter->storeId` في مقدمة الـbindings لأجل فحص `SELECT` وحده. الحالتان غير الخامّتين (`assigned_to`/`confirmed_by`) تبقيان على `groupBy($groupKey)`.
+- **تحقق MySQL الحقيقي (قراءة فقط):** استُدعي `StoreDashboardAnalyticsService::teamPerformance()` بالبُعدين على اتصال `edzeery` (sql_mode يتضمّن `ONLY_FULL_GROUP_BY`) فنفّذ بلا خطأ (سطر واحد). SQL الملتقطة: `select (select order_trackings.assigned_to_membership_id … where m.store_id = ? and m.order_id = orders.id)) as membership_id, COUNT(*) as assigned, … from orders … group by membership_id`.
+- **حدود التحقق:** قاعدة التطوير `edzeery` فارغة حاليًا (stores=0 / orders=0 / order_trackings=0)، فتحقق MySQL يخصّ **قابلية التخطيط والقبول** تحت `ONLY_FULL_GROUP_BY` (وهو موضع انفجار 1055 تحديدًا) ولا يتحقق من نتائج بيانات فعلية.
+- **تحقق SQLite (لا انحدار):** مجموعة الأناليتكس 85/85 (558 تأكيدًا) — شاملة `DashboardTeamPerformanceViewModelTest` والميزات الستّ — وpint نظيف على الملفَّين المعدَّلين.

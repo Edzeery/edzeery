@@ -80,6 +80,7 @@ return [
     'team_performance_title' => 'Team performance',
     'team_total' => 'Total',
     'team_unassigned' => 'Unassigned',
+    'team_unattributed' => 'Unattributed',
     'this_month' => 'This month',
     'today_summary' => 'Today\'s Summary',
     'top_products' => 'Top Selling Products',

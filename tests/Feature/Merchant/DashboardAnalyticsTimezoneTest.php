@@ -318,7 +318,7 @@ it('returns an empty series when there is nothing to plot', function () {
         ->and(tzTrendValues($empty, 'canceled'))->toBe([]);
 });
 
-it('scopes by confirmation assignment or by delivery tracking', function () {
+it('scopes both dimensions by the confirmed member', function () {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
 
     $membershipA = StoreMembership::query()->create([
@@ -335,7 +335,7 @@ it('scopes by confirmation assignment or by delivery tracking', function () {
         'is_active' => true,
     ]);
 
-    $mine = ($this->makeOrder)('delivered', 300, CarbonImmutable::parse('2026-03-10 08:00:00', 'UTC'), $membershipA->id);
+    ($this->makeOrder)('delivered', 300, CarbonImmutable::parse('2026-03-10 08:00:00', 'UTC'), $membershipA->id);
     ($this->makeOrder)('delivered', 700, CarbonImmutable::parse('2026-03-10 09:00:00', 'UTC'), $membershipB->id);
 
     $build = fn (?string $dimension, array $scope) => new DashboardFilter(
@@ -350,20 +350,15 @@ it('scopes by confirmation assignment or by delivery tracking', function () {
         storeId: $this->store->id,
     );
 
-    expect($this->service->summary($build('confirmation', [$membershipA->id]))['total_orders'])->toBe(1);
-
-    OrderTracking::query()->create([
-        'order_id' => $mine->id,
-        'store_id' => $this->store->id,
-        'assigned_to_membership_id' => $membershipB->id,
-    ]);
-
-    // The delivery dimension reads the tracking table, so membership A no longer sees it.
-    expect($this->service->summary($build('delivery', [$membershipA->id]))['total_orders'])->toBe(0)
+    // Credit belongs to the member who confirmed the order, on both tabs
+    // (§ 11 of docs/plans/order-distribution-rules.md).
+    expect($this->service->summary($build('confirmation', [$membershipA->id]))['total_orders'])->toBe(1)
+        ->and($this->service->summary($build('delivery', [$membershipA->id]))['total_orders'])->toBe(1)
         ->and($this->service->summary($build('delivery', [$membershipB->id]))['total_orders'])->toBe(1);
 
     // An empty scope matches nothing (no membership = fail closed).
-    expect($this->service->summary($build('confirmation', []))['total_orders'])->toBe(0);
+    expect($this->service->summary($build('confirmation', []))['total_orders'])->toBe(0)
+        ->and($this->service->summary($build('delivery', []))['total_orders'])->toBe(0);
 });
 
 it('derives store-time boundaries, scope and dimension from the factory', function () {

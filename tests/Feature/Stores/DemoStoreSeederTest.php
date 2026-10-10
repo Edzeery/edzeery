@@ -67,3 +67,37 @@ test('demo trackings assign only crm-holding agents with auto assignment semanti
     // Both the pure tracker and the dual-role member stay exercised.
     expect(array_unique($assigneeIds))->toHaveCount(2);
 });
+
+test('confirmed demo orders carry the credit key and unconfirmed ones stay unattributed', function () {
+    $this->seed(DemoStoreSeeder::class);
+
+    $store = Store::where('slug', 'demo')->sole();
+
+    $orderByNumber = fn (string $number) => \App\Models\Orders\Order::withoutGlobalScopes()
+        ->where('store_id', $store->id)
+        ->where('number', $number)
+        ->sole();
+
+    // PHASE 35.4 — credit is keyed on orders.confirmed_by_membership_id, so a
+    // confirmed order must name its confirming member (and the 38-C event time).
+    $confirmed = $orderByNumber('21006');
+    expect($confirmed->confirmed_by_membership_id)->not->toBeNull()
+        ->and($confirmed->confirmed_at)->not->toBeNull()
+        ->and(
+            \App\Models\Stores\Team\StoreMembership::where('store_id', $store->id)
+                ->whereKey($confirmed->confirmed_by_membership_id)
+                ->exists()
+        )->toBeTrue();
+
+    // The confirmer is read from the order's own "confirmed" transition, not
+    // from the assignment — 21008 was confirmed by the dual member.
+    $dual = \App\Models\Stores\Team\StoreMembership::where('store_id', $store->id)
+        ->whereHas('user', fn ($q) => $q->where('email', 'demo.dual@edzeery.com'))
+        ->sole();
+    expect($orderByNumber('21008')->confirmed_by_membership_id)->toBe($dual->id);
+
+    // Nothing was confirmed yet, so the credit stays unattributed («بلا رصيد»).
+    $pending = $orderByNumber('21001');
+    expect($pending->confirmed_by_membership_id)->toBeNull()
+        ->and($pending->confirmed_at)->toBeNull();
+});

@@ -61,7 +61,8 @@ class StoreDashboardAnalyticsService
     }
 
     /**
-     * The team table: one aggregate query, presented for the active view.
+     * The team table: two aggregate queries (credit + workload), presented for
+     * the active view.
      *
      * @param  Collection<int, object{id: string, name: string}>  $members
      * @return list<array<string, mixed>>
@@ -77,7 +78,7 @@ class StoreDashboardAnalyticsService
             fn ($s) => $this->statusIds->ids($s)
         );
 
-        return app(DashboardTeamPerformance::class)->present($rows, $filter, $members);
+        return app(DashboardTeamPerformance::class)->present($rows['credit'], $rows['work'], $filter, $members);
     }
 
     /**

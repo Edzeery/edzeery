@@ -836,6 +836,7 @@ class DemoStoreSeeder extends Seeder
                 'store_id' => $store->id,
                 'membership_id' => $dual->id,
                 'product_id' => $product->id,
+                'role_scope' => 'confirm',
             ]
         );
     }
@@ -1411,6 +1412,20 @@ class DemoStoreSeeder extends Seeder
 
         $assignedAt = $assignTo ? $createdAt->copy()->addMinutes(25) : null;
 
+        // Credit is keyed on orders.confirmed_by_membership_id, not on the
+        // assignment (PHASE 35.4: «الإسناد» ≠ «الاستحقاق»), so the confirming
+        // member is read from the seeded "confirmed" transition — the same
+        // first-write-wins actor + event time the real flow stamps (38-C).
+        // Unconfirmed orders (pending / no-answer / postponed) stay NULL and
+        // therefore surface under the «بلا رصيد» sentinel.
+        $confirmedTransition = null;
+        foreach ($spec['history'] ?? [] as $transition) {
+            if ($transition[0] === 'confirmed') {
+                $confirmedTransition = $transition;
+                break;
+            }
+        }
+
         $order = new Order;
         $order->store_id = $store->id;
         $order->customer_id = $customer->id;
@@ -1443,6 +1458,13 @@ class DemoStoreSeeder extends Seeder
         $order->last_contact_at = (($spec['last_contact_hours'] ?? null) !== null)
             ? $createdAt->copy()->addHours((int) $spec['last_contact_hours'])
             : null;
+        if ($confirmedTransition !== null) {
+            [, $confirmedByEmail, , $confirmedHours] = $confirmedTransition;
+            $order->confirmed_by_membership_id = ! empty($confirmedByEmail)
+                ? $ctx['members']->get($confirmedByEmail)?->id
+                : null;
+            $order->confirmed_at = $createdAt->copy()->addHours((int) $confirmedHours);
+        }
         $order->created_at = $createdAt;
         $order->updated_at = $createdAt;
         $order->save();

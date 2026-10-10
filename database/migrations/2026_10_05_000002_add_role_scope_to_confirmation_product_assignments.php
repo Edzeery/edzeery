@@ -26,8 +26,24 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL executes DDL outside a transaction, so a failed run can leave
+        // the column behind while the migration is still marked Pending. The add
+        // step is guarded so `php artisan migrate` can be safely re-run.
+        if (! Schema::hasColumn('confirmation_product_assignments', 'role_scope')) {
+            Schema::table('confirmation_product_assignments', function (Blueprint $table) {
+                $table->string('role_scope')->default('confirm')->after('product_id');
+            });
+        }
+
+        // The legacy uniqueness index is the index InnoDB picked to back the
+        // store_id foreign key, and InnoDB refuses to drop an index a constraint
+        // still depends on (SQLSTATE 1553, "Cannot drop index ... needed in a
+        // foreign key constraint"). The constraints come off first, the index is
+        // replaced, and the constraints are rebuilt on the widened keys.
         Schema::table('confirmation_product_assignments', function (Blueprint $table) {
-            $table->string('role_scope')->default('confirm')->after('product_id');
+            $table->dropForeign(['store_id']);
+            $table->dropForeign(['membership_id']);
+            $table->dropForeign(['product_id']);
         });
 
         Schema::table('confirmation_product_assignments', function (Blueprint $table) {
@@ -41,10 +57,24 @@ return new class extends Migration
             );
             $table->index(['store_id', 'role_scope', 'product_id'], 'cpa_store_scope_product_idx');
         });
+
+        Schema::table('confirmation_product_assignments', function (Blueprint $table) {
+            $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
+            $table->foreign('membership_id')->references('id')->on('store_memberships')->cascadeOnDelete();
+            $table->foreign('product_id')->references('id')->on('products')->cascadeOnDelete();
+        });
     }
 
     public function down(): void
     {
+        // The mirror image: the constraints that sit on the widened keys must
+        // go before those keys, so the legacy uniqueness can take their place.
+        Schema::table('confirmation_product_assignments', function (Blueprint $table) {
+            $table->dropForeign(['store_id']);
+            $table->dropForeign(['membership_id']);
+            $table->dropForeign(['product_id']);
+        });
+
         Schema::table('confirmation_product_assignments', function (Blueprint $table) {
             $table->dropIndex('cpa_store_scope_product_idx');
             $table->dropUnique('cpa_store_member_prod_scope');
@@ -52,6 +82,12 @@ return new class extends Migration
 
         Schema::table('confirmation_product_assignments', function (Blueprint $table) {
             $table->unique(['store_id', 'membership_id', 'product_id'], 'cpa_store_member_prod');
+        });
+
+        Schema::table('confirmation_product_assignments', function (Blueprint $table) {
+            $table->foreign('store_id')->references('id')->on('stores')->cascadeOnDelete();
+            $table->foreign('membership_id')->references('id')->on('store_memberships')->cascadeOnDelete();
+            $table->foreign('product_id')->references('id')->on('products')->cascadeOnDelete();
         });
 
         Schema::table('confirmation_product_assignments', function (Blueprint $table) {

@@ -7,6 +7,13 @@ use Illuminate\Contracts\Support\Arrayable;
 
 final class DashboardFilter implements Arrayable
 {
+    /**
+     * Sentinel value of the member pick for the unattributed cohort
+     * (confirmed_by IS NULL, «بلا رصيد»). It is never a real ULID, so it can
+     * never collide with a store membership id.
+     */
+    public const UNATTRIBUTED = '__unattributed__';
+
     private bool $previousResolved = false;
 
     private ?self $previousFilter = null;
@@ -32,6 +39,7 @@ final class DashboardFilter implements Arrayable
         public readonly ?array $memberScopeIds = null,
         public readonly string $storeId = '',
         public readonly bool $memberLocked = false,
+        public readonly bool $memberUnattributedOnly = false,
     ) {}
 
     /**
@@ -90,6 +98,7 @@ final class DashboardFilter implements Arrayable
             'memberScopeIds' => $this->memberScopeIds,
             'storeId' => $this->storeId,
             'memberLocked' => $this->memberLocked,
+            'memberUnattributedOnly' => $this->memberUnattributedOnly,
         ];
     }
 
@@ -115,6 +124,7 @@ final class DashboardFilter implements Arrayable
             memberScopeIds: $this->memberScopeIds,
             storeId: $this->storeId,
             memberLocked: $this->memberLocked,
+            memberUnattributedOnly: $this->memberUnattributedOnly,
         );
     }
 }

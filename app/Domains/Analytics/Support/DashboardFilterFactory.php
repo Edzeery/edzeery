@@ -29,7 +29,7 @@ final class DashboardFilterFactory
         // stored in UTC and every query compares against that clock.
         [$from, $to] = $this->resolveWindow($period, $now, $input);
 
-        [$memberId, $memberDimension, $memberScopeIds, $memberLocked] = $this->resolveMember(
+        [$memberId, $memberDimension, $memberScopeIds, $memberLocked, $memberUnattributedOnly] = $this->resolveMember(
             $currentMembership,
             $input['memberId'] ?? null,
             $input['memberDimension'] ?? null
@@ -48,6 +48,7 @@ final class DashboardFilterFactory
             memberScopeIds: $memberScopeIds,
             storeId: $storeId ?? '',
             memberLocked: $memberLocked,
+            memberUnattributedOnly: $memberUnattributedOnly,
         );
     }
 
@@ -142,16 +143,18 @@ final class DashboardFilterFactory
     }
 
     /**
-     * Returns [memberId, dimension, memberScopeIds, memberLocked], where
-     * memberScopeIds is null for "every member" and an explicit list otherwise.
+     * Returns [memberId, dimension, memberScopeIds, memberLocked,
+     * memberUnattributedOnly], where memberScopeIds is null for "every member"
+     * and an explicit list otherwise. The sentinel UNATTRIBUTED selects the
+     * unattributed cohort (confirmed_by IS NULL).
      *
-     * @return array{0: ?string, 1: string, 2: ?array<int, string>, 3: bool}
+     * @return array{0: ?string, 1: string, 2: ?array<int, string>, 3: bool, 4: bool}
      */
     private function resolveMember(?StoreMembership $current, ?string $memberId, ?string $memberDimension): array
     {
         if (! $current || ! $current->is_active) {
             // Fail closed: without a membership nothing is visible.
-            return [null, 'confirmation', [], true];
+            return [null, 'confirmation', [], true, false];
         }
 
         // OWNER/ADMIN are roles, not permissions: StoreRoles grants both of them
@@ -169,6 +172,13 @@ final class DashboardFilterFactory
 
         $dimension = $this->resolveDimension($memberDimension, $canConfirm, $canDeliver);
 
+        // The unattributed cohort (confirmed_by IS NULL) is a store-wide pick,
+        // exposed when the member can see the whole team's numbers. The sentinel
+        // is not a membership id, so it can never reach keepIfAllowed.
+        if ($hasTeamView && $memberId === DashboardFilter::UNATTRIBUTED) {
+            return [DashboardFilter::UNATTRIBUTED, $dimension, [DashboardFilter::UNATTRIBUTED], false, true];
+        }
+
         if ($hasTeamView) {
             $allowed = StoreMembership::query()
                 ->where('store_id', $current->store_id)
@@ -179,7 +189,7 @@ final class DashboardFilterFactory
             $selected = $this->keepIfAllowed($memberId, $allowed);
 
             // No pick means no restriction: this is the whole point of a free choice.
-            return [$selected, $dimension, $selected ? [$selected] : null, false];
+            return [$selected, $dimension, $selected ? [$selected] : null, false, false];
         }
 
         if ($hasTeamViewOwn) {
@@ -193,10 +203,10 @@ final class DashboardFilterFactory
             $selected = $this->keepIfAllowed($memberId, $allowed);
 
             // No pick means the whole team: self plus subordinates.
-            return [$selected, $dimension, $selected ? [$selected] : $allowed, false];
+            return [$selected, $dimension, $selected ? [$selected] : $allowed, false, false];
         }
 
-        return [$current->id, $dimension, [$current->id], true];
+        return [$current->id, $dimension, [$current->id], true, false];
     }
 
     /**

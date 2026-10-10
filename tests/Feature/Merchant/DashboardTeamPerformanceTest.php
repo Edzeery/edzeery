@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Analytics\DTOs\DashboardFilter;
 use App\Domains\Analytics\Services\StoreDashboardAnalyticsService;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Domains\Analytics\Support\OrderStatusIdMap;
@@ -198,9 +199,11 @@ function tpfRow(string $html, string $needle): array
  * The shared fixture: five orders today across three members and one unowned,
  * plus yesterday's order for the period test and two carriers.
  *
- * Confirmation view reads assigned/confirmed/pending/canceled/other; delivery
- * view reads the same orders through their tracking rows, one of which has two
- * attempts so a re-shipped order would be counted twice by a naive join.
+ * Credit ("الرصيد") is keyed on who confirmed each order; workload ("المُسند")
+ * is keyed on the assignment the active tab walks (the order's own member for
+ * Confirmation, the newest tracking member for Delivery). One order has two
+ * tracking attempts so a re-shipped order would be counted twice by a naive
+ * join.
  *
  * @return array<string, mixed>
  */
@@ -219,23 +222,27 @@ function tpfScenario(): array
     $carrierA = tpfCarrier($store, 'Carrier A');
     $carrierB = tpfCarrier($store, 'Carrier B');
 
+    // Delivered orders are always confirmed by the member who carries them.
     $delivered = fn (int $amount, ?ShippingProvider $carrier, ?StoreMembership $member, ?string $createdAt = null) => tpfOrder($store, [
         'status_id' => tpfStatus(OrderStatus::DELIVERED),
         'total_amount' => $amount,
         'shipping_provider_id' => $carrier?->id,
         'assigned_to_membership_id' => $member?->id,
+        'confirmed_by_membership_id' => $member?->id,
         'created_at' => $createdAt ? CarbonImmutable::parse($createdAt, 'UTC') : null,
     ]);
 
     $orders = [
-        // Alpha: confirmed, then delivered with two tracking attempts.
+        // Alpha: confirmed, then delivered with two tracking attempts. Both
+        // belong to Alpha's credit because Alpha confirmed them.
         'alphaConfirmed' => tpfOrder($store, [
             'status_id' => tpfStatus(OrderStatus::CONFIRMED),
             'shipping_provider_id' => $carrierA->id,
             'assigned_to_membership_id' => $alpha->id,
+            'confirmed_by_membership_id' => $alpha->id,
         ]),
         'alphaDelivered' => $delivered(300, $carrierA, $alpha),
-        // Beta: one still pending, one returned.
+        // Beta: one still pending (nobody has confirmed it yet), one returned.
         'betaPending' => tpfOrder($store, [
             'status_id' => tpfStatus(OrderStatus::PENDING),
             'total_amount' => 200,
@@ -247,8 +254,10 @@ function tpfScenario(): array
             'total_amount' => 60,
             'shipping_provider_id' => $carrierB->id,
             'assigned_to_membership_id' => $beta->id,
+            'confirmed_by_membership_id' => $beta->id,
         ]),
-        // Nobody owns this one, and it is cancelled.
+        // Nobody confirmed this one, and it is cancelled: it makes the
+        // unattributed cohort («بلا رصيد») along with the pending order.
         'unowned' => tpfOrder($store, [
             'status_id' => tpfStatus(OrderStatus::CANCELED),
             'total_amount' => 50,
@@ -259,6 +268,7 @@ function tpfScenario(): array
             'status_id' => tpfStatus(OrderStatus::DELIVERED),
             'total_amount' => 400,
             'assigned_to_membership_id' => $gamma->id,
+            'confirmed_by_membership_id' => $gamma->id,
             'created_at' => CarbonImmutable::parse('2026-03-09 08:00:00', 'UTC'),
         ]),
     ];
@@ -285,7 +295,7 @@ function tpfRename(StoreMembership $membership, string $name): void
     User::query()->whereKey($membership->user_id)->update(['name' => $name]);
 }
 
-test('the confirmation view lists each member, the unowned orders and a total', function () {
+test('the confirmation view lists each member, the unattributed cohort and a total', function () {
     $f = tpfScenario();
 
     $html = tpfHtml($f['user'], $f['store']);
@@ -294,17 +304,17 @@ test('the confirmation view lists each member, the unowned orders and a total', 
         ->toContain(__('dashboard.team_performance_title'))
         ->toContain(__('dashboard.team_performance_confirmation'));
 
-    // member, assigned, confirmed, pending, canceled, other, confirmation rate.
-    // D2: the confirmed group covers the whole shipping flow, so Beta's
-    // returned order is confirmed rather than falling through to Other.
-    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '2', '0', '0', '0', '100%'])
-        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '1', '0', '0', '50%'])
-        // Nobody owns the cancelled order, so it lands on the unassigned row
-        // under the canceled column.
-        ->and(tpfRow($html, __('dashboard.team_unassigned')))
-        ->toBe([__('dashboard.team_unassigned'), '1', '0', '0', '1', '0', '0%'])
+    // member, assigned, pending, canceled, other, confirmed, delivered,
+    // returned, confirmation rate. Workload comes first, then credit: Beta's
+    // returned order is confirmed credit even though the pending one is not.
+    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '0', '0', '2', '2', '1', '0', '100%'])
+        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '0', '1', '1', '0', '1', '50%'])
+        // Nobody confirmed the cancelled order, so it lands on the unattributed
+        // row («بلا رصيد») under the canceled column.
+        ->and(tpfRow($html, __('dashboard.team_unattributed')))
+        ->toBe([__('dashboard.team_unattributed'), '1', '0', '1', '0', '0', '0', '0', '0%'])
         ->and(tpfRow($html, __('dashboard.team_total')))
-        ->toBe([__('dashboard.team_total'), '5', '3', '1', '1', '0', '60%']);
+        ->toBe([__('dashboard.team_total'), '5', '1', '1', '3', '3', '1', '1', '60%']);
 
     // Gamma owns nothing today, so the table does not carry an empty row.
     expect(tpfRow($html, 'Gamma'))->toBe([]);
@@ -333,13 +343,14 @@ test('the delivery view reads the newest tracking attempt and still counts one o
     // member, assigned, delivered, returned, in progress, delivery rate,
     // return rate, delivered revenue. Alpha is credited with the re-shipped
     // order through its newest attempt only: Beta's older attempt must not
-    // hand the same order a second time.
+    // hand the same order a second time, and the delivery rate is measured
+    // against Alpha's confirmed base (§ 11).
     expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '1', '0', '1', '50%', '0%', '300.00 DZD'])
-        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '0', '1', '1', '0%', '100%', '0.00 DZD'])
-        ->and(tpfRow($html, __('dashboard.team_unassigned')))
-        ->toBe([__('dashboard.team_unassigned'), '1', '0', '0', '1', '0%', '0%', '0.00 DZD'])
+        ->and(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '0', '1', '0', '0%', '100%', '0.00 DZD'])
+        ->and(tpfRow($html, __('dashboard.team_unattributed')))
+        ->toBe([__('dashboard.team_unattributed'), '1', '0', '0', '0', '0%', '0%', '0.00 DZD'])
         ->and(tpfRow($html, __('dashboard.team_total')))
-        ->toBe([__('dashboard.team_total'), '5', '1', '1', '3', '20%', '50%', '300.00 DZD']);
+        ->toBe([__('dashboard.team_total'), '5', '1', '1', '1', '33%', '50%', '300.00 DZD']);
 });
 
 test('the window decides which orders reach the table', function () {
@@ -353,10 +364,10 @@ test('the window decides which orders reach the table', function () {
     expect(tpfRow($today, 'Gamma'))->toBe([])
         ->and($todayTotal)->not->toBe([])
         ->and($todayTotal[1])->toBe('5')
-        ->and(tpfRow($yesterday, 'Gamma'))->toBe(['Gamma', '1', '1', '0', '0', '0', '100%'])
+        ->and(tpfRow($yesterday, 'Gamma'))->toBe(['Gamma', '1', '0', '0', '1', '1', '1', '0', '100%'])
         ->and(tpfRow($yesterday, 'Alpha'))->toBe([])
         ->and(tpfRow($yesterday, __('dashboard.team_total')))->toBe([
-            __('dashboard.team_total'), '1', '1', '0', '0', '0', '100%',
+            __('dashboard.team_total'), '1', '0', '0', '1', '1', '1', '0', '100%',
         ]);
 });
 
@@ -367,9 +378,12 @@ test('a carrier filter narrows the table the same way it narrows the KPIs', func
 
     $total = tpfRow($html, __('dashboard.team_total'));
 
-    expect(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '1', '0', '0', '50%'])
+    expect(tpfRow($html, 'Beta'))->toBe(['Beta', '2', '1', '0', '1', '1', '0', '1', '50%'])
         ->and(tpfRow($html, 'Alpha'))->toBe([])
-        ->and(tpfRow($html, __('dashboard.team_unassigned')))->toBe([])
+        // The pending order was never confirmed, so the unattributed cohort
+        // still exists under this carrier even though it has no workload.
+        ->and(tpfRow($html, __('dashboard.team_unattributed')))
+        ->toBe([__('dashboard.team_unattributed'), '0', '0', '0', '0', '0', '0', '0', '0%'])
         ->and($total)->not->toBe([])
         ->and($total[1])->toBe('2');
 });
@@ -379,9 +393,48 @@ test('picking one member drops the total because that one row already is it', fu
 
     $html = tpfHtml($f['user'], $f['store'], ['m' => $f['alpha']->id]);
 
-    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '2', '0', '0', '0', '100%'])
+    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '0', '0', '2', '2', '1', '0', '100%'])
         ->and(tpfRow($html, 'Beta'))->toBe([])
-        ->and(tpfRow($html, __('dashboard.team_unassigned')))->toBe([])
+        ->and(tpfRow($html, __('dashboard.team_unattributed')))->toBe([])
+        ->and(tpfRow($html, __('dashboard.team_total')))->toBe([]);
+});
+
+test('credit follows the confirmer, workload counts the tracking member once', function () {
+    [$user, $store] = tpfStore();
+
+    $alpha = tpfMembership($store, null, StoreRoleEnum::STAFF);
+    $gamma = tpfMembership($store, null, StoreRoleEnum::STAFF);
+    tpfRename($alpha, 'Alpha');
+    tpfRename($gamma, 'Gamma');
+
+    $alphaConfirmed = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $alpha->id, 'confirmed_by_membership_id' => $alpha->id]);
+    $alphaDelivered = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::DELIVERED), 'total_amount' => 300, 'assigned_to_membership_id' => $alpha->id, 'confirmed_by_membership_id' => $alpha->id]);
+    // Confirmed by Alpha but shipped through Gamma's port: the money and the
+    // delivery credit stay with Alpha (§ 11 has no delivered_by); Gamma only
+    // carries the workload for the handling.
+    $pivot = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::DELIVERED), 'total_amount' => 700, 'confirmed_by_membership_id' => $alpha->id]);
+
+    tpfTracking($store, $alphaConfirmed, $alpha, '01J000000000000000000001AA');
+    tpfTracking($store, $alphaDelivered, $alpha, '01J000000000000000000001BB');
+    tpfTracking($store, $pivot, $gamma, '01J000000000000000000001CC');
+
+    $html = tpfHtml($user, $store, ['md' => 'delivery']);
+
+    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '2', '0', '1', '67%', '0%', '1,000.00 DZD'])
+        ->and(tpfRow($html, 'Gamma'))->toBe(['Gamma', '1', '0', '0', '0', '0%', '0%', '0.00 DZD']);
+});
+
+test('the sentinel pick surfaces the unattributed cohort alone, summing its workload', function () {
+    $f = tpfScenario();
+
+    $html = tpfHtml($f['user'], $f['store'], ['m' => DashboardFilter::UNATTRIBUTED]);
+
+    // Today's unattributed cohort (confirmed_by IS NULL) is the pending order
+    // on Beta's desk and the cancelled unowned order: two orders of workload,
+    // none of credit.
+    expect(tpfRow($html, __('dashboard.team_unattributed')))
+        ->toBe([__('dashboard.team_unattributed'), '2', '1', '1', '0', '0', '0', '0', '0%'])
+        ->and(tpfRow($html, 'Alpha'))->toBe([])
         ->and(tpfRow($html, __('dashboard.team_total')))->toBe([]);
 });
 
@@ -404,10 +457,12 @@ test('a manager without team wide stats sees only their own team and no unassign
     $colleague = tpfMembership($store, null, StoreRoleEnum::STAFF);
     tpfRename($subordinate, 'Subordinate Member');
 
-    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $manager->id]);
-    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::PENDING), 'assigned_to_membership_id' => $subordinate->id]);
-    // Outside the manager's team: the scope must remove it from the table.
-    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $colleague->id]);
+    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $manager->id, 'confirmed_by_membership_id' => $manager->id]);
+    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $subordinate->id, 'confirmed_by_membership_id' => $subordinate->id]);
+    // Outside the manager's team: the confirmed member is the colleague, so
+    // the scope must remove it from the table.
+    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $colleague->id, 'confirmed_by_membership_id' => $colleague->id]);
+    // Nobody confirmed it, and nobody confirmed it for a scoped member either.
     tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CANCELED)]);
 
     $html = tpfHtml($manager->user, $store);
@@ -417,7 +472,7 @@ test('a manager without team wide stats sees only their own team and no unassign
     expect($total)->not->toBe([])
         ->and($total[1])->toBe('2')
         ->and(tpfRow($html, 'Subordinate Member'))->not->toBe([])
-        ->and(tpfRow($html, __('dashboard.team_unassigned')))->toBe([]);
+        ->and(tpfRow($html, __('dashboard.team_unattributed')))->toBe([]);
 });
 
 test('an order owned by another store is never named in the table', function () {
@@ -434,9 +489,9 @@ test('an order owned by another store is never named in the table', function () 
     $foreign = tpfMembership($foreignStore, null, StoreRoleEnum::STAFF);
     tpfRename($foreign, 'Foreign Member');
 
-    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $mine->id]);
-    // Data that should not exist: an order of ours assigned to their member.
-    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $foreign->id]);
+    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $mine->id, 'confirmed_by_membership_id' => $mine->id]);
+    // Data that should not exist: an order of ours confirmed by their member.
+    tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $foreign->id, 'confirmed_by_membership_id' => $foreign->id]);
 
     $html = tpfHtml($user, $store);
 
