@@ -32,6 +32,14 @@
                 @error('password')
                     <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
                 @enderror
+
+                @if ($editingId)
+                    <label class="mt-3 mb-1 block text-sm font-medium text-ink" for="tm-current-password">{{ __('teams.confirm_identity') }}</label>
+                    <input id="tm-current-password" type="password" class="edz-input @error('current_password') edz-input--error @enderror" wire:model="current_password" placeholder="••••••••">
+                    @error('current_password')
+                        <p class="mt-1 text-sm text-danger-600">{{ $message }}</p>
+                    @enderror
+                @endif
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-ink" for="tm-role">{{ __('teams.role') }}</label>

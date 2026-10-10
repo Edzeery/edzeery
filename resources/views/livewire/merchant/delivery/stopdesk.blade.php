@@ -63,6 +63,8 @@ mount(function (): void {
 });
 
 $providerHasIntegration = function (ShippingProvider $provider): bool {
+    abort_unless($provider->store_id === currentStoreId(), 403);
+
     $code = $provider->carrier?->code;
 
     if (! $code) {

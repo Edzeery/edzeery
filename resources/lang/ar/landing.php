@@ -109,7 +109,7 @@ return [
     'stat_countries' => 'دولة',
     'stat_orders' => 'طلب منجز',
     'stat_stores' => 'متجر نشط',
-    'stat_users' => 'تاجر مسجّل',
+    'stat_users' => 'مستخدم نشط',
     'step_add_products' => 'أضف منتجاتك',
     'step_add_products_desc' => 'ارفع المنتجات بالصور والأوصاف والأسعار والمتغيرات في دقائق.',
     'step_launch' => 'أطلق وابدأ البيع',

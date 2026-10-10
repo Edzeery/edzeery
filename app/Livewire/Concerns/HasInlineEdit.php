@@ -3,6 +3,7 @@
 namespace App\Livewire\Concerns;
 
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 
 /**
  * Shared inline-edit state machine for Livewire (class or Volt) components.
@@ -34,14 +35,18 @@ use Illuminate\Support\Facades\Validator;
  */
 trait HasInlineEdit
 {
+    #[Locked]
     public ?string $editingField = null;
 
+    #[Locked]
     public mixed $editingId = null;
 
     public mixed $editingValue = null;
 
+    #[Locked]
     public ?string $editingError = null;
 
+    #[Locked]
     public mixed $editingSnapshot = null;
 
     protected bool $editingSaving = false;
@@ -50,7 +55,7 @@ trait HasInlineEdit
      * Begin editing a field. Caches the current display value so cancel can
      * restore it and the consumer can prefill the input.
      */
-    public function startEdit(string $field, mixed $recordId = null, mixed $currentValue = null): void
+    protected function startEdit(string $field, mixed $recordId = null, mixed $currentValue = null): void
     {
         $this->editingField = $field;
         $this->editingId = $recordId;
@@ -60,7 +65,7 @@ trait HasInlineEdit
         $this->editingSaving = false;
     }
 
-    public function cancelEdit(): void
+    protected function cancelEdit(): void
     {
         $this->editingField = null;
         $this->editingId = null;
@@ -89,16 +94,14 @@ trait HasInlineEdit
      * consumer to restore; a validation_failed audit entry is recorded so
      * failed attempts remain traceable.
      */
-    public function saveEdit(array $config): void
+    protected function saveEdit(array $config): void
     {
         $permission = $config['permission'] ?? null;
 
         // A permission is normally the permission string, but a caller may pass a
-        // Closure to express an OR across several permissions. is_string() is
-        // tested before is_callable() because PHP also treats function names as
-        // callables, so a string must never be reached by the callable branch.
+        // Closure to express an OR across several permissions. Permissions are
+        // resolved fail-closed: an omitted permission denies the edit.
         $allowed = match (true) {
-            $permission === null => true,
             is_string($permission) => canStore($permission),
             is_callable($permission) => (bool) $permission(),
             default => false,
@@ -106,6 +109,7 @@ trait HasInlineEdit
 
         if (! $allowed) {
             $this->dispatch('swal:toast', ['icon' => 'error', 'title' => __('messages.permission_denied')]);
+
             return;
         }
 

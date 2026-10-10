@@ -5,9 +5,12 @@ return [
     'add_member' => 'Add member',
     'all_roles' => 'All roles',
     'cannot_add_platform_staff' => 'Platform accounts cannot be added to a store team.',
+    'cannot_set_password_on_existing_user' => 'This email already belongs to an active account. A password cannot be issued over an existing account.',
+    'confirm_identity' => 'Confirm your current password to set a new one',
     'city' => 'City',
     'country' => 'Country',
     'custom_badge' => 'Custom',
+    'current_password_required' => 'Your current password is required to change this member password.',
     'dangerous_badge' => 'Sensitive',
     'dangerous_hint' => 'Permissions flagged as Sensitive can affect critical store data.',
     'email' => 'Email',
@@ -67,7 +70,6 @@ return [
     'title' => 'Team management',
     'try_adjusting' => 'Try adjusting your search.',
     'update_member' => 'Update member',
-
 
     'view_all' => 'View all',
     'view_all_permissions' => 'View all permissions',

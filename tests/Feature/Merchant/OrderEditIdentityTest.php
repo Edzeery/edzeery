@@ -50,17 +50,17 @@ function oeiOwner(): array
 
     $store = Store::create([
         'user_id' => $user->id,
-        'name'    => 'Identity Store',
-        'slug'    => 'oei-'.uniqid(),
-        'status'  => 'active',
+        'name' => 'Identity Store',
+        'slug' => 'oei-'.uniqid(),
+        'status' => 'active',
     ]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $user->id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::OWNER->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::OWNER->value,
     ]);
     $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
 
@@ -72,11 +72,11 @@ function oeiStaff(Store $store, array $permissions, string $name = 'Rep'): array
     $user = User::factory()->create(['name' => $name]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $store->user_id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::STAFF->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::STAFF->value,
     ]);
     $membership->syncPermissions($permissions);
 
@@ -93,55 +93,55 @@ function oeiOrder(Store $store, string $statusKey = 'pending', ?StoreMembership 
 
     $customer = Customer::create([
         'store_id' => $store->id,
-        'name'     => 'OEI Customer '.Str::random(5),
-        'phone'    => '0553'.fake()->unique()->numerify('######'),
-        'status'   => true,
+        'name' => 'OEI Customer '.Str::random(5),
+        'phone' => '0553'.fake()->unique()->numerify('######'),
+        'status' => true,
     ]);
 
     $product = Product::create([
-        'store_id'  => $store->id,
-        'name'      => 'OEI Product',
-        'slug'      => 'oei-pr-'.uniqid(),
-        'sku'       => 'OEI-'.strtoupper(Str::random(6)),
-        'type'      => 'simple',
-        'price'     => 400,
+        'store_id' => $store->id,
+        'name' => 'OEI Product',
+        'slug' => 'oei-pr-'.uniqid(),
+        'sku' => 'OEI-'.strtoupper(Str::random(6)),
+        'type' => 'simple',
+        'price' => 400,
         'is_active' => true,
     ]);
 
     $variant = ProductVariant::create([
-        'store_id'  => $store->id,
+        'store_id' => $store->id,
         'product_id' => $product->id,
-        'name'      => 'Default',
-        'sku'       => 'oei-v-'.uniqid(),
-        'price'     => 400,
-        'stock'     => 10,
+        'name' => 'Default',
+        'sku' => 'oei-v-'.uniqid(),
+        'price' => 400,
+        'stock' => 10,
         'is_active' => true,
     ]);
 
     $order = Order::create([
-        'store_id'                  => $store->id,
-        'customer_id'               => $customer->id,
-        'status_id'                 => $status->id,
-        'number'                    => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
-        'total_amount'              => 400,
-        'shipping_cost'             => 0,
+        'store_id' => $store->id,
+        'customer_id' => $customer->id,
+        'status_id' => $status->id,
+        'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
+        'total_amount' => 400,
+        'shipping_cost' => 0,
         'assigned_to_membership_id' => $assignee?->id,
-        'assigned_at'               => $assignee ? now() : null,
-        'assignment_method'         => $assignee ? 'automatic' : null,
-        'state_id'                  => $state->id,
-        'city_id'                   => $city->id,
-        'address'                   => 'Rue des Cedres',
-        'delivery_type'             => 'home',
+        'assigned_at' => $assignee ? now() : null,
+        'assignment_method' => $assignee ? 'automatic' : null,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'address' => 'Rue des Cedres',
+        'delivery_type' => 'home',
     ]);
 
     OrderItem::create([
-        'store_id'           => $store->id,
-        'order_id'           => $order->id,
-        'product_id'         => $product->id,
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'product_id' => $product->id,
         'product_variant_id' => $variant->id,
-        'quantity'           => 1,
-        'price'              => 400,
-        'subtotal'           => 400,
+        'quantity' => 1,
+        'price' => 400,
+        'subtotal' => 400,
     ]);
 
     return $order->fresh();
@@ -254,19 +254,12 @@ it('denies all three identity edits without order.manage or order.edit.identity'
             ->assertDispatched('swal:toast', oeiDenied());
     }
 
-    // The save handlers are gated too, so a forced editingId cannot be used to
-    // bypass the start-handler denial.
-    oeiVolt($plainUser, $store)
-        ->set('editingId', $order->id)
-        ->set('nameEditName', 'Hijacked')
-        ->call('saveOrderName')
-        ->assertDispatched('swal:toast', oeiDenied());
-
-    oeiVolt($plainUser, $store)
-        ->set('editingId', $order->id)
-        ->set('editingValue', 'Hijacked')
-        ->call('saveOrderNotes', 'Hijacked')
-        ->assertDispatched('swal:toast', oeiDenied());
+    // The save handlers are gated too, but editingId is #[Locked], so a
+    // forced editingId can never be sent over the wire: the hijack vector is
+    // closed before any save handler is reached.
+    $plainVolt = oeiVolt($plainUser, $store);
+    expect(fn () => $plainVolt->set('editingId', $order->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $plainVolt->set('editingField', 'order.name'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
 
     expect($order->customer->refresh()->name)->toStartWith('OEI Customer')
         ->and($order->fresh()->notes)->toBeNull();

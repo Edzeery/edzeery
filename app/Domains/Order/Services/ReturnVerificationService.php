@@ -22,7 +22,7 @@ class ReturnVerificationService
             ->whereNull('verified_at')
             ->where(function ($q) use ($scannedCode) {
                 $q->where('verification_barcode', $scannedCode)
-                  ->orWhere('tracking_number', $scannedCode);
+                    ->orWhere('tracking_number', $scannedCode);
             })
             ->first();
 
@@ -31,8 +31,8 @@ class ReturnVerificationService
         }
 
         $tracking->update([
-            'verification_barcode'      => $tracking->verification_barcode ?? $scannedCode,
-            'verified_at'               => now(),
+            'verification_barcode' => $tracking->verification_barcode ?? $scannedCode,
+            'verified_at' => now(),
             'verified_by_membership_id' => $verifiedBy->id,
         ]);
 
@@ -53,10 +53,12 @@ class ReturnVerificationService
             throw new \DomainException('Cannot process a tracking record that has not been barcode-verified.');
         }
 
+        abort_unless($tracking->store_id === $processedBy->store_id, 403);
+
         $tracking->update([
-            'inspection_result'          => $result->value,
-            'inspection_notes'           => $notes,
-            'processed_at'               => now(),
+            'inspection_result' => $result->value,
+            'inspection_notes' => $notes,
+            'processed_at' => now(),
             'processed_by_membership_id' => $processedBy->id,
         ]);
 
@@ -83,15 +85,17 @@ class ReturnVerificationService
             throw new \DomainException('This return has already been requeued.');
         }
 
+        abort_unless($tracking->store_id === $requeuedBy->store_id, 403);
+
         return DB::transaction(function () use ($tracking, $requeuedBy) {
             $order = $tracking->order()->lockForUpdate()->firstOrFail();
 
             $order->update([
                 'assigned_to_membership_id' => null,
-                'assigned_at'               => null,
-                'assignment_method'         => null,
+                'assigned_at' => null,
+                'assignment_method' => null,
                 'assigned_by_membership_id' => null,
-                'confirmation_attempts'     => 0,
+                'confirmation_attempts' => 0,
             ]);
 
             app(OrderService::class)->transition(
@@ -103,7 +107,7 @@ class ReturnVerificationService
             );
 
             $tracking->update([
-                'requeued_at'               => now(),
+                'requeued_at' => now(),
                 'requeued_by_membership_id' => $requeuedBy->id,
             ]);
 

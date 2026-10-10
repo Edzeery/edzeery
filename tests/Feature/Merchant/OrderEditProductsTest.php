@@ -61,17 +61,17 @@ function oepOwner(): array
 
     $store = Store::create([
         'user_id' => $user->id,
-        'name'    => 'Products Store',
-        'slug'    => 'oep-'.uniqid(),
-        'status'  => 'active',
+        'name' => 'Products Store',
+        'slug' => 'oep-'.uniqid(),
+        'status' => 'active',
     ]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $user->id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::OWNER->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::OWNER->value,
     ]);
     $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
 
@@ -83,11 +83,11 @@ function oepStaff(Store $store, array $permissions, string $name = 'Rep'): array
     $user = User::factory()->create(['name' => $name]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $store->user_id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::STAFF->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::STAFF->value,
     ]);
     $membership->syncPermissions($permissions);
 
@@ -104,55 +104,55 @@ function oepOrder(Store $store, string $statusKey = 'pending', ?StoreMembership 
 
     $customer = Customer::create([
         'store_id' => $store->id,
-        'name'     => 'OEP Customer '.Str::random(5),
-        'phone'    => '0553'.fake()->unique()->numerify('######'),
-        'status'   => true,
+        'name' => 'OEP Customer '.Str::random(5),
+        'phone' => '0553'.fake()->unique()->numerify('######'),
+        'status' => true,
     ]);
 
     $product = Product::create([
-        'store_id'  => $store->id,
-        'name'      => 'OEP Product',
-        'slug'      => 'oep-pr-'.uniqid(),
-        'sku'       => 'OEP-'.strtoupper(Str::random(6)),
-        'type'      => 'simple',
-        'price'     => 400,
+        'store_id' => $store->id,
+        'name' => 'OEP Product',
+        'slug' => 'oep-pr-'.uniqid(),
+        'sku' => 'OEP-'.strtoupper(Str::random(6)),
+        'type' => 'simple',
+        'price' => 400,
         'is_active' => true,
     ]);
 
     $variant = ProductVariant::create([
-        'store_id'  => $store->id,
+        'store_id' => $store->id,
         'product_id' => $product->id,
-        'name'      => 'Default',
-        'sku'       => 'oep-v-'.uniqid(),
-        'price'     => 400,
-        'stock'     => 10,
+        'name' => 'Default',
+        'sku' => 'oep-v-'.uniqid(),
+        'price' => 400,
+        'stock' => 10,
         'is_active' => true,
     ]);
 
     $order = Order::create([
-        'store_id'                  => $store->id,
-        'customer_id'               => $customer->id,
-        'status_id'                 => $status->id,
-        'number'                    => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
-        'total_amount'              => 400,
-        'shipping_cost'             => 0,
+        'store_id' => $store->id,
+        'customer_id' => $customer->id,
+        'status_id' => $status->id,
+        'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
+        'total_amount' => 400,
+        'shipping_cost' => 0,
         'assigned_to_membership_id' => $assignee?->id,
-        'assigned_at'               => $assignee ? now() : null,
-        'assignment_method'         => $assignee ? 'automatic' : null,
-        'state_id'                  => $state->id,
-        'city_id'                   => $city->id,
-        'address'                   => 'Rue des Cedres',
-        'delivery_type'             => 'home',
+        'assigned_at' => $assignee ? now() : null,
+        'assignment_method' => $assignee ? 'automatic' : null,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'address' => 'Rue des Cedres',
+        'delivery_type' => 'home',
     ]);
 
     OrderItem::create([
-        'store_id'           => $store->id,
-        'order_id'           => $order->id,
-        'product_id'         => $product->id,
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'product_id' => $product->id,
         'product_variant_id' => $variant->id,
-        'quantity'           => 1,
-        'price'              => 400,
-        'subtotal'           => 400,
+        'quantity' => 1,
+        'price' => 400,
+        'subtotal' => 400,
     ]);
 
     return $order->fresh();
@@ -230,8 +230,8 @@ it('saves a new item set for a products-only member', function () {
         ->call('openItemsModal', 'products', $order->id)
         ->set('form.items', [[
             'product_variant_id' => $variant->id,
-            'quantity'           => 3,
-            'price'              => 400,
+            'quantity' => 3,
+            'price' => 400,
         ]])
         ->call('saveOrderItems')
         ->assertNotDispatched('swal:toast', oepDenied());
@@ -263,8 +263,8 @@ it('denies the price field to a products-only member even when the store allows 
         ->call('openItemsModal', 'products', $order->id)
         ->set('form.items', [[
             'product_variant_id' => $variant->id,
-            'quantity'           => 2,
-            'price'              => 9999,
+            'quantity' => 2,
+            'price' => 9999,
         ]])
         ->call('saveOrderItems');
 
@@ -292,8 +292,8 @@ it('lets a products+price member edit price once the store allows it', function 
         ->call('openItemsModal', 'price', $order->id)
         ->set('form.items', [[
             'product_variant_id' => $variant->id,
-            'quantity'           => 2,
-            'price'              => 9999,
+            'quantity' => 2,
+            'price' => 9999,
         ]])
         ->call('saveOrderItems');
 
@@ -345,14 +345,14 @@ it('denies products edits to a member with neither order.manage nor order.edit.p
             ->assertSet('itemsModal', null);
     }
 
-    // The save handler is gated too, so a forced editingId cannot bypass it.
+    // The save handler is gated too, but editingId is #[Locked], so a caller
+    // cannot fabricate an editing session: the forced-edit vector is closed
+    // before saveEdit() is ever consulted.
     $before = $order->fresh()->weight_kg;
 
-    oepVolt($plainUser, $store)
-        ->set('editingId', $order->id)
-        ->set('editingValue', '7')
-        ->call('saveOrderWeight', '7')
-        ->assertDispatched('swal:toast', oepDenied());
+    $plainVolt = oepVolt($plainUser, $store);
+    expect(fn () => $plainVolt->set('editingId', $order->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $plainVolt->set('editingField', 'order.weight'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
 
     expect((float) $order->fresh()->weight_kg)->toEqual((float) $before);
 });
@@ -417,11 +417,11 @@ it('renders the products twins for products-only and order.manage members, and h
     // only, because orders-mobile-fields is still a single aggregate
     // canManage() block that §6.3 deliberately does not touch.
     $expected = [
-        "openItemsModal('products'"             => 2,
-        "openItemsModal('quantity'"             => 2,
-        'startOrderDiscountEdit'               => 1,
-        'startOrderWeightEdit'                 => 1,
-        'startOrderShipmentTypeEdit'           => 1,
+        "openItemsModal('products'" => 2,
+        "openItemsModal('quantity'" => 2,
+        'startOrderDiscountEdit' => 1,
+        'startOrderWeightEdit' => 1,
+        'startOrderShipmentTypeEdit' => 1,
     ];
 
     // The orders list is assignment-scoped for staff (36.4), so each viewer

@@ -30,7 +30,7 @@ enum OrderStatus: string
     case WRONG_NUMBER = 'wrong_number';
     case UNDELIVERABLE = 'undeliverable';
     case UNCLAIMED = 'unclaimed';
-    
+
 
     public static function pendingish(): array
     {

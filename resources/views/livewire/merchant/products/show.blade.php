@@ -35,6 +35,7 @@ $canUpdate = fn () => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
 $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $delete = function (Product $product): void {
+    abort_unless($product->store_id === currentStoreId(), 403);
     abort_unless(canStore(StorePermissionEnum::PRODUCT_DELETE->value), 403);
 
     $product->delete();

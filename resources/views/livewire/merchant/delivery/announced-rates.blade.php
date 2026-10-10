@@ -511,7 +511,7 @@ $closeListModal = function (): void {
 };
 
 $toggleListProduct = function (string $productId): void {
-    $product = Product::where('is_active', true)->find($productId);
+    $product = Product::where('store_id', currentStoreId())->where('is_active', true)->find($productId);
     if (! $product) {
         return;
     }
@@ -545,7 +545,12 @@ $saveList = function (): void {
         ]);
     }
 
-    $list->products()->sync($this->listSelectedProductIds);
+    // Only products that actually belong to this store may be attached to a list.
+    $validProductIds = $this->listSelectedProductIds !== []
+        ? Product::where('store_id', currentStoreId())->whereIn('id', $this->listSelectedProductIds)->pluck('id')->all()
+        : [];
+
+    $list->products()->sync($validProductIds);
 
     $this->loadLists();
     $this->selectedListId = $list->id;

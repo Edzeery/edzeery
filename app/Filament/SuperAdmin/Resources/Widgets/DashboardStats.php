@@ -4,7 +4,6 @@ namespace App\Filament\SuperAdmin\Resources\Widgets;
 
 use App\Enums\Store\StoreStatusEnum;
 use App\Models\Products\Product;
-use App\Models\Stores\Store;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -19,24 +18,27 @@ class DashboardStats extends StatsOverviewWidget
         return [
             Stat::make(
                 'ACTIVED Stores',
-                Store::where('status', StoreStatusEnum::ACTIVE)->count()
+                AllActiveStoresCount()
             )
                 ->color('success')
                 ->icon(StoreStatusEnum::ACTIVE->filamentIcon()),
             Stat::make(
                 'PENDING Stores',
-                Store::where('status', StoreStatusEnum::PENDING)->count()
+                AllPendingStoresCount()
             )
-                ->color('worning'),
+                ->color('warning')
+                ->icon(StoreStatusEnum::PENDING->filamentIcon()),
             Stat::make(
-                'PENDING Stores',
-                Store::where('status', StoreStatusEnum::CLOSED)->count()
+                'CLOSED Stores',
+                AllClosedStoresCount()
             )
-                ->color('success'),
+                ->color('danger')
+                ->icon(StoreStatusEnum::CLOSED->filamentIcon()),
             Stat::make(
                 'All Stores',
-                Store::all()->count()
-            ),
+                AllStoresCount()
+            )
+                ->icon('heroicon-o-shopping-bag'),
 
             Stat::make(
                 'Total Products',

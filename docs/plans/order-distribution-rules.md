@@ -181,3 +181,54 @@ overflow %, notifications, visibility-guard semantics, `membership_product_scope
   `tests/Feature/Order/EngineHardeningTest.php`,
   `tests/Feature/Merchant/OrderDistributionQueueTest.php`,
   `tests/Feature/Merchant/OrderSettingsShiftRoleTest.php`
+
+## 11) Attribution vs assignment (PHASE 35.4 rules — documented, code pending approval)
+
+Two orthogonal notions. The dashboard team table separates them; a credit
+bucket is **never** keyed by an assignment column:
+
+| Notion | Key | Meaning | Changes when | Used for |
+| --- | --- | --- | --- | --- |
+| Work (roster) | `orders.assigned_to_membership_id` / `order_trackings.assigned_to_membership_id` | who currently carries the row | reassign / handover / sweep (never a credit) | queue, shifts, "assigned" (المُسند) column |
+| Credit (confirmation) | `orders.confirmed_by_membership_id` | who confirmed the order — the dispatcher to delivery | never after first write (38-C) | `confirmed` / `delivered` / `returned` / revenue in BOTH tabs + KPIs + 38-D settlements |
+| Tracking actor | `order_trackings.created_by_membership_id` → planned `tracked_by_membership_id` | who acted to start the shipment | never (snapshot) | future Phase 38-F tracking-team tab only |
+
+Rules:
+
+1. **Work is never credit.** Delivery outcomes are the outcomes of the orders a
+   member **confirmed**, even when the tracking rows belong to a different
+   member (`confirmed_by_membership_id` is the single credit key).
+2. **No `delivered_by`.** The delivery outcome of an order is attributed to its
+   confirmer by definition; the only per-order human attribution is
+   `confirmed_by`.
+3. **"No credit" ≠ "unassigned".** UI keeps two distinct labels: «بلا رصيد»
+   (unattributed, `confirmed_by IS NULL` — shown as its own row and selectable
+   in the member filter) vs «غير مُسنَدة» (no work, assignment NULL — a queue
+   concept).
+4. **Dual-role member** (holds `ORDER_CONFIRM` + `CRM_ORDER_TRACKING`): may be
+   scheduled in both shifts and appear in both tabs; each tab counts only its
+   own cohort; no row is ever double-counted within one tab; tab credits are
+   never summed as a single balance.
+5. **Rates are activity rates** with explicit denominators: conversion =
+   `confirmed ÷ assigned(work)`; delivery = `delivered ÷ confirmed`;
+   return = `returned ÷ (delivered + returned)`.
+6. **Dashboard team table.** Confirmation tab columns: assigned / pending /
+   canceled / other (work key) + confirmed / delivered / returned (credit key),
+   conversion rate. Delivery tab columns: assigned (work key) + delivered /
+   returned / in-progress / revenue (credit key), delivery & return rates.
+   The delivery tab is labelled as the **outcomes of the orders the member
+   confirmed** («مصير طلبياته المرسَلة»), not the tracker's ledger.
+7. **Snapshot captures unchanged** (38-C): `confirmed_at`/`confirmed_by`,
+   the tracking actor and `cod_amount`. No new actor column is introduced.
+
+### Deferred — documented, NOT implemented (decision: revisit later, only if needed)
+
+Rename `order_trackings.created_by_membership_id` → `tracked_by_membership_id`
+so it can never be confused with `orders.created_by_membership_id` (who
+*entered* the order). Would land as a new migration dated AFTER
+`2026_10_06_000004`, plus `FinancialCaptureSchemaTest` (`--step` booking),
+`FinanceCaptureHealth`, `OrderTrackingService::startShipment`,
+`OrderStatusCaptureTest`, the demo seeder, and the docs. Bundled with the
+deferred actor-threading of `CarrierOrderPostService::postToCarrier` (today the
+carrier path writes the row with a NULL tracking actor). Awaiting
+Phase 38-F.

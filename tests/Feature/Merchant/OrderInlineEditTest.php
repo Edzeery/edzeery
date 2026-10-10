@@ -235,13 +235,11 @@ test('staff without order.manage permission is forbidden from inline edits', fun
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
             && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
-    inlineOrderVolt($staff, $store)
-        ->set('editingField', 'order.wilaya')
-        ->set('editingId', $order->id)
-        ->set('editingValue', $stateB->id)
-        ->call('saveOrderWilaya')
-        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
-            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
+    // editingField/editingId are #[Locked], so a staff caller cannot fabricate
+    // an editing session over the wire: the forced-edit vector is closed.
+    $staffVolt = inlineOrderVolt($staff, $store);
+    expect(fn () => $staffVolt->set('editingField', 'order.wilaya'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $staffVolt->set('editingId', $order->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
 
     expect($order->fresh()->state_id)->toBe($stateA->id)
         ->and(Activity::query()->count())->toBe(0);

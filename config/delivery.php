@@ -13,8 +13,13 @@ use App\Domains\Shipping\Contracts\DefaultDeliveryRatesAdapter;
 return [
     'adapters' => [
         'noest' => \App\Domains\Shipping\Adapters\NoestDeliveryRatesAdapter::class,
-        // 'ecotrack' => \App\Domains\Shipping\Adapters\EcotrackAdapter::class,
+        // 'ovred.ecotrack' => \App\Domains\Shipping\Adapters\EcotrackAdapter::class, // overd , anderson , DHD ,
+        // 'dhd.ecotrack' => \App\Domains\Shipping\Adapters\EcotrackAdapter::class,
         // 'zrexpress' => \App\Domains\Shipping\Adapters\ZRExpressAdapter::class,
+        // 'yalidine' => \App\Domains\Shipping\Adapters\YalidineAdapter::class,
+        // 'ecomv2' => \App\Domains\Shipping\Adapters\EcomV2DeliveryAdapter::class,
+        // 'newzrexpress' => \App\Domains\Shipping\Adapters\NewZRExpressAdapter::class,
+
         '*' => DefaultDeliveryRatesAdapter::class,
     ],
 

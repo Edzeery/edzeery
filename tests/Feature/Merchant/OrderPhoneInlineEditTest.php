@@ -2,9 +2,6 @@
 
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Customer;
-use App\Models\Locations\City;
-use App\Models\Locations\Country;
-use App\Models\Locations\State;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
@@ -141,13 +138,11 @@ test('staff without order.manage permission cannot edit the phone inline', funct
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
             && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
 
-    phoneVolt([$staff, $store])
-        ->set('editingField', 'order.phone')
-        ->set('editingId', $order->id)
-        ->set('phoneEditPhone', '0550123456')
-        ->call('saveOrderPhone')
-        ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
-            && ($params[0]['title'] ?? null) === __('messages.permission_denied'));
+    // editingField/editingId are #[Locked], so a staff caller cannot fabricate
+    // an editing session over the wire: the forced-edit vector is closed.
+    $staffVolt = phoneVolt([$staff, $store]);
+    expect(fn () => $staffVolt->set('editingField', 'order.phone'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $staffVolt->set('editingId', $order->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
 
     expect($order->fresh()->customer?->phone)->toBe('0550000000');
 });

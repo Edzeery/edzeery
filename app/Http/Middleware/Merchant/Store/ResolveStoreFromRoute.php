@@ -13,9 +13,12 @@ class ResolveStoreFromRoute
     /**
      * Bind the {store} route parameter into the store context.
      *
-     * The current store is persisted in the session so that Livewire
-     * sub-requests (which hit /livewire/update without a {store} param)
-     * can still resolve the active store via StoreResolver.
+     * The current store is persisted in the session (only after the
+     * membership middleware verifies it, see EnsureStoreMembership) so that
+     * Livewire sub-requests (which hit /livewire/update without a {store}
+     * param) can still resolve the active store via StoreResolver. Writing it
+     * here — BEFORE membership is confirmed — would poison the session with a
+     * store the user does not belong to.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -28,7 +31,6 @@ class ResolveStoreFromRoute
             : Store::where('slug', (string) $param)->first();
 
         if ($store) {
-            session(['current_store_id' => $store->id]);
             app(StoreContext::class)->set($store);
         }
 

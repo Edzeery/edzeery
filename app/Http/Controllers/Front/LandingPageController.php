@@ -21,14 +21,17 @@ class LandingPageController extends Controller
             ])
             ->orderByDesc('is_default')
             ->get();
-        $storeCount = Store::count();
-        $orderCount = Order::count();
-        $userCount = User::count();
+        $storeCount = AllStoresCount();
+        $orderDeliveredCount = AllOrdersCountByStatus(\App\Enums\Store\OrderStatus::DELIVERED);
+        $totalTransactions = total_amount();
+        $userCount = AllUsersCount();
         return view('landing.index', compact(
             'plans',
             'storeCount',
             'orderCount',
             'userCount',
+            'totalTransactions',
+            'orderDeliveredCount',
         ));
     }
 

@@ -54,6 +54,7 @@ $canUpdate = fn () => canStore(StorePermissionEnum::FINANCE_DEBT_UPDATE->value);
 $canDelete = fn () => canStore(StorePermissionEnum::FINANCE_DEBT_DELETE->value);
 
 $delete = function (Debt $debt): void {
+    abort_unless($debt->store_id === currentStoreId(), 403);
     abort_unless(canStore(StorePermissionEnum::FINANCE_DEBT_DELETE->value), 403);
     $debt->delete();
     $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));

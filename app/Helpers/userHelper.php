@@ -2,6 +2,20 @@
 
 use Illuminate\Support\Facades\Auth;
 
+if (! function_exists('AllUsers')) {
+    function AllUsers()
+    {
+        return \App\Models\User::all();
+    }
+}
+
+if (! function_exists('AllUsersCount')) {
+    function AllUsersCount()
+    {
+        return AllUsers()->count();
+    }
+}
+
 if (! function_exists('getCurrentPanel')) {
 
     function getCurrentPanel(): string

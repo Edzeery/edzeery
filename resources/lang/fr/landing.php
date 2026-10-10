@@ -110,7 +110,7 @@ return [
     'stat_countries' => 'Pays',
     'stat_orders' => 'Commandes traitées',
     'stat_stores' => 'Boutiques actives',
-    'stat_users' => 'Marchands inscrits',
+    'stat_users' => 'Utilisateurs actifs',
     'step_add_products' => 'Ajoutez vos produits',
     'step_add_products_desc' => 'Téléchargez vos produits avec photos, descriptions, prix et variantes en quelques minutes.',
     'step_launch' => 'Lancez et vendez',

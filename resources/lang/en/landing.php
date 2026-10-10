@@ -110,7 +110,7 @@ return [
     'stat_countries' => 'Countries',
     'stat_orders' => 'Orders Processed',
     'stat_stores' => 'Active Stores',
-    'stat_users' => 'Registered Merchants',
+    'stat_users' => 'Active Users',
     'step_add_products' => 'Add Your Products',
     'step_add_products_desc' => 'Upload products with photos, descriptions, pricing, and variants in minutes.',
     'step_launch' => 'Launch & Sell',

@@ -62,17 +62,17 @@ function oegOwner(): array
 
     $store = Store::create([
         'user_id' => $user->id,
-        'name'    => 'Geography Store',
-        'slug'    => 'oeg-'.uniqid(),
-        'status'  => 'active',
+        'name' => 'Geography Store',
+        'slug' => 'oeg-'.uniqid(),
+        'status' => 'active',
     ]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $user->id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::OWNER->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::OWNER->value,
     ]);
     $membership->syncPermissions(StoreRoles::permissions(StoreRoleEnum::OWNER));
 
@@ -84,11 +84,11 @@ function oegStaff(Store $store, array $permissions, string $name = 'Rep'): array
     $user = User::factory()->create(['name' => $name]);
 
     $membership = StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $user->id,
+        'store_id' => $store->id,
+        'user_id' => $user->id,
         'invited_by' => $store->user_id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::STAFF->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::STAFF->value,
     ]);
     $membership->syncPermissions($permissions);
 
@@ -108,11 +108,11 @@ function oegPlaces(): array
 function oegProvider(Store $store, string $name = 'Yalidine'): ShippingProvider
 {
     return ShippingProvider::create([
-        'store_id'    => $store->id,
-        'name'        => $name,
-        'code'        => 'sp-'.uniqid(),
+        'store_id' => $store->id,
+        'name' => $name,
+        'code' => 'sp-'.uniqid(),
         'credentials' => [],
-        'is_active'   => true,
+        'is_active' => true,
     ]);
 }
 
@@ -123,55 +123,55 @@ function oegOrder(Store $store, string $statusKey = 'pending', ?StoreMembership 
 
     $customer = Customer::create([
         'store_id' => $store->id,
-        'name'     => 'OEG Customer '.Str::random(5),
-        'phone'    => '0553'.fake()->unique()->numerify('######'),
-        'status'   => true,
+        'name' => 'OEG Customer '.Str::random(5),
+        'phone' => '0553'.fake()->unique()->numerify('######'),
+        'status' => true,
     ]);
 
     $product = Product::create([
-        'store_id'  => $store->id,
-        'name'      => 'OEG Product',
-        'slug'      => 'oeg-pr-'.uniqid(),
-        'sku'       => 'OEG-'.strtoupper(Str::random(6)),
-        'type'      => 'simple',
-        'price'     => 400,
+        'store_id' => $store->id,
+        'name' => 'OEG Product',
+        'slug' => 'oeg-pr-'.uniqid(),
+        'sku' => 'OEG-'.strtoupper(Str::random(6)),
+        'type' => 'simple',
+        'price' => 400,
         'is_active' => true,
     ]);
 
     $variant = ProductVariant::create([
-        'store_id'   => $store->id,
+        'store_id' => $store->id,
         'product_id' => $product->id,
-        'name'       => 'Default',
-        'sku'        => 'oeg-v-'.uniqid(),
-        'price'      => 400,
-        'stock'      => 10,
-        'is_active'  => true,
+        'name' => 'Default',
+        'sku' => 'oeg-v-'.uniqid(),
+        'price' => 400,
+        'stock' => 10,
+        'is_active' => true,
     ]);
 
     $order = Order::create([
-        'store_id'                  => $store->id,
-        'customer_id'               => $customer->id,
-        'status_id'                 => $status->id,
-        'number'                    => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
-        'total_amount'              => 400,
-        'shipping_cost'             => 0,
+        'store_id' => $store->id,
+        'customer_id' => $customer->id,
+        'status_id' => $status->id,
+        'number' => (new Order(['store_id' => $store->id]))->nextOrderNumber(),
+        'total_amount' => 400,
+        'shipping_cost' => 0,
         'assigned_to_membership_id' => $assignee?->id,
-        'assigned_at'               => $assignee ? now() : null,
-        'assignment_method'         => $assignee ? 'automatic' : null,
-        'state_id'                  => $state->id,
-        'city_id'                   => $city->id,
-        'address'                   => 'Rue des Cedres',
-        'delivery_type'             => 'home',
+        'assigned_at' => $assignee ? now() : null,
+        'assignment_method' => $assignee ? 'automatic' : null,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'address' => 'Rue des Cedres',
+        'delivery_type' => 'home',
     ]);
 
     \App\Models\Orders\OrderItem::create([
-        'store_id'           => $store->id,
-        'order_id'           => $order->id,
-        'product_id'         => $product->id,
+        'store_id' => $store->id,
+        'order_id' => $order->id,
+        'product_id' => $product->id,
         'product_variant_id' => $variant->id,
-        'quantity'           => 1,
-        'price'              => 400,
-        'subtotal'           => 400,
+        'quantity' => 1,
+        'price' => 400,
+        'subtotal' => 400,
     ]);
 
     if ($provider) {
@@ -257,12 +257,12 @@ it('lets a geography-only member edit every geography field on an unassigned ord
     expect($order->fresh()->delivery_type)->toBe('stopdesk');
 
     $point = StopdeskPoint::create([
-        'store_id'             => $store->id,
+        'store_id' => $store->id,
         'shipping_provider_id' => $provider->id,
-        'state_id'             => $state->id,
-        'city_id'              => $city->id,
-        'name'                 => 'Point '.uniqid(),
-        'is_active'            => true,
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'name' => 'Point '.uniqid(),
+        'is_active' => true,
     ]);
 
     oegVolt($geoUser, $store)
@@ -309,13 +309,12 @@ it('does not let order.dispatch.rider unlock the provider sites', function () {
         ->call('startOrderProviderEdit', $order->id)
         ->assertDispatched('swal:toast', oegDenied());
 
-    // saveOrderProvider runs guardOrderEditable() first, which returns early
-    // without a toast when editingId is empty, so seed it to reach the
-    // permission check inside saveEdit().
-    oegVolt($riderUser, $store)
-        ->set('editingId', $order->id)
-        ->call('saveOrderProvider', (string) $provider->id)
-        ->assertDispatched('swal:toast', oegDenied());
+    // editingId is #[Locked]: a dispatch.rider caller cannot fabricate an
+    // editing session by sending editingId/editingField over the wire, so the
+    // forced-edit vector is closed even before saveEdit() is consulted.
+    $riderVolt = oegVolt($riderUser, $store);
+    expect(fn () => $riderVolt->set('editingId', $order->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $riderVolt->set('editingField', 'order.shipping_provider'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
 });
 
 // ————— 3. no widening beyond geography —————

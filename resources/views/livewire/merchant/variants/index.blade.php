@@ -65,6 +65,8 @@ $canUpdate = fn () => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
 $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     return match ($variant->stockStatus()) {
         'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
         'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],
@@ -80,6 +82,7 @@ $openCreate = function (): void {
 };
 
 $beginEdit = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $this->creating = false;
@@ -92,16 +95,22 @@ $beginEdit = function (ProductVariant $variant): void {
 };
 
 $toggleAdjust = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     $this->adjustingId = $this->adjustingId === $variant->id ? null : $variant->id;
     $this->adjust_quantity = '';
     $this->adjust_type = '';
 };
 
 $toggleHistory = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     $this->historyId = $this->historyId === $variant->id ? null : $variant->id;
 };
 
 $movements = function (ProductVariant $variant): \Illuminate\Database\Eloquent\Collection {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     return $variant->inventoryMovements()
         ->with('user')
         ->orderBy('created_at', 'desc')
@@ -120,7 +129,7 @@ $save = function (): void {
         'cost_price' => ['nullable', 'numeric', 'min:0'],
     ]);
 
-    $product = Product::findOrFail($validated['product_id']);
+    $product = Product::query()->where('store_id', currentStoreId())->findOrFail($validated['product_id']);
 
     $data = [
         'product_id' => $validated['product_id'],
@@ -168,6 +177,7 @@ $cancelForm = function (): void {
 };
 
 $applyStock = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $validated = $this->validate([
@@ -192,6 +202,7 @@ $applyStock = function (ProductVariant $variant): void {
 };
 
 $delete = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
     abort_unless($this->canDelete(), 403);
 
     $variant->delete();

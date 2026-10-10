@@ -46,6 +46,8 @@ $movements = computed(function () {
 });
 
 $toggleView = function (InventoryMovement $movement): void {
+    abort_unless($movement->store_id === currentStoreId(), 403);
+
     $this->viewingId = $this->viewingId === $movement->id ? null : $movement->id;
 };
 

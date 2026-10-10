@@ -24,7 +24,13 @@ class ResolveStoreFromSubdomain
 
         app(StoreContext::class)->set($store);
 
-        if (auth()->check()) {
+        // S-03: persist the store only for an authenticated user who actually
+        // belongs to it. Writing an arbitrary storefront's id into the session
+        // would poison a merchant's current_store_id on their next request.
+        if (auth()->check() && auth()->user()?->storeMemberships()
+            ->where('store_id', $store->id)
+            ->where('is_active', true)
+            ->exists()) {
             session(['current_store_id' => $store->id]);
         }
 

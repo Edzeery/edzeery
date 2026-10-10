@@ -39,6 +39,8 @@ $alerts = computed(function () {
 });
 
 $statusBadge = function (ProductVariant $variant): array {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     return match ($variant->stockStatus()) {
         'out' => ['text' => __('inventories.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
         'low' => ['text' => __('inventories.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],

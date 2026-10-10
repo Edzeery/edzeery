@@ -942,18 +942,23 @@ $this->orders = $paginated->toArray();
 // Single source of truth for order-items display: flat per-line (edit-form / qty / price)
 // and grouped chips (products column / details modal). Both derive from the formatter.
 $buildItemSummary = function (Order $order): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
+
     return app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
         ->toFlatItems($order->items)
         ->toArray();
 };
 
 $buildItemGroups = function (Order $order): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
+
     return app(\App\Domains\Orders\Support\OrderItemsFormatter::class)
         ->toTableGroups($order->items)
         ->toArray();
 };
 
 $decorateOrder = function (Order $order, OrderService $service, array $duplicateCounts, array $priorCarrierCounts, array $carrierKeys, ?StoreMembership $membership) use ($buildItemGroups): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
     $arr = $order->toArray();
     // Status key is resolved through the statuses relation (orders.status_id FK);
     // blades must read this explicit key instead of nesting $arr['status']['key'].
@@ -1259,6 +1264,8 @@ $closeBulkSendModal = function (): void {
 // after a successful send the {PREFIX}-{HM|SD}-{6 digits} number is generated
 // and backfilled (idempotent) for orders whose carrier is a rider only.
 $ensureRiderTrackingAfterSend = function (Order $order): void {
+    abort_unless($order->store_id === currentStoreId(), 403);
+
     if (! $order->delivery_rider_id || $order->shipping_provider_id) {
         return;
     }
@@ -1271,12 +1278,15 @@ $ensureRiderTrackingAfterSend = function (Order $order): void {
 // Per-order readiness + missing-field list — single source is the
 // OrderCompleteness domain service (confirm = no carrier, send = + carrier).
 $collectMissingFields = function (Order $order, bool $forSend = true): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
+
     return app(\App\Domains\Order\Services\OrderCompleteness::class)->missingLabels($order, $forSend);
 };
 
 // Single source of truth for bulk eligibility: resolves each order's carrier
 // (provider name, fallback rider name) plus explicit "why not ready" reasons.
 $resolveBulkOrderState = function (Order $order): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
     $carrierKey = $order->shipping_provider_id ?: ($order->delivery_rider_id ?: 'unassigned');
     $carrierName = $order->shippingProvider?->name
         ?? ($order->deliveryRider?->name ?? __('order_flow.bulk_send_unassigned'));
@@ -2099,6 +2109,10 @@ $sendConfirmedOrder = function (string $orderId): void {
 };
 
 $refreshDuplicateWarnings = function (?Order $order = null): void {
+    if ($order) {
+        abort_unless($order->store_id === currentStoreId(), 403);
+    }
+
     $order ??= $this->confirmOrderId
         ? Order::where('store_id', currentStoreId())->with('items.variant')->find($this->confirmOrderId)
         : null;
@@ -3433,6 +3447,8 @@ $saveOrderName = function (): void {
 // ——— Inline edits (wilaya / commune / shipping cost override) ———
 
 $recalculateOrderShipping = function (Order $order): void {
+    abort_unless($order->store_id === currentStoreId(), 403);
+
     if (!$order->store) {
         return;
     }
@@ -3604,6 +3620,7 @@ $saveOrderCity = function (?string $cityId = null): void {
 // ——— 31.3 ——— Inline searchable selects (provider / delivery type / shipment type / stopdesk point / agent) ———
 
 $inlineStopdeskOptions = function (Order $order): array {
+    abort_unless($order->store_id === currentStoreId(), 403);
     $query = \App\Domains\Shipping\Models\StopdeskPoint::query()
         ->where('store_id', currentStoreId())
         ->where('is_active', true)
@@ -4374,7 +4391,7 @@ $submitCreate = function (): void {
 
     // C3+C4: Validate prices from DB + check stock
     $variantIds = collect($this->form['items'])->pluck('product_variant_id')->filter()->toArray();
-    $variantMap = ProductVariant::whereIn('id', $variantIds)->get()->keyBy('id');
+    $variantMap = ProductVariant::where('store_id', $storeId)->whereIn('id', $variantIds)->get()->keyBy('id');
     $store = \App\Models\Stores\Store::find($storeId);
     $tracksInventory = \App\Domains\Cart\Support\OrderRules::tracksInventory($store);
 

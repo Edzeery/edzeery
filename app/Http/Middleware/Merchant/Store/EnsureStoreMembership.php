@@ -15,14 +15,29 @@ class EnsureStoreMembership
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $user =  user();
+        $user = user();
         $store = currentStore();
+
+        if (! $store) {
+            session()->forget('current_store_id');
+            abort(403, __('stores.membership_Forbidden_403'));
+        }
+
         $membership = $user->storeMemberships()
             ->where('store_id', $store->id)
             ->where('is_active', true)
             ->first();
 
-        abort_unless($membership, 403, __('stores.membership_Forbidden_403'));
+        // S-03: a refused store must never leave a poisoned current_store_id
+        // in the session, or the next Livewire sub-request would resolve a
+        // store the user does not belong to.
+        if (! $membership) {
+            session()->forget('current_store_id');
+            abort(403, __('stores.membership_Forbidden_403'));
+        }
+
+        // Legit path only: persist the store for Livewire sub-requests.
+        session(['current_store_id' => $store->id]);
 
         app()->instance('currentMembership', $membership);
 

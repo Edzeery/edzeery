@@ -25,6 +25,7 @@ state([
     'name' => '',
     'email' => '',
     'password' => '',
+    'current_password' => '',
     'country_id' => '',
     'state_id' => '',
     'city_id' => '',
@@ -89,9 +90,19 @@ $managers = computed(function (): array {
 });
 
 $canCreate = fn () => canManageTeam();
-$canModify = fn (StoreMembership $membership) => canModifyMember($membership);
-$canManageScope = fn (StoreMembership $membership) => canManageTeam() && $membership->isManager();
+$canModify = function (StoreMembership $membership): bool {
+    abort_unless($membership->store_id === currentStoreId(), 403);
+
+    return canModifyMember($membership);
+};
+$canManageScope = function (StoreMembership $membership): bool {
+    abort_unless($membership->store_id === currentStoreId(), 403);
+
+    return canManageTeam() && $membership->isManager();
+};
 $memberRoleName = function (StoreMembership $membership): string {
+    abort_unless($membership->store_id === currentStoreId(), 403);
+
     $role = $membership->membershipRole();
     return $role?->name ?? 'staff';
 };
@@ -99,15 +110,16 @@ $memberRoleName = function (StoreMembership $membership): string {
 $openCreate = function (): void {
     abort_unless($this->canCreate(), 403);
 
-    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('editingId', 'name', 'email', 'password', 'current_password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
     $this->creating = true;
 };
 
 $closeCreate = function (): void {
-    $this->reset('creating', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('creating', 'name', 'email', 'password', 'current_password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
 };
 
 $openEdit = function (StoreMembership $membership): void {
+    abort_unless($membership->store_id === currentStoreId(), 403);
     abort_unless($this->canModify($membership), 403);
 
     $user = $membership->user;
@@ -117,6 +129,7 @@ $openEdit = function (StoreMembership $membership): void {
     $this->name = $user->name;
     $this->email = $user->email;
     $this->password = '';
+    $this->current_password = '';
     $this->country_id = $user->country_id ?? '';
     $this->state_id = $user->state_id ?? '';
     $this->city_id = $user->city_id ?? '';
@@ -130,10 +143,11 @@ $openEdit = function (StoreMembership $membership): void {
 };
 
 $closeEdit = function (): void {
-    $this->reset('editingId', 'name', 'email', 'password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
+    $this->reset('editingId', 'name', 'email', 'password', 'current_password', 'country_id', 'state_id', 'city_id', 'store_role', 'supervisor_membership_id', 'isActive', 'permissions', 'activePermissionGroup');
 };
 
 $openProductScope = function (StoreMembership $membership): void {
+    abort_unless($membership->store_id === currentStoreId(), 403);
     abort_unless($this->canManageScope($membership), 403);
     $this->productScopeMembershipId = $membership->id;
 };
@@ -177,13 +191,14 @@ $saveNew = function (): void {
 };
 
 $saveEdit = function (): void {
-    $membership = StoreMembership::findOrFail($this->editingId);
+    $membership = StoreMembership::query()->where('store_id', currentStoreId())->findOrFail($this->editingId);
     abort_unless($this->canModify($membership), 403);
 
     $this->validate([
         'name' => ['required', 'string', 'max:255'],
         'email' => ['required', 'email', 'max:255'],
         'password' => ['nullable', 'string', 'min:8'],
+        'current_password' => ['nullable', 'string', 'required_with:password'],
         'country_id' => ['required'],
         'state_id' => ['required'],
         'city_id' => ['required'],
@@ -195,6 +210,7 @@ $saveEdit = function (): void {
             'name' => $this->name,
             'email' => $this->email,
             'password' => $this->password,
+            'current_password' => $this->current_password,
             'country_id' => $this->country_id,
             'state_id' => $this->state_id,
             'city_id' => $this->city_id,
@@ -212,6 +228,7 @@ $saveEdit = function (): void {
 };
 
 $toggleActive = function (StoreMembership $membership): void {
+    abort_unless($membership->store_id === currentStoreId(), 403);
     abort_unless($this->canModify($membership), 403);
     $membership->update(['is_active' => ! $membership->is_active]);
     // Activation state changes eligibility: sweep the store's assignments now.
@@ -221,6 +238,7 @@ $toggleActive = function (StoreMembership $membership): void {
 };
 
 $remove = function (StoreMembership $membership): void {
+    abort_unless($membership->store_id === currentStoreId(), 403);
     abort_unless($this->canModify($membership), 403);
     app(StoreTeamService::class)->removeMember($membership);
     $this->dispatch('swal', type: 'success', title: __('messages.deleted_successfully'));

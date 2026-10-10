@@ -66,10 +66,13 @@ $canUpdate = fn () => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
 $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $logoUrl = function (Brand $brand): string {
+    abort_unless($brand->store_id === currentStoreId(), 403);
+
     return $brand->logo ? Storage::disk('public')->url($brand->logo) : asset('img/icons/noimg.png');
 };
 
 $toggleActive = function (Brand $brand): void {
+    abort_unless($brand->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $brand->update(['is_active' => ! $brand->is_active]);
@@ -87,6 +90,7 @@ $openCreate = function (): void {
 };
 
 $beginEdit = function (Brand $brand): void {
+    abort_unless($brand->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $this->isNew = false;
@@ -140,6 +144,7 @@ $cancelEdit = function (): void {
 };
 
 $delete = function (Brand $brand): void {
+    abort_unless($brand->store_id === currentStoreId(), 403);
     abort_unless($this->canDelete(), 403);
 
     $brand->delete();

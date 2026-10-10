@@ -56,6 +56,7 @@ $openCreate = function (): void {
 };
 
 $beginEdit = function (ProductOption $option): void {
+    abort_unless($option->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $this->creating = false;
@@ -65,6 +66,8 @@ $beginEdit = function (ProductOption $option): void {
 };
 
 $toggleActive = function (ProductOption $option): void {
+    abort_unless($option->store_id === currentStoreId(), 403);
+
     $this->activeOptionId = $this->activeOptionId === $option->id ? null : $option->id;
     $this->newValue = '';
 };
@@ -106,6 +109,8 @@ $cancelForm = function (): void {
 };
 
 $optionValues = function (ProductOption $option): \Illuminate\Database\Eloquent\Collection {
+    abort_unless($option->store_id === currentStoreId(), 403);
+
     return $option->values()
         ->withCount('variants')
         ->orderBy('value')
@@ -113,6 +118,7 @@ $optionValues = function (ProductOption $option): \Illuminate\Database\Eloquent\
 };
 
 $addValue = function (ProductOption $option): void {
+    abort_unless($option->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $value = trim($this->newValue);
@@ -126,6 +132,7 @@ $addValue = function (ProductOption $option): void {
 };
 
 $generateSizes = function (ProductOption $option): void {
+    abort_unless($option->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     if (strtolower($option->name) !== 'size') {
@@ -138,6 +145,7 @@ $generateSizes = function (ProductOption $option): void {
 };
 
 $deleteValue = function (ProductOptionValue $value): void {
+    abort_unless($value->store_id === currentStoreId(), 403);
     abort_unless($this->canDelete(), 403);
 
     if ($value->variants()->exists()) {
@@ -150,6 +158,7 @@ $deleteValue = function (ProductOptionValue $value): void {
 };
 
 $delete = function (ProductOption $option): void {
+    abort_unless($option->store_id === currentStoreId(), 403);
     abort_unless($this->canDelete(), 403);
 
     if ($option->isUsedInVariants()) {

@@ -3062,3 +3062,24 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **النتائج/التحقق:** مراجعة يدوية تقاطعت مع السطر الأخير لكل مكوّن التزامن (ProductOwnershipRouter 141، OrderDistributionStage 123، HandlesShiftHandover 161، HandlesTrackingHandover 147، DistributionQueueConcern 203، ShiftHandoverJob 45، OrderAssignmentService 202)؛ لا تغيير في PHP — doc-only.
 
 **المتبقي:** لا شيء — اكتمال PHASE 35.3 بالكامل (‎Commits: 9334e4e «35.3-1»، 8b26647 «35.3-2»، 46b41a8 «35.3-3»، d8e89fb «35.3-4»، وهذا التوثيق «35.3-5»).
+
+---
+
+## 35.4: فصل «الإسناد» عن «الاستحقاق» — توثيق القواعد (بدون كود، بانتظار الموافقة على P2)
+
+**الهدف:** إصلاح بلاغ الإحصائيات — عضو تأكيد-فقط يرسل طلبياته للتوصيل، فتظهر رصيدها لدى المتتبع (مفتاح رصيد التوصيل كان = مُسنِد التتبع) وليس لديه. القرارات المعتمدة:
+
+1. **مفتاح الرصيد الوحيد = `orders.confirmed_by_membership_id`** في التبويبين (التأكيد + التوصيل = «مصير مؤكّداته»). العمل (`assigned_to`) يبقى عمودًا مستقلًا «المُسند» ولا يُحتسب به رصيد أبدًا.
+2. **الأعمدة:** عرض التأكيد يكتسب توصّلت/رُجّعت؛ عرض التوصيل = المُسند (عمل) + delivered/returned/قيد التوصيل/revenue (رصيد) + النسب: `conversion = أكّدت÷المُسند`، `delivery = توصّلت÷أُكِّدت`، `return = رُجّعت÷(توصّلت+رُجّعت)`. حذف `latestMembership` في Delivery (استعلام مترابط) واستبداله بتجميع مستقل للعمل.
+3. **«بلا رصيد» (`confirmed_by IS NULL`):** صف + خيار في فلتر العضو (sentinel)؛ تفرقة تسمية صريحة عن «غير مُسنَدة» (عمل، مفهوم قائمة التوزيع). النطاق/الـKPI يتبع نفس المفتاح.
+4. **العضو المزدوج (تحمل `ORDER_CONFIRM` + `CRM_ORDER_TRACKING`):** يظهر في المناوبتين والتبويبين (مسموح)، بشرط «لا ازدواج داخل تبويب ولا جمع عبر التبويبات».
+5. **صفحة تتبع الطلبيات:** مُسنِد التتبع من المحرك فقط (حاملو `CRM_ORDER_TRACKING`)؛ المؤكّد ≠ المسند إلا بحمل الصلاحيتين معًا — محقق أصلًا + اختبار يُثبته؛ «أكّده» عمود مستقل.
+6. **لا `delivered_by`:** رصيد التوصيل لمؤكِّد الطلبية دائمًا.
+
+**المصطلحات الموحدة (5 مفاتيح):** `orders.created_by` = «سجّله» (يبقى) · `orders.confirmed_by` = «أكّده/أرسلها» (الرصيد) · `orders.assigned_to` = «مُسند إلى» (عمل) · `order_trackings.assigned_to` = «مُسند لتتبع» · `order_trackings.created_by` → **`tracked_by`** (مؤجل).
+
+**مؤجَّل موثَّق (قرار «لاحقًا إن لزم») — لا يُنفَّذ الآن:** إعادة تسمية `order_trackings.created_by_membership_id` → `tracked_by_membership_id` (هجرة جديدة بعد `2026_10_06_000004` + تحديث `FinancialCaptureSchemaTest`/خطوة `--step`، `FinanceCaptureHealth`، `OrderTrackingService`، `OrderStatusCaptureTest`، السيدر، الوثائق) + ترسيخ فاعل `CarrierOrderPostService::postToCarrier` (اليوم يكتب `created_by=NULL`). يُطوَّق بموعد 38-F.
+
+**مراحل 35.4:** P1 التوثيق ✅ (هذا القسم + §11 في `order-distribution-rules.md`) — P2 خلفية (المفاتيح/الأعمدة/التصفية/إزالة latestMembership) — P3 واجهة (أعمدة الجدولين + فلتر «بلا رصيد» + i18n×4 + 375/768/1440) — P4 اختبارات (سيناريو مؤكِّد≠مُسند، فلتر بلا-رصيد، + `DashboardQueryBudgetTest`، pint، المجموعة الكاملة) — P5 مؤجَّل (أعلاه).
+
+**الحالة:** doc-only (بدون أي سطر كود). بانتظار موافقة المستخدم على بدء P2.

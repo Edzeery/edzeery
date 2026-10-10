@@ -30,7 +30,7 @@ function inlineEditStoreEmployee(string $storeRole): array
     $store = Store::create([
         'user_id' => $user->id,
         'name' => 'Inline Edit Store',
-        'slug' => 'inline-edit-' . $storeRole . '-' . uniqid(),
+        'slug' => 'inline-edit-'.$storeRole.'-'.uniqid(),
         'status' => 'active',
     ]);
 
@@ -119,9 +119,16 @@ test('member without update permission is forbidden from saving an inline edit',
     // Sanity check: staff role cannot update products.
     expect(canStore(StorePermissionEnum::PRODUCT_UPDATE->value))->toBeFalse();
 
+    // editingField/editingId are #[Locked]: a caller can NOT fabricate an
+    // editing session by sending them over the wire.
+    $volt = Livewire::test(InlineEditComponent::class, ['brandId' => $brand->id]);
+    expect(fn () => $volt->set('editingId', $brand->id))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+    expect(fn () => $volt->set('editingField', 'brand.name'))->toThrow(\Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException::class);
+
+    // And even after a legitimate edit session, saveName still enforces the
+    // permission inside saveEdit() (fail-closed) rather than trusting the wire.
     Livewire::test(InlineEditComponent::class, ['brandId' => $brand->id])
-        ->set('editingField', 'brand.name')
-        ->set('editingId', $brand->id)
+        ->call('startEditName', $brand->id)
         ->set('editingValue', 'Hacker Name')
         ->call('saveName')
         ->assertDispatched('swal:toast', fn ($name, $params) => ($params[0]['icon'] ?? null) === 'error'
@@ -145,4 +152,30 @@ test('cancel restores the snapshot and clears edit state', function () {
         ->assertSet('editingValue', 'Original Brand');
 
     expect($brand->fresh()->name)->toBe('Original Brand');
+});
+
+test('saveEdit/startEdit can no longer be reached from the wire (RCE closed)', function () {
+    [$user, $store] = inlineEditStoreEmployee(StoreRoleEnum::OWNER->value);
+    $brand = inlineEditBrand($store);
+
+    actingAs($user)->withSession(['current_store_id' => $store->id]);
+
+    // S-01: saveEdit/startEdit/cancelEdit are protected on HasInlineEdit, so a
+    // malicious wire call with a crafted callable config (system/file_put_contents)
+    // is unreachable. Calling them from the component that merely uses the trait
+    // must fail, and no audit/state mutation may happen.
+    $volt = Livewire::test(InlineEditComponent::class, ['brandId' => $brand->id]);
+
+    expect(fn () => $volt->call('saveEdit', [
+        'subject' => 'system',
+        'apply' => 'file_put_contents',
+        'rules' => [],
+        'field' => 'brand.name',
+    ]))->toThrow(\Livewire\Exceptions\MethodNotFoundException::class);
+
+    expect(fn () => $volt->call('startEdit', 'brand.name', $brand->id, $brand->name))
+        ->toThrow(\Livewire\Exceptions\MethodNotFoundException::class);
+
+    expect($brand->fresh()->name)->toBe('Original Brand')
+        ->and(Activity::query()->count())->toBe(0);
 });

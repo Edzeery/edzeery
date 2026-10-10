@@ -20,32 +20,44 @@ class StoreTeamService
 {
     use ResolvesSupervisorAssignment;
 
-    public function addMember(Store $store, array $data): StoreMembership
+    public function addMember(Store $store, array $payload): StoreMembership
     {
-        $member = DB::transaction(function () use ($store, $data) {
+        $newCredentialsProvided = false;
 
-            $this->ensureUserIsNotPlatformStaff($data['email']);
+        $member = DB::transaction(function () use ($store, $payload, &$newCredentialsProvided) {
+
+            $this->ensureUserIsNotPlatformStaff($payload['email']);
             $this->ensureStaffLimitNotExceeded($store);
 
             $member_user = User::firstOrCreate(
-                ['email' => $data['email']],
+                ['email' => $payload['email']],
                 [
-                    'name' => $data['name'],
+                    'name' => $payload['name'],
                     'password' => Hash::make(Str::random(16)),
                 ]
             );
 
+            // S-02: an account already linked to this email must NEVER have its
+            // password rewritten from the add-member payload — that would be
+            // account takeover. Existing accounts join with their credentials
+            // intact; only a freshly-created account accepts a password.
+            if (! empty($payload['password']) && ! $member_user->wasRecentlyCreated) {
+                throw new \Exception(__('teams.cannot_set_password_on_existing_user'));
+            }
+
+            if ($member_user->wasRecentlyCreated && ! empty($payload['password'])) {
+                $newCredentialsProvided = true;
+            }
+
             $updateData = [
-                'name' => $data['name'],
-                'country_id' => $data['country_id'] ?? $member_user->country_id,
-                'state_id' => $data['state_id'] ?? $member_user->state_id,
-                'city_id' => $data['city_id'] ?? $member_user->city_id,
+                'name' => $payload['name'],
+                'country_id' => $payload['country_id'] ?? $member_user->country_id,
+                'state_id' => $payload['state_id'] ?? $member_user->state_id,
+                'city_id' => $payload['city_id'] ?? $member_user->city_id,
             ];
 
-            if (! empty($data['password']) && ! $member_user->wasRecentlyCreated) {
-                $updateData['password'] = Hash::make($data['password']);
-            } elseif (! empty($data['password']) && $member_user->wasRecentlyCreated) {
-                $updateData['password'] = Hash::make($data['password']);
+            if ($newCredentialsProvided) {
+                $updateData['password'] = Hash::make($payload['password']);
             }
 
             $member_user->update($updateData);
@@ -58,15 +70,15 @@ class StoreTeamService
                 throw new \Exception(__('teams.member_already_exists'));
             }
 
-            $role = StoreRoleEnum::from($data['store_role']);
+            $role = StoreRoleEnum::from($payload['store_role']);
 
             $member = StoreMembership::create([
                 'store_id' => $store->id,
                 'user_id' => $member_user->id,
                 'invited_by' => user()->id,
-                'is_active' => $data['is_active'] ?? true,
+                'is_active' => $payload['is_active'] ?? true,
                 'role' => $role->value,
-                'supervisor_membership_id' => $this->resolveSupervisorId($store, $data),
+                'supervisor_membership_id' => $this->resolveSupervisorId($store, $payload),
             ]);
 
             // Decision #6 — hybrid: keep the global merchant role for platform
@@ -78,7 +90,7 @@ class StoreTeamService
                 $member_user->assignRole($role->value);
             }
 
-            $permissions = $data['permissions'] ?? \App\Support\StoreRoles::permissions($role);
+            $permissions = $payload['permissions'] ?? \App\Support\StoreRoles::permissions($role);
             $member->syncPermissions($permissions);
 
             $this->consumeStaffQuota($store);
@@ -87,38 +99,48 @@ class StoreTeamService
         });
 
         // Phase 36.8 — send the one-time credentials email AFTER the transaction
-        // commits, so a mail failure never rolls back the new member.
-        $this->dispatchMemberCredentialsMail($store, $member, $data);
+        // commits, so a mail failure never rolls back the new member. Only the
+        // freshly-created account has a password to disclose.
+        if ($newCredentialsProvided) {
+            $this->dispatchMemberCredentialsMail($store, $member, $payload);
+        }
 
         return $member;
     }
 
-    public function updateMember(Store $store, StoreMembership $membership, array $data): StoreMembership
+    public function updateMember(Store $store, StoreMembership $membership, array $payload): StoreMembership
     {
-        $membership = DB::transaction(function () use ($store, $membership, $data) {
+        $membership = DB::transaction(function () use ($store, $membership, $payload) {
 
             $user = $membership->user;
 
             $userData = [
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'country_id' => $data['country_id'] ?? $user->country_id,
-                'state_id' => $data['state_id'] ?? $user->state_id,
-                'city_id' => $data['city_id'] ?? $user->city_id,
+                'name' => $payload['name'],
+                'email' => $payload['email'],
+                'country_id' => $payload['country_id'] ?? $user->country_id,
+                'state_id' => $payload['state_id'] ?? $user->state_id,
+                'city_id' => $payload['city_id'] ?? $user->city_id,
             ];
 
-            if (! empty($data['password'])) {
-                $userData['password'] = Hash::make($data['password']);
+            // S-02: a password may only be set when the caller re-authenticates
+            // with the acting member's current password — a silent reset from a
+            // stale session is exactly the takeover this guard closes.
+            if (! empty($payload['password'])) {
+                if (blank($payload['current_password'] ?? null) || ! Hash::check($payload['current_password'], user()->getAuthPassword())) {
+                    throw new \Exception(__('teams.current_password_required'));
+                }
+
+                $userData['password'] = Hash::make($payload['password']);
             }
 
             $user->update($userData);
 
             $membership->update([
-                'is_active' => $data['is_active'] ?? $membership->is_active,
+                'is_active' => $payload['is_active'] ?? $membership->is_active,
             ]);
 
-            if (! empty($data['store_role'])) {
-                $role = StoreRoleEnum::from($data['store_role']);
+            if (! empty($payload['store_role'])) {
+                $role = StoreRoleEnum::from($payload['store_role']);
                 $membership->update(['role' => $role->value]);
 
                 // Decision #6 — hybrid: keep the global role synced for platform
@@ -128,13 +150,13 @@ class StoreTeamService
                 $user->syncRoles([$role->value]);
             }
 
-            if (isset($data['permissions']) && is_array($data['permissions'])) {
+            if (isset($payload['permissions']) && is_array($payload['permissions'])) {
                 $user->guard_name = 'merchant';
-                $user->syncPermissions($data['permissions']);
-                $membership->syncPermissions($data['permissions']);
+                $user->syncPermissions($payload['permissions']);
+                $membership->syncPermissions($payload['permissions']);
             }
 
-            $this->applySupervisorOnUpdate($store, $membership, $data);
+            $this->applySupervisorOnUpdate($store, $membership, $payload);
 
             return $membership->refresh();
         });
@@ -216,22 +238,22 @@ class StoreTeamService
         app(FeatureUsageService::class)->consume($subscription, 'staff_limit');
     }
 
-    protected function dispatchMemberCredentialsMail(Store $store, StoreMembership $member, array $data): void
+    protected function dispatchMemberCredentialsMail(Store $store, StoreMembership $member, array $payload): void
     {
         try {
-            Mail::to($data['email'])->send(new StoreMembershipCredentialsMail(
+            Mail::to($payload['email'])->send(new StoreMembershipCredentialsMail(
                 storeName: $store->name,
                 inviterName: user()->name,
-                memberName: $data['name'],
-                memberEmail: $data['email'],
-                password: $data['password'],
+                memberName: $payload['name'],
+                memberEmail: $payload['email'],
+                password: $payload['password'],
                 loginUrl: route('login'),
             ));
         } catch (\Throwable $e) {
             Log::warning('Failed to send team member credentials email.', [
                 'store_membership_id' => $member->id,
                 'store_id' => $store->id,
-                'member' => $data['email'],
+                'member' => $payload['email'],
                 'error' => $e->getMessage(),
             ]);
         }

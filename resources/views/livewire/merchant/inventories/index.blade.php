@@ -55,6 +55,8 @@ $inventories = computed(function () {
 $canAdjust = fn() => canStore(StorePermissionEnum::INVENTORY_UPDATE->value);
 
 $stockBadge = function (ProductVariant $variant): array {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     return match ($variant->stockStatus()) {
         'out' => ['text' => __('stock_alerts.out_of_stock'), 'class' => 'text-danger-fg-strong bg-danger-surface-strong'],
         'low' => ['text' => __('stock_alerts.low_stock'), 'class' => 'text-warning-fg-strong bg-warning-surface-strong'],
@@ -63,12 +65,16 @@ $stockBadge = function (ProductVariant $variant): array {
 };
 
 $toggleAdjust = function (ProductVariant $variant): void {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     $this->adjustingId = $this->adjustingId === $variant->id ? null : $variant->id;
     $this->adjust_quantity = '';
     $this->adjust_reason = '';
 };
 
 $movementsUrl = function (ProductVariant $variant): string {
+    abort_unless($variant->store_id === currentStoreId(), 403);
+
     return route('merchant.inventory-movements.index', [currentStore(), 'variant_id' => $variant->id]);
 };
 

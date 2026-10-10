@@ -100,12 +100,15 @@ $canExport = fn() => canStore(StorePermissionEnum::PRODUCT_VIEW->value);
 $canImport = fn() => canStore(StorePermissionEnum::PRODUCT_CREATE->value);
 
 $imageUrl = function (Product $product): string {
+    abort_unless($product->store_id === currentStoreId(), 403);
+
     $path = $product->primaryImage?->path;
 
     return $path ? Storage::disk('public')->url($path) : asset('img/icons/noimg.png');
 };
 
 $delete = function (Product $product): void {
+    abort_unless($product->store_id === currentStoreId(), 403);
     abort_unless(canStore(StorePermissionEnum::PRODUCT_DELETE->value), 403);
 
     $product->delete();

@@ -108,7 +108,7 @@ return [
     'stat_countries' => 'Países',
     'stat_orders' => 'Pedidos procesados',
     'stat_stores' => 'Tiendas activas',
-    'stat_users' => 'Comerciantes registrados',
+    'stat_users' => 'Usuarios activos',
     'step_add_products' => 'Agrega tus productos',
     'step_add_products_desc' => 'Sube productos con fotos, descripciones, precios y variantes en minutos.',
     'step_launch' => 'Lanza y vende',

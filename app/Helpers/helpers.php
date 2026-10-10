@@ -504,3 +504,4 @@ require __DIR__.'/Language_Translation.php';
 require __DIR__.'/subscription.php';
 require __DIR__.'/userHelper.php';
 require __DIR__.'/cart_notice.php';
+require __DIR__.'/store_helper.php';

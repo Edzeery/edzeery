@@ -77,6 +77,8 @@ $canUpdate = fn () => canStore(StorePermissionEnum::PRODUCT_UPDATE->value);
 $canDelete = fn () => canStore(StorePermissionEnum::PRODUCT_DELETE->value);
 
 $logoUrl = function (Category $category): string {
+    abort_unless($category->store_id === currentStoreId(), 403);
+
     return $category->logo ? Storage::disk('public')->url($category->logo) : asset('img/icons/noimg.png');
 };
 
@@ -89,6 +91,7 @@ $openCreate = function (): void {
 };
 
 $beginEdit = function (Category $category): void {
+    abort_unless($category->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $this->creating = false;
@@ -101,6 +104,7 @@ $beginEdit = function (Category $category): void {
 };
 
 $toggleActive = function (Category $category): void {
+    abort_unless($category->store_id === currentStoreId(), 403);
     abort_unless($this->canUpdate(), 403);
 
     $category->update(['is_active' => ! $category->is_active]);
@@ -174,14 +178,14 @@ $save = function (): void {
 };
 
 $isDescendant = function (string $id, string $possibleParentId): bool {
-    $current = Category::find($possibleParentId);
+    $current = Category::query()->where('store_id', currentStoreId())->find($possibleParentId);
 
     while ($current) {
         if ($current->id === $id) {
             return true;
         }
 
-        $current = $current->parent_id ? Category::find($current->parent_id) : null;
+        $current = $current->parent_id ? Category::query()->where('store_id', currentStoreId())->find($current->parent_id) : null;
     }
 
     return false;
@@ -193,6 +197,7 @@ $cancelForm = function (): void {
 };
 
 $delete = function (Category $category): void {
+    abort_unless($category->store_id === currentStoreId(), 403);
     abort_unless($this->canDelete(), 403);
 
     $category->delete();

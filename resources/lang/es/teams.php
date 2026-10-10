@@ -5,9 +5,12 @@ return [
     'add_member' => 'Agregar miembro',
     'all_roles' => 'Todos los roles',
     'cannot_add_platform_staff' => 'Las cuentas de la plataforma no pueden ser agregadas al equipo de la tienda.',
+    'cannot_set_password_on_existing_user' => 'Este correo ya pertenece a una cuenta activa. No se puede asignar una contraseña sobre una cuenta existente.',
+    'confirm_identity' => 'Confirme su contraseña actual para establecer una nueva',
     'city' => 'Ciudad',
     'country' => 'País',
     'custom_badge' => 'Personalizado',
+    'current_password_required' => 'Su contraseña actual es necesaria para cambiar la contraseña de este miembro.',
     'dangerous_badge' => 'Sensible',
     'dangerous_hint' => 'Los permisos marcados como sensibles pueden afectar a datos críticos de la tienda.',
     'email' => 'Email',
@@ -67,7 +70,6 @@ return [
     'title' => 'Gestión de equipo',
     'try_adjusting' => 'Intenta modificar tu búsqueda.',
     'update_member' => 'Actualizar miembro',
-
 
     'view_all' => 'Ver todo',
     'view_all_permissions' => 'Ver todas las permisos',

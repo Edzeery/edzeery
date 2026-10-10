@@ -137,7 +137,7 @@ $submitProcess = function (): void {
         return;
     }
 
-    $tracking = OrderTracking::findOrFail($this->processTrackingId);
+    $tracking = OrderTracking::where('store_id', currentStoreId())->findOrFail($this->processTrackingId);
     $membership = \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
         ->where('user_id', auth()->id())
         ->first();
@@ -165,7 +165,7 @@ $requeue = function (string $trackingId): void {
         return;
     }
 
-    $tracking = OrderTracking::findOrFail($trackingId);
+    $tracking = OrderTracking::where('store_id', currentStoreId())->findOrFail($trackingId);
     $membership = \App\Models\Stores\Team\StoreMembership::where('store_id', currentStoreId())
         ->where('user_id', auth()->id())
         ->first();
