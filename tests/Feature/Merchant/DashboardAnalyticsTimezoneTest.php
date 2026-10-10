@@ -71,6 +71,7 @@ beforeEach(function () {
             'status_id' => $this->statusIds[$statusKey],
             'delivery_type' => 'delivery',
             'assigned_to_membership_id' => $membershipId,
+            'confirmed_by_membership_id' => $membershipId,
         ]);
 
         return $order->forceFill(['created_at' => $createdAt, 'updated_at' => $createdAt])->save() ? $order : $order;
