@@ -15,28 +15,30 @@ class DashboardStats extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        $storeCounts = storeStatusCounts();
+
         return [
             Stat::make(
                 'ACTIVED Stores',
-                AllActiveStoresCount()
+                $storeCounts[StoreStatusEnum::ACTIVE->value] ?? 0
             )
                 ->color('success')
                 ->icon(StoreStatusEnum::ACTIVE->filamentIcon()),
             Stat::make(
                 'PENDING Stores',
-                AllPendingStoresCount()
+                $storeCounts[StoreStatusEnum::PENDING->value] ?? 0
             )
                 ->color('warning')
                 ->icon(StoreStatusEnum::PENDING->filamentIcon()),
             Stat::make(
                 'CLOSED Stores',
-                AllClosedStoresCount()
+                $storeCounts[StoreStatusEnum::CLOSED->value] ?? 0
             )
                 ->color('danger')
                 ->icon(StoreStatusEnum::CLOSED->filamentIcon()),
             Stat::make(
                 'All Stores',
-                AllStoresCount()
+                array_sum($storeCounts)
             )
                 ->icon('heroicon-o-shopping-bag'),
 

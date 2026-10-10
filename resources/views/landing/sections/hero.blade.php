@@ -71,19 +71,19 @@
                         <span class="w-3 h-3 rounded-full bg-red-400"></span>
                         <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
                         <span class="w-3 h-3 rounded-full bg-green-400"></span>
-                        <span class="ml-3 text-xs text-ink-soft">edzeery.com/dashboard</span>
+                        <span class="ml-3 text-xs text-ink-soft">{{ lowercase(config('app.name')) }}.com/merchant/demo/dashboard</span>
                     </div>
                     <div class="p-6 space-y-4">
                         <div class="flex gap-4">
                             <div class="flex-1 rounded-lg bg-brand-50 dark:bg-brand-950/40 p-4">
                                 <div class="text-xs text-brand-600 dark:text-brand-400 font-medium">
                                     {{ __('landing.mock_revenue') }}</div>
-                                <div class="mt-1 text-2xl font-bold text-ink">125,000 {{ __('currency.DZD') }}</div>
+                                <div class="mt-1 text-2xl font-bold text-ink">  {{   formatCurrency($totalRevenue) }}</div>
                             </div>
                             <div class="flex-1 rounded-lg bg-green-50 dark:bg-green-950/40 p-4">
                                 <div class="text-xs text-green-600 dark:text-green-400 font-medium">
                                     {{ __('landing.mock_orders') }}</div>
-                                <div class="mt-1 text-2xl font-bold text-ink">1,284</div>
+                                <div class="mt-1 text-2xl font-bold text-ink">{{ $totalTransactions }}</div>
                             </div>
                         </div>
                         <div class="rounded-lg bg-surface-secondary p-4">
@@ -103,8 +103,7 @@
                                                 {{ __('landing.mock_items') }}</div>
                                         </div>
                                     </div>
-                                    <div class="text-sm font-semibold text-ink">{{ rand(2000, 15000) }}
-                                        {{ __('currency.DZD') }}</div>
+                                    <div class="text-sm font-semibold text-ink">{{ formatCurrency(rand(2000, 15000)) }}</div>
                                 </div>
                             @endforeach
                         </div>

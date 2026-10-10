@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
+    use \App\Models\Orders\Concerns\HasStatusKeyScope;
     use HasUlids;
     use HasVisibilityScope;
     use SoftDeletes;

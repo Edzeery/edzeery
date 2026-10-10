@@ -2,7 +2,7 @@
     <div class="max-w-7xl mx-auto px-6">
 
         {{-- Stats --}}
-        <div class="grid grid-cols-3 gap-5 mb-16">
+        <div class="grid grid-cols-4 gap-5 mb-16">
             @php
                 $stats = [
                     [
@@ -20,10 +20,9 @@
                         'label' => __('landing.stat_users'),
                         'icon' => 'people-outline',
                     ],
-
                     [
-                        'value' => number_format($totalRevenue),
-                        'label' => __('landing.stat_revenue'),
+                        'value' => number_format($totalTransactions),
+                        'label' => __('landing.stat_transactions'),
                         'icon' => 'cash-outline',
                     ],
                 ];

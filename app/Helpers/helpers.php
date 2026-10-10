@@ -140,7 +140,7 @@ if (! function_exists('canStore')) {
         // Store id is cheap here: StoreResolver is cached in the
         // request-scoped StoreContext after its first resolution.
         $storeKey = (string) currentStoreId();
-        $key = $storeKey.'|'.$permission;
+        $key = $storeKey . '|' . $permission;
 
         if (array_key_exists($key, StoreScopedCache::$canStore)) {
             return StoreScopedCache::$canStore[$key];
@@ -348,9 +348,11 @@ if (! function_exists('currentMembership')) {
         // is returned, so the per-instance permission cache kicks in.
         if (app()->bound('currentMembership')) {
             $bound = app('currentMembership');
-            if ($bound instanceof StoreMembership
+            if (
+                $bound instanceof StoreMembership
                 && (string) $bound->store_id === (string) $store->id
-                && (int) $bound->user_id === (int) $user->id) {
+                && (int) $bound->user_id === (int) $user->id
+            ) {
                 return $bound;
             }
         }
@@ -378,7 +380,7 @@ if (! function_exists('currentMembershipStore')) {
 if (! function_exists('generatecode')) {
     function generatecode($prefix = 'PRO-', $suffix = null): string
     {
-        return $prefix.uniqid().$suffix;
+        return $prefix . uniqid() . $suffix;
     }
 }
 
@@ -500,8 +502,47 @@ if (! function_exists('system_setting')) {
     }
 }
 
-require __DIR__.'/Language_Translation.php';
-require __DIR__.'/subscription.php';
-require __DIR__.'/userHelper.php';
-require __DIR__.'/cart_notice.php';
-require __DIR__.'/store_helper.php';
+if (! function_exists('lowercase')) {
+    function lowercase(string $value): string
+    {
+        return mb_strtolower($value, 'UTF-8');
+    }
+}
+
+if (! function_exists('uppercase')) {
+    function uppercase(string $value): string
+    {
+        return mb_strtoupper($value, 'UTF-8');
+    }
+}
+
+if (! function_exists('FirstLetterUppercase')) {
+    function FirstLetterUppercase(string $value): string
+    {
+        return mb_strtoupper(mb_substr($value, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($value, 1, null, 'UTF-8');
+    }
+}
+
+
+if (! function_exists('formatCurrency')) {
+    function formatCurrency(float $amount, string $currency = 'DZD'): string
+    {
+        return number_format($amount, 2, '.', ',') . ' ' .  __('currency.' . $currency);
+    }
+}
+
+if (! function_exists('formatCurrencyWithoutSymbol')) {
+    function formatCurrencyWithoutSymbol(float $amount): string
+    {
+        return number_format($amount, 2, '.', ',');
+    }
+
+}
+
+
+require __DIR__ . '/Language_Translation.php';
+require __DIR__ . '/subscription.php';
+require __DIR__ . '/userHelper.php';
+require __DIR__ . '/cart_notice.php';
+require __DIR__ . '/store_helper.php';
+require __DIR__ . '/order_helper.php';
