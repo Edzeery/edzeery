@@ -101,3 +101,25 @@ test('confirmed demo orders carry the credit key and unconfirmed ones stay unatt
     expect($pending->confirmed_by_membership_id)->toBeNull()
         ->and($pending->confirmed_at)->toBeNull();
 });
+
+test('demo order assignments only reference confirmation-role members', function () {
+    $this->seed(DemoStoreSeeder::class);
+
+    $store = Store::where('slug', 'demo')->sole();
+
+    $orders = \App\Models\Orders\Order::withoutGlobalScopes()
+        ->where('store_id', $store->id)
+        ->whereNotNull('assigned_to_membership_id')
+        ->with('assignedMembership')
+        ->get();
+
+    expect($orders)->not->toBeEmpty();
+
+    foreach ($orders as $order) {
+        // orders.assigned_to_membership_id is the confirmation-scope key, so
+        // the assignee must hold ORDER_CONFIRM — never a tracking-only agent
+        // (tracker) leaking into the confirmation cohort / dashboard work tab.
+        expect($order->assignedMembership?->can(\App\Enums\Store\StorePermissionEnum::ORDER_CONFIRM))
+            ->toBeTrue();
+    }
+});

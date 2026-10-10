@@ -424,6 +424,66 @@ test('credit follows the confirmer, workload counts the tracking member once', f
         ->and(tpfRow($html, 'Gamma'))->toBe(['Gamma', '1', '0', '0', '0', '0%', '0%', '0.00 DZD']);
 });
 
+test('the confirmation view never names a tracking-only member and managers run both cohorts', function () {
+    [$user, $store] = tpfStore();
+
+    $tracker = tpfMembership($store, null, StoreRoleEnum::STAFF, [
+        StorePermissionEnum::ORDER_VIEW->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
+    ]);
+    $dual = tpfMembership($store, null, StoreRoleEnum::STAFF, [
+        StorePermissionEnum::ORDER_VIEW->value,
+        StorePermissionEnum::ORDER_CONFIRM->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
+    ]);
+    // MANAGER's stock template carries neither ORDER_CONFIRM nor
+    // CRM_ORDER_TRACKING, so only the management-role rule can surface them.
+    $manager = tpfMembership($store, null, StoreRoleEnum::MANAGER);
+
+    tpfRename($tracker, 'Tracker Only');
+    tpfRename($dual, 'Dual Person');
+    tpfRename($manager, 'Manager Person');
+
+    // Invalid data on purpose: an order assigned to a tracking-only member.
+    $trackerOrder = tpfOrder($store, [
+        'status_id' => tpfStatus(OrderStatus::CONFIRMED),
+        'assigned_to_membership_id' => $tracker->id,
+    ]);
+    tpfTracking($store, $trackerOrder, $tracker, '01J000000000000000000000T1');
+
+    $dualOrder = tpfOrder($store, [
+        'status_id' => tpfStatus(OrderStatus::CONFIRMED),
+        'assigned_to_membership_id' => $dual->id,
+        'confirmed_by_membership_id' => $dual->id,
+    ]);
+    tpfTracking($store, $dualOrder, $dual, '01J000000000000000000000T2');
+
+    $managerOrder = tpfOrder($store, [
+        'status_id' => tpfStatus(OrderStatus::CONFIRMED),
+        'assigned_to_membership_id' => $manager->id,
+        'confirmed_by_membership_id' => $manager->id,
+    ]);
+    tpfTracking($store, $managerOrder, $manager, '01J000000000000000000000T3');
+
+    $confirmation = tpfHtml($user, $store);
+
+    // The tracking-only member is dropped from the confirmation cohort even
+    // though an order points at them; the dual member and the manager stay.
+    expect(tpfRow($confirmation, 'Tracker Only'))->toBe([])
+        ->and(tpfRow($confirmation, 'Dual Person'))->not->toBe([])
+        ->and(tpfRow($confirmation, 'Manager Person'))->not->toBe([])
+        // The member picker follows the same cohort, so the tracker cannot even
+        // be chosen from the Confirmation filter.
+        ->and($confirmation)->not->toContain('Tracker Only');
+
+    $delivery = tpfHtml($user, $store, ['md' => 'delivery']);
+
+    // On the delivery side the tracker legitimately carries the shipment, and
+    // the manager (management role) is named on both tabs.
+    expect(tpfRow($delivery, 'Tracker Only'))->not->toBe([])
+        ->and(tpfRow($delivery, 'Manager Person'))->not->toBe([]);
+});
+
 test('the sentinel pick surfaces the unattributed cohort alone, summing its workload', function () {
     $f = tpfScenario();
 

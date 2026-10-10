@@ -1017,7 +1017,7 @@ class DemoStoreSeeder extends Seeder
                 'items' => [['DEMO-SPK-001-DF', 1]],
                 'provider' => 'ecotrack',
                 'send_from_carrier_warehouse' => true,
-                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'assign_to' => 'demo.confirmer@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'history' => [
                     ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed by phone', 10],
                     ['shipped', 'demo.tracker@edzeery.com', 'Packed and picked up by Ecotrack', 30],
@@ -1031,7 +1031,7 @@ class DemoStoreSeeder extends Seeder
                 'number' => '21010', 'customer' => '0771112233', 'status' => 'out_for_delivery', 'days_ago' => 7, 'create_hour' => 9,
                 'items' => [['DEMO-WATCH-001-BK', 1]],
                 'provider' => 'ecotrack',
-                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'assign_to' => 'demo.confirmer@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'over_capacity' => true,
                 'history' => [
                     ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed', 8],
@@ -1051,7 +1051,7 @@ class DemoStoreSeeder extends Seeder
                 'number' => '21011', 'customer' => '0550123456', 'status' => 'delivered', 'days_ago' => 9, 'create_hour' => 9,
                 'items' => [['DEMO-EAR-001-BK', 1], ['DEMO-BAG-001-DF', 1]],
                 'provider' => 'zrexpress_v2',
-                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'assign_to' => 'demo.confirmer@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'notes' => 'Delivered to the concierge at the residence; COD collected.',
                 'history' => [
                     ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed', 6],
@@ -1107,7 +1107,7 @@ class DemoStoreSeeder extends Seeder
                 'number' => '21014', 'customer' => '0550123456', 'status' => 'shipped', 'days_ago' => 3, 'create_hour' => 9,
                 'items' => [['DEMO-BAG-001-DF', 1]],
                 'rider' => '0550100011',
-                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'assign_to' => 'demo.dual@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'history' => [
                     ['confirmed', 'demo.dual@edzeery.com', 'Confirmed — COD via rider', 10],
                     ['shipped', 'demo.tracker@edzeery.com', 'Handed to rider Yacine', 28],
@@ -1141,7 +1141,7 @@ class DemoStoreSeeder extends Seeder
                 'provider' => 'zrexpress_v2',
                 'delivery_type' => 'stopdesk',
                 'stopdesk_point' => 'ZR-ORN-01',
-                'assign_to' => 'demo.tracker@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
+                'assign_to' => 'demo.confirmer@edzeery.com', 'assign_by' => 'demo@edzeery.com', 'assign_method' => 'auto',
                 'notes' => 'Delivered to the ZR Express Oran office; customer picked it up.',
                 'history' => [
                     ['confirmed', 'demo.confirmer@edzeery.com', 'Confirmed — customer chose office pickup', 8],

@@ -57,7 +57,7 @@ function tgbOwner(): array
  * assigned_to/confirmed_by filters, because the owner is excluded from the
  * assignable/confirming lists (allMembers).
  */
-function tgbManager(Store $store, string $name = null): array
+function tgbManager(Store $store, ?string $name = null): array
 {
     $manager = roleUser('manager');
     $manager->update(['name' => $name ?? 'Manager Person']);
@@ -153,13 +153,24 @@ function tgbVolt(array $ctx): object
     return Volt::test('merchant.tracking.index');
 }
 
-test('the assigned-to filter narrows the grid to that membership', function () {
+test('the assigned-to filter narrows the grid by the shipment assignee (order_trackings)', function () {
     [$user, $store, $ownerMembership] = tgbOwner();
     [, $managerMembership] = tgbManager($store, 'Assign Agent');
     $provider = tgbProvider($store, 'Assign Co');
+
+    // Carries the shipment assignee on its tracking row.
     $assigned = tgbOrder($store, $provider, 'TRK-AS-1', 'shipped');
-    $assigned->update(['assigned_to_membership_id' => $managerMembership->id]);
-    $plain = tgbOrder($store, $provider, 'TRK-AS-2', 'shipped');
+    OrderTracking::where('order_id', $assigned->id)->update([
+        'assigned_to_membership_id' => $managerMembership->id,
+    ]);
+
+    // Holds the same membership on the ORDER (confirmation scope) but no
+    // tracking assignee — it must NOT match: «الوكيل المسند» on the tracking
+    // page reads the shipment row, not the order's confirmation assignment.
+    $orderOnly = tgbOrder($store, $provider, 'TRK-AS-2', 'shipped');
+    $orderOnly->update(['assigned_to_membership_id' => $managerMembership->id]);
+
+    $plain = tgbOrder($store, $provider, 'TRK-AS-3', 'shipped');
 
     $volt = tgbVolt([$user, $store]);
 
@@ -172,13 +183,14 @@ test('the assigned-to filter narrows the grid to that membership', function () {
         ->assertSet('filters.assigned_to', $managerMembership->id)
         ->assertSet('shipments', fn ($rows) => count($rows) === 1
             && collect($rows)->pluck('number')->contains($assigned->number)
+            && collect($rows)->pluck('number')->doesntContain($orderOnly->number)
             && collect($rows)->pluck('number')->doesntContain($plain->number));
 
-    // Row map exposes the display name for the assigned_to column.
+    // Row map exposes the shipment assignee's display name.
     $volt->assertSet('shipments.0.assigned_to', 'Assign Agent');
 
     $volt->call('setFilter', 'assigned_to', null)
-        ->assertSet('shipments', fn ($rows) => count($rows) === 2);
+        ->assertSet('shipments', fn ($rows) => count($rows) === 3);
 });
 
 test('the confirmed-by filter narrows the grid to the confirming membership', function () {
@@ -212,7 +224,7 @@ test('the grid row map carries the new columns (state, assigned_to, confirmed_by
     [$user, $store, $membership] = tgbOwner();
     $provider = tgbProvider($store, 'Row Co');
     $order = tgbOrder($store, $provider, 'TRK-ROW-1', 'shipped');
-    $order->update(['assigned_to_membership_id' => $membership->id]);
+    OrderTracking::where('order_id', $order->id)->update(['assigned_to_membership_id' => $membership->id]);
 
     $volt = tgbVolt([$user, $store]);
 
@@ -228,6 +240,9 @@ test('the grid row map carries the new columns (state, assigned_to, confirmed_by
         ->toHaveKey('state')
         ->toHaveKey('latest_note')
         ->toHaveKey('tracking_id');
+
+    // «الوكيل المسند» resolves from the tracking row, so it is populated.
+    expect($volt->get('shipments')[0]['assigned_to'])->not->toBeNull();
 });
 
 test('editing is refused for a terminal (delivered/returned) shipment', function () {

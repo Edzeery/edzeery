@@ -51,7 +51,7 @@
             <p class="text-sm text-ink-muted">{{ __('dashboard.team_no_activity') }}</p>
         </div>
     @else
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto edz-scroll">
             <table class="w-full min-w-[44rem] text-sm">
                 <thead>
                     <tr class="border-b border-surface-border text-start text-xs uppercase tracking-wider text-ink-muted">

@@ -42,7 +42,7 @@ trait TrackingGridConcern
                 'deliveryRider',
                 'city',
                 'state',
-                'assignedMembership.user',
+                'latestTracking.assignedTo.user',
                 'confirmedByHistory.changedBy.user',
                 'items.product:id,name',
             ]);
@@ -84,7 +84,7 @@ trait TrackingGridConcern
                 'deliveryRider',
                 'city',
                 'state',
-                'assignedMembership.user',
+                'latestTracking.assignedTo.user',
                 'confirmedByHistory.changedBy.user',
                 'items.product:id,name',
             ]);
@@ -157,7 +157,10 @@ trait TrackingGridConcern
         }
 
         if (filled($f['assigned_to'] ?? null)) {
-            $query->where('assigned_to_membership_id', $f['assigned_to']);
+            // «الوكيل المسند» على صفحة تتبّع الطلبيات هو مسنَد الشحنة
+            // (order_trackings.assigned_to_membership_id) — نفس دلالة طابور
+            // التوزيع في تبويب التتبّع، لا مسنَد الطلبية في مرحلة التأكيد.
+            $query->whereHas('latestTracking', fn ($q) => $q->where('assigned_to_membership_id', $f['assigned_to']));
         }
 
         if (filled($f['confirmed_by'] ?? null)) {
@@ -217,7 +220,7 @@ trait TrackingGridConcern
         // tracking row (latestOfMany(created_at)) so counts stay identical.
         $todayStr = \Carbon\Carbon::today()->toDateString();
 
-        $statsRow = (clone $agg)->selectRaw("
+        $statsRow = (clone $agg)->selectRaw('
             SUM(CASE WHEN NOT EXISTS (
                 SELECT 1 FROM order_trackings lt
                 WHERE lt.order_id = orders.id
@@ -242,7 +245,7 @@ trait TrackingGridConcern
                   AND lt.created_at = (SELECT MAX(tt.created_at) FROM order_trackings tt WHERE tt.order_id = orders.id)
                   AND lt.tracking_number IS NOT NULL AND lt.carrier_validated_at IS NULL
             ) THEN 1 ELSE 0 END) as bulk_validate
-        ")->addBinding([$todayStr, $todayStr], 'select')->first();
+        ')->addBinding([$todayStr, $todayStr], 'select')->first();
 
         $this->stats = [
             'active' => (int) ($statsRow->active ?? 0),
@@ -379,7 +382,7 @@ trait TrackingGridConcern
                     'status_key' => $order->status?->key ?? null,
                     'status_color' => $order->status?->color ?? 'gray',
                     'confirmed_by' => $order->confirmedByHistory?->changedBy?->user?->name ?? null,
-                    'assigned_to' => $order->assignedMembership?->user?->name ?? null,
+                    'assigned_to' => $order->latestTracking?->assignedTo?->user?->name ?? null,
                     'latest_note' => $latestNote?->notes ?? null,
                     'carrier_supports_api_notes' => (bool) ($order->shippingProvider?->carrier?->capabilityList()['api_notes'] ?? false),
                     'can_edit_order' => ! $isTrashed && ! in_array($order->status?->key, ['delivered', 'returned'], true),

@@ -37,9 +37,9 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
     $filterOptions = app(DashboardFilterOptions::class);
     $currentMembership = auth()->user()?->storeMemberships()->where('store_id', currentStoreId())->first();
     $carriers = $filterOptions->carriers(currentStoreId());
-    $members = $filterOptions->members($currentMembership);
+    $members = $filterOptions->members($currentMembership, $filter->memberDimension);
     $carrierOptions = $filterOptions->carrierSelectOptions(currentStoreId());
-    $memberOptions = $filterOptions->memberSelectOptions($currentMembership);
+    $memberOptions = $filterOptions->memberSelectOptions($currentMembership, $filter->memberDimension);
 
     $periodLabel = $filter->period === 'custom'
         ? __('dashboard.period_range', [

@@ -3082,7 +3082,7 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 
 **مراحل 35.4:** P1 التوثيق ✅ (هذا القسم + §11 في `order-distribution-rules.md`) — P2 خلفية (المفاتيح/الأعمدة/التصفية/إزالة latestMembership) — P3 واجهة (أعمدة الجدولين + فلتر «بلا رصيد» + i18n×4 + 375/768/1440) — P4 اختبارات (سيناريو مؤكِّد≠مُسند، فلتر بلا-رصيد، + `DashboardQueryBudgetTest`، pint، المجموعة الكاملة) — P5 مؤجَّل (أعلاه).
 
-**الحالة:** P2/P3/P4 منفَّذة ✅ (تبويب الإنجاز أدناه)، و**توافق MySQL** مُصلَح وموثَّق في §35.4-5 (هجرة 1553 + only_full_group_by 1055). P5 مؤجَّل كما هو موثَّق أعلاه — لم يُنفَّذ أي سطر منه.
+**الحالة:** P2/P3/P4 منفَّذة ✅ (تبويب الإنجاز أدناه)، و**توافق MySQL** مُصلَح وموثَّق في §35.4-5 (هجرة 1553 + only_full_group_by 1055)، و**توحيد دلالة «المُسند» على صفحة التتبّع + تنقية سيدر الديمو** في §35.4-6، و**تقييد تبويبات اللوحة بـ«فوج» العضوية (§11.4)** في §35.4-7. P5 مؤجَّل كما هو موثَّق أعلاه — لم يُنفَّذ أي سطر منه.
 
 ---
 
@@ -3122,3 +3122,45 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 - **تحقق MySQL الحقيقي (قراءة فقط):** استُدعي `StoreDashboardAnalyticsService::teamPerformance()` بالبُعدين على اتصال `edzeery` (sql_mode يتضمّن `ONLY_FULL_GROUP_BY`) فنفّذ بلا خطأ (سطر واحد). SQL الملتقطة: `select (select order_trackings.assigned_to_membership_id … where m.store_id = ? and m.order_id = orders.id)) as membership_id, COUNT(*) as assigned, … from orders … group by membership_id`.
 - **حدود التحقق:** قاعدة التطوير `edzeery` فارغة حاليًا (stores=0 / orders=0 / order_trackings=0)، فتحقق MySQL يخصّ **قابلية التخطيط والقبول** تحت `ONLY_FULL_GROUP_BY` (وهو موضع انفجار 1055 تحديدًا) ولا يتحقق من نتائج بيانات فعلية.
 - **تحقق SQLite (لا انحدار):** مجموعة الأناليتكس 85/85 (558 تأكيدًا) — شاملة `DashboardTeamPerformanceViewModelTest` والميزات الستّ — وpint نظيف على الملفَّين المعدَّلين.
+
+---
+
+### 35.4-6: توحيد دلالة «المُسند» على صفحة تتبّع الطلبيات + تنقية سيدر الديمو
+
+**السياق:** مراجعة على السيدر/القواعد كشفت تناقضين:
+1. `orders.assigned_to_membership_id` للطلبيات المرسلة في السيدر كان يشير إلى `demo.tracker` (يملك `CRM_ORDER_TRACKING` فقط، لا `ORDER_CONFIRM`) — مخالف لـ§0/§1 (مفتاح الإسناد في نطاق التأكيد يتطلّب `ORDER_CONFIRM`)، فيتسرّب «عضو تتبّع» إلى عمود «العمل» في تبويب التأكيد بلوحة الفريق.
+2. صفحة تتبّع الطلبيات كانت تقرأ «الوكيل المسند» من `orders.assignedMembership` (إسناد الطلبية/التأكيد) لا من مسنَد الشحنة `order_trackings.assigned_to_membership_id`؛ لذا ظهرت طلبية مرسلة (21012) باسم **المؤكِّد** رغم أن مسنَد تتبّعها هو dual — بخلاف طابور التوزيع في تبويب التتبّع الذي يقرأ مسنَد الشحنة (DistributionQueueConcern.php:170).
+
+**القرار (بموافقة المستخدم):** تصحيح السيدر + توحيد دلالة «المسند» على صفحة التتبّع لتقرأ مسنَد الشحنة مثل طابور التتبّع. (بوّابة العضوية المقيَّدة في تبويب الرجل — إصلاح QA P1-6 — أُبقيت على `orders.assigned_to_membership_id` كما هي: نطاقها ظهورٌ/تصفية، لا عرض، وتغييرها يمسّ صلاحيات — خارج النطاق المتفق.)
+
+**التنفيذ:**
+- `database/seeders/DemoStoreSeeder.php` — `assign_to` للطلبيات المرسلة صار عضو تأكيد: `21009/21010/21011/21016` = `demo.confirmer`، و`21014` = `demo.dual` (بمطابقة فاعل انتقال `confirmed`). لم يعد أي `assign_to` يشير إلى `demo.tracker`.
+- `app/Livewire/Concerns/TrackingGridConcern.php` — تحميل `latestTracking.assignedTo.user` بدل `assignedMembership.user` (الشبكة + السلة)؛ قيمة العمود `assigned_to` من `$order->latestTracking?->assignedTo?->user?->name`؛ مرشِّح `assigned_to` صار `whereHas('latestTracking', fn ($q) => $q->where('assigned_to_membership_id', …))`.
+- `app/Livewire/Concerns/TrackingDrawerConcern.php` — `assigned_to` في تفاصيل الشحنة من `$tracking?->assignedTo?->user?->name`.
+- اختبارات: تحديث `TrackingGridBatchTest` (فلتر/عمود `assigned_to` على مسنَد الشحنة + حرس أن إسناد الطلبية وحده لا يكفي)، وإضافة حرس سيدر في `DemoStoreSeederTest` («إسنادات الطلبيات تشير حصرًا لأعضاء بهم `ORDER_CONFIRM`»).
+
+**النتائج:** `TrackingGridBatchTest` (10) + `DemoStoreSeederTest` (5) + `TrackingSearchFilterTest` (34) + `DemoSeederPermissionParityTest` (4) + `TrackingPageGuardTest` (6) = 58/58؛ ومجموعة التتبّع/التوزيع/السيدر (التفاصيل، الحذف، الإبلاغ، الركّاب، التوزيع) 75/75؛ ولوحة الفريق/الأناليتكس 59/59. pint نظيف على الملفّات المعدَّلة.
+
+**ملاحظة UX (خارج النطاق):** قائمة أعضاء مرشِّحَي `assigned_to`/`confirmed_by` لا تزال مشتركة (`allMembers` = كل الأعضاء غير المالك)؛ اختيار عضو تأكيد فقط في `assigned_to` يعطي صفر صفوف (غير ضارّ).
+
+---
+
+### 35.4-7: تقييد تبويبات لوحة الإحصاءات بـ«فوج» العضوية (§11.4)
+
+**السياق (التناقض المُبلَّغ):** تبويب **التأكيد** كان يجمّع «العمل» بمفتاح `orders.assigned_to_membership_id` بلا أي قيد على دور/صلاحية العضو، فيمكن أن يظهر **عضو تتبّع فقط** (يحمل `CRM_ORDER_TRACKING` دون `ORDER_CONFIRM`) داخل إحصاءات التأكيد — وهو تناقض مع §0/§1 (إسناد نطاق التأكيد يتطلّب `ORDER_CONFIRM`). وبالاتجاه المعاكس، تبويب التوصيل يعرض من حصل على «الرصيد»/«العمل» بحسب فاعلي العملية.
+
+**القرار (بموافقة المستخدم — الخيار 1):**
+- كل تبويب يقتصر على **فوجه**: تبويب التأكيد = حاملو `ORDER_CONFIRM` ∪ **الأدوار الإدارية**؛ تبويب التوصيل = `ORDER_CONFIRM` ∪ `CRM_ORDER_TRACKING` ∪ الأدوار الإدارية (يُضمّ `ORDER_CONFIRM` في التوصيل لأن الرصيد = `confirmed_by`).
+- **استثناء إداري صريح:** أدوار `owner`/`admin`/`manager` تظهر في الفوجين دائمًا بصرف النظر عن الصلاحيات — مهمّ خصوصًا لـ`manager` لأن قالب دوره لا يحمل `ORDER_CONFIRM`. الأعضاء **مزدوجو الدور** مسموحون في الفوجين.
+- النطاق يبقى على `confirmed_by` (لا تغيير على دلالة الفلترة)؛ والقائمة المنسدلة مقصورة على الفوج فتمنع اختيار عضو خارجه من الواجهة.
+
+**التنفيذ:**
+- جديد `app/Domains/Analytics/Support/DashboardMemberCohort.php` — `constrain(Builder, ?string $dimension)`: شرط `WHERE (role IN (owner,admin,manager) OR EXISTS permissions.permission IN (…))` كـ**استعلام فرعي واحد** (صفر استعلام إضافي، لا N+1). `null` = بلا قيد (لمستدعٍ غير اللوحة).
+- `DashboardFilterOptions::members(?StoreMembership, ?string $dimension = null)` و`memberSelectOptions(?StoreMembership, ?string $dimension = null)` — تطبيق الفوج عند تمرير `$dimension`؛ توقيع المعامل بقيمة افتراضية يحفظ مستدعي `DashboardFilterWiringTest`.
+- `resources/views/livewire/merchant/dashboard.blade.php` — تمرير `$filter->memberDimension` لكلٍّ من `members()` و`memberSelectOptions()`، فتتقيّد **صفوف الجدول وقائمة الأعضاء** معًا بفوج التبويب النشط.
+
+**الحدود المعروفة (مقصودة):** العضو الذي تُجمَع أعماله في تبويب ما ثم لا يكون في فوجه يُحذَف من الصفوف بواسطة presenter (بنيته تطرح كل صف ليس في القائمة). `memberId` قادم من عنوان URL خارج الفوج يبقى يُنطَّق على `confirmed_by` (غير ضارّ: لا عمل له فيظهر جدول فارغ)، لأن مصنع الفلتر لم يُغيَّر — التقييد في طبقة العرض/الخيارات. هذا يحقّق المتطلَّب (عدم ظهور عضو تتبّع في إحصاءات التأكيد) دون كسر اختبارات الفلترة التي تبني أعضاء بلا صلاحيات مخزّنة.
+
+**الاختبارات:**
+- جديد في `DashboardTeamPerformanceTest`: «the confirmation view never names a tracking-only member and managers run both cohorts» — عضو تتبّع فقط (طلبية مُوجَّهة إليه بحالة `CONFIRMED`، بيانات غير صحيحة عن قصد) **لا يظهر** في تبويب التأكيد، بينما العضو المزدوج و`manager` (قالب دوره بلا `ORDER_CONFIRM`) يظهران؛ وعضو التتبّع **يظهر شرعًا** في تبويب التوصيل. ولا يرد اسم عضو التتبّع في HTML التأكيد ككّل (قائمة الخيارات مقصوصة).
+- **النتائج:** `DashboardTeamPerformanceTest` 14/14، `DashboardFilterTest` 16/16، `DashboardFilterWiringTest` 19/19، `DashboardQueryBudgetTest` 4/4 — و**سقف الاستعلامات لم يرتفع** (51/52، الشرط EXISTS لا يُضيف استعلامًا). مجموعة `tests\Feature\Merchant` + `DemoStoreSeederTest` + `DashboardTeamPerformanceViewModelTest`: **878 ناجحًا، 11 فشلًا سابقًا فقط** (`DeliverySettingsTest` ×10 + `OrderFinancialSummaryTest` ×1 — انفصال كود `ecotrack` في نطاق الشحن، خارج 35.4). pint نظيف على الملفّات المعدَّلة.

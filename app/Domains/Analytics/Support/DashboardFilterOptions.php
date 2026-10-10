@@ -44,7 +44,12 @@ final class DashboardFilterOptions
         return $options;
     }
 
-    public function members(?StoreMembership $current): Collection
+    /**
+     * The members a stats tab may name: the store's active members, narrowed to
+     * the tab's cohort (§ 11.4) when a dimension is given, so a tracking-only
+     * member can never surface in the Confirmation view and vice-versa.
+     */
+    public function members(?StoreMembership $current, ?string $dimension = null): Collection
     {
         if (! $current || ! $current->is_active) {
             return collect();
@@ -65,6 +70,8 @@ final class DashboardFilterOptions
             ->where('store_id', $storeId)
             ->where('is_active', true);
 
+        app(DashboardMemberCohort::class)->constrain($query, $dimension);
+
         if ($hasTeamView) {
             // all
         } elseif ($hasTeamViewOwn) {
@@ -83,13 +90,13 @@ final class DashboardFilterOptions
         });
     }
 
-    public function memberSelectOptions(?StoreMembership $current): array
+    public function memberSelectOptions(?StoreMembership $current, ?string $dimension = null): array
     {
         $options = [
             ['value' => '', 'label' => __('dashboard.all_members')],
         ];
 
-        foreach ($this->members($current) as $member) {
+        foreach ($this->members($current, $dimension) as $member) {
             $hint = null;
             if (! empty($member->role)) {
                 try {

@@ -221,6 +221,24 @@ Rules:
 7. **Snapshot captures unchanged** (38-C): `confirmed_at`/`confirmed_by`,
    the tracking actor and `cod_amount`. No new actor column is introduced.
 
+#### Cohort definition (implemented — Todos §35.4-7)
+
+Rule 4's "each tab counts only its own cohort" is enforced at the membership
+level by `App\Domains\Analytics\Support\DashboardMemberCohort`, applied to both
+the rendered rows and the member filter options of the active dimension:
+
+| Tab | Cohort |
+| --- | --- |
+| Confirmation | holders of `ORDER_CONFIRM` ∪ management roles |
+| Delivery | holders of `ORDER_CONFIRM` ∪ `CRM_ORDER_TRACKING` ∪ management roles |
+
+`ORDER_CONFIRM` is part of the delivery cohort because credit there is keyed on
+`confirmed_by` (the confirmer). The **management roles** (`owner`, `admin`,
+`manager`) are always in both cohorts whatever permissions they hold — notably
+`manager`, whose stock template carries neither `ORDER_CONFIRM` nor
+`CRM_ORDER_TRACKING`. Dual-role members stay in both tabs. The predicate is one
+`EXISTS` over the memberships query, so it never becomes an N+1.
+
 ### Deferred — documented, NOT implemented (decision: revisit later, only if needed)
 
 Rename `order_trackings.created_by_membership_id` → `tracked_by_membership_id`

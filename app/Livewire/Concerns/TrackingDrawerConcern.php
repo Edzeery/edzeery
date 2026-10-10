@@ -99,7 +99,7 @@ trait TrackingDrawerConcern
             'carrier_validated_at' => $tracking?->carrier_validated_at,
             'carrier_validation_error' => $tracking?->carrier_validation_error,
             'confirmed_by' => $order->confirmedByHistory?->changedBy?->user?->name ?? null,
-            'assigned_to' => $order->assignedMembership?->user?->name ?? null,
+            'assigned_to' => $tracking?->assignedTo?->user?->name ?? null,
         ];
 
         if ($tracking) {
