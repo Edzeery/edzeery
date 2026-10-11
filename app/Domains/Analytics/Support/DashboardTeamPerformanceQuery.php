@@ -42,11 +42,14 @@ final class DashboardTeamPerformanceQuery
         $confirmed = $this->in($statusIds(DashboardStatusGroups::CONFIRMED));
 
         $credit = $this->aggregate($baseQuery, $filter, 'orders.confirmed_by_membership_id', [
-            'confirmed' => [$this->countWhen($confirmed[0]), $confirmed[1]],
-            'delivered' => [$this->countWhen($delivered[0]), $delivered[1]],
-            'returned' => [$this->countWhen($returned[0]), $returned[1]],
-            // Money is summed only on delivered rows, so a returned order never
-            // contributes revenue.
+            'confirmed' => $this->countWhen($confirmed, false),
+            'confirmed_deleted' => $this->countWhen($confirmed, true),
+            'delivered' => $this->countWhen($delivered, false),
+            'delivered_deleted' => $this->countWhen($delivered, true),
+            'returned' => $this->countWhen($returned, false),
+            'returned_deleted' => $this->countWhen($returned, true),
+            // Money is summed only on live delivered rows, so a returned order
+            // never contributes revenue.
             'revenue' => ['SUM(CASE WHEN '.$delivered[0].' THEN orders.total_amount ELSE 0 END)', $delivered[1]],
         ]);
 
@@ -56,9 +59,12 @@ final class DashboardTeamPerformanceQuery
         $groupKey = $delivery ? $this->latestMembership($filter) : 'orders.assigned_to_membership_id';
 
         $work = $this->aggregate($baseQuery, $filter, $groupKey, [
-            'assigned' => ['COUNT(*)', []],
-            'pending' => [$this->countWhen($pending[0]), $pending[1]],
-            'canceled' => [$this->countWhen($canceled[0]), $canceled[1]],
+            'assigned' => $this->countAll(false),
+            'assigned_deleted' => $this->countAll(true),
+            'pending' => $this->countWhen($pending, false),
+            'pending_deleted' => $this->countWhen($pending, true),
+            'canceled' => $this->countWhen($canceled, false),
+            'canceled_deleted' => $this->countWhen($canceled, true),
         ]);
 
         return [
@@ -122,11 +128,17 @@ final class DashboardTeamPerformanceQuery
         return [
             'membership_id' => $row->membership_id,
             'assigned' => (int) ($row->assigned ?? 0),
+            'assigned_deleted' => (int) ($row->assigned_deleted ?? 0),
             'confirmed' => (int) ($row->confirmed ?? 0),
+            'confirmed_deleted' => (int) ($row->confirmed_deleted ?? 0),
             'pending' => (int) ($row->pending ?? 0),
+            'pending_deleted' => (int) ($row->pending_deleted ?? 0),
             'canceled' => (int) ($row->canceled ?? 0),
+            'canceled_deleted' => (int) ($row->canceled_deleted ?? 0),
             'delivered' => (int) ($row->delivered ?? 0),
+            'delivered_deleted' => (int) ($row->delivered_deleted ?? 0),
             'returned' => (int) ($row->returned ?? 0),
+            'returned_deleted' => (int) ($row->returned_deleted ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),
         ];
     }
@@ -167,8 +179,30 @@ final class DashboardTeamPerformanceQuery
         return $id === null ? ['1 = 0', []] : ['orders.status_id = ?', [$id]];
     }
 
-    private function countWhen(string $condition): string
+    /**
+     * A count of the rows matching a condition pair, split by the soft-delete
+     * flag so the cards can show a live figure and its trashed sibling. The
+     * condition keeps its bindings next to its SQL so the placeholders never
+     * drift.
+     *
+     * @param  array{0: string, 1: array<int, string>}  $condition
+     * @return array{0: string, 1: array<int, string>}
+     */
+    private function countWhen(array $condition, bool $deleted): array
     {
-        return 'SUM(CASE WHEN '.$condition.' THEN 1 ELSE 0 END)';
+        [$sql, $bindings] = $condition;
+        $clause = $deleted ? 'IS NOT NULL' : 'IS NULL';
+
+        return ['SUM(CASE WHEN ('.$sql.') AND orders.deleted_at '.$clause.' THEN 1 ELSE 0 END)', $bindings];
+    }
+
+    /**
+     * @return array{0: string, 1: array<int, string>}
+     */
+    private function countAll(bool $deleted): array
+    {
+        $clause = $deleted ? 'IS NOT NULL' : 'IS NULL';
+
+        return ['SUM(CASE WHEN orders.deleted_at '.$clause.' THEN 1 ELSE 0 END)', []];
     }
 }

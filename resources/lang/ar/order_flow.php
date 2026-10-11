@@ -108,6 +108,7 @@ return [
     'event_sent_to_carrier' => 'تم تسليمها لشركة التوصيل',
     'event_status' => 'الحالة ← :to',
     'event_tracking' => 'التتبع ← :status',
+    'event_tracking_assigned' => 'أُسندت الشحنة',
     'event_type_contact' => 'اتصال',
     'event_type_created' => 'إنشاء',
     'event_type_field_changed' => 'تعديل',

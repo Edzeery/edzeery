@@ -95,6 +95,7 @@ class Order extends Model
         'delivery_evidence_at',
         'returned_at',
         'return_reason_key',
+        'last_status_changed_at',
     ];
 
     protected $casts = [
@@ -108,6 +109,7 @@ class Order extends Model
         'delivered_at' => 'datetime',
         'delivery_evidence_at' => 'datetime',
         'returned_at' => 'datetime',
+        'last_status_changed_at' => 'datetime',
         'confirmation_attempts' => 'integer',
         'meta' => 'array',
         'send_from_carrier_warehouse' => 'boolean',

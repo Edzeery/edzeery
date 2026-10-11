@@ -120,7 +120,13 @@ test('the dashboard request stays inside its query budget', function () {
     // lookups issued by the subscription gate. That is a genuine inefficiency,
     // but it belongs to the gating domain rather than analytics, so it is
     // reported rather than changed here.
-    expect($queries)->toBeLessThanOrEqual(52);
+    //
+    // M4 adds one aggregate query: the confirmation section (count tab) runs a
+    // dedicated GROUP BY over orders/order_items in confirmationStats() instead
+    // of re-reading the KPI-panel summary rows. Consolidating that with the
+    // summary aggregates is M6 scope; today it pushes the owner render from 53
+    // to 54 and stays a fixed overhead, not a per-row N+1.
+    expect($queries)->toBeLessThanOrEqual(54);
 });
 
 test('a locked member only sees their own pending orders in the rendered page', function () {

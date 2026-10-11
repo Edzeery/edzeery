@@ -32,11 +32,19 @@
     $dimensionIsOverridden = $filter->memberDimension !== null
         && $filter->memberDimension !== $defaultDimension;
 
+    // The carrier filter belongs to the delivery view only (D4); the date basis
+    // and the product filter are confirmation-view refinements.
+    $dateBasisDiffers = ! $isDeliveryView
+        && $filter->dateBasis !== \App\Domains\Analytics\DTOs\DashboardFilter::DATE_BASIS_CREATED;
+    $productsSelected = ! $isDeliveryView && count($filter->productIds ?? []) > 0;
+
     $hasActiveFilters = $filter->period !== 'today'
         || filled($activeCarrier)
         || filled($activeMember)
         || $unattributedSelected
-        || $dimensionIsOverridden;
+        || $dimensionIsOverridden
+        || $dateBasisDiffers
+        || $productsSelected;
 @endphp
 
 <div class="mb-6 flex flex-col gap-3">
@@ -83,19 +91,37 @@
     @endif
 
     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
-            <label class="edz-label" for="dashboard-carrier">{{ __('dashboard.filter_carrier') }}</label>
-            <x-edz.select
-                wire:model.live="carrierId"
-                :options="$filterOptions['carrierOptions']"
-                search
-                :placeholder="__('dashboard.all_carriers')"
-                :searchPlaceholder="__('dashboard.search_carrier')"
-            />
-            @if ($activeCarrier && ! $activeCarrier->is_active)
-                <p class="text-xs text-warning-fg-strong">{{ __('dashboard.carrier_inactive') }}</p>
-            @endif
-        </div>
+        @if ($isDeliveryView)
+            <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
+                <label class="edz-label" for="dashboard-carrier">{{ __('dashboard.filter_carrier') }}</label>
+                <x-edz.select
+                    wire:model.live="carrierId"
+                    :options="$filterOptions['carrierOptions']"
+                    search
+                    :placeholder="__('dashboard.all_carriers')"
+                    :searchPlaceholder="__('dashboard.search_carrier')"
+                />
+                @if ($activeCarrier && ! $activeCarrier->is_active)
+                    <p class="text-xs text-warning-fg-strong">{{ __('dashboard.carrier_inactive') }}</p>
+                @endif
+            </div>
+        @endif
+
+        {{-- Product filter: confirmation view only. --}}
+        @if (! $isDeliveryView)
+            <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
+                <label class="edz-label" for="dashboard-product-filter">{{ __('dashboard.filter_products') }}</label>
+                <button type="button" id="dashboard-product-filter" wire:click="openProductFilter"
+                    class="edz-input text-sm flex items-center justify-between gap-2 text-start">
+                    <span @class(['truncate', 'text-ink-muted' => count($productIds) === 0])>
+                        {{ count($productIds) > 0
+                            ? count($productIds).' '.__('dashboard.products_selected')
+                            : __('dashboard.products_selected') }}
+                    </span>
+                    <x-edz.icon name="chevron-down" class="w-4 h-4 text-ink-muted shrink-0" />
+                </button>
+            </div>
+        @endif
 
         @unless ($filter->memberLocked)
             @if ($filterOptions['memberOptions'])
@@ -111,6 +137,25 @@
                 </div>
             @endif
         @endunless
+
+        {{-- Date basis: confirmation view only (orders.created_at vs last status change). --}}
+        @if (! $isDeliveryView)
+            <div class="flex flex-col gap-1 w-full sm:w-auto">
+                <span class="edz-label">{{ __('dashboard.date_basis') }}</span>
+                <div class="flex items-center gap-3 px-3 py-2 rounded-md border border-surface-border bg-surface">
+                    @foreach (['created' => 'date_basis_created', 'last_status_changed' => 'date_basis_last_status'] as $value => $label)
+                        <label class="flex items-center gap-1.5 text-xs text-ink" for="dashboard-basis-{{ $value }}">
+                            <input id="dashboard-basis-{{ $value }}"
+                                   type="radio"
+                                   value="{{ $value }}"
+                                   wire:model.live="dateBasis"
+                                   class="rounded">
+                            <span>{{ __("dashboard.{$label}") }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         {{-- Anyone who can read both sides of the dashboard switches the whole
              view; anyone who can read only one gets a fixed badge. --}}
@@ -168,9 +213,21 @@
                 <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
             @endif
 
+            @if ($productsSelected)
+                <span class="edz-badge edz-badge--neutral">{{ count($filter->productIds) }} {{ __('dashboard.products_selected') }}</span>
+            @endif
+
+            @if ($dateBasisDiffers)
+                <span class="edz-badge edz-badge--neutral">{{ __('dashboard.date_basis_last_status') }}</span>
+            @endif
+
             <button type="button" wire:click="resetFilters" class="edz-btn edz-btn--secondary edz-btn--sm ms-auto">
                 {{ __('dashboard.reset_filters') }}
             </button>
         </div>
     @endif
 </div>
+
+@if (! $isDeliveryView)
+    @include('livewire.merchant.dashboard.partials.product-filter-modal')
+@endif

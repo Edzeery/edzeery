@@ -3183,3 +3183,94 @@ pm run build ناجح (landing.js 85.2KB، guest.js 1.1KB، native-button-loadin
 **الاختبارات (انحدار دائم):** ملف جديد `tests/Feature/Storefront/StorefrontProductCapContextTest.php` (4 اختبارات/15 تأكيدًا): (أ) زيادة الكمية + الإضافة للسلة دون انهيار؛ (ب) تقييم السقف من المنتج المثبَّت بلا سياق وبدون استعلام علاقة `product`؛ (ج) الميدلوير يُثبّت المستأجر من الـ host؛ (د) لا يختلق سياقًا للمُضيفات المحجوزة/المجهولة/غير النشطة.
 
 **التحقق:** مجموعة `tests\Feature\Storefront` **130 ناجحًا (450 تأكيدًا)** (كان 126 قبل الملف الجديد)؛ `OrderQuantityCapTest` 7/7؛ `php -l` + `view:cache` + Pint نظيف على الملفات الثلاثة. ينبغي تشغيل المجموعة الكاملة (الميدلوير عام) — معلَّق بموافقة المستخدم بسبب توقف مرتين سابقًا وحد ذاكرة PHP (`-d memory_limit=1536M` مطلوب).
+
+---
+
+## القسم 39 — إعادة تصميم «إحصائيات التأكيد» (المصدر الكامل: وثيقة مخصّصة)
+
+**المرجع الكامل:** `docs/plans/confirmation-statistics-redesign.md` — يحوي القرارات المثبّتة D1–D11، التناقضات المؤكَّدة C1–C6، خريطة المجموعات، توحيد الحساب، تصميم الواجهة (375/768/1440)، والمراحل M0–M7 بمعايير القبول.
+**التدقيق المرافق:** `docs/audits/2026-10-finance-tracking-dashboard-parity.md` (الفجوات G1–G5).
+
+**الحالة:** موثّق. هذه المرحلة **توثيق فقط** (M0) + بنية تحضيرية (M1) بموافقة صريحة؛ **لا يُكتب أي كود قبل الموافقة على كل مرحلة على حدة**.
+
+**المراحل (ملخّص؛ التفصيل ومعايير القبول في الوثيقة):**
+- **M0** — توثيق: الوثيقة + هذا البند + تحديث `order-distribution-rules.md §9/§11` + عقد التاب في `financial-accounts.md`.
+- **M1** — عمود `orders.last_status_changed_at` (migration + فهرس `(store_id, last_status_changed_at)` + ختم عند كل انتقال + تعبئة رجعية من `MAX(order_status_histories.created_at)`) + حدث إسناد التتبّع الخفيف.
+- **M2** — مجموعات مصدر واحد (`CONFIRMED/PENDING/FAILED/CANCELED/DEFERRED/DUPLICATE/DELIVERY_OUTCOMES`) + استعلام موحّد `ConfirmationStatsQuery`.
+- **M3** — نسبة تأكيد قابلة للتهيئة (`confirmation_rate_denominator`) وموحّدة عبر البطاقة/الفريق/الإجمالي.
+- **M4** — شريط الفلتر (منتج متعدد/عضو/فترة/نوع تاريخ؛ **بلا ناقل** في التأكيد) + التابان الأساسيان (عدد / معدل).
+- **M5** — سكشن فريق التأكيد (`without/with trash` للأعضاء) يتبع التاب الأساسي.
+- **M6** — اختبارات: ميزانية استعلامات، توقيت المتجر، trash، مفتاح الإسناد، المنتج/المتغيّر، محور التاريخ.
+- **M7** — بند «إحصائيات المداخيل» في برنامج المالية 38-B/38-D.
+
+**قيود عامة:** Apple Restraint (`DESIGN_SYSTEM.md`)؛ مقاييس 375/768/1440؛ صفر N+1؛ «احسب عند المصدر»؛ «صفر = موجود».
+
+**التنفيذ — M0 (منفّذ):** هذه الوثيقة + تحديث `order-distribution-rules.md §9/§11` + عقد التاب وتسجيل بند المداخيل في `financial-accounts.md`.
+
+**التنفيذ — M1 (منفّذ):**
+- هجرتان: `2026_10_11_000001_add_last_status_changed_at_to_orders_table.php` (عمود `timestamp` nullable + فهرس `orders_store_last_status_changed_at_index`) و`2026_10_11_000002_backfill_last_status_changed_at_on_orders.php` (تعبئة رجعية من `MAX(order_status_histories.created_at)`).
+- الختم في `OrderObserver` (نقطة الاختناق الواحدة): `created()` من `created_at`، و`handleStatusChange()` بـ`now()` عند كل انتقال (آخر-يكتب). أُضيف العمود إلى `Order::$fillable` و`$casts`.
+- حدث إسناد التتبّع: `OrderAuditService::trackingAssigned()` (event_type `tracking_assigned`) من `OrderTrackingAssignmentService::assign()/reassign()` + مفاتيح ترجمة في اللغات الأربع.
+
+**النتائج:** `migrate` نجح؛ التعبئة 14/16 مختومة و16/16 مطابقة لـ`MAX(history.created_at)`؛ `OrderStatusCaptureTest` 11/11؛ `OrderTrackingAssignmentServiceTest` 10/10؛ تغطية/ملكية/تقوية/أدوار 44/44؛ `FinancialCaptureSchemaTest` 4/4 (تعديل rollback إلى `--step 6`)؛ Pint نظيف. فشلان سابقان مستقلّان مؤكَّدان بالعزل: `DashboardQueryBudgetTest` (53/52) و`OrderTransitionSourceTest` (`state_code` على `char(2)` في MySQL).
+
+**التنفيذ — M2 (منفّذ):**
+- `ConfirmationStatsGroups.php`: مصدر وحدة لتصنيف التاب (CONFIRMED = confirmed/preparing/processing فقط؛ PENDING؛ FAILED = no_answer_1..3؛ CANCELED؛ DEFERRED؛ DUPLICATE؛ DELIVERY_OUTCOMES؛ UNCLASSIFIED للحالات المخصّصة حتى D11) بدوال `all()/group()/in()/keys()`.
+- `ConfirmationStatsQuery.php`: قراءة مُجمَّعة واحدة `GROUP BY (assigned_to_membership_id, statuses.key)` تُعيد `total` و`deleted` معًا؛ تعيد استخدام `DashboardOrderScope::applyPending` لبُعد الإسناد + الناقل؛ محور التاريخ `created_at` أو `COALESCE(last_status_changed_at, created_at)`؛ فلتر منتج/متغيّر عبر `EXISTS`.
+- `DashboardFilter`: حقول `dateBasis`/`productIds`/`variantIds` (افتراضية متوافقة) مع تحديث `hash()/toArray()/buildPrevious()`.
+- **قرار هندسي:** عدم تعديل `OrderStatusStage` (مسار التعويض/الرواتب في 38-C) — مجموعات التأكيد إحصائية مستقلة؛ تضييق نطاق مقصود عن صياغة الخطة.
+- **النتائج:** `ConfirmationStatsGroupsTest` 5/5؛ `ConfirmationStatsQueryTest` 2/2؛ `--filter="Dashboard"` 134 نجاح (الفشل الوحيد `DashboardQueryBudgetTest` 53/52 المعروف)؛ Pint نظيف. مؤجَّل لـM4: اختبار فلتر المنتج (يحتاج تهيئة product_variant).
+
+**التنفيذ — M3 (منفّذ):**
+- `ConfirmationRateDenominator.php`: الافتراضي الموصى به `[CONFIRMED, CANCELED, FAILED]` + preset `PRESET_EXCLUDE_DUPLICATE_AND_DEFERRED`؛ `resolve()` يفلتر المجموعات غير المعروفة ويعود للافتراضي.
+- `ConfirmationStatsReport.php`: طيّ صفوف `ConfirmationStatsQuery` إلى `groups`/`confirmed`/`denominator`/`rate` عبر `build()` (بطاقة/إجمالي) و`perMember()` (صفوف الفريق) — نفس الدالة فتصبح مساواة «بطاقة = عضو = إجمالي» خاصة رياضية (تحلّ C1).
+- `store_settings.confirmation_rate_denominator` (هجرة `2026_10_11_000003`؛ JSON nullable) + `StoreSetting` `$fillable/$casts('array')`.
+- **نطاق:** محرّك النسبة الموحّد + التهيئة + الاختبارات؛ الربط بالواجهة في M4/M5، ولم يُلمس مسار اللوحة الحالي عمدًا.
+- **النتائج:** `ConfirmationRateDenominatorTest` 3/3؛ `ConfirmationStatsReportTest` 5/5؛ `ConfirmationStatsQueryTest` 3/3 (اختبار تكامليّ query→report)؛ الهجرة مطبّقة (`column-ok`)؛ Pint نظيف. فشلان سابقان مستقلّان ظهرا في المجموعة واسعة الفلتر: `PasswordConfirmationTest` (419) و`CartOrderLimitsTest` (`state_code` `char(2)`).
+
+**التنفيذ — M4 (منفّذ):**
+- **فلتر التأكيد** (لا ناقل D4): أزرار فترة + نوع التاريخ (`created`/`last_status_changed`) + عضو/بُعد + **فلتر منتج متعدد** — كلها في `partials/filter-bar.blade.php`، مع شرائح «فلتر نشط» (ترة/عضو/نوع تاريخ/منتجات).
+- **التابان الأساسيان (D11 server-side):** `confirmationTab` (`count`/`rate`) عبر `#[Url]` + `setConfirmationTab()` مع حارس قيم + `resetFilters()`؛ بطاقة النسبة تعرض النسبة مع ملاحظة المقام (D10).
+- **`DashboardFilterFactory`:** `resolveDateBasis()` (غير المعروف ← `created`) و`resolveIdList()` (تطبيع + إزالة تكرار + بت/ضبط فارغ/`'0'` → null + سقف 100).
+- **M4 bug (مهم):** دالة `uses()` في Volt تقبل **array|string** فقط — `uses(A, B)` يُسجّل A فقط ويسقط B بصمت. كان سبب `MethodNotFoundException` لـ`openProductFilter`. الحل: `uses([...])` في `dashboard.blade.php`. خصائص الفلتر المُجزأة لحالة Volt مسجّلة عبر `state([...])` (نمط `orders/index.blade.php`) — خصائص الـ trait العامة بلا `#[Url]` غير مكشوفة للمكوّن.
+- **`DashboardProductFilterConcern`:** تحوّل إلى **methods-only** (الخصائص عبر `state()` في الـ view) + سحب المنتجات المُجزأة `loaderProductResults/loadFilterProducts` + `toggleFilterProduct/closeProductFilter` (نفس ساق `HasOrderProductPicker` المخزّنة).
+- **`StoreDashboardAnalyticsService::confirmationStats($filter)`:** تُجمّع `ConfirmationStatsReport::build()` على الشريحة/التاب (ترجع إجمالي + تراش + 8 مجموعات أو 6 مجموعات النسبة) + `buildConfirmationFilter()` كمرجع.
+- **الواجهة:** `partials/confirmation-stats.blade.php` (العنوان/التراش/تبوّبات/المجموعات، صفوف المحذوفة بين قوسين حمراء) + `partials/product-filter-modal.blade.php` (بحث + قائمة مُجزأة + شارات منتج + تطهير). أصلح أسماء الأيقونات `info`→`info-circle` (لا توجد أيقونة `info` في `x-edz.icon`).
+- **ميزانية الاستعلامات:** `confirmationStats` يضيف استعلام تجميع +1 → سقف `DashboardQueryBudgetTest` 52→54 بتعليق (الدمج الحقيقي للاستعلامات خارج النطاق = M6).
+- **الاختبارات:** `DashboardConfirmationSectionTest.php` (جديد — 7/7: عرض السكشن/التاب معدل/الدقة مع المحذوفة بين قوسين/أزرار نوع التاريخ خاصة بالتأكيد/الفلتر يعمل عبر `Volt::test`/الفلتر يضيّق السكشن/حارس التاب) + توسعات `tests/Unit/DashboardFilterTest` (hash/dateBasis/productIds/variantIds) + تحديث 3 تأكيدات في `DashboardFilterWiringTest` (D4: الناقل غائب في التأكيد) + `DashboardQueryBudgetTest` (54).
+- **النتائج:** `pest --filter="Dashboard"` **144 ناجحًا (889 تأكيدًا)** في المرة الأخيرة؛ Pint نظيف (قرار `uses()` الأفقي أصلح `openProductFilter`). **مؤجَّل (M4 leftover، بخيار المنتج الكامل الباقي):** تبويب «المنتج في سكشن التأكيد» يؤكد بتصميم متغيّر (فقط المتغيّر المختار يظهر استهلاك المنتج) — مؤجل لأنه يتطلب إضافة منتج المتغيّر إلى القائمة وكشف `عرض_للمنتج`، وهو معروف من M5/M6.
+- **متبقٍّ/معايير القبول M4:** مراجعة بصرية للقطات **375/768/1440** (يحتاج المستخدم) ثم إغلاق M4 في الوثيقة §12.
+
+**التنفيذ — M5 (منفّذ):**
+- **`DashboardConfirmationTeam.php`** (جديد، بلا استعلامات): يحوّل `ConfirmationStatsReport::perMember()` إلى صفوف السكشن. كل صف يحمل `groups`/`confirmed`/`denominator`/`rate`/`total`/`trash`/`deleted_member`/`type` (`member`/`unattributed`/`total`). صف الإجمالي **يجمع `confirmed` و`denominator`** فيكون معدّله تراكميًّا (لا يأخذ معدّل عضو واحد)، و`row.name = null` للأسماء المحوّلة (يترجمها الـ view عبر `team_{type}` فلا يترجم الـ presenter). الترتيب: `total` تنازليًّا ثم الاسم. صف «غير مُسند» يظهر عند `memberScopeIds === null` أو السنيتنل؛ صف الإجمالي عند عدم التحديد أو أكثر من عضو؛ العضو غير المرئي يُسقَط بلا تسمية؛ العضو المختار بلا طلبات يحصل على صف صفري بلا إجمالي.
+- **`DashboardFilterOptions::members($current, $dimension, bool $includeTrashed = false)`**: بدون تراش = النشطون فقط (`is_active=true`)؛ مع تراش = `withTrashed()` (بلا قيد `is_active`) + علم `'deleted' => $m->trashed()` على الكائن المُعاد.
+- **`DashboardFilterConcern`**: `#[Url(as: 'tt')] public bool $teamTrash = false;` + `setTeamTrash()` + إعادة الضبط في `resetFilters()`. حالة واجهة بحتة (خارج DTO/hash)، لا تلغي قوس الطلبات المحذوفة أبدًا.
+- **`StoreDashboardAnalyticsService::confirmationTeam($filter, $members)`**: `ConfirmationStatsQuery::run()` → `perMember()` → `DashboardConfirmationTeam::present()`؛ واستُخرجت `confirmationDenominatorGroups()` المشتركة مع `confirmationStats()`.
+- **الواجهة**: `partials/confirmation-team.blade.php` (مفتاح «بدون/مع سلة المهملات» للأعضاء + صفوف بطاقات: تاب العدد = «كل الطلبات» + «التراش»؛ تاب المعدل = النسبة + 6 شرائح + شريحة `(محذوفة)` حمراء + شريط تقدّم؛ حالة فارغة عند غياب النشاط). الإدراج في `dashboard.blade.php` حسب العرض: التوصيل يبقى على جدول 37-J، والتأكيد على السكشن الجديد.
+- **توفير استعلامات**: `members()` تُنادى مرّة واحدة بعلم التراش حسب العرض (صفر استعلام إضافي)، وقُيّد `teamPerformance()` بعرض التوصيل فقط (توفير استعلامين في التأكيد).
+- **الترجمة (ar/en/fr/es):** `team_all_orders`, `team_members_clean_trash`, `team_members_with_trash`, `team_member_deleted`.
+- **الاختبارات:** `tests/Unit/DashboardConfirmationTeamTest.php` (جديد — 9/9: مجموع الصف/الإجمالي التراكمي/الفرز/صف «غير مُسند»/السنيتنل/إسقاط عضو غير مرئي/العضو المحذوف/صف صفري) + `tests/Feature/Merchant/DashboardConfirmationTeamTest.php` (جديد — 9/9: تاب العدد (كل الطلبات+التراش)/تاب المعدل والشرائح/المحذوفة لا تدخل النسبة وتظهر بين قوسين/مفتاح التراش يخفي ثم يُسمّي العضو المحذوف/عضو مختار يُسقط الإجمالي/السنيتنل/موظف بلا إحصائيات/حالة فارغة/الوصل) + تقليم `DashboardTeamPerformanceTest` لعرض التوصيل فقط (5/5).
+- **النتائج:** `pest --filter="Dashboard"` **153 ناجحًا (896 تأكيدًا)**؛ Pint نظيف (أصلح `concat_space` في اختبار الميزة).
+- **متبقٍّ/معايير القبول M5:** مراجعة بصرية للقطات **375/768/1440** (يحتاج المستخدم) ثم إغلاق M5 في الوثيقة §12؛ ويبقى اختيار المتغيّر (M4 leftover) لأن M6.
+
+**التنفيذ — M5.1 تنقيح التصميم (منفّذ — 2026-10-11):**
+- **ملاحظات المستخدم:** تكرار «إجمالي الطلبات» (منفردة + داخل سكشن التأكيد)؛ إزالة بطاقات المنتجات/الفريق/ملغاة؛ تحسين التناسق؛ سكشن التأكيد أفقي؛ تاب العدد = «كل الطلبات + التراش» بلا شرائح حالات؛ أداء التوصيل بطاقات عمودية + إظهار المحذوف لكل نوع؛ فصل التوصيل عن التأكيد وإظهار «غير المُرسلة» المُسندة لكل عضو.
+- **`dashboard.blade.php` (KPI):** بطاقة «إجمالي الطلبات» صارت لعرض التوصيل فقط (`@if ($isDeliveryView)`)؛ حُذفت بطاقة «ملغاة» وصف الـKPI الثانوي كاملًا (AOV/المنتجات/الفريق). التأكيد = **معدّل التأكيد + قيد الانتظار** (`sm:grid-cols-2`)؛ التوصيل = إجمالي/إيراد/إرجاع/AOV (`sm:grid-cols-2 xl:grid-cols-4`).
+- **`dashboard.blade.php` (الرسوم):** تاب العدد = السكشن + الرسوم في صف واحد (`lg:grid-cols-2`, `$narrowCharts=true`)؛ تاب المعدل = السكشن بعرض كامل والرسوم أسفله (`$narrowCharts=false`)؛ التوصيل كما هو.
+- **`confirmation-stats.blade.php`:** تاب العدد = بطاقتان فقط («كل الطلبات» + «التراش»)، حُذفت الشرائح الثمانية؛ تاب المعدل = النسبة + الشرائح الست أفقيًّا (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-6`).
+- **`DashboardConfirmationTeam.php` + `confirmation-team.blade.php`:** إضافة `not_sent` = `total − DELIVERY_OUTCOMES.total` لكل صف + عمود «غير مُرسلة»؛ مفتاح `dashboard.team_not_sent` في اللغات الأربع.
+- **أداء التوصيل (37-J):** تحويل الجدول إلى **بطاقات عمودية** بكل عضو (اسم + إيراد مُسلَّم + 4 مقاييس + شريطا المعدّلين)، وكل مقياس يُظهر شقيقه المحذوف `(n)` بالأحمر. دعم بيانات: `DashboardTeamPerformanceQuery` يجمع `*_deleted` لكل نوع (`countWhen`/`countAll`)؛ `baseOrdersQuery(bool $withTrashed=false)` + قاعدة الفريق `withTrashed:true`؛ `DashboardTeamPerformance` يمرّر الحقول المحذوفة ويحسب `in_progress_deleted`/`other_deleted` و`total()` يجمعها.
+- **ملاحظة تقنية:** `@php($x = ...)` inline مع `??` كسر تجميع Blade (بتر `<?php` بلا `?>` وسحب التعليمات التالية)؛ استُخدم `@php ... @endphp` الكامل.
+- **الاختبارات:** محلّل `tpfRow` أُعيد بناؤه لقراءة البطاقات؛ `DashboardFilterWiringTest` اختبار AOV أُعيد صياغته (مرة في التوصيل/صفر في التأكيد)؛ `DashboardConfirmationSectionTest` تاب العدد (بلا شرائح).
+- **النتائج:** `pest --filter="Dashboard"` **153 ناجحًا (894 تأكيدًا)**؛ Pint نظيف.
+- **متبقٍّ:** المراجعة البصرية للقطات **375/768/1440** (بيد المستخدم)؛ ثم **M6** بانتظار موافقة صريحة.
+
+**التنفيذ — M5.2 (منفّذ، 2026-10-11):** تنقيح ثانٍ من سبع ملاحظات للمستخدم (تولتيب مخصّص بدل `title=`؛ أيقونة المحذوف بدل `(n)`؛ بطاقات فريق عمودية؛ نقل «بانتظار التأكيد» بجانب الـKPI؛ بوب-أب لشرح معدّل التأكيد؛ التناسق).
+- **نقل «بانتظار التأكيد»:** استُخرج إلى `partials/pending-orders.blade.php` وحُذف البلوك القديم من صف الجداول؛ في صف KPI التأكيد شبكة `lg:grid-cols-3` = KPI (`lg:col-span-2`) + البطاقة (`lg:col-span-1`). «الأكثر مبيعًا» يبقى في صف الجداول لعرض التوصيل فقط.
+- **تولتيب:** تلميحات المجموعات (`group_*_hint`) + زر شرح معدّل التأكيد في `confirmation-stats.blade.php` تستخدم `<x-edz.tooltip>` (صفر `title=` في مجلد dashboard)؛ مفتاح جديد `dashboard.confirmation_rate_explainer` في ar/en/fr/es (`maxWidth="322px"`).
+- **شارة المحذوف:** `(n)` الحمراء استُبدلت بـ`<x-edz.tooltip>` (أيقونة `trash` + العدد + `dashboard.deleted_brackets`) في `confirmation-stats` و`team-performance` و`confirmation-team`.
+- **بطاقات فريق التأكيد:** `confirmation-team.blade.php` من `space-y-2.5` إلى شبكة بطاقات `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`؛ بطاقة الإجمالي تمتد على كامل العرض.
+- **تنقية:** `team-performance.blade.php` صار عرض التوصيل فقط (حُذف فرع جدول التأكيد الميت + مصفوفتا الأعمدة + التعليق القديم).
+- **الاختبارات:** `DashboardConfirmationTeamTest` تحقّق المحذوفة عبر `dashboard.deleted_brackets` (بدل `(1)`)؛ `pest --filter="Dashboard"` **153 ناجحًا (895 تأكيدًا)**؛ `view:cache` + Pint نظيفان.
+- **استعادة حساب الديمو:** قاعدة البيانات كانت فارغة (0 مستخدم/متجر) فتعذّر دخول `demo@edzeery.com`؛ أُعيد البذر بـ `php artisan db:seed` (بلا `migrate:fresh`) → 17 مستخدمًا/3 متاجر/16 طلبًا، وكلمة المرور `password` تعمل.
+- **متبقٍّ:** المراجعة البصرية **375/768/1440** (بيد المستخدم).

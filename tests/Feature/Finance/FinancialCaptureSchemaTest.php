@@ -115,8 +115,10 @@ test('the capture migrations roll back and forward cleanly preserving pre-existi
     // table fires the FK ON DELETE CASCADE it declares to child tables, so row-
     // preservation is only asserted for the tables whose capture columns are
     // rolled back directly (tracking/history/store settings). The orders/status
-    // migrations are asserted for reversibility only.
-    expect(Artisan::call('migrate:rollback', ['--step' => 4, '--force' => true]))->toBe(0);
+    // migrations are asserted for reversibility only. Step 6 covers the four
+    // 38-C migrations plus the two later additive 2026_10_11 migrations
+    // (last_status_changed_at).
+    expect(Artisan::call('migrate:rollback', ['--step' => 6, '--force' => true]))->toBe(0);
 
     expect(Schema::hasColumn('order_status_histories', 'source'))->toBeFalse()
         ->and(Schema::hasColumn('order_trackings', 'cod_amount'))->toBeFalse()

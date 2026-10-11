@@ -20,7 +20,7 @@
     }
 }" x-init="renderCharts()">
 
-    <div class="edz-stagger grid grid-cols-1 gap-6 lg:grid-cols-3 mb-6">
+    <div class="edz-stagger grid grid-cols-1 gap-6 @if (empty($narrowCharts)) lg:grid-cols-3 @endif mb-6">
         {{-- Trend — one chart per stats view: counts in Confirmation, counts plus delivered revenue in Delivery. --}}
         <div class="lg:col-span-2 edz-card edz-card--padded">
             <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">

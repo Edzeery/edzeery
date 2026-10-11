@@ -175,10 +175,11 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->assertOk()
         ->getContent();
 
-    // The bar is included above the KPI region.
+    // The bar is included above the KPI region. The default (confirmation) view
+    // drops the carrier control (D4) but keeps member, dimension and date basis.
     expect($html)
-        ->toContain(__('dashboard.filter_carrier'))
-        ->toContain(__('dashboard.all_carriers'))
+        ->not->toContain(__('dashboard.filter_carrier'))
+        ->not->toContain(__('dashboard.all_carriers'))
         ->toContain(__('dashboard.filter_member'))
         ->toContain(__('dashboard.all_members'))
         ->toContain('wire:loading.class')
@@ -189,10 +190,23 @@ test('dashboard renders the filter bar from pre-built options without querying i
     // selects the whole dashboard view, not just member attribution.
     expect($html)
         ->toContain('wire:model.live="memberId"')
-        ->toContain('wire:model.live="carrierId"')
+        ->not->toContain('wire:model.live="carrierId"')
         ->toContain('wire:model.live="memberDimension"')
         ->toContain('search')
         ->toContain(__('dashboard.stats_view'));
+
+    // The same owner in the delivery view gets the carrier control back.
+    $deliveryHtml = $this->actingAs($user)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
+        ->assertOk()
+        ->getContent();
+
+    expect($deliveryHtml)
+        ->toContain(__('dashboard.filter_carrier'))
+        ->toContain(__('dashboard.all_carriers'))
+        ->toContain('wire:model.live="carrierId"')
+        ->toContain('wire:model.live="memberId"');
 
     $source = file_get_contents(
         resource_path('views/livewire/merchant/dashboard/partials/filter-bar.blade.php')
@@ -313,10 +327,12 @@ test('member select is hidden and the dimension is fixed when the member is lock
     expect($html)
         ->not->toContain('wire:model.live="memberId"')
         ->not->toContain('wire:model.live="memberDimension"')
-        ->toContain('wire:model.live="carrierId"')
+        ->not->toContain('wire:model.live="carrierId"')
         // The locked dimension is still reported, just not selectable.
         ->toContain(__('dashboard.dimension_confirmation'))
-        ->toContain(__('dashboard.filter_carrier'));
+        // D4: the carrier filter is part of the delivery view only, so a
+        // locked, confirmation-only user never sees it.
+        ->not->toContain(__('dashboard.filter_carrier'));
 });
 
 test('the trend axes start at zero and stay whole numbers', function () {
@@ -384,7 +400,9 @@ test('the carrier and member controls are the project select with a search field
 
     $html = $this->actingAs($owner)
         ->withSession(['current_store_id' => $store->id])
-        ->get(route('merchant.dashboard', ['store' => $store->slug]))
+        // The carrier control lives in the delivery view (D4), so that is the
+        // view where both selects render next to each other.
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
         ->assertOk()
         ->getContent();
 
@@ -491,7 +509,7 @@ test('member select options follow the existing scope rules and hint the role', 
         ->toBe(['', \App\Domains\Analytics\DTOs\DashboardFilter::UNATTRIBUTED]);
 });
 
-test('the aov card appears exactly once per view', function () {
+test('the aov card lives only in the delivery KPI row', function () {
     [$owner, $store] = dfwOwnerStore();
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
@@ -502,15 +520,15 @@ test('the aov card appears exactly once per view', function () {
 
     $marker = 'uppercase tracking-wider">'.__('dashboard.aov').'</p>';
 
-    // Delivery leads with AOV in the KPI row and drops it from the secondary row;
-    // confirmation keeps it only in the secondary row.
+    // Delivery leads with AOV in its KPI row; the confirmation view dropped the
+    // AOV card entirely (its KPIs are confirmation-centric).
     expect(substr_count($htmlDelivery, $marker))->toBe(1)
-        ->and(substr_count($htmlConfirmation, $marker))->toBe(1);
+        ->and(substr_count($htmlConfirmation, $marker))->toBe(0);
 
-    // The delivery view keeps two columns for the remaining two cards, so the
-    // row does not leave a gap where AOV used to be.
-    expect($htmlDelivery)->toContain('sm:grid-cols-2')
-        ->and($htmlConfirmation)->toContain('sm:grid-cols-3');
+    // Both KPI rows share the two-column small breakpoint; delivery opens up to
+    // four columns on xl.
+    expect($htmlDelivery)->toContain('xl:grid-cols-4')
+        ->and($htmlConfirmation)->toContain('sm:grid-cols-2');
 });
 
 test('the trend draws straight segments with points only where there is activity', function () {

@@ -108,6 +108,7 @@ return [
     'event_sent_to_carrier' => 'Remise au transporteur',
     'event_status' => 'Statut → :to',
     'event_tracking' => 'Suivi → :status',
+    'event_tracking_assigned' => 'Suivi attribué',
     'event_type_contact' => 'Contact',
     'event_type_created' => 'Création',
     'event_type_field_changed' => 'Modification',

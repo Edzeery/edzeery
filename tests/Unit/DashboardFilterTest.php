@@ -275,6 +275,11 @@ it('changes the hash when any filter input changes', function () {
         ->and($hash(['carrierId' => null]))->not->toBe($reference)
         ->and($hash(['memberId' => $other->id]))->not->toBe($reference)
         ->and($hash(['memberDimension' => 'delivery']))->not->toBe($reference)
+        // M4: the confirmation date axis and the product/variant picks take part
+        // in the hash too, so re-applying them is a real filter change.
+        ->and($hash(['dateBasis' => 'last_status_changed']))->not->toBe($reference)
+        ->and($hash(['productIds' => [$carrier->id]]))->not->toBe($reference)
+        ->and($hash(['variantIds' => [$carrier->id]]))->not->toBe($reference)
         // A different date range changes from/to, which the hash covers too.
         ->and($hash(['period' => 'custom', 'dateFrom' => '2026-03-01', 'dateTo' => '2026-03-05']))
         ->not->toBe($hash(['period' => 'custom', 'dateFrom' => '2026-03-02', 'dateTo' => '2026-03-05']));
@@ -326,4 +331,39 @@ it('serialises the window in UTC and exposes the local copy for display', functi
             'carrierId' => null,
             'memberLocked' => true,
         ]);
+});
+
+it('resolves the confirmation date basis and resists unknown values', function () {
+    $factory = app(DashboardFilterFactory::class);
+    $membership = memberWith([]);
+
+    $basis = fn (?string $requested) => $factory->make(['dateBasis' => $requested], $membership)->dateBasis;
+
+    expect($basis(null))->toBe(DashboardFilter::DATE_BASIS_CREATED)
+        ->and($basis('created'))->toBe(DashboardFilter::DATE_BASIS_CREATED)
+        ->and($basis('last_status_changed'))->toBe(DashboardFilter::DATE_BASIS_LAST_STATUS)
+        ->and($basis('created_at'))->toBe(DashboardFilter::DATE_BASIS_CREATED);
+});
+
+it('normalises a product or variant pick and caps it at one hundred ids', function () {
+    $factory = app(DashboardFilterFactory::class);
+    $membership = memberWith([]);
+
+    $make = fn (string $key, $value) => $factory->make([$key => $value], $membership);
+
+    // Absent or non-list input means "no filter" (null), never an empty filter.
+    expect($make('productIds', null)->productIds)->toBeNull()
+        ->and($make('variantIds', null)->variantIds)->toBeNull()
+        ->and($make('productIds', '12')->productIds)->toBeNull()
+        ->and($make('productIds', [])->productIds)->toBeNull()
+        ->and($make('variantIds', ['', 0])->variantIds)->toBeNull();
+
+    // Strings are normalised, deduped and trimmed; the cap stops a hand-edited
+    // URL from growing into an unbounded IN clause.
+    expect($make('productIds', [' a ', 'a', 'b', 7])->productIds)->toBe(['a', 'b', '7'])
+        ->and($make('variantIds', [1, 2, 2, 3])->variantIds)->toBe(['1', '2', '3']);
+
+    $overOneHundred = collect(range(1, 150))->map(fn ($i) => (string) $i)->all();
+
+    expect($make('productIds', $overOneHundred)->productIds)->toHaveCount(100);
 });

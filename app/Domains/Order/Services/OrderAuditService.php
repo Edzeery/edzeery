@@ -21,14 +21,14 @@ class OrderAuditService
         string $actorType = OrderEvent::ACTOR_MEMBERSHIP,
     ): OrderEvent {
         return OrderEvent::create([
-            'store_id'             => $order->store_id,
-            'order_id'             => $order->id,
-            'actor_membership_id'  => $actor?->id,
-            'actor_type'           => $actor ? OrderEvent::ACTOR_MEMBERSHIP : $actorType,
-            'event_type'           => $eventType,
-            'message'              => $message,
-            'payload'              => $payload,
-            'occurred_at'          => now(),
+            'store_id' => $order->store_id,
+            'order_id' => $order->id,
+            'actor_membership_id' => $actor?->id,
+            'actor_type' => $actor ? OrderEvent::ACTOR_MEMBERSHIP : $actorType,
+            'event_type' => $eventType,
+            'message' => $message,
+            'payload' => $payload,
+            'occurred_at' => now(),
         ]);
     }
 
@@ -109,6 +109,14 @@ class OrderAuditService
         return $this->log($order, 'reassigned', __('order_flow.event_reassigned'), [
             'to' => $toMembershipName,
         ], $actor);
+    }
+
+    public function trackingAssigned(Order $order, ?string $toMembershipName, string $method, ?StoreMembership $actor = null): OrderEvent
+    {
+        return $this->log($order, 'tracking_assigned', __('order_flow.event_tracking_assigned'), [
+            'to' => $toMembershipName,
+            'method' => $method,
+        ], $actor, OrderEvent::ACTOR_SYSTEM);
     }
 
     public function note(Order $order, string $message, ?StoreMembership $actor = null): OrderEvent

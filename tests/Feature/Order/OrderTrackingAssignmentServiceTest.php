@@ -103,6 +103,12 @@ test('a tracking agent on an active track shift is assigned the tracking', funct
     expect($tracking->fresh()->assigned_to_membership_id)->toBe($agent->id)
         ->and($tracking->fresh()->assignment_method)->toBe('auto')
         ->and($tracking->fresh()->assigned_at)->not->toBeNull();
+
+    $event = Order::find($tracking->order_id)->events()->where('event_type', 'tracking_assigned')->latest('id')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->payload['method'])->toBe('auto')
+        ->and($event->payload['to'])->toBe($agent->user->name)
+        ->and($event->actor_type)->toBe(\App\Models\Orders\OrderEvent::ACTOR_SYSTEM);
 });
 
 test('the track-scoped cap is enforced when resolving candidates', function () {
@@ -270,6 +276,13 @@ test('reassign sets the manual assignment per the acting membership', function (
     expect($tracking->fresh()->assigned_to_membership_id)->toBe($to->id)
         ->and($tracking->fresh()->assigned_by_membership_id)->toBe($by->id)
         ->and($tracking->fresh()->assignment_method)->toBe('manual');
+
+    $event = Order::find($tracking->order_id)->events()->where('event_type', 'tracking_assigned')->latest('id')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->payload['method'])->toBe('manual')
+        ->and($event->payload['to'])->toBe($to->user->name)
+        ->and($event->actor_membership_id)->toBe($by->id)
+        ->and($event->actor_type)->toBe(\App\Models\Orders\OrderEvent::ACTOR_MEMBERSHIP);
 });
 
 test('reassign refuses a member of a different store', function () {

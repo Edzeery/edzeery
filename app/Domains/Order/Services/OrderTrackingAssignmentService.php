@@ -64,6 +64,14 @@ class OrderTrackingAssignmentService
                 'user_id' => $selected->user_id,
             ]);
 
+            if ($tracking->order) {
+                app(OrderAuditService::class)->trackingAssigned(
+                    $tracking->order,
+                    $selected->user?->name,
+                    'auto',
+                );
+            }
+
             return $tracking;
         });
 
@@ -93,6 +101,15 @@ class OrderTrackingAssignmentService
             'to_membership_id' => $to->id,
             'by_membership_id' => $by->id,
         ]);
+
+        if ($tracking->order) {
+            app(OrderAuditService::class)->trackingAssigned(
+                $tracking->order,
+                $to->user?->name,
+                'manual',
+                $by,
+            );
+        }
 
         return $tracking;
     }

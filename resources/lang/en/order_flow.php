@@ -108,6 +108,7 @@ return [
     'event_sent_to_carrier' => 'Handed to carrier',
     'event_status' => 'Status → :to',
     'event_tracking' => 'Tracking → :status',
+    'event_tracking_assigned' => 'Tracking was assigned',
     'event_type_contact' => 'Contact',
     'event_type_created' => 'Created',
     'event_type_field_changed' => 'Edit',

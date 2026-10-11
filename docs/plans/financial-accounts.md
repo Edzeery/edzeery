@@ -68,7 +68,8 @@
 1. **نظرة عامة (Overview):** expected COD cash, accrued earnings, approximate net profit, alerts.
 2. **سجل حساب الأرباح (Profit ledger):** revenue − returns − product cost − shipping (both ways) − team commissions − ads − expenses = net profit, plus per-order and per-product profitability.
 3. **محاسبة فريق التأكيد (Confirmation team):** per member orders, confirmed, delivered, returned, earned, paid, balance; filters: date, product, carrier, member, wilaya, status.
-4. **محاسبة فريق التتبع (Tracking team):** same member-level columns and filters as the confirmation tab.
+   - **Contract (amended 2026-10-11, D1 — `docs/plans/confirmation-statistics-redesign.md`):** the member row key is the **assignment** column (`orders.assigned_to_membership_id`), classified by the member's permission (`ORDER_CONFIRM`); the money/credit columns (`confirmed`/`delivered`/`returned`/`earned`) stay keyed on `confirmed_by_membership_id` (financial credit, unchanged). The two keys are never summed together. Deleted **orders** are shown as `(n)` in red with a trash icon and excluded from all rates; the "with/without trash" toggle applies to **members** only. The "carrier" filter is not part of the confirmation tab (it stays on the delivery tab).
+4. **محاسبة فريق التتبع (Tracking team):** same member-level columns and filters as the confirmation tab; same assignment-vs-credit contract, with the member classified by `CRM_ORDER_TRACKING`.
 5. **حسابات التوصيل (Delivery accounts):** per carrier COD collected, delivery and return fees, remittances received, reconciliation, overdue, disputes.
 6. **تنظيم مدير الأعمال (Business-manager organization):** the S6 items — expenses, suppliers/purchases, cash accounts, budgets, partners/profit sharing, tasks/reminders.
 
@@ -84,6 +85,8 @@
 - **Full audit log and granular permissions** (view, manage, pay, close period).
 - **Alerts** (return spikes by carrier or wilaya, late COD remittance, abnormal status-edit activity).
 - **CSV/Excel/PDF exports** matching on-screen numbers exactly.
+
+- **«إحصائيات المداخيل» — registered to 38-B / 38-D (decision D8, 2026-10-11):** this tab was moved out of the confirmation-statistics redesign (`docs/plans/confirmation-statistics-redesign.md` §8) and is owned here. Required content: total **delivered** orders + their sum, and total **delivery expense = actual − declared**; then **net = revenues − delivery**. Available now: declared (`orders.shipping_cost`) + delivered. "Actual" delivery cost needs carrier settlements/invoices → **not built now** (38-G).
 
 ## 8. Phase tracker
 

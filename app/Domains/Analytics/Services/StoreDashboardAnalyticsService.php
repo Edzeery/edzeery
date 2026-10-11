@@ -3,6 +3,10 @@
 namespace App\Domains\Analytics\Services;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
+use App\Domains\Analytics\Support\ConfirmationRateDenominator;
+use App\Domains\Analytics\Support\ConfirmationStatsQuery;
+use App\Domains\Analytics\Support\ConfirmationStatsReport;
+use App\Domains\Analytics\Support\DashboardConfirmationTeam;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Domains\Analytics\Support\DashboardOrderScope;
 use App\Domains\Analytics\Support\DashboardStatusBreakdown;
@@ -72,10 +76,10 @@ class StoreDashboardAnalyticsService
         $filter ??= app(DashboardFilterFactory::class)->make([], null);
         $teamQuery = app(DashboardTeamPerformanceQuery::class);
         $rows = $teamQuery->run(
-            $this->baseOrdersQuery(),
+            $this->baseOrdersQuery(withTrashed: true),
             $filter,
             $this->statusIds->resolver(),
-            fn ($s) => $this->statusIds->ids($s)
+            $this->statusIds->ids(...)
         );
 
         return app(DashboardTeamPerformance::class)->present($rows['credit'], $rows['work'], $filter, $members);
@@ -161,6 +165,57 @@ class StoreDashboardAnalyticsService
     }
 
     /**
+     * The confirmation tab (M4): one grouped read (ConfirmationStatsQuery)
+     * folded by ConfirmationStatsReport, with the confirmation-rate denominator
+     * resolved from store_settings.confirmation_rate_denominator — the same
+     * preset the settings screen would offer, so card and rate always agree.
+     *
+     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}
+     */
+    public function confirmationStats(?DashboardFilter $filter = null): array
+    {
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
+
+        $rows = app(ConfirmationStatsQuery::class)->run($filter);
+
+        return (new ConfirmationStatsReport($this->confirmationDenominatorGroups()))->build($rows);
+    }
+
+    /**
+     * The confirmation team section (M5): the same grouped read as the headline
+     * cards, folded per membership so a member row is a slice of the same scan
+     * (decision D5). The $members list already carries the without/with-trash
+     * decision; a soft-deleted member is marked so the view can say so.
+     *
+     * @param  Collection<int, object{id: string, name: string, deleted?: bool}>  $members
+     * @return list<array<string, mixed>>
+     */
+    public function confirmationTeam(?DashboardFilter $filter, Collection $members): array
+    {
+        $filter ??= app(DashboardFilterFactory::class)->make([], null);
+
+        $rows = app(ConfirmationStatsQuery::class)->run($filter);
+        $summaries = (new ConfirmationStatsReport($this->confirmationDenominatorGroups()))->perMember($rows);
+
+        return app(DashboardConfirmationTeam::class)->present($summaries, $filter, $members);
+    }
+
+    /**
+     * The confirmation-rate denominator preset resolved from
+     * store_settings.confirmation_rate_denominator. currentStore() was already
+     * resolved (settings included) by the filter factory earlier in the same
+     * request, so this is a cached relation — no extra query on render.
+     *
+     * @return list<string>
+     */
+    private function confirmationDenominatorGroups(): array
+    {
+        return ConfirmationRateDenominator::resolve(
+            currentStore()?->settings?->confirmation_rate_denominator
+        );
+    }
+
+    /**
      * Ranked by quantity sold inside the scoped window.
      *
      * This used to hard-code "since the start of the current month" on the app
@@ -207,8 +262,10 @@ class StoreDashboardAnalyticsService
             ->get();
     }
 
-    private function baseOrdersQuery(): \Illuminate\Database\Eloquent\Builder
+    private function baseOrdersQuery(bool $withTrashed = false): \Illuminate\Database\Eloquent\Builder
     {
-        return Order::query()->where('store_id', $this->storeId)->whereNull('deleted_at');
+        $query = Order::query()->where('store_id', $this->storeId);
+
+        return $withTrashed ? $query->withTrashed() : $query->whereNull('deleted_at');
     }
 }

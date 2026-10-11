@@ -49,7 +49,38 @@ final class DashboardFilterFactory
             storeId: $storeId ?? '',
             memberLocked: $memberLocked,
             memberUnattributedOnly: $memberUnattributedOnly,
+            dateBasis: $this->resolveDateBasis($input['dateBasis'] ?? null),
+            productIds: $this->resolveIdList($input['productIds'] ?? null),
+            variantIds: $this->resolveIdList($input['variantIds'] ?? null),
         );
+    }
+
+    private function resolveDateBasis(?string $requested): string
+    {
+        return $requested === DashboardFilter::DATE_BASIS_LAST_STATUS
+            ? DashboardFilter::DATE_BASIS_LAST_STATUS
+            : DashboardFilter::DATE_BASIS_CREATED;
+    }
+
+    /**
+     * A product/variant pick from the filter bar: a flat list of ids, deduped
+     * and capped so a hand-edited URL cannot turn into an unbounded IN clause.
+     * Absent or non-list input means "no product filter".
+     *
+     * @return ?array<int, string>
+     */
+    private function resolveIdList(mixed $value): ?array
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $ids = array_values(array_unique(array_filter(
+            array_map(static fn ($id) => is_scalar($id) ? trim((string) $id) : '', $value),
+            static fn (string $id) => $id !== '' && $id !== '0'
+        )));
+
+        return $ids === [] ? null : array_slice($ids, 0, 100);
     }
 
     /**

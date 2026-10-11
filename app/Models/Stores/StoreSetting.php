@@ -2,14 +2,14 @@
 
 namespace App\Models\Stores;
 
-use Illuminate\Database\Eloquent\Concerns\HasUlids;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StoreSetting extends Model
 {
     use HasFactory;
+
     protected $table = 'store_settings';
 
     protected $primaryKey = 'store_id';
@@ -38,6 +38,7 @@ class StoreSetting extends Model
         'distribution_overflow_enabled',
         'distribution_overflow_percentage',
         'finance_capture_started_at',
+        'confirmation_rate_denominator',
     ];
 
     protected $casts = [
@@ -54,6 +55,7 @@ class StoreSetting extends Model
         'distribution_overflow_enabled' => 'boolean',
         'distribution_overflow_percentage' => 'integer',
         'finance_capture_started_at' => 'datetime',
+        'confirmation_rate_denominator' => 'array',
     ];
 
     /* ================= Relations ================= */

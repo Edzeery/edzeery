@@ -53,6 +53,10 @@ class OrderObserver
     public function created(Order $order): void
     {
         app(OrderAuditService::class)->created($order);
+
+        DB::table('orders')
+            ->where('id', $order->id)
+            ->update(['last_status_changed_at' => $order->created_at ?? now()]);
     }
 
     /**
@@ -122,6 +126,10 @@ class OrderObserver
             'changed_by_membership_id' => $meta['changed_by_membership_id'] ?? null,
             'reason' => $meta['reason'] ?? null,
         ]);
+
+        DB::table('orders')
+            ->where('id', $order->id)
+            ->update(['last_status_changed_at' => now()]);
 
         // PHASE 38-C — first-write-wins event stamps (C.1/C.2). Atomic CAS
         // (WHERE <column> IS NULL) inside the SAME transaction as the status

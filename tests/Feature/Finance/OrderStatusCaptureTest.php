@@ -357,3 +357,36 @@ test('exactly one shipping event per order ever despite a cancelled and re-sent 
     expect($trackings)->toHaveCount(1)
         ->and((string) $trackings->first()->tracked_by_membership_id)->toBe((string) $member->id);
 });
+
+test('creating an order stamps last_status_changed_at from created_at', function () {
+    [, $store] = fcoActor();
+
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00'));
+    $order = fcoOrder($store);
+
+    expect($order->last_status_changed_at)->not->toBeNull()
+        ->and($order->last_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe($order->created_at->format('Y-m-d H:i:s'));
+});
+
+test('every status transition advances last_status_changed_at, even backward moves', function () {
+    [, $store, $member] = fcoActor();
+    $app = app(OrderService::class);
+
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00'));
+    $order = fcoOrder($store);
+    $createdStamp = $order->last_status_changed_at->format('Y-m-d H:i:s');
+
+    $this->travelTo(Carbon::parse('2026-10-05 09:00:00'));
+    $order = $app->transition($order, 'confirmed', null, $member, 'manual');
+    expect($order->last_status_changed_at->format('Y-m-d H:i:s'))->toBe('2026-10-05 09:00:00')
+        ->and($order->last_status_changed_at->format('Y-m-d H:i:s'))->not->toBe($createdStamp);
+
+    $this->travelTo(Carbon::parse('2026-10-05 10:00:00'));
+    $order = $app->transition($order, 'cancelled', 'change of mind', $member, 'manual');
+    expect($order->fresh()->last_status_changed_at->format('Y-m-d H:i:s'))->toBe('2026-10-05 10:00:00');
+
+    $this->travelTo(Carbon::parse('2026-10-05 11:00:00'));
+    $order = $app->transition($order, 'pending', null, $member, 'manual');
+    expect($order->fresh()->last_status_changed_at->format('Y-m-d H:i:s'))->toBe('2026-10-05 11:00:00');
+});

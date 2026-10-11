@@ -14,6 +14,14 @@ final class DashboardFilter implements Arrayable
      */
     public const UNATTRIBUTED = '__unattributed__';
 
+    /**
+     * Date axis of the confirmation tab (D2): the order's creation instant, or
+     * the last instant its status moved (orders.last_status_changed_at).
+     */
+    public const DATE_BASIS_CREATED = 'created';
+
+    public const DATE_BASIS_LAST_STATUS = 'last_status_changed';
+
     private bool $previousResolved = false;
 
     private ?self $previousFilter = null;
@@ -40,6 +48,9 @@ final class DashboardFilter implements Arrayable
         public readonly string $storeId = '',
         public readonly bool $memberLocked = false,
         public readonly bool $memberUnattributedOnly = false,
+        public readonly string $dateBasis = self::DATE_BASIS_CREATED,
+        public readonly ?array $productIds = null,
+        public readonly ?array $variantIds = null,
     ) {}
 
     /**
@@ -79,6 +90,9 @@ final class DashboardFilter implements Arrayable
             'carrier' => $this->carrierId,
             'member' => $this->memberId,
             'dim' => $this->memberDimension,
+            'basis' => $this->dateBasis,
+            'products' => $this->productIds,
+            'variants' => $this->variantIds,
         ];
 
         return 'f-'.substr(md5(json_encode($parts)), 0, 12);
@@ -99,6 +113,9 @@ final class DashboardFilter implements Arrayable
             'storeId' => $this->storeId,
             'memberLocked' => $this->memberLocked,
             'memberUnattributedOnly' => $this->memberUnattributedOnly,
+            'dateBasis' => $this->dateBasis,
+            'productIds' => $this->productIds,
+            'variantIds' => $this->variantIds,
         ];
     }
 
@@ -125,6 +142,9 @@ final class DashboardFilter implements Arrayable
             storeId: $this->storeId,
             memberLocked: $this->memberLocked,
             memberUnattributedOnly: $this->memberUnattributedOnly,
+            dateBasis: $this->dateBasis,
+            productIds: $this->productIds,
+            variantIds: $this->variantIds,
         );
     }
 }

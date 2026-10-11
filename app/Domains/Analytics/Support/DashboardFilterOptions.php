@@ -49,7 +49,7 @@ final class DashboardFilterOptions
      * the tab's cohort (§ 11.4) when a dimension is given, so a tracking-only
      * member can never surface in the Confirmation view and vice-versa.
      */
-    public function members(?StoreMembership $current, ?string $dimension = null): Collection
+    public function members(?StoreMembership $current, ?string $dimension = null, bool $includeTrashed = false): Collection
     {
         if (! $current || ! $current->is_active) {
             return collect();
@@ -65,10 +65,16 @@ final class DashboardFilterOptions
         $hasTeamViewOwn = $current->hasPermission(StorePermissionEnum::TEAM_VIEW_OWN->value)
             && ! $hasTeamView;
 
+        // The confirmation team's without/with-trash toggle (D7): without trash
+        // names the active members only; with trash also names soft-deleted
+        // members, which the rows then mark as deleted.
         $query = StoreMembership::query()
             ->with('user')
-            ->where('store_id', $storeId)
-            ->where('is_active', true);
+            ->where('store_id', $storeId);
+
+        $includeTrashed
+            ? $query->withTrashed()
+            : $query->where('is_active', true);
 
         app(DashboardMemberCohort::class)->constrain($query, $dimension);
 
@@ -86,6 +92,7 @@ final class DashboardFilterOptions
                 'id' => $m->id,
                 'name' => $m->user?->name ?? $m->user?->email ?? $m->id,
                 'role' => $m->role,
+                'deleted' => method_exists($m, 'trashed') && $m->trashed(),
             ];
         });
     }

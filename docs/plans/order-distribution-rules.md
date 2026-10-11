@@ -158,11 +158,20 @@ bucketing); never reused as a second domain list. Rows with a NULL
 
 ## 9) Explicit non-goals (out of scope, by decision)
 
-Assignment ledger, customer-sticky routing, agent break toggle, FIFO dispatch,
-fairness dashboard, unassigned-reason codes, no-answer rotation, and changes to
-overflow %, notifications, visibility-guard semantics, `membership_product_scopes`,
-`statuses.stage`, the 38-C program, `confirmation_shifts` structure, or PHASE
-35.1-A shift behavior are deliberately NOT part of these rules.
+A **heavy assignment ledger**, customer-sticky routing, agent break toggle, FIFO
+dispatch, fairness dashboard, unassigned-reason codes, no-answer rotation, and
+changes to overflow %, notifications, visibility-guard semantics,
+`membership_product_scopes`, `statuses.stage`, the 38-C program,
+`confirmation_shifts` structure, or PHASE 35.1-A shift behavior are deliberately
+NOT part of these rules.
+
+> **Amended 2026-10-11** (see §11 and
+> `docs/plans/confirmation-statistics-redesign.md`, decision D1): this freeze is
+> narrowed to a *heavy* assignment ledger. A **light assignment register** — the
+> existing assignment columns (`orders.assigned_to_membership_id`,
+> `order_trackings.assigned_to_membership_id`) plus a lightweight assignment
+> event (tracking create/reassign) — is now in scope, because assignment is the
+> **dimension key** of the confirmation / tracking statistics tabs.
 
 ## 10) Key files
 
@@ -248,3 +257,29 @@ order) shipped as **38-C.2**: `order_trackings.tracked_by_membership_id`, via a
 new migration dated AFTER `2026_10_06_000004`, plus `FinancialCaptureSchemaTest`
 (`--step` booking), `FinanceCaptureHealth`, `OrderTrackingService::startShipment`,
 `OrderStatusCaptureTest`, and the docs. Awaiting Phase 38-F.
+
+### Amendment 2026-10-11 — assignment as the statistics-tab dimension key (D1)
+
+Full plan: `docs/plans/confirmation-statistics-redesign.md` (decision D1 and
+§7.3). Adds two orthogonal keys to Rule 1's table above, without changing the
+credit rule:
+
+| Notion | Key | Meaning | Used for |
+| --- | --- | --- | --- |
+| Stats dimension (work) | `orders.assigned_to_membership_id` / `order_trackings.assigned_to_membership_id` | who the row is assigned to **right now**, split by the member's scope (`ORDER_CONFIRM` vs `CRM_ORDER_TRACKING`) | the confirmation / tracking **statistics tabs**' member rows and member filter |
+| Stats dimension (tracking) | light assignment event | tracking create/reassign recorded as a lightweight event (extends `order_events`, mirrors `OrderAuditService::reassigned`) | audit / future history of tracking assignment |
+
+Rules:
+
+1. **Dimension ≠ credit.** The statistics tab's member key is the **assignment**
+   column; `confirmed_by_membership_id` remains the **financial credit key**
+   (Rule 1, unchanged) used by 38-D settlements. The two are never summed into
+   one balance.
+2. **Scope split, not "who acted".** A member is a confirmation-tab row when the
+   assigned member holds `ORDER_CONFIRM`; a tracking-tab row when the assigned
+   member holds `CRM_ORDER_TRACKING` — the assignment is classified by the
+   member's **permission**, never by "who confirmed / who tracked".
+3. **Light, not heavy.** No new ledger table and no per-assignment monetary rows;
+   only the existing columns plus one lightweight assignment event.
+4. **Dual-role members** (Rule 4) still appear in both tabs, each row counted only
+   in its own tab.

@@ -117,6 +117,8 @@ class CarrierCatalogSeeder extends Seeder
                 'sort_order' => 8,
                 'credential_fields' => [
                     ['key' => 'api_token', 'label' => 'API Token', 'type' => 'password', 'required' => true],
+                    ['key' => 'guid', 'label' => 'User GUID', 'type' => 'text', 'required' => true],
+                    ['key' => 'api_base', 'label' => 'API Base URL', 'type' => 'text', 'required' => false],
                 ],
             ],
             [
@@ -139,5 +141,14 @@ class CarrierCatalogSeeder extends Seeder
                 array_merge($data, ['name' => $carrier['name']]),
             );
         }
+        Carrier::where('code', 'noest')->update([
+            'supports_delivery' => true,
+            'supports_exchange' => true,
+            'supports_pickup' => true,
+            'supports_free_shipping_mode' => true,
+            'supports_express_economic' => false,
+            'supports_api_notes' => true,
+            'supports_price_sync' => true,
+        ]);
     }
 }

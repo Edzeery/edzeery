@@ -19,6 +19,7 @@
 | `07-design-system-apple.md` | الهوية البصرية Apple، توكينات، dark/light، استجابة، وصولية | 🟡 P2 |
 | `08-fintech-program.md` | برنامج الحسابات المالية 38-B/C/D | 🟡 P2 |
 | `09-code-health.md` | حجم الملفات، الموتى، i18n, pint/phpstan, التنظيف | 🟡 P2 |
+| `10-scalability-resilience.md` | القابلية للتوسع والصلابة: Stateless/Redis، pooler/replica، حجز ذرّي، طوابير/Horizon، CDN/حماية، Octane، توسّع المتاجر، APM/DR | 🟠 P1 |
 | `STATUS.md` | سجل الإنجاز (يُحدَّث بعد كل مهمة) | — |
 
 ---
@@ -60,6 +61,8 @@
 المرحلة 5 — العمليات/أشياء: `05-ops-deps-infra`
 المرحلة 6 — الأداء والهوية: `06-performance` + `07-design-system-apple`
 المرحلة 7 — المالية وبرنامج الصحة: `08-fintech-program` + `09-code-health`
+
+**برنامج التوسّع والصلابة (بعد استقرار الشجرة واخضرار الاختبارات):** `10-scalability-resilience.md` — يبدأ بشرط البوابة `SR-00` (شجرة نظيفة + اختبارات خضراء + staging + نسخ احتياطي). الترتيب الداخلي: Stateless/Redis ← البيانات (pooler/replica/ترقيم) ← التزامن (حجز ذرّي) ← الطوابير/Horizon ← الحافة/CDN ← Octane ← توسّع المتاجر ← APM/DR. لا Big Bang.
 
 ---
 
