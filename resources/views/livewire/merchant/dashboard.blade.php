@@ -121,32 +121,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
 <div>
     @include('livewire.merchant.dashboard.partials.filter-bar')
 
-    {{-- Store link: a compact header action, not a full-width card. --}}
-    @php
-        $storeUrl = currentStore()?->public_url;
-    @endphp
-    <div class="mb-4 flex justify-end">
-        <div class="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-1.5">
-            <span class="hidden max-w-[16rem] truncate font-mono text-xs text-ink-muted sm:inline">{{ $storeUrl ?? '-' }}</span>
-            <button type="button"
-                x-data="{ copied: false }"
-                x-on:click="navigator.clipboard.writeText('{{ $storeUrl }}'); copied = true; setTimeout(() => copied = false, 2000);"
-                class="edz-btn edz-btn--secondary edz-btn--sm"
-                title="{{ __('buttons.copy_link') }}"
-                aria-label="{{ __('buttons.copy_link') }}">
-                <x-edz.icon name="copy" class="h-4 w-4" />
-                <span class="sr-only" x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
-            </button>
-            @if (currentStore()?->isPubliclyActive())
-                <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer"
-                   class="edz-btn edz-btn--primary edz-btn--sm">
-                    <x-edz.icon name="external-link" class="h-4 w-4 me-1" />
-                    {{ __('storefront.visit_store') }}
-                </a>
-            @endif
-        </div>
-    </div>
-
     <div wire:loading.class="opacity-60 transition-opacity duration-200"
          wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension,dateBasis,productIds,teamTrash,teamSearch,setConfirmationTab">
 

@@ -126,10 +126,14 @@ final class DashboardOrderScope
     }
 
     /**
-     * Team walks are keyed on the confirmed member for both tabs (§11 of
-     * docs/plans/order-distribution-rules.md): credit belongs to the member
-     * who confirmed the order, never to the tracking assignee, and there is no
-     * delivered_by at all. The unattributed cohort is confirmed_by IS NULL.
+     * PHASE 37-M (D1): the member key is the dimension's own key (§11 of
+     * docs/plans/order-distribution-rules.md). The confirmation tab's member
+     * rows and member filter read `orders.assigned_to_membership_id` — the
+     * "work" key — so they agree with {@see ConfirmationStatsQuery}, which
+     * groups by that same column. The delivery tab keeps the financial credit
+     * key `orders.confirmed_by_membership_id`; there is no delivered_by at all.
+     * The sentinel therefore resolves to `whereNull` on the active key, never
+     * on the other one.
      *
      * memberScopeIds is null for "every member", so an unrestricted filter
      * adds no clause at all. An empty list (no membership) matches nothing,
@@ -143,27 +147,31 @@ final class DashboardOrderScope
             return;
         }
 
+        $column = $filter->memberDimension === 'delivery'
+            ? 'orders.confirmed_by_membership_id'
+            : 'orders.assigned_to_membership_id';
+
         $includeUnattributed = in_array(DashboardFilter::UNATTRIBUTED, $scopeIds, true);
         $memberIds = array_values(array_filter($scopeIds, static fn ($id) => $id !== DashboardFilter::UNATTRIBUTED));
 
         if ($memberIds === []) {
             if ($includeUnattributed) {
-                $query->whereNull('orders.confirmed_by_membership_id');
+                $query->whereNull($column);
 
                 return;
             }
 
             // Fail closed: an empty scope (no membership) matches nothing.
-            $query->whereIn('orders.confirmed_by_membership_id', []);
+            $query->whereIn($column, []);
 
             return;
         }
 
-        $query->where(function ($q) use ($memberIds, $includeUnattributed) {
-            $q->whereIn('orders.confirmed_by_membership_id', $memberIds);
+        $query->where(function ($q) use ($memberIds, $includeUnattributed, $column) {
+            $q->whereIn($column, $memberIds);
 
             if ($includeUnattributed) {
-                $q->orWhereNull('orders.confirmed_by_membership_id');
+                $q->orWhereNull($column);
             }
         });
     }

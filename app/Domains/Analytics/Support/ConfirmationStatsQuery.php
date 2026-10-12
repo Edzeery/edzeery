@@ -27,9 +27,9 @@ final class ConfirmationStatsQuery
             ->where('orders.store_id', $filter->storeId)
             ->withTrashed();
 
-        // PHASE 37-L: the report answers the same member question as the rest
-        // of the confirmation view (the credit key, via the shared scope), so
-        // the cards, the doughnut and the KPI can never disagree about who
+        // PHASE 37-M1: the report answers the same member question as the rest
+        // of the confirmation view (the assignment key, via the shared scope),
+        // so the cards, the doughnut and the KPI can never disagree about who
         // belongs in the window. The date window and the product EXISTS live in
         // the scope too, shared with every other confirmation block.
         $this->scope->apply($query, $filter);

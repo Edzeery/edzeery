@@ -28,6 +28,13 @@ function dftValues(array $trend, string $key): array
     return $series['values'] ?? [];
 }
 
+/** PHASE 37-M2: the confirmation trend stacks the seven groups, so the orders
+ *  that arrived are the sum over every series (the old `received` figure). */
+function dftTotal(array $trend): int|float
+{
+    return collect($trend['series'])->sum(fn ($s) => array_sum($s['values'] ?? []));
+}
+
 /*
  * Fixtures deliberately cover every dimension the dashboard groups by (period,
  * store, carrier, confirmation member, delivery member, status, state, delivery
@@ -263,7 +270,7 @@ it('applies the period to every block', function () {
 
     expect($this->service->summary($today)['total_orders'])->toBe(1)
         ->and($this->service->statusBreakdown($today)->sum('count'))->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($today), 'received')))->toBe(1)
+        ->and(dftTotal($this->service->trendSeries($today)))->toBe(1)
         ->and($this->service->ordersByState($today)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($today)->sum('count'))->toBe(1);
 
@@ -289,7 +296,7 @@ it('never counts another store', function () {
     $filter = ($this->filter)();
 
     expect($this->service->summary($filter)['total_orders'])->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($filter), 'received')))->toBe(1)
+        ->and(dftTotal($this->service->trendSeries($filter)))->toBe(1)
         ->and($this->service->statusBreakdown($filter)->sum('count'))->toBe(1)
         ->and($this->service->ordersByState($filter)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($filter)->sum('count'))->toBe(1)
@@ -305,7 +312,7 @@ it('excludes soft deleted orders and order items', function () {
 
     expect($this->service->summary($filter)['total_orders'])->toBe(1)
         ->and($this->service->statusBreakdown($filter)->sum('count'))->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($filter), 'received')))->toBe(1)
+        ->and(dftTotal($this->service->trendSeries($filter)))->toBe(1)
         ->and($kept->trashed())->toBeFalse()
         ->and($deleted->trashed())->toBeTrue();
 });
@@ -317,15 +324,14 @@ it('breaks orders down by status, state and delivery type', function () {
 
     $filter = ($this->filter)();
 
-    // The doughnut reads the confirmation report (D2/D12): a delivered order
-    // lands in its own passed-to-delivery group rather than being collapsed
-    // into "confirmed", so both delivered orders read as one slice that matches
-    // the confirmation-rate KPI beside it.
+    // The doughnut reads the confirmation report (D2): confirmed, delivered and
+    // returned all fold into the one confirmed slice, so both delivered orders
+    // read as one slice that matches the confirmation-rate KPI beside it.
     $statuses = $this->service->statusBreakdown($filter);
     expect($statuses)->toHaveCount(2)
-        ->and($statuses->pluck('key')->sort()->values()->all())->toBe(['passed_to_delivery', 'pending'])
-        ->and($statuses->firstWhere('key', 'passed_to_delivery')->count)->toBe(2)
-        ->and($statuses->firstWhere('key', 'passed_to_delivery')->label)->not->toBeEmpty()
+        ->and($statuses->pluck('key')->sort()->values()->all())->toBe(['confirmed', 'pending'])
+        ->and($statuses->firstWhere('key', 'confirmed')->count)->toBe(2)
+        ->and($statuses->firstWhere('key', 'confirmed')->label)->not->toBeEmpty()
         // Integer percentages that always add up to the whole chart.
         ->and($statuses->pluck('percent')->sum())->toBe(100);
 
@@ -359,7 +365,7 @@ it('leaves orders without a state out of the state breakdown only', function () 
     expect($this->service->ordersByState($filter)->sum('count'))->toBe(1)
         ->and($this->service->summary($filter)['total_orders'])->toBe(2)
         ->and($this->service->deliveryTypeBreakdown($filter)->sum('count'))->toBe(2)
-        ->and(array_sum(dftValues($this->service->trendSeries($filter), 'received')))->toBe(2);
+        ->and(dftTotal($this->service->trendSeries($filter)))->toBe(2);
 });
 
 it('filters the delivery view by carrier and discards a carrier from another store', function () {
@@ -405,20 +411,21 @@ it('filters the delivery view by carrier and discards a carrier from another sto
     expect(($this->filter)(['carrierId' => $this->carrierA->id])->carrierId)->toBeNull();
 });
 
-it('filters the confirmation dimension by the confirmed member', function () {
-    $mine = ($this->order)(['confirmed_by_membership_id' => $this->memberA->id]);
-    ($this->order)(['confirmed_by_membership_id' => $this->memberB->id]);
+it('filters the confirmation dimension by the assigned member', function () {
+    $mine = ($this->order)(['assigned_to_membership_id' => $this->memberA->id]);
+    ($this->order)(['assigned_to_membership_id' => $this->memberB->id]);
 
     $filter = ($this->filter)(['memberId' => $this->memberA->id, 'memberDimension' => 'confirmation']);
 
     expect($filter->memberScopeIds)->toBe([$this->memberA->id])
         ->and($this->service->summary($filter)['total_orders'])->toBe(1)
         ->and($this->service->statusBreakdown($filter)->sum('count'))->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($filter), 'received')))->toBe(1)
+        ->and(dftTotal($this->service->trendSeries($filter)))->toBe(1)
         ->and($this->service->ordersByState($filter)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($filter)->sum('count'))->toBe(1)
-        // The other member's order is untouched on disk.
-        ->and($mine->fresh()->confirmed_by_membership_id)->toBe($this->memberA->id);
+        // The other member's order is untouched on disk (D1: the confirmation
+        // dimension keys on the assignment, not the credit).
+        ->and($mine->fresh()->assigned_to_membership_id)->toBe($this->memberA->id);
 });
 
 it('filters the delivery dimension by the confirmed member', function () {
@@ -524,11 +531,11 @@ it('scopes top selling products by carrier and confirmation member', function ()
     $widget = makeProduct('Widget');
 
     $mine = ($this->order)([
-        'confirmed_by_membership_id' => $this->memberA->id,
+        'assigned_to_membership_id' => $this->memberA->id,
         'shipping_provider_id' => $this->carrierA->id,
     ]);
     $theirs = ($this->order)([
-        'confirmed_by_membership_id' => $this->memberB->id,
+        'assigned_to_membership_id' => $this->memberB->id,
         'shipping_provider_id' => $this->carrierB->id,
     ]);
 
@@ -654,7 +661,7 @@ it('plots one point per bucket for the selected period', function () {
         ($this->filter)(['period' => 'custom', 'dateFrom' => '2026-01-01', 'dateTo' => '2026-01-02'])
     );
     expect($empty['labels'])->toHaveCount(2)
-        ->and(array_sum(dftValues($empty, 'received')))->toBe(0);
+        ->and(dftTotal($empty))->toBe(0);
 });
 
 it('moves every confirmation block with the product pick and leaves delivery untouched', function () {
@@ -680,7 +687,7 @@ it('moves every confirmation block with the product pick and leaves delivery unt
         ->and($this->service->statusBreakdown($confirmation)->sum('count'))->toBe(1)
         ->and($this->service->ordersByState($confirmation)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($confirmation)->sum('count'))->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($confirmation), 'received')))->toBe(1);
+        ->and(dftTotal($this->service->trendSeries($confirmation)))->toBe(1);
 
     // The delivery view ignores the product pick, so both tracked orders stay.
     $delivery = ($this->filter)(['variantIds' => [$widget], 'memberDimension' => 'delivery']);
@@ -709,7 +716,7 @@ it('honours the last-status axis in confirmation and pins delivery to the creati
     expect($lastStatus->dateBasis)->toBe(DashboardFilter::DATE_BASIS_LAST_STATUS)
         ->and($this->service->summary($lastStatus)['total_orders'])->toBe(2)
         ->and($this->service->statusBreakdown($lastStatus)->sum('count'))->toBe(2)
-        ->and(array_sum(dftValues($this->service->trendSeries($lastStatus), 'received')))->toBe(2);
+        ->and(dftTotal($this->service->trendSeries($lastStatus)))->toBe(2);
 
     // Delivery pins the creation axis, so the same request cannot widen it.
     $delivery = ($this->filter)([

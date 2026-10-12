@@ -120,12 +120,15 @@ final class DashboardFilterOptions
             ];
         }
 
-        // The unattributed cohort («بلا رصيد») is always a store-wide option:
-        // orders whose confirmed member is NULL, exposed to any member who may
-        // pick another member.
+        // The sentinel cohort is always a store-wide option, but its label
+        // follows the active key (PHASE 37-M, D1): on Confirmation the key is
+        // the assignment, so it reads «غير مُسنَدة» (no work); on Delivery the
+        // key is the financial credit, so it reads «بلا رصيد» (no credit).
         $options[] = [
             'value' => DashboardFilter::UNATTRIBUTED,
-            'label' => __('dashboard.team_unattributed'),
+            'label' => $dimension === 'delivery'
+                ? __('dashboard.team_unattributed')
+                : __('dashboard.team_unassigned'),
         ];
 
         return $options;

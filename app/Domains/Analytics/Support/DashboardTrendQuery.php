@@ -55,30 +55,33 @@ final class DashboardTrendQuery
     /** @return array{view: 'confirmation', labels: array<int, string>, series: list<array<string, mixed>>} */
     private function confirmation($query, DashboardFilter $filter, callable $statusId, callable $statusIds): array
     {
-        // D4: the trend answers the same four questions as the cards — how many
-        // arrived, how many the desk cleared (the numerator: confirmed or
-        // already shipped), how many it canceled (including wrong_number) and
-        // how many it failed to reach.
-        $confirmedIds = $this->statusIds->idsForKeys([
-            ...ConfirmationStatsGroups::keys(ConfirmationStatsGroups::CONFIRMED),
-            ...ConfirmationStatsGroups::keys(ConfirmationStatsGroups::PASSED_TO_DELIVERY),
-        ]);
-        $canceledIds = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys(ConfirmationStatsGroups::CANCELED));
-        $failedIds = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys(ConfirmationStatsGroups::FAILED));
+        // PHASE 37-M2 (D3): the confirmation trend stacks the same seven groups
+        // the cards and the doughnut read, so one bucket shows how the desk's
+        // work splits and the stack total is the orders that arrived. The
+        // server only ships the counts; the colour of each group is resolved in
+        // the view from config('analytics.group_colors'), the single source.
+        $metrics = [];
+        $series = [];
 
-        $result = $this->seriesQuery->series($query, $filter, [
-            ['key' => 'received', 'expression' => 'COUNT(*)'],
-            ['key' => 'confirmed', 'expression' => $this->countWhen($this->in('orders.status_id', $confirmedIds)), 'bindings' => $confirmedIds],
-            ['key' => 'canceled', 'expression' => $this->countWhen($this->in('orders.status_id', $canceledIds)), 'bindings' => $canceledIds],
-            ['key' => 'failed', 'expression' => $this->countWhen($this->in('orders.status_id', $failedIds)), 'bindings' => $failedIds],
-        ]);
+        foreach (ConfirmationStatsGroups::all() as $group) {
+            $ids = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys($group));
 
-        return $this->assemble('confirmation', $result, [
-            ['key' => 'received', 'label' => __('dashboard.series_received'), 'hex' => self::ACCENT_TOKEN, 'axis' => 'y', 'type' => 'line'],
-            ['key' => 'confirmed', 'label' => __('dashboard.series_confirmed'), 'hex' => $this->hex($filter->storeId, OrderStatus::CONFIRMED), 'axis' => 'y', 'type' => 'line'],
-            ['key' => 'canceled', 'label' => __('dashboard.series_canceled'), 'hex' => $this->hex($filter->storeId, OrderStatus::CANCELED, OrderStatus::CANCELLED), 'axis' => 'y', 'type' => 'line'],
-            ['key' => 'failed', 'label' => __('dashboard.series_failed'), 'hex' => 'token:danger', 'axis' => 'y', 'type' => 'line'],
-        ]);
+            $metrics[] = [
+                'key' => $group,
+                'expression' => $this->countWhen($this->in('orders.status_id', $ids)),
+                'bindings' => $ids,
+            ];
+
+            $series[] = [
+                'key' => $group,
+                'label' => __('dashboard.group_'.$group),
+                'hex' => 'token:muted',
+                'axis' => 'y',
+                'type' => 'bar',
+            ];
+        }
+
+        return $this->assemble('confirmation', $this->seriesQuery->series($query, $filter, $metrics), $series);
     }
 
     /** @return array{view: 'delivery', labels: array<int, string>, series: list<array<string, mixed>>} */

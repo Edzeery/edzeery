@@ -74,7 +74,7 @@ test('the confirmation section renders its headline, trash figure and every grou
         ->toContain(__('dashboard.deleted_brackets', ['count' => 0]))
         // The rate-only explainer and group hints belong to the rate tab.
         ->not->toContain(__('dashboard.outside_rate'))
-        ->not->toContain(__('dashboard.group_passed_to_delivery_hint'))
+        ->not->toContain(__('dashboard.group_confirmed_hint'))
         ->not->toContain(__('dashboard.group_other_hint'));
 
     // The delivery view does not own this section.
@@ -105,7 +105,8 @@ test('the rate tab renders the rate, its basis and only the six ratio groups', f
         ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 1, 'denominator' => 2]))
         ->toContain(__('dashboard.outside_rate'));
 
-    // The rate tab keeps the rate groups only (no unclassified bucket).
+    // The rate tab keeps the rate groups only: no delivery group, no
+    // unclassified bucket.
     expect($html)
         ->toContain(__('dashboard.group_confirmed'))
         ->toContain(__('dashboard.group_canceled'))
@@ -113,9 +114,8 @@ test('the rate tab renders the rate, its basis and only the six ratio groups', f
         ->toContain(__('dashboard.group_failed'))
         ->toContain(__('dashboard.group_duplicate'))
         ->toContain(__('dashboard.group_deferred'))
-        ->toContain(__('dashboard.group_passed_to_delivery'))
         ->toContain(__('dashboard.group_other'))
-        ->not->toContain(__('dashboard.group_unclassified'));
+        ->not->toContain('passed_to_delivery');
 });
 
 test('confirmed orders resolve into the section and soft-deleted ones stay bracketed', function () {
@@ -276,9 +276,9 @@ test('the confirmation tab setter guards invalid values and ignores repeats', fu
 test('a shipped order stays inside the confirmation rate', function () {
     [$owner, $store] = dfwOwnerStore();
 
-    // 2 confirmed + 1 shipped + 1 canceled => 3 / 4 = 75%. Shipping the third
+    // 2 confirmed + 1 delivered + 1 canceled => 3 / 4 = 75%. Shipping the third
     // order (a confirmed one leaving the desk) never moves the line, because
-    // delivered outcomes stay in both the numerator and the denominator.
+    // the delivered outcome stays inside the confirmed group (D2).
     dscOrder($store, OrderStatus::CONFIRMED);
     dscOrder($store, OrderStatus::CONFIRMED);
     dscOrder($store, OrderStatus::DELIVERED);
@@ -292,10 +292,11 @@ test('a shipped order stays inside the confirmation rate', function () {
     expect($html)
         ->toContain('75%')
         ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 3, 'denominator' => 4]))
-        ->toContain(__('dashboard.group_passed_to_delivery'));
+        ->toContain(__('dashboard.group_confirmed'))
+        ->not->toContain('passed_to_delivery');
 });
 
-test('the confirmation dashboard blades carry no dark: or gray- utilities', function () {
+test('the confirmation dashboard blades carry no dark:, raw gray, or washed-out text', function () {
     $files = array_merge(
         [resource_path('views/livewire/merchant/dashboard.blade.php')],
         glob(resource_path('views/livewire/merchant/dashboard/partials/*.blade.php')) ?: [],
@@ -306,7 +307,14 @@ test('the confirmation dashboard blades carry no dark: or gray- utilities', func
         $source = (string) file_get_contents($file);
 
         expect($source)
+            // T1: the theme already resolves the light/dark pair, so a blade
+            // must never branch on dark: (D3 group colours are theme tokens).
             ->not->toContain('dark:', "{$name} ships a dark: variant")
-            ->not->toContain('gray-', "{$name} ships a raw gray-* utility");
+            // Raw Tailwind grays bypass the theme tokens entirely.
+            ->not->toContain('gray-', "{$name} ships a raw gray-* utility")
+            // T1: a translucent text token drops below its 4.5:1 contrast.
+            ->not->toContain('text-ink-muted/', "{$name} dims a text token with opacity")
+            ->not->toContain('text-ink-soft/', "{$name} dims a text token with opacity")
+            ->not->toContain('text-ink/', "{$name} dims a text token with opacity");
     }
 });

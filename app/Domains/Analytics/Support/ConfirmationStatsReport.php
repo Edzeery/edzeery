@@ -66,11 +66,10 @@ final class ConfirmationStatsReport
      */
     private function summarize(array $groups): array
     {
-        // D12: the numerator spans CONFIRMED and PASSED_TO_DELIVERY, so an
-        // order that moves from confirmed to shipped stays counted and the
-        // rate does not drift when the warehouse acts.
+        // D2: the numerator is CONFIRMED, which now holds the orders that moved
+        // on after confirmation too, so an order that ships stays counted and
+        // the rate does not drift when the warehouse acts.
         $confirmed = 0;
-
         foreach (ConfirmationStatsGroups::NUMERATOR_GROUPS as $group) {
             $confirmed += $groups[$group]['total'] ?? 0;
         }

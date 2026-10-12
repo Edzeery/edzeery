@@ -1,6 +1,35 @@
+@php
+    // D3: the one colour-per-group map, read from config so the legend dots
+    // (server-rendered) and the chart series (client-rendered) can never drift.
+    $groupColors = config('analytics.group_colors');
+
+    // A server-side dot for a legend row: a group token becomes a class, the
+    // resolved chart tokens become a class, and a store's own status hex falls
+    // back to an inline colour (the delivery view still reads those).
+    $dotFor = function (string $key, ?string $hex) use ($groupColors): array {
+        if (isset($groupColors[$key])) {
+            return ['class' => 'bg-'.$groupColors[$key], 'style' => null];
+        }
+
+        $tokenClass = match ($hex) {
+            'token:accent' => 'bg-accent-500',
+            'token:success' => 'bg-success-500',
+            'token:warning' => 'bg-warning-500',
+            'token:danger' => 'bg-danger-500',
+            'token:info' => 'bg-info-500',
+            'token:muted' => 'bg-ink-muted',
+            default => null,
+        };
+
+        return ['class' => $tokenClass ?? 'rounded-full', 'style' => $tokenClass ? null : 'background-color: '.($hex ?: 'currentColor')];
+    };
+@endphp
+
 <div wire:key="dash-charts-{{ $filter->hash() }}" x-data="{
     chartLabels: {{ json_encode($trend['labels'] ?? []) }},
     chartSeries: {{ json_encode($trend['series'] ?? []) }},
+    trendView: '{{ $trend['view'] ?? 'confirmation' }}',
+    groupColors: {{ json_encode($groupColors) }},
     statusLabels: {{ json_encode($statusBreakdown->pluck('label')->values()) }},
     statusKeys: {{ json_encode($statusBreakdown->pluck('key')->values()) }},
     statusCounts: {{ json_encode($statusBreakdown->pluck('count')->values()->map(fn($v) => (int) $v)) }},
@@ -21,7 +50,9 @@
 }" x-init="renderCharts()">
 
     <div class="edz-stagger grid grid-cols-1 gap-6 @if (empty($narrowCharts)) lg:grid-cols-3 @endif mb-6">
-        {{-- Trend — one chart per stats view: counts in Confirmation, counts plus delivered revenue in Delivery. --}}
+        {{-- Trend — one chart per stats view. Confirmation stacks the seven
+             groups as bars (lines past 62 buckets); Delivery keeps its bars
+             plus the delivered-revenue line. --}}
         <div class="lg:col-span-2 edz-card edz-card--padded">
             <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">
                 {{ ($trend['view'] ?? 'confirmation') === 'delivery'
@@ -30,12 +61,24 @@
             </h3>
             @if (! empty($trend['labels']))
                 <div class="h-64"><canvas id="salesChart" wire:ignore></canvas></div>
+                {{-- HTML legend (D3): RTL-safe, so a label and its digits never
+                     swap places. The canvas legend is switched off below. --}}
+                <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+                    @foreach ($trend['series'] as $s)
+                        @php($dot = $dotFor($s['key'], $s['hex']))
+                        <li class="flex items-center gap-2 text-xs text-ink-muted">
+                            <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ $dot['class'] }}" @if ($dot['style']) style="{{ $dot['style'] }}" @endif></span>
+                            <span>{{ $s['label'] }}</span>
+                        </li>
+                    @endforeach
+                </ul>
             @else
                 <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
         </div>
 
-        {{-- Status doughnut — the confirmed group reads as one slice in Confirmation, the shipped statuses as their own in Delivery. --}}
+        {{-- Status doughnut — the confirmation groups in Confirmation, the
+             shipped statuses in Delivery. --}}
         <div class="edz-card edz-card--padded">
             <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">
                 {{ ($trend['view'] ?? 'confirmation') === 'delivery'
@@ -44,6 +87,18 @@
             </h3>
             @if ($statusBreakdown->isNotEmpty())
                 <div class="h-64"><canvas id="statusChart" wire:ignore></canvas></div>
+                {{-- HTML legend (D3): "label — <bdi>count</bdi> (<bdi dir=ltr>pct</bdi>)". --}}
+                <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+                    @foreach ($statusBreakdown as $slice)
+                        @php($dot = $dotFor($slice->key, $slice->hex))
+                        <li class="flex items-center gap-2 text-xs text-ink-muted">
+                            <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ $dot['class'] }}" @if ($dot['style']) style="{{ $dot['style'] }}" @endif></span>
+                            <span>
+                                {{ $slice->label }} — <bdi>{{ $slice->count }}</bdi> (<bdi dir="ltr">{{ $slice->percent }}%</bdi>)
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
             @else
                 <div class="h-64 flex items-center justify-center"><p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p></div>
             @endif
@@ -90,7 +145,6 @@
 
             Chart.defaults.color = resolvedFontColor;
             Chart.defaults.font.family = "'Inter', 'IBM Plex Sans Arabic', sans-serif";
-            if (Chart.defaults.plugins.legend?.labels) Chart.defaults.plugins.legend.labels.color = resolvedFontColor;
             const tipDefaults = Chart.defaults.plugins.tooltip;
             if (tipDefaults) { tipDefaults.titleColor = resolvedFontColor; tipDefaults.bodyColor = resolvedFontColor; }
 
@@ -98,6 +152,13 @@
             // series would draw the baseline at the top gridline, so an empty
             // window still gets a four-count scale instead of a full-height bar.
             const hasPositive = (values) => Array.isArray(values) && values.some(v => Number(v) > 0);
+
+            // D3: the confirmation trend is stacked bars up to 62 buckets (a
+            // day-per-point month); past that a bar per group per bucket would
+            // be unreadable, so it falls back to lines.
+            const isConfirmation = data.trendView !== 'delivery';
+            const stackedBars = isConfirmation && Array.isArray(data.chartLabels)
+                && data.chartLabels.length > 0 && data.chartLabels.length <= 62;
 
             // Only an hourly axis holds 24 mostly-empty buckets, which is why
             // its zero buckets carry no marker; wider axes keep theirs.
@@ -111,8 +172,7 @@
             // line/bar, and `token:accent` is the theme's own accent colour.
             const series = Array.isArray(data.chartSeries) ? data.chartSeries : [];
             // Named theme tokens the server can hand a chart without knowing the
-            // active theme: the confirmation doughnut and the failed trend line
-            // use these, so a slice colour follows light/dark like everything else.
+            // active theme.
             const tokenColors = {
                 'token:accent': resolvedAccent,
                 'token:success': themeColor('--edz-color-success-500', '#12b76a'),
@@ -122,27 +182,36 @@
                 'token:muted': themeColor('--edz-color-text-soft', '#667085'),
             };
             const colorFor = (hex) => tokenColors[hex] ?? (parseColor(hex) || resolvedText);
+            // D3: a group key resolves through the single config map, so the
+            // doughnut, the trend and the (server-rendered) legend agree.
+            const groupColors = data.groupColors || {};
+            const groupColor = (key, fallback) => groupColors[key]
+                ? themeColor('--edz-color-' + groupColors[key], fallback)
+                : colorFor(fallback);
             const valuesFor = (axis) => series.filter(s => s.axis === axis).flatMap(s => Array.isArray(s.values) ? s.values : []);
             const yValues = valuesFor('y');
             const y1Values = valuesFor('y1');
 
             const datasets = series.map(s => {
-                const color = colorFor(s.hex);
-                const isLine = s.type === 'line';
+                const color = isConfirmation ? groupColor(s.key, s.hex) : colorFor(s.hex);
+                const type = stackedBars ? 'bar' : (isConfirmation ? 'line' : s.type);
+                const isLine = type === 'line';
+                const isStackedBar = stackedBars;
                 return {
                     label: s.label,
-                    // The metric picks its own renderer — delivered and returned
-                    // are bars, revenue is a line. Without carrying the type the
-                    // chart-level default turned every delivery bar into a line.
-                    type: s.type,
+                    type: type,
                     data: s.values,
                     yAxisID: s.axis,
-                    borderColor: color,
-                    backgroundColor: isLine ? toRgba(color, 0.08) : toRgba(color, 0.7),
+                    borderColor: isStackedBar ? resolvedSurface : color,
+                    backgroundColor: isStackedBar ? color : (isLine ? toRgba(color, 0.08) : toRgba(color, 0.7)),
                     fill: isLine && s.axis === 'y1',
-                    tension: 0, stepped: false, borderWidth: 2, borderRadius: isLine ? 0 : 3,
-                    pointRadius: (ctx) => pointRadius(ctx, s.values),
-                    pointHoverRadius: pointHoverRadius(s.values), pointHoverBackgroundColor: color,
+                    tension: 0, stepped: false,
+                    // A 2px surface border separates the stacked segments.
+                    borderWidth: isStackedBar ? 2 : 2,
+                    borderRadius: isLine ? 0 : 3,
+                    pointRadius: (ctx) => isLine ? pointRadius(ctx, s.values) : 0,
+                    pointHoverRadius: isLine ? pointHoverRadius(s.values) : 0,
+                    pointHoverBackgroundColor: color,
                 };
             });
 
@@ -151,11 +220,11 @@
             const trendCanvas = data.chartLabels && data.chartLabels.length ? document.getElementById('salesChart') : null;
             if (trendCanvas) {
                 const scales = {
-                    x: { grid: { color: resolvedGridColor, drawBorder: false }, border: { display: false }, ticks: { color: resolvedFontColor } },
+                    x: { stacked: stackedBars, grid: { color: resolvedGridColor, drawBorder: false }, border: { display: false }, ticks: { color: resolvedFontColor } },
                     y: {
                         position: 'left',
                         beginAtZero: true,
-                        stacked: false, // bars on one axis sit side by side
+                        stacked: stackedBars,
                         suggestedMax: hasPositive(yValues) ? undefined : 4,
                         grid: { color: resolvedGridColor, drawBorder: false },
                         border: { display: false },
@@ -172,36 +241,43 @@
                         suggestedMax: hasPositive(y1Values) ? undefined : 1000,
                         grid: { drawOnChartArea: false },
                         border: { display: false },
-                        // Money names its currency in every tick, not only in the title.
-                        ticks: { color: resolvedFontColor, precision: 0, callback: (value) => `${num(value)} ${currency}` },
+                        // Money names its currency in every tick, not only in the header.
+                        ticks: { color: resolvedFontColor, callback: (value) => `${num(value)} ${currency}` },
                         title: { display: true, text: @js(__('stores.currency_symbol')), color: resolvedFontColor }
                     };
                 }
-                // One Chart instance per canvas: a surviving instance (a
-                // same-filter morph or a stale node) must go before a new one
-                // is asked to draw, or Chart.js refuses the canvas.
-                if (trendCanvas && Chart.getChart(trendCanvas)) Chart.getChart(trendCanvas).destroy();
-                window.__dashCharts.s = new Chart(trendCanvas, {
-                    type: 'line',
+                const trendTooltip = {
+                    callbacks: {
+                        title: (items) => items.length ? items[0].label : '',
+                        label: (context) => {
+                            const value = num(context.parsed.y);
+                            return context.dataset.yAxisID === 'y1'
+                                ? `${context.dataset.label}: ${value} ${currency}`
+                                : `${context.dataset.label}: ${value}`;
+                        }
+                    }
+                };
+                // A stacked bucket reads its own total under the per-group lines.
+                if (stackedBars) {
+                    trendTooltip.callbacks.footer = (items) => {
+                        if (! items.length) return '';
+                        const total = items.reduce((sum, item) => sum + Number(item.parsed.y || 0), 0);
+                        return `${@js(__('dashboard.chart_total'))}: ${num(total)}`;
+                    };
+                }
+                const trendCanvasEl = document.getElementById('salesChart');
+                if (trendCanvasEl && Chart.getChart(trendCanvasEl)) Chart.getChart(trendCanvasEl).destroy();
+                window.__dashCharts.s = new Chart(trendCanvasEl, {
+                    type: stackedBars ? 'bar' : 'line',
                     data: { labels: data.chartLabels, datasets: datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: { intersect: false, mode: 'index' },
+                        interaction: { mode: stackedBars ? 'index' : 'nearest', intersect: ! stackedBars },
                         plugins: {
-                            legend: { position: 'top', labels: { boxWidth: 12, padding: 16, usePointStyle: true, color: resolvedFontColor } },
-                            tooltip: {
-                                callbacks: {
-                                    title: (items) => items.length ? items[0].label : '',
-                                    label: (context) => {
-                                        // The money axis carries the store currency; counts stay bare.
-                                        const value = num(context.parsed.y);
-                                        return context.dataset.yAxisID === 'y1'
-                                            ? `${context.dataset.label}: ${value} ${currency}`
-                                            : `${context.dataset.label}: ${value}`;
-                                    }
-                                }
-                            }
+                            // The legend is server-rendered HTML (D3); the canvas one is off.
+                            legend: { display: false },
+                            tooltip: trendTooltip
                         },
                         scales: scales
                     }
@@ -233,9 +309,14 @@
                         ctx.restore();
                     }
                 };
-                const statusColors = data.statusKeys.map((k, i) => colorFor(data.statusHex?.[i]));
-                if (statusCanvas && Chart.getChart(statusCanvas)) Chart.getChart(statusCanvas).destroy();
-                window.__dashCharts.st = new Chart(statusCanvas, {
+                // D3: confirmation slices read the one config map; the delivery
+                // doughnut keeps each status's own stored colour.
+                const statusColors = data.statusKeys.map((k, i) => groupColors[k]
+                    ? themeColor('--edz-color-' + groupColors[k], resolvedText)
+                    : colorFor(data.statusHex?.[i]));
+                const statusCanvasEl = document.getElementById('statusChart');
+                if (statusCanvasEl && Chart.getChart(statusCanvasEl)) Chart.getChart(statusCanvasEl).destroy();
+                window.__dashCharts.st = new Chart(statusCanvasEl, {
                     type: 'doughnut',
                     plugins: [centerTotal],
                     data: {
@@ -253,19 +334,8 @@
                         maintainAspectRatio: false,
                         cutout: '68%',
                         plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    boxWidth: 12, padding: 10, usePointStyle: true, color: resolvedFontColor,
-                                    // Count and percent straight from the service rows, which sum to 100.
-                                    generateLabels: (chart) => data.statusLabels.map((label, i) => ({
-                                        text: `${label}: ${num(counts[i] || 0)} (${percents[i] || 0}%)`,
-                                        fillStyle: statusColors[i], strokeStyle: resolvedSurface, lineWidth: 0,
-                                        hidden: ! chart.getDataVisibility(i), fontColor: resolvedFontColor,
-                                        pointStyle: 'circle', datasetIndex: 0, index: i
-                                    }))
-                                }
-                            },
+                            // The legend is server-rendered HTML (D3).
+                            legend: { display: false },
                             tooltip: {
                                 callbacks: {
                                     title: (items) => items.length ? items[0].label : '',

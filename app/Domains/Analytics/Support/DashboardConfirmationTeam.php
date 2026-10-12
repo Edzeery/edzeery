@@ -105,12 +105,6 @@ final class DashboardConfirmationTeam
             $trash += (int) $group['deleted'];
         }
 
-        // The confirmation desk only owns what has not left for delivery; the
-        // passed-to-delivery bucket belongs to the tracking view (a member's
-        // not-yet-sent workload). Kept as its own figure so the view can show
-        // it next to the all-orders and trash columns.
-        $notSent = $total - (int) ($groups[ConfirmationStatsGroups::PASSED_TO_DELIVERY]['total'] ?? 0);
-
         return [
             'membership_id' => $id,
             'type' => $type,
@@ -121,7 +115,6 @@ final class DashboardConfirmationTeam
             'denominator' => (int) $summary['denominator'],
             'rate' => (int) $summary['rate'],
             'total' => $total,
-            'not_sent' => $notSent,
             'trash' => $trash,
         ];
     }

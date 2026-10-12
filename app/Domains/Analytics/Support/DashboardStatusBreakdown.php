@@ -61,9 +61,9 @@ final class DashboardStatusBreakdown
     /**
      * The confirmation doughnut (PHASE 37-L, D2): one slice per confirmation
      * group, coloured by theme token, straight from the same report the cards
-     * and the team read. Groups with no orders draw nothing, and no group is
-     * merged into another — "confirmed" and "passed to delivery" stay visible
-     * as the distinct answers they are.
+     * and the team read. Groups with no orders draw nothing, and there is no
+     * delivery slice — orders that moved past confirmation stay inside
+     * "confirmed", so the doughnut and the rate KPI can never disagree.
      *
      * @param  array<string, array{total: int, deleted: int}>  $groups
      * @return Collection<int, object{key: string, count: int, label: string, hex: string, percent: int}>
@@ -77,9 +77,7 @@ final class DashboardStatusBreakdown
             ConfirmationStatsGroups::CANCELED => 'token:muted',
             ConfirmationStatsGroups::DEFERRED => 'token:info',
             ConfirmationStatsGroups::DUPLICATE => 'token:accent',
-            ConfirmationStatsGroups::PASSED_TO_DELIVERY => 'token:info',
             ConfirmationStatsGroups::OTHER => 'token:muted',
-            ConfirmationStatsGroups::UNCLASSIFIED => 'token:muted',
         ];
 
         $rows = collect();

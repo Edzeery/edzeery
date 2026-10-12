@@ -4,19 +4,20 @@
      explanatory tooltip and never enter the rate (D7); the without/with-trash
      toggle only decides which members are named. --}}
 @php
-    $groupDot = [
-        'confirmed' => 'bg-success-500',
-        'pending' => 'bg-warning-500',
-        'failed' => 'bg-danger-500',
-        'canceled' => 'bg-ink-muted',
-        'deferred' => 'bg-accent-400',
-        'duplicate' => 'bg-indigo-400',
-        'passed_to_delivery' => 'bg-sky-400',
-        'other' => 'bg-ink-muted/40',
-    ];
-    // D12: the member card mirrors the headline rate row's groups, so a member
-    // line adds up to the same headline the section sits under.
-    $rateGroups = ['confirmed', 'canceled', 'pending', 'failed', 'duplicate', 'deferred', 'passed_to_delivery', 'other'];
+    // D3: the same one-colour-per-group map as the cards, doughnut and trend.
+    $groupDot = array_map(
+        static fn (string $token): string => 'bg-'.$token,
+        config('analytics.group_colors'),
+    );
+
+    // D3 (team cards): the four core groups always read; the rarer buckets only
+    // appear on a row that actually carries them, so a card never lists a wall
+    // of zero rows.
+    $coreGroups = ['confirmed', 'canceled', 'pending', 'failed'];
+    $extraGroups = ['duplicate', 'deferred', 'other'];
+    // D2: a member card mirrors the headline groups (no delivery row — orders
+    // that moved past confirmation stay inside `confirmed`), so a member line
+    // adds up to the same headline the section sits under.
 
     // The service returns a trailing total row; the member cards answer it, so
     // it is dropped here instead of being rendered as a card of its own.
@@ -25,13 +26,20 @@
         ->values();
     $hasActivity = $allRows->whereIn('type', ['member', 'unattributed'])->sum('total') > 0;
 
+    // PHASE 37-M (D1): the confirmation key is the assignment, so the sentinel
+    // row reads «غير مُسنَدة» (no work), not «بلا رصيد» (no credit).
+    $typeLabels = [
+        'unattributed' => __('dashboard.team_unassigned'),
+        'total' => __('dashboard.team_total'),
+    ];
+
     // The search is a client-side refinement of the already-scanned rows: it
     // narrows the named members only.
     $search = trim(mb_strtolower((string) ($teamSearch ?? '')));
     $rows = $search === ''
         ? $allRows
-        : $allRows->filter(function (array $row) use ($search) {
-            $name = (string) ($row['name'] ?? __("dashboard.team_{$row['type']}"));
+        : $allRows->filter(function (array $row) use ($search, $typeLabels) {
+            $name = (string) ($row['name'] ?? ($typeLabels[$row['type']] ?? $row['type']));
 
             return str_contains(mb_strtolower($name), $search);
         })->values();
@@ -50,7 +58,7 @@
         {{-- Search sits between the title and the toggle. --}}
         <div class="flex justify-center lg:flex-1">
             <div class="relative w-full max-w-xs">
-                <span class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-ink-muted/60">
+                <span class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3 text-ink-muted">
                     <x-edz.icon name="magnifying-glass" class="h-4 w-4" />
                 </span>
                 <input type="search"
@@ -82,19 +90,21 @@
 
     @if (! $hasActivity)
         <div class="flex flex-col items-center justify-center py-8 text-center">
-            <x-edz.icon name="users" class="mb-2 h-10 w-10 text-ink-muted/60" />
+            <x-edz.icon name="users" class="mb-2 h-10 w-10 text-ink-muted" />
             <p class="text-sm text-ink-muted">{{ __('dashboard.team_no_activity') }}</p>
         </div>
     @elseif ($noResults)
         <div class="flex flex-col items-center justify-center py-8 text-center">
-            <x-edz.icon name="magnifying-glass" class="mb-2 h-10 w-10 text-ink-muted/60" />
+            <x-edz.icon name="magnifying-glass" class="mb-2 h-10 w-10 text-ink-muted" />
             <p class="text-sm text-ink-muted">{{ __('dashboard.no_data') }}</p>
         </div>
     @else
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {{-- Responsive team grid: one column under 768, two at md, three at xl,
+             so a sparse team never leaves an empty slot. --}}
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($rows as $row)
                 @php
-                    $rowName = $row['name'] ?? __("dashboard.team_{$row['type']}");
+                    $rowName = $row['name'] ?? ($typeLabels[$row['type']] ?? $row['type']);
                 @endphp
                 <div class="rounded-xl border border-surface-border p-4">
                     {{-- Status: who the row belongs to. --}}
@@ -132,14 +142,17 @@
                             <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ __('dashboard.team_all_orders') }}</p>
                             <p class="text-4xl font-bold leading-none tracking-tighter text-ink tabular-nums">{{ $row['total'] }}</p>
                         </div>
-                        <div class="mt-4 flex items-center justify-center">
-                            <x-edz.tooltip :label="__('dashboard.deleted_brackets', ['count' => $row['trash']])" side="top"
-                                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-semibold tabular-nums
-                                    {{ $row['trash'] > 0 ? 'bg-danger-surface text-danger-fg-strong' : 'bg-surface-secondary text-ink-muted' }}">
-                                <x-edz.icon name="trash" class="h-4 w-4" />
-                                <span>({{ $row['trash'] }})</span>
-                            </x-edz.tooltip>
-                        </div>
+                        {{-- The trash chip is shown only when there is trash to
+                             name; a zero row stays completely clean (D7, D3). --}}
+                        @if ($row['trash'] > 0)
+                            <div class="mt-4 flex items-center justify-center">
+                                <x-edz.tooltip :label="__('dashboard.deleted_brackets', ['count' => $row['trash']])" side="top"
+                                    class="inline-flex items-center gap-1 rounded-full bg-danger-surface px-2 py-0.5 text-sm font-semibold tabular-nums text-danger-fg-strong">
+                                    <x-edz.icon name="trash" class="h-4 w-4" />
+                                    <span>({{ $row['trash'] }})</span>
+                                </x-edz.tooltip>
+                            </div>
+                        @endif
                     @else
                         {{-- Rate: the member's rate, then one status per line —
                              status, its order count, then the deleted (n) badge. --}}
@@ -154,7 +167,18 @@
                         </div>
 
                         <div class="mt-4 divide-y divide-surface-border">
-                            @foreach ($rateGroups as $key)
+                            @php
+                                // The four core groups always read; the rarer
+                                // buckets join only when this row carries them.
+                                $visibleGroups = $coreGroups;
+
+                                foreach ($extraGroups as $extra) {
+                                    if ((int) ($row['groups'][$extra]['total'] ?? 0) > 0) {
+                                        $visibleGroups[] = $extra;
+                                    }
+                                }
+                            @endphp
+                            @foreach ($visibleGroups as $key)
                                 @php
                                     $g = $row['groups'][$key] ?? ['total' => 0, 'deleted' => 0];
                                 @endphp
@@ -165,15 +189,13 @@
                                     </span>
                                     <span class="w-10 shrink-0 text-center text-base font-semibold text-ink tabular-nums">{{ $g['total'] }}</span>
                                     <span class="flex w-16 shrink-0 items-center justify-end gap-1">
-                                        <span @class([
-                                            'text-sm font-semibold tabular-nums',
-                                            'text-danger-600' => $g['deleted'] > 0,
-                                            'text-ink-muted/50' => $g['deleted'] === 0,
-                                        ])>({{ $g['deleted'] }})</span>
-                                        <x-edz.tooltip :label="__('dashboard.group_deleted_hint', ['count' => $g['deleted'], 'group' => __('dashboard.group_'.$key)])" side="top" maxWidth="240px"
-                                            class="text-ink-muted/60 transition-colors hover:text-ink-muted">
-                                            <x-edz.icon name="info-circle" class="h-3.5 w-3.5" />
-                                        </x-edz.tooltip>
+                                        @if ($g['deleted'] > 0)
+                                            <span class="text-sm font-semibold tabular-nums text-danger-600">({{ $g['deleted'] }})</span>
+                                            <x-edz.tooltip :label="__('dashboard.group_deleted_hint', ['count' => $g['deleted'], 'group' => __('dashboard.group_'.$key)])" side="top" maxWidth="240px"
+                                                class="text-ink-muted transition-colors hover:text-ink">
+                                                <x-edz.icon name="info-circle" class="h-3.5 w-3.5" />
+                                            </x-edz.tooltip>
+                                        @endif
                                     </span>
                                 </div>
                             @endforeach

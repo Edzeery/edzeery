@@ -42,6 +42,10 @@
     </testsuites>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Mirrors phpunit.xml: storefront routes register from app.domain at
+             boot, so a production domain would make {slug}.edzeery.com requests
+             miss every storefront route. -->
+        <env name="APP_DOMAIN" value="example.test"/>
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="3306"/>

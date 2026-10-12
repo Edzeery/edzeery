@@ -102,6 +102,19 @@ function dcvTrend(array $trend, string $key): array
     return $series['values'] ?? [];
 }
 
+/** PHASE 37-M2: the confirmation trend stacks the seven groups, so the
+ *  "orders that arrived" total is the sum over every series. */
+function dcvTrendTotal(array $trend): int|float
+{
+    return collect($trend['series'])->sum(fn ($s) => array_sum($s['values'] ?? []));
+}
+
+/** The seven confirmation groups, in the order `ConfirmationStatsGroups::all()` returns. */
+function dcvGroupKeys(): array
+{
+    return ['confirmed', 'pending', 'failed', 'canceled', 'deferred', 'duplicate', 'other'];
+}
+
 it('collapses the shipping flow into one confirmed slice that reads like the KPI', function () {
     [, $store, $statuses] = dcvStore();
 
@@ -115,18 +128,16 @@ it('collapses the shipping flow into one confirmed slice that reads like the KPI
     $summary = $service->summary($filter);
 
     expect($breakdown->pluck('key')->sort()->values()->all())
-        ->toBe(['canceled', 'confirmed', 'passed_to_delivery', 'pending'])
-        // Confirmed, delivered and returned all passed the confirmation desk,
-        // split into the desk's own confirmation and the shipped group (D12).
-        ->and($breakdown->firstWhere('key', 'confirmed')->count)->toBe(1)
-        ->and($breakdown->firstWhere('key', 'passed_to_delivery')->count)->toBe(3)
+        ->toBe(['canceled', 'confirmed', 'pending'])
+        // Confirmed, delivered and returned all passed the confirmation desk and
+        // now share the one confirmed slice (D2), so the doughnut can never
+        // disagree with the confirmation-rate KPI beside it.
+        ->and($breakdown->firstWhere('key', 'confirmed')->count)->toBe(4)
         ->and($breakdown->sum('count'))->toBe($summary['total_orders'])
         ->and($breakdown->pluck('percent')->sum())->toBe(100)
         // The slices are the report's own groups: they can never disagree.
         ->and($breakdown->firstWhere('key', 'confirmed')->count)
-        ->toBe($service->confirmationStats($filter)['groups']['confirmed']['total'])
-        ->and($breakdown->firstWhere('key', 'passed_to_delivery')->count)
-        ->toBe($service->confirmationStats($filter)['groups']['passed_to_delivery']['total']);
+        ->toBe($service->confirmationStats($filter)['groups']['confirmed']['total']);
 });
 
 it('reads delivery slices from tracked orders only and counts an order once', function () {
@@ -155,10 +166,10 @@ it('reads delivery slices from tracked orders only and counts an order once', fu
         ->and($delivery->firstWhere('key', 'delivered')->count)->toBe(2)
         ->and($delivery->sum('count'))->toBe(4)
         ->and($delivery->pluck('percent')->sum())->toBe(100)
-        // The confirmation view still sees the unshipped order, and counts the
-        // shipped ones in their own passed-to-delivery group (D12).
+        // The confirmation view still sees the unshipped order, and folds the
+        // shipped ones into the single confirmed slice (D2).
         ->and($confirmation->sum('count'))->toBe(5)
-        ->and($confirmation->pluck('key')->sort()->values()->all())->toBe(['passed_to_delivery', 'pending']);
+        ->and($confirmation->pluck('key')->sort()->values()->all())->toBe(['confirmed', 'pending']);
 });
 
 it('plots the two views over the same axis with the metrics each view leads with', function () {
@@ -183,7 +194,9 @@ it('plots the two views over the same axis with the metrics each view leads with
         ->and($delivery['view'])->toBe('delivery')
         // Same window, same buckets: only the metrics change with the view.
         ->and($delivery['labels'])->toBe($confirmation['labels'])
-        ->and(array_sum(dcvTrend($confirmation, 'received')))->toBe(5)
+        // 37-M2: the confirmation trend stacks the seven groups; the stack
+        // total is the orders that arrived (the old `received` series).
+        ->and(dcvTrendTotal($confirmation))->toBe(5)
         ->and(array_sum(dcvTrend($confirmation, 'confirmed')))->toBe(3)
         ->and(array_sum(dcvTrend($confirmation, 'canceled')))->toBe(1)
         ->and(array_sum(dcvTrend($delivery, 'delivered')))->toBe(2)
@@ -243,7 +256,7 @@ it('answers period, carrier and member filters the same way on both charts', fun
         $confirmation = dcvFilter($store->id, $overrides);
         $delivery = dcvFilter($store->id, $overrides + ['memberDimension' => 'delivery']);
 
-        expect(array_sum(dcvTrend($service->trendSeries($confirmation), 'received')))->toBe($received)
+        expect(dcvTrendTotal($service->trendSeries($confirmation)))->toBe($received)
             ->and(array_sum(dcvTrend($service->trendSeries($delivery), 'delivered')))->toBe($deliveredCount)
             ->and($service->statusBreakdown($confirmation)->sum('count'))->toBe($received)
             ->and($service->statusBreakdown($delivery)->sum('count'))->toBe($deliveredCount);
@@ -255,7 +268,7 @@ it('answers period, carrier and member filters the same way on both charts', fun
         'memberScopeIds' => [$member->id],
     ]);
 
-    expect(array_sum(dcvTrend($service->trendSeries($scoped), 'received')))->toBe(1)
+    expect(dcvTrendTotal($service->trendSeries($scoped)))->toBe(1)
         ->and($service->statusBreakdown($scoped)->sum('count'))->toBe(1)
         ->and($todayDelivered->assigned_to_membership_id)->toBe($member->id)
         ->and($todayDelivered->confirmed_by_membership_id)->toBe($member->id);
@@ -275,8 +288,10 @@ it('keeps an axis of empty buckets when a window holds no orders', function () {
 
     expect($service->statusBreakdown($empty))->toBeEmpty()
         ->and($trend['labels'])->toHaveCount(2)
-        ->and(array_sum(dcvTrend($trend, 'received')))->toBe(0)
-        ->and(collect($trend['series'])->pluck('key')->all())->toBe(['received', 'confirmed', 'canceled', 'failed']);
+        ->and(dcvTrendTotal($trend))->toBe(0)
+        // 37-M2: the confirmation trend is one stacked series per group, not
+        // the old four-figure line set.
+        ->and(collect($trend['series'])->pluck('key')->all())->toBe(dcvGroupKeys());
 
     // Nothing at all: no axis to draw, and still a keyed series per metric.
     $bare = $service->trendSeries(new DashboardFilter(
@@ -289,7 +304,7 @@ it('keeps an axis of empty buckets when a window holds no orders', function () {
     ));
 
     expect($bare['labels'])->toBe([])
-        ->and(dcvTrend($bare, 'received'))->toBe([]);
+        ->and(dcvTrend($bare, 'confirmed'))->toBe([]);
 
     // Statuses exist but no order inside that window carries them.
     dcvOrder($store, $statuses, 'pending');
@@ -331,21 +346,37 @@ test('the chart block paints the fixes owner review asked for', function () {
         ->toContain('ctx.fillText(num(total), cx, cy - 10)')
         ->toContain("ctx.fillText(@js(__('dashboard.chart_total')), cx, cy + 15)");
 
-    // 2. Legend reads label + count + percent, straight from the service rows.
+    // 2. The legend is server-rendered HTML (D3), so a label and its digits
+    //    can never swap under RTL: count and percent sit in their own <bdi>.
     expect($source)
-        ->toContain('generateLabels: (chart) => data.statusLabels.map((label, i) => ({')
-        ->toContain('${label}: ${num(counts[i] || 0)} (${percents[i] || 0}%)');
+        ->toContain('<bdi>{{ $slice->count }}</bdi> (<bdi dir="ltr">{{ $slice->percent }}%</bdi>)')
+        // The canvas legend is switched off for both charts.
+        ->toContain('legend: { display: false }');
 
     // 3. Slices are separated by the card background, never by a new colour.
     expect($source)
         ->toContain("themeColor('--edz-color-surface', 'rgb(255, 255, 255)')")
         ->toContain('borderColor: data.statusKeys.map(() => resolvedSurface)')
-        ->toContain('borderWidth: 2');
+        ->toContain('borderWidth: isStackedBar ? 2 : 2');
 
-    // 4. The delivery view draws bars and a money line: the metric type has to
-    //    reach the dataset, and the money axis has to speak in currency.
+    // 4. D3: one colour per group, resolved from the single config map through
+    //    the theme token, shared by the trend, the doughnut and the legend.
     expect($source)
-        ->toContain('type: s.type')
+        ->toContain('groupColors: {{ json_encode($groupColors) }}')
+        ->toContain("themeColor('--edz-color-' + groupColors[key], fallback)")
+        ->toContain('legend: { display: false }');
+
+    // 5. The confirmation trend stacks the seven groups as bars up to 62
+    //    buckets and falls back to lines past that.
+    expect($source)
+        ->toContain('const stackedBars = isConfirmation')
+        ->toContain('data.chartLabels.length <= 62')
+        ->toContain('x: { stacked: stackedBars')
+        ->toContain('stacked: stackedBars');
+
+    // 6. The delivery view keeps its money line: the axis still speaks in
+    //    currency, and the metric type still reaches the dataset.
+    expect($source)
         ->toContain('stacked: false')
         ->toContain('callback: (value) => `${num(value)} ${currency}`')
         ->toContain("context.dataset.yAxisID === 'y1'");

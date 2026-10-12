@@ -43,9 +43,11 @@ final class DashboardMemberResolver
 
         $dimension = $this->resolveDimension($memberDimension, $canConfirm, $canDeliver);
 
-        // The unattributed cohort (confirmed_by IS NULL) is a store-wide pick,
-        // exposed when the member can see the whole team's numbers. The sentinel
-        // is not a membership id, so it can never reach keepIfAllowed.
+        // The sentinel cohort is a store-wide pick, exposed when the member can
+        // see the whole team's numbers. Its meaning follows the active key
+        // (PHASE 37-M, D1): Confirmation reads assignment IS NULL (no work),
+        // Delivery reads confirmed_by IS NULL (no credit). The sentinel is not
+        // a membership id, so it can never reach keepIfAllowed.
         if ($hasTeamView && $memberId === DashboardFilter::UNATTRIBUTED) {
             return [DashboardFilter::UNATTRIBUTED, $dimension, [DashboardFilter::UNATTRIBUTED], false, true];
         }

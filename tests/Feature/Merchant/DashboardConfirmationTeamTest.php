@@ -149,8 +149,8 @@ function ctfCard(string $html, string $name): string
 
 /**
  * Alpha owns three live orders today — one confirmed, one cancelled and one
- * delivered (outside the rate) — plus one trashed confirmed order. The pending
- * unowned order is the unattributed bucket.
+ * delivered (which D2 keeps inside the confirmed group) — plus one trashed
+ * confirmed order. The pending unowned order is the unattributed bucket.
  */
 function ctfScenario(): array
 {
@@ -198,7 +198,7 @@ test('the count tab lists each member with all orders and the trash count', func
     expect($alpha)->toContain(__('dashboard.team_all_orders').' 3')
         ->and($alpha)->toContain(__('dashboard.deleted_brackets', ['count' => 1]));
 
-    expect(ctfCard($html, __('dashboard.team_unattributed')))->toContain(__('dashboard.team_all_orders').' 1');
+    expect(ctfCard($html, __('dashboard.team_unassigned')))->toContain(__('dashboard.team_all_orders').' 1');
 
     // The trailing total row is answered by the member cards and is never
     // rendered as a card of its own.
@@ -212,15 +212,14 @@ test('the rate tab follows the base tab and shows the rate plus its group breakd
 
     $alpha = ctfCard($html, 'Alpha');
 
-    // D12: the delivered order counts as confirmed and stays inside the rate,
-    // so the rate is confirmed+delivered over confirmed+delivered+canceled =
-    // 2 / 3 = 67%. The rate tab lists each group, passed-to-delivery included.
+    // D2: the delivered order now stays inside the confirmed group, so the rate
+    // is confirmed (confirmed+delivered) over confirmed+delivered+canceled =
+    // 2 / 3 = 67%. The rate tab lists each group; there is no delivery group.
     expect($alpha)->toContain('67')
         ->and($alpha)->toContain('2 / 3')
-        ->and($alpha)->toContain(__('dashboard.group_confirmed').' 1')
+        ->and($alpha)->toContain(__('dashboard.group_confirmed').' 2')
         ->and($alpha)->toContain(__('dashboard.group_canceled').' 1')
-        ->and($alpha)->toContain(__('dashboard.group_pending').' 0')
-        ->and($alpha)->toContain(__('dashboard.group_passed_to_delivery').' 1');
+        ->and($alpha)->toContain(__('dashboard.group_pending').' 0');
 });
 
 test('deleted orders never enter the rate but always show as a trash badge', function () {
@@ -228,12 +227,35 @@ test('deleted orders never enter the rate but always show as a trash badge', fun
 
     $rate = ctfCard(ctfHtml($f['user'], $f['store'], ['ct' => 'rate']), 'Alpha');
 
-    // The trashed order is confirmed, so the confirmed chip still shows 1 and
-    // carries the trash badge (the deleted_brackets tooltip) while the rate
-    // still reads 2 / 3 — the deleted order is outside it (D7).
-    expect($rate)->toContain(__('dashboard.group_confirmed').' 1')
+    // The trashed order is confirmed, so the confirmed chip shows 2 (the live
+    // confirmed + delivered) and carries the trash badge (the deleted_hint
+    // tooltip) while the rate still reads 2 / 3 — the deleted order is outside
+    // it (D7).
+    expect($rate)->toContain(__('dashboard.group_confirmed').' 2')
         ->and($rate)->toContain(__('dashboard.group_deleted_hint', ['count' => 1, 'group' => __('dashboard.group_confirmed')]))
         ->and($rate)->toContain('2 / 3');
+});
+
+test('a member card hides the rarer groups and the trash chip when they are zero', function () {
+    $f = ctfScenario();
+
+    $rate = ctfCard(ctfHtml($f['user'], $f['store'], ['ct' => 'rate']), 'Alpha');
+
+    // T4: the four core groups always read, even at zero.
+    expect($rate)->toContain(__('dashboard.group_confirmed'))
+        ->and($rate)->toContain(__('dashboard.group_canceled'))
+        ->and($rate)->toContain(__('dashboard.group_pending'))
+        ->and($rate)->toContain(__('dashboard.group_failed'))
+        // The rarer buckets never appear on a row that does not carry them.
+        ->and($rate)->not->toContain(__('dashboard.group_duplicate'))
+        ->and($rate)->not->toContain(__('dashboard.group_deferred'))
+        ->and($rate)->not->toContain(__('dashboard.group_other'));
+
+    // The unattributed row has no trash, so it carries no trash chip at all.
+    $unassigned = ctfCard(ctfHtml($f['user'], $f['store'], ['ct' => 'rate']), __('dashboard.team_unassigned'));
+
+    expect($unassigned)->not->toContain(__('dashboard.deleted_brackets', ['count' => 0]))
+        ->and($unassigned)->not->toContain(__('dashboard.group_deleted_hint', ['count' => 0, 'group' => __('dashboard.group_confirmed')]));
 });
 
 test('the without trash toggle hides a soft-deleted member, the with trash toggle names it', function () {
@@ -255,7 +277,7 @@ test('picking one member drops the total row', function () {
     $html = ctfHtml($f['user'], $f['store'], ['m' => $f['alpha']->id]);
 
     expect(ctfCard($html, 'Alpha'))->toContain(__('dashboard.team_all_orders').' 3')
-        ->and(ctfCard($html, __('dashboard.team_unattributed')))->toBe('')
+        ->and(ctfCard($html, __('dashboard.team_unassigned')))->toBe('')
         ->and(ctfSection($html))->not->toContain(__('dashboard.team_total'));
 });
 
@@ -265,7 +287,7 @@ test('the unattributed sentinel shows only the unattributed row', function () {
     $html = ctfHtml($f['user'], $f['store'], ['m' => DashboardFilter::UNATTRIBUTED]);
 
     expect(ctfCard($html, 'Alpha'))->toBe('')
-        ->and(ctfCard($html, __('dashboard.team_unattributed')))->toContain(__('dashboard.team_all_orders').' 1')
+        ->and(ctfCard($html, __('dashboard.team_unassigned')))->toContain(__('dashboard.team_all_orders').' 1')
         ->and(ctfSection($html))->not->toContain(__('dashboard.team_total'));
 });
 

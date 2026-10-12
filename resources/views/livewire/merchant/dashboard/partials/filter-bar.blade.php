@@ -62,6 +62,29 @@
                 {{ $label }}
             </button>
         @endforeach
+
+        {{-- T5: the store link lives here as a header action (copy link + a
+             compact visit button) for both stats views, instead of a card of
+             its own under the filters. --}}
+        @php($storeUrl = currentStore()?->public_url)
+        <div class="ms-auto flex items-center gap-1.5" x-data="{ copied: false }">
+            <span class="hidden max-w-[14rem] truncate font-mono text-xs text-ink-muted lg:inline">{{ $storeUrl ?? '-' }}</span>
+            <button type="button"
+                x-on:click="navigator.clipboard.writeText('{{ $storeUrl }}'); copied = true; setTimeout(() => copied = false, 2000);"
+                class="edz-btn edz-btn--ghost edz-btn--sm"
+                title="{{ __('buttons.copy_link') }}"
+                aria-label="{{ __('buttons.copy_link') }}">
+                <x-edz.icon name="copy" class="h-4 w-4" />
+                <span class="sr-only" x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
+            </button>
+            @if (currentStore()?->isPubliclyActive())
+                <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer"
+                   class="edz-btn edz-btn--secondary edz-btn--sm">
+                    <x-edz.icon name="external-link" class="h-4 w-4 me-1" />
+                    {{ __('storefront.visit_store') }}
+                </a>
+            @endif
+        </div>
     </div>
 
     @if ($filter->period === 'custom')
@@ -206,7 +229,9 @@
             @endif
 
             @if ($unattributedSelected)
-                <span class="edz-badge edz-badge--neutral">{{ __('dashboard.team_unattributed') }}</span>
+                <span class="edz-badge edz-badge--neutral">
+                    {{ $isDeliveryView ? __('dashboard.team_unattributed') : __('dashboard.team_unassigned') }}
+                </span>
             @endif
 
             @if ($dimensionIsOverridden)

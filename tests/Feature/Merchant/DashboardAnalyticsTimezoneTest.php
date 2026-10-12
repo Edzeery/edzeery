@@ -26,6 +26,19 @@ function tzTrendValues(array $trend, string $key): array
     return $series['values'] ?? [];
 }
 
+/** PHASE 37-M2: the confirmation trend stacks the seven groups, so the window
+ *  total is the sum over every series (the old `received` figure). */
+function tzTotal(array $trend): int|float
+{
+    return collect($trend['series'])->sum(fn ($s) => array_sum($s['values'] ?? []));
+}
+
+/** One bucket of the stacked trend: the sum of every group at $index. */
+function tzTotalAt(array $trend, int $index): int|float
+{
+    return collect($trend['series'])->sum(fn ($s) => (int) ($s['values'][$index] ?? 0));
+}
+
 beforeEach(function () {
     $this->user = User::query()->create([
         'name' => 'Phase 37F',
@@ -107,8 +120,8 @@ it('buckets today by hour in the store timezone', function () {
     expect(count($trend['labels']))->toBe(24)
         ->and($trend['labels'][0])->toBe('00:00')
         ->and($trend['labels'][23])->toBe('23:00')
-        ->and(array_sum(tzTrendValues($trend, 'received')))->toBe(1)
-        ->and(tzTrendValues($trend, 'received')[0])->toBe(1);
+        ->and(tzTotal($trend))->toBe(1)
+        ->and(tzTotalAt($trend, 0))->toBe(1);
 
     // The money line only exists on the delivery view, whose cohort is
     // tracked orders, so the delivered amount is read from there.
@@ -157,7 +170,7 @@ it('counts every scoped order but only delivered revenue, and derives aov from d
 
     // The confirmation view counts every order in the window.
     $trend = $this->service->trendSeries($filter);
-    expect(array_sum(tzTrendValues($trend, 'received')))->toBe(3);
+    expect(tzTotal($trend))->toBe(3);
 
     // The delivery view reads money, and its cohort is tracked orders only.
     foreach ([$deliveredA, $deliveredB] as $delivered) {
@@ -312,12 +325,11 @@ it('returns an empty series when there is nothing to plot', function () {
 
     // No window means no axis, and every metric keeps its key with no points.
     expect($empty['labels'])->toBe([])
-        // PHASE 37-L: the confirmation trend carries a fourth "failed" line.
-        ->and($empty['series'])->toHaveCount(4)
-        ->and(tzTrendValues($empty, 'received'))->toBe([])
-        ->and(tzTrendValues($empty, 'confirmed'))->toBe([])
-        ->and(tzTrendValues($empty, 'canceled'))->toBe([])
-        ->and(tzTrendValues($empty, 'failed'))->toBe([]);
+        // PHASE 37-M2: the confirmation trend is one stacked series per group.
+        ->and($empty['series'])->toHaveCount(7)
+        ->and(collect($empty['series'])->pluck('key')->all())
+        ->toBe(['confirmed', 'pending', 'failed', 'canceled', 'deferred', 'duplicate', 'other'])
+        ->and(tzTotal($empty))->toBe(0);
 });
 
 it('scopes both dimensions by the confirmed member', function () {

@@ -7,7 +7,6 @@ it('falls back to the settled orders when nothing is configured', function () {
     expect(ConfirmationRateDenominator::resolve(null))
         ->toBe([
             ConfirmationStatsGroups::CONFIRMED,
-            ConfirmationStatsGroups::PASSED_TO_DELIVERY,
             ConfirmationStatsGroups::CANCELED,
             ConfirmationStatsGroups::FAILED,
         ])

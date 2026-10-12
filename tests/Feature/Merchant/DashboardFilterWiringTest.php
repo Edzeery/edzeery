@@ -525,10 +525,10 @@ test('the aov card lives only in the delivery KPI row', function () {
     expect(substr_count($htmlDelivery, $marker))->toBe(1)
         ->and(substr_count($htmlConfirmation, $marker))->toBe(0);
 
-    // Both KPI rows share the two-column small breakpoint; delivery opens up to
-    // four columns on xl.
+    // Delivery opens up to four KPI columns on xl; the confirmation row is the
+    // rate plus the pending queue (T3 merged the count into the queue header).
     expect($htmlDelivery)->toContain('xl:grid-cols-4')
-        ->and($htmlConfirmation)->toContain('sm:grid-cols-2');
+        ->and($htmlConfirmation)->toContain('lg:grid-cols-3');
 });
 
 test('the trend draws straight segments with points only where there is activity', function () {

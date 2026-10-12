@@ -12,12 +12,14 @@ use Illuminate\Database\Eloquent\Builder;
  * (§ 11.4 of docs/plans/order-distribution-rules.md: each tab counts only its
  * own cohort).
  *
- * Credit is always keyed on orders.confirmed_by_membership_id — the member who
- * confirmed, an ORDER_CONFIRM holder — so the Confirmation tab may only ever
- * show members who can confirm. Delivery credits the same confirmer but walks
- * the newest tracking member for its workload, so its cohort is the union of
- * the two workflows. OWNER, ADMIN and MANAGER run the whole store and therefore
- * belong to both cohorts, whichever permissions they hold.
+ * PHASE 37-M (D1): the Confirmation tab's member rows are keyed on
+ * orders.assigned_to_membership_id, and an assignment counts as a confirmation
+ * row only when the assigned member holds ORDER_CONFIRM — so the Confirmation
+ * cohort is exactly the ORDER_CONFIRM holders. Delivery credits
+ * orders.confirmed_by_membership_id (the confirmer, also an ORDER_CONFIRM
+ * holder) and walks the newest tracking member for its workload, so its cohort
+ * is the union of the two workflows. OWNER, ADMIN and MANAGER run the whole
+ * store and therefore belong to both cohorts, whichever permissions they hold.
  *
  * The filter is applied as one EXISTS over the query, so it adds no query of its
  * own and cannot turn the dashboard into an N+1.

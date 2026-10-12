@@ -1,8 +1,20 @@
-{{-- Pending confirmations (39-M5.1): the desk's live queue, promoted into the
-     KPI row so an operator sees what to act on beside the headline numbers. --}}
+{{-- Pending confirmations (39-M5.1, merged in 37-M2): the desk's live queue,
+     promoted into the KPI row so an operator sees what to act on beside the
+     headline numbers. The awaiting-confirmation count rides in the header as a
+     badge instead of taking a card of its own. --}}
+@php
+    $awaitingCount = (int) ($summary['pending_count'] ?? 0);
+@endphp
 <div class="edz-card edz-card--padded flex h-full flex-col">
-    <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.pending_confirmation') }}</h3>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 class="text-sm font-semibold tracking-tight text-ink">{{ __('dashboard.pending_confirmation') }}</h3>
+            <span class="inline-flex items-center gap-1 rounded-full bg-brand-surface px-2.5 py-0.5 text-xs font-semibold text-brand-fg-strong tabular-nums"
+                  title="{{ __('dashboard.pending_confirmation_count') }}">
+                <bdi>{{ $awaitingCount }}</bdi>
+                <span>{{ __('dashboard.pending_confirmation_count') }}</span>
+            </span>
+        </div>
         @if ($pendingOrders->count() > 0)
             <a href="{{ route('merchant.orders.index', currentStore()) }}" wire:navigate
                class="text-xs font-medium text-accent-600 transition-colors hover:text-accent-500">

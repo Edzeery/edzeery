@@ -279,6 +279,18 @@ Rules:
    assigned member holds `ORDER_CONFIRM`; a tracking-tab row when the assigned
    member holds `CRM_ORDER_TRACKING` — the assignment is classified by the
    member's **permission**, never by "who confirmed / who tracked".
+
+**Status — PHASE 37-M1 (2026-10-12).** Rule 1's dimension key is now enforced in
+code for the **confirmation** view: `DashboardOrderScope::applyMember` keys on
+`orders.assigned_to_membership_id` (sentinel «غير مُسنَدة» = `assigned_to IS NULL`)
+for every confirmation block — filter, headline, cards, doughnut, trend, KPI row
+and team cards. The **delivery** view is intentionally unchanged in this phase
+(still keyed on `confirmed_by_membership_id`, byte-for-byte); moving it to the
+tracking assignment is a deferred, open question. So Rule 3's «بلا رصيد» label
+now belongs to the delivery view only. Decision **D2** (the confirmation view
+carries no delivery content — orders past confirmation fold into `confirmed`) is
+recorded in `docs/plans/confirmation-statistics-redesign.md`.
+
 3. **Light, not heavy.** No new ledger table and no per-assignment monetary rows;
    only the existing columns plus one lightweight assignment event.
 4. **Dual-role members** (Rule 4) still appear in both tabs, each row counted only
