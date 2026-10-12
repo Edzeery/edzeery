@@ -72,11 +72,10 @@ test('the confirmation section renders its headline, trash figure and every grou
         ->toContain(__('dashboard.group_confirmed').': 0')
         // D7: deleted orders render between brackets, never in a ratio.
         ->toContain(__('dashboard.deleted_brackets', ['count' => 0]))
-        ->not->toContain(__('dashboard.group_failed'))
-        ->not->toContain(__('dashboard.group_deferred'))
-        ->not->toContain(__('dashboard.group_duplicate'))
-        ->not->toContain(__('dashboard.group_delivery_outcomes'))
-        ->not->toContain(__('dashboard.group_unclassified'));
+        // The rate-only explainer and group hints belong to the rate tab.
+        ->not->toContain(__('dashboard.outside_rate'))
+        ->not->toContain(__('dashboard.group_passed_to_delivery_hint'))
+        ->not->toContain(__('dashboard.group_other_hint'));
 
     // The delivery view does not own this section.
     $delivery = $this->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
@@ -106,7 +105,7 @@ test('the rate tab renders the rate, its basis and only the six ratio groups', f
         ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 1, 'denominator' => 2]))
         ->toContain(__('dashboard.outside_rate'));
 
-    // The rate tab keeps ratio groups only (no delivery-outcomes/unclassified).
+    // The rate tab keeps the rate groups only (no unclassified bucket).
     expect($html)
         ->toContain(__('dashboard.group_confirmed'))
         ->toContain(__('dashboard.group_canceled'))
@@ -114,7 +113,8 @@ test('the rate tab renders the rate, its basis and only the six ratio groups', f
         ->toContain(__('dashboard.group_failed'))
         ->toContain(__('dashboard.group_duplicate'))
         ->toContain(__('dashboard.group_deferred'))
-        ->not->toContain(__('dashboard.group_delivery_outcomes'))
+        ->toContain(__('dashboard.group_passed_to_delivery'))
+        ->toContain(__('dashboard.group_other'))
         ->not->toContain(__('dashboard.group_unclassified'));
 });
 
@@ -271,4 +271,42 @@ test('the confirmation tab setter guards invalid values and ignores repeats', fu
         ->assertSet('confirmationTab', 'rate')
         ->call('setConfirmationTab', 'count')
         ->assertSet('confirmationTab', 'count');
+});
+
+test('a shipped order stays inside the confirmation rate', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    // 2 confirmed + 1 shipped + 1 canceled => 3 / 4 = 75%. Shipping the third
+    // order (a confirmed one leaving the desk) never moves the line, because
+    // delivered outcomes stay in both the numerator and the denominator.
+    dscOrder($store, OrderStatus::CONFIRMED);
+    dscOrder($store, OrderStatus::CONFIRMED);
+    dscOrder($store, OrderStatus::DELIVERED);
+    dscOrder($store, OrderStatus::CANCELED);
+
+    $html = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'ct' => 'rate']))
+        ->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('75%')
+        ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 3, 'denominator' => 4]))
+        ->toContain(__('dashboard.group_passed_to_delivery'));
+});
+
+test('the confirmation dashboard blades carry no dark: or gray- utilities', function () {
+    $files = array_merge(
+        [resource_path('views/livewire/merchant/dashboard.blade.php')],
+        glob(resource_path('views/livewire/merchant/dashboard/partials/*.blade.php')) ?: [],
+    );
+
+    foreach ($files as $file) {
+        $name = basename($file);
+        $source = (string) file_get_contents($file);
+
+        expect($source)
+            ->not->toContain('dark:', "{$name} ships a dark: variant")
+            ->not->toContain('gray-', "{$name} ships a raw gray-* utility");
+    }
 });

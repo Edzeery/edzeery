@@ -61,6 +61,30 @@ class OrderStatusIdMap
     }
 
     /**
+     * Ids for raw `statuses.key` strings (ConfirmationStatsGroups keys), with
+     * the ones this store has not defined skipped. Used by the confirmation
+     * trend, which groups by the confirmation buckets rather than by enums.
+     *
+     * @param  array<int, string>  $keys
+     * @return array<int, string>
+     */
+    public function idsForKeys(array $keys): array
+    {
+        $map = $this->all();
+        $ids = [];
+
+        foreach ($keys as $key) {
+            $id = $map[$key] ?? null;
+
+            if ($id !== null) {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return callable(OrderStatus): ?string
      */
     public function resolver(): callable

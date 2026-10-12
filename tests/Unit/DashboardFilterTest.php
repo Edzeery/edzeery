@@ -272,9 +272,11 @@ it('changes the hash when any filter input changes', function () {
 
     expect($hash())->toBe($reference)
         ->and($hash(['period' => 'yesterday']))->not->toBe($reference)
-        ->and($hash(['carrierId' => null]))->not->toBe($reference)
         ->and($hash(['memberId' => $other->id]))->not->toBe($reference)
         ->and($hash(['memberDimension' => 'delivery']))->not->toBe($reference)
+        // D3: confirmation has no carrier control, so a carrier pick is dropped
+        // from the DTO (the property keeps its value in Livewire).
+        ->and($hash(['carrierId' => null]))->toBe($reference)
         // M4: the confirmation date axis and the product/variant picks take part
         // in the hash too, so re-applying them is a real filter change.
         ->and($hash(['dateBasis' => 'last_status_changed']))->not->toBe($reference)
@@ -283,6 +285,12 @@ it('changes the hash when any filter input changes', function () {
         // A different date range changes from/to, which the hash covers too.
         ->and($hash(['period' => 'custom', 'dateFrom' => '2026-03-01', 'dateTo' => '2026-03-05']))
         ->not->toBe($hash(['period' => 'custom', 'dateFrom' => '2026-03-02', 'dateTo' => '2026-03-05']));
+
+    // D3: the delivery view has no product control, so the product/variant picks
+    // are dropped there, while the carrier pick now takes part in the hash.
+    $delivery = ['memberDimension' => 'delivery'];
+    expect($hash($delivery + ['carrierId' => null]))->not->toBe($hash($delivery))
+        ->and($hash($delivery + ['productIds' => [$carrier->id]]))->toBe($hash($delivery));
 });
 
 it('gives an identical filter the same hash and separates different ones', function () {
@@ -335,7 +343,9 @@ it('serialises the window in UTC and exposes the local copy for display', functi
 
 it('resolves the confirmation date basis and resists unknown values', function () {
     $factory = app(DashboardFilterFactory::class);
-    $membership = memberWith([]);
+    // The confirmation dimension keeps the requested date axis; the delivery
+    // view would force the created date (D3), so grant the confirmation caps.
+    $membership = memberWith([StorePermissionEnum::STATS_CONFIRMATION->value]);
 
     $basis = fn (?string $requested) => $factory->make(['dateBasis' => $requested], $membership)->dateBasis;
 
@@ -347,7 +357,8 @@ it('resolves the confirmation date basis and resists unknown values', function (
 
 it('normalises a product or variant pick and caps it at one hundred ids', function () {
     $factory = app(DashboardFilterFactory::class);
-    $membership = memberWith([]);
+    // Product/variant picks only survive the confirmation dimension (D3).
+    $membership = memberWith([StorePermissionEnum::STATS_CONFIRMATION->value]);
 
     $make = fn (string $key, $value) => $factory->make([$key => $value], $membership);
 

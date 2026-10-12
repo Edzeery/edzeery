@@ -110,7 +110,18 @@
             // One dataset per server metric: `axis` picks the side, `type` picks
             // line/bar, and `token:accent` is the theme's own accent colour.
             const series = Array.isArray(data.chartSeries) ? data.chartSeries : [];
-            const colorFor = (hex) => hex === 'token:accent' ? resolvedAccent : (parseColor(hex) || resolvedText);
+            // Named theme tokens the server can hand a chart without knowing the
+            // active theme: the confirmation doughnut and the failed trend line
+            // use these, so a slice colour follows light/dark like everything else.
+            const tokenColors = {
+                'token:accent': resolvedAccent,
+                'token:success': themeColor('--edz-color-success-500', '#12b76a'),
+                'token:warning': themeColor('--edz-color-warning-500', '#f79009'),
+                'token:danger': themeColor('--edz-color-danger-500', '#f04438'),
+                'token:info': themeColor('--edz-color-info-500', '#0284c7'),
+                'token:muted': themeColor('--edz-color-text-soft', '#667085'),
+            };
+            const colorFor = (hex) => tokenColors[hex] ?? (parseColor(hex) || resolvedText);
             const valuesFor = (axis) => series.filter(s => s.axis === axis).flatMap(s => Array.isArray(s.values) ? s.values : []);
             const yValues = valuesFor('y');
             const y1Values = valuesFor('y1');

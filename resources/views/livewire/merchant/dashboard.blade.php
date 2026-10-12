@@ -121,16 +121,49 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
 <div>
     @include('livewire.merchant.dashboard.partials.filter-bar')
 
+    {{-- Store link: a compact header action, not a full-width card. --}}
+    @php
+        $storeUrl = currentStore()?->public_url;
+    @endphp
+    <div class="mb-4 flex justify-end">
+        <div class="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface px-3 py-1.5">
+            <span class="hidden max-w-[16rem] truncate font-mono text-xs text-ink-muted sm:inline">{{ $storeUrl ?? '-' }}</span>
+            <button type="button"
+                x-data="{ copied: false }"
+                x-on:click="navigator.clipboard.writeText('{{ $storeUrl }}'); copied = true; setTimeout(() => copied = false, 2000);"
+                class="edz-btn edz-btn--secondary edz-btn--sm"
+                title="{{ __('buttons.copy_link') }}"
+                aria-label="{{ __('buttons.copy_link') }}">
+                <x-edz.icon name="copy" class="h-4 w-4" />
+                <span class="sr-only" x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
+            </button>
+            @if (currentStore()?->isPubliclyActive())
+                <a href="{{ $storeUrl }}" target="_blank" rel="noopener noreferrer"
+                   class="edz-btn edz-btn--primary edz-btn--sm">
+                    <x-edz.icon name="external-link" class="h-4 w-4 me-1" />
+                    {{ __('storefront.visit_store') }}
+                </a>
+            @endif
+        </div>
+    </div>
+
+    <div wire:loading.class="opacity-60 transition-opacity duration-200"
+         wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension,dateBasis,productIds,teamTrash,teamSearch,setConfirmationTab">
+
     {{-- Base stats mode (M4): one global control so the count/rate choice frames
-         every confirmation statistic — the headline, the charts and the team. --}}
+         every confirmation statistic — the headline, the charts and the team.
+         It sits inside the loading wrapper so switching it dims the content it
+         is about to change. --}}
     @if ($canViewStats && ! $isDeliveryView)
         <div class="mb-6">
             <div class="flex w-full items-center gap-1 rounded-xl border border-surface-border bg-surface-secondary/70 p-1 sm:inline-flex sm:w-auto"
                  role="tablist">
                 @foreach (['count', 'rate'] as $tab)
                     <button type="button"
+                        id="conf-tab-{{ $tab }}"
                         wire:click="setConfirmationTab('{{ $tab }}')"
                         role="tab"
+                        aria-controls="dashboard-stats-panel"
                         aria-selected="{{ $confirmationTab === $tab ? 'true' : 'false' }}"
                         @class([
                             'flex-1 rounded-lg px-4 py-2 text-center text-sm font-semibold transition-colors sm:flex-none',
@@ -144,145 +177,17 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
         </div>
     @endif
 
-    <div wire:loading.class="opacity-60 transition-opacity duration-200"
-         wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension">
+    <div role="tabpanel"
+         @if ($canViewStats && ! $isDeliveryView) id="dashboard-stats-panel" aria-labelledby="conf-tab-{{ $confirmationTab }}" @endif>
 
     {{-- KPI Cards — Apple-style large numbers with negative tracking.
          The confirmation view promotes the pending queue into this row so the
          operator reads the headline numbers and the to-do list in one glance. --}}
     @if ($isDeliveryView)
-        @if ($canTopKpis)
-        <div class="edz-stagger grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2 xl:grid-cols-4">
-            {{-- Total Orders --}}
-            <div class="edz-card edz-card--padded group">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.total_orders') }}</p>
-                    @if ($summary['has_previous'] && $summary['total_orders_change'] != 0)
-                        <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                            {{ $summary['total_orders_change'] > 0 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
-                            {{ $summary['total_orders_change'] > 0 ? '▲' : '▼' }} {{ abs($summary['total_orders_change']) }}%
-                        </span>
-                    @endif
-                </div>
-                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['total_orders'] }}</p>
-                <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
-            </div>
-
-            {{-- Delivered Revenue --}}
-            <div class="edz-card edz-card--padded group">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.revenue') }}</p>
-                    <div class="w-8 h-8 rounded-lg bg-success-surface flex items-center justify-center text-success-600">
-                        <x-edz.icon name="trending-up" class="w-4 h-4" />
-                    </div>
-                </div>
-                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ number_format($summary['revenue'], 0) }}<span class="text-lg font-semibold text-ink-muted ms-1">{{ __('stores.currency_symbol') }}</span></p>
-                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.revenue_delivered_in_period') }}</p>
-                <p class="mt-1 text-xs text-ink-muted">{{ $periodLabel }}</p>
-            </div>
-
-            {{-- Return Rate --}}
-            <div class="edz-card edz-card--padded group">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.return_rate') }}</p>
-                    <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                        {{ $summary['return_rate'] <= 10 ? 'text-success-fg-strong bg-success-surface' : 'text-danger-fg-strong bg-danger-surface' }}">
-                        {{ $summary['return_rate'] }}%
-                    </span>
-                </div>
-                <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
-                    <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
-                        {{ $summary['return_rate'] <= 10 ? 'bg-success-500' : 'bg-danger-500' }}"
-                         style="width: {{ $summary['return_rate'] }}%"></div>
-                </div>
-                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.return_of_processed') }}</p>
-            </div>
-
-            {{-- Average Delivered Order Value --}}
-            <div class="edz-card edz-card--padded group">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.aov') }}</p>
-                </div>
-                <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ number_format($summary['aov'], 0) }}<span class="text-lg font-semibold text-ink-muted ms-1">{{ __('stores.currency_symbol') }}</span></p>
-                <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.revenue_delivered_in_period') }}</p>
-                <p class="mt-1 text-xs text-ink-muted">{{ $periodLabel }}</p>
-            </div>
-        </div>
-        @endif
+        @include('livewire.merchant.dashboard.partials.kpi-delivery')
     @else
-        @php($showPendingCard = $canConfirm)
-        @if ($canTopKpis || $showPendingCard)
-        <div class="edz-stagger grid grid-cols-1 gap-4 mb-6 lg:grid-cols-3">
-            @if ($canTopKpis)
-            <div @class([
-                'grid grid-cols-1 gap-4 sm:grid-cols-2',
-                'lg:col-span-2' => $showPendingCard,
-                'lg:col-span-3' => ! $showPendingCard,
-            ])>
-                {{-- Confirmation Rate --}}
-                <div class="edz-card edz-card--padded group">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.confirmation_rate') }}</p>
-                        <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
-                            {{ $summary['confirmation_rate'] >= 70 ? 'text-success-fg-strong bg-success-surface' : 'text-warning-fg-strong bg-warning-surface' }}">
-                            {{ $summary['confirmation_rate'] }}%
-                        </span>
-                    </div>
-                    <div class="w-full bg-surface-secondary rounded-full h-1.5 overflow-hidden">
-                        <div class="h-1.5 rounded-full transition-all duration-700 ease-out-expo
-                            {{ $summary['confirmation_rate'] >= 70 ? 'bg-success-500' : 'bg-warning-500' }}"
-                             style="width: {{ $summary['confirmation_rate'] }}%"></div>
-                    </div>
-                    <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.confirmed_of_total') }}</p>
-                </div>
-                {{-- Awaiting Confirmation --}}
-                <div class="edz-card edz-card--padded group">
-                    <div class="flex items-center justify-between mb-3">
-                        <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.pending_confirmation_count') }}</p>
-                    </div>
-                    <p class="text-3xl font-bold tracking-tighter text-ink leading-none">{{ $summary['pending_count'] }}</p>
-                    <p class="mt-2 text-xs text-ink-muted">{{ $periodLabel }}</p>
-                </div>
-            </div>
-            @endif
-            @if ($showPendingCard)
-            <div class="lg:col-span-1">
-                @include('livewire.merchant.dashboard.partials.pending-orders')
-            </div>
-            @endif
-        </div>
-        @endif
+        @include('livewire.merchant.dashboard.partials.kpi-confirmation')
     @endif
-    {{-- Store Link --}}
-    <div class="edz-card edz-card--padded mb-6">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex-shrink-0 w-10 h-10 rounded-xl {{ currentStore()?->isPubliclyActive() ? 'bg-success-surface text-success-600' : 'bg-warning-surface text-warning-600' }} flex items-center justify-center">
-                    <x-edz.icon name="external-link" class="w-5 h-5" />
-                </div>
-                <div>
-                    <p class="text-sm font-semibold text-ink">{{ __('storefront.your_store_link') }}</p>
-                    <p class="text-xs font-mono text-ink-muted">{{ currentStore()?->public_url ?? '-' }}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <button type="button"
-                    x-data="{ copied: false }"
-                    x-on:click="navigator.clipboard.writeText('{{ currentStore()?->public_url }}'); copied = true; setTimeout(() => copied = false, 2000);"
-                    class="edz-btn edz-btn--secondary edz-btn--sm">
-                    <x-edz.icon name="copy" class="w-4 h-4 me-1" />
-                    <span x-text="copied ? '{{ __('buttons.copied') }}' : '{{ __('buttons.copy_link') }}'"></span>
-                </button>
-                @if (currentStore()?->isPubliclyActive())
-                    <a href="{{ currentStore()?->public_url }}" target="_blank" rel="noopener noreferrer"
-                       class="edz-btn edz-btn--primary edz-btn--sm">
-                        <x-edz.icon name="external-link" class="w-4 h-4 me-1" />
-                        {{ __('storefront.visit_store') }}
-                    </a>
-                @endif
-            </div>
-        </div>
-    </div>
     {{-- Charts Row --}}
     @if ($canViewStats)
         @if ($isDeliveryView)
@@ -433,5 +338,6 @@ with(function () use ($analytics, $subscriptionGuard, $canTopKpis, $canStatsDeli
             </div>
         </div>
     @endif
+    </div>
     </div>
 </div>

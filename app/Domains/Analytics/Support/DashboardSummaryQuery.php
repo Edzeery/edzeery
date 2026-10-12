@@ -41,10 +41,6 @@ final class DashboardSummaryQuery
             $revenuePrev = (clone $prev)->where('status_id', $deliveredId)->sum('total_amount');
         }
 
-        $confirmedCount = (clone $current)->whereIn('status_id', $statusIds(DashboardStatusGroups::CONFIRMED))->count();
-
-        $confirmationRate = $totalCurrent > 0 ? round(($confirmedCount / $totalCurrent) * 100) : 0;
-
         $returnedCount = (clone $current)->where('status_id', $statusId(OrderStatus::RETURNED))->count();
         $returnRate = ($deliveredCount + $returnedCount) > 0
             ? round(($returnedCount / ($deliveredCount + $returnedCount)) * 100)
@@ -64,7 +60,6 @@ final class DashboardSummaryQuery
             'revenue' => $revenueCurrent,
             'revenue_change' => $this->change($revenueCurrent, $revenuePrev, $previous !== null),
             'has_previous' => $previous !== null,
-            'confirmation_rate' => $confirmationRate,
             'return_rate' => $returnRate,
             // Average value of a delivered order, not of a confirmed one.
             'aov' => $deliveredCount > 0 ? round($revenueCurrent / $deliveredCount, 2) : 0,

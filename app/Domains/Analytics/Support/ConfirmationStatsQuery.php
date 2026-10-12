@@ -27,13 +27,12 @@ final class ConfirmationStatsQuery
             ->where('orders.store_id', $filter->storeId)
             ->withTrashed();
 
-        $this->applyDateWindow($query, $filter);
-
-        // The confirmation member dimension is the assignment list (D1), which
-        // is exactly what the pending workload scope walks.
-        $this->scope->applyPending($query, $filter);
-
-        $this->applyProductFilter($query, $filter);
+        // PHASE 37-L: the report answers the same member question as the rest
+        // of the confirmation view (the credit key, via the shared scope), so
+        // the cards, the doughnut and the KPI can never disagree about who
+        // belongs in the window. The date window and the product EXISTS live in
+        // the scope too, shared with every other confirmation block.
+        $this->scope->apply($query, $filter);
 
         $rows = $query
             ->join('statuses', 'statuses.id', '=', 'orders.status_id')
@@ -51,55 +50,5 @@ final class ConfirmationStatsQuery
             'total' => (int) $row->total,
             'deleted' => (int) $row->deleted,
         ])->all();
-    }
-
-    private function applyDateWindow($query, DashboardFilter $filter): void
-    {
-        if (! $filter->from || ! $filter->to) {
-            return;
-        }
-
-        $column = $filter->dateBasis === DashboardFilter::DATE_BASIS_LAST_STATUS
-            ? 'COALESCE(orders.last_status_changed_at, orders.created_at)'
-            : 'orders.created_at';
-
-        $query->whereRaw(
-            $column.' BETWEEN ? AND ?',
-            [$filter->from->toDateTimeString(), $filter->to->toDateTimeString()]
-        );
-    }
-
-    /**
-     * The product picker (D3/D10) narrows to orders holding any of the picked
-     * products or variants. An order with several matching lines still counts
-     * once, so the clause is an EXISTS rather than a join.
-     */
-    private function applyProductFilter($query, DashboardFilter $filter): void
-    {
-        $products = $filter->productIds ?? [];
-        $variants = $filter->variantIds ?? [];
-
-        if ($products === [] && $variants === []) {
-            return;
-        }
-
-        $query->whereExists(function ($sub) use ($products, $variants) {
-            $sub->selectRaw('1')
-                ->from('order_items')
-                ->whereColumn('order_items.order_id', 'orders.id')
-                ->whereNull('order_items.deleted_at');
-
-            $sub->where(function ($w) use ($products, $variants) {
-                if ($products !== []) {
-                    $w->whereIn('order_items.product_id', $products);
-                }
-
-                if ($variants !== []) {
-                    $products !== []
-                        ? $w->orWhereIn('order_items.product_variant_id', $variants)
-                        : $w->whereIn('order_items.product_variant_id', $variants);
-                }
-            });
-        });
     }
 }

@@ -10,12 +10,13 @@ final class DashboardOrderScope
 {
     public function apply(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
     {
-        $from = $filter->from;
-        $to = $filter->to;
-
-        if ($from && $to) {
-            $query->whereBetween('orders.created_at', [$from->toDateTimeString(), $to->toDateTimeString()]);
-        }
+        // PHASE 37-L: the date window and the product EXISTS live here now, so
+        // every block of a view walks the exact same rows. The builder only
+        // ever sees the fields DashboardFilterFactory left for the active view
+        // (D3), so a delivery walk gets a created-at window and no product
+        // clause, and a confirmation walk gets the basis and the products.
+        $this->applyDateWindow($query, $filter);
+        $this->applyProductFilter($query, $filter);
 
         if ($filter->carrierId) {
             $query->where('orders.shipping_provider_id', $filter->carrierId);
@@ -26,14 +27,87 @@ final class DashboardOrderScope
 
     public function applyPending(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
     {
+        // The pending queue is a workload ("المُسند") concept: it always walks
+        // the assignment list, never the credit list. Every pending order is
+        // unattributed by definition, so the sentinel adds no clause at all.
+        // It is a confirmation block, so it takes the date basis and the
+        // product pick (D4) but never the carrier (D3).
+        $this->applyDateWindow($query, $filter);
+        $this->applyProductFilter($query, $filter);
+
         if ($filter->carrierId) {
             $query->where('orders.shipping_provider_id', $filter->carrierId);
         }
 
-        // The pending queue is a workload ("المُسند") concept: it always walks
-        // the assignment list, never the credit list. Every pending order is
-        // unattributed by definition, so the sentinel adds no clause at all.
         $this->applyPendingMember($query, $filter);
+    }
+
+    /**
+     * The window on the chosen date basis (D2). "Last status date" is written
+     * sargable — a plain `last_status_changed_at BETWEEN` short-circuitable by
+     * the (store_id, last_status_changed_at) index — with the created-at range
+     * only as the fallback for the rows the backfill could not stamp (no
+     * history at all), so those are still counted rather than silently lost.
+     */
+    private function applyDateWindow(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
+    {
+        $from = $filter->from;
+        $to = $filter->to;
+
+        if (! $from || ! $to) {
+            return;
+        }
+
+        $from = $from->toDateTimeString();
+        $to = $to->toDateTimeString();
+
+        if ($filter->dateBasis !== DashboardFilter::DATE_BASIS_LAST_STATUS) {
+            $query->whereBetween('orders.created_at', [$from, $to]);
+
+            return;
+        }
+
+        $query->where(function ($window) use ($from, $to) {
+            $window->whereBetween('orders.last_status_changed_at', [$from, $to])
+                ->orWhere(function ($unstamped) use ($from, $to) {
+                    $unstamped->whereNull('orders.last_status_changed_at')
+                        ->whereBetween('orders.created_at', [$from, $to]);
+                });
+        });
+    }
+
+    /**
+     * The product picker (D3/D10) narrows to orders holding any of the picked
+     * products or variants. An order with several matching lines still counts
+     * once, so the clause is an EXISTS rather than a join.
+     */
+    private function applyProductFilter(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
+    {
+        $products = $filter->productIds ?? [];
+        $variants = $filter->variantIds ?? [];
+
+        if ($products === [] && $variants === []) {
+            return;
+        }
+
+        $query->whereExists(function ($sub) use ($products, $variants) {
+            $sub->selectRaw('1')
+                ->from('order_items')
+                ->whereColumn('order_items.order_id', 'orders.id')
+                ->whereNull('order_items.deleted_at');
+
+            $sub->where(function ($w) use ($products, $variants) {
+                if ($products !== []) {
+                    $w->whereIn('order_items.product_id', $products);
+                }
+
+                if ($variants !== []) {
+                    $products !== []
+                        ? $w->orWhereIn('order_items.product_variant_id', $variants)
+                        : $w->whereIn('order_items.product_variant_id', $variants);
+                }
+            });
+        });
     }
 
     /**

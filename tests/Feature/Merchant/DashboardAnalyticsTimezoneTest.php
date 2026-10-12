@@ -312,10 +312,12 @@ it('returns an empty series when there is nothing to plot', function () {
 
     // No window means no axis, and every metric keeps its key with no points.
     expect($empty['labels'])->toBe([])
-        ->and($empty['series'])->toHaveCount(3)
+        // PHASE 37-L: the confirmation trend carries a fourth "failed" line.
+        ->and($empty['series'])->toHaveCount(4)
         ->and(tzTrendValues($empty, 'received'))->toBe([])
         ->and(tzTrendValues($empty, 'confirmed'))->toBe([])
-        ->and(tzTrendValues($empty, 'canceled'))->toBe([]);
+        ->and(tzTrendValues($empty, 'canceled'))->toBe([])
+        ->and(tzTrendValues($empty, 'failed'))->toBe([]);
 });
 
 it('scopes both dimensions by the confirmed member', function () {

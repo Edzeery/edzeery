@@ -25,6 +25,7 @@ final class DashboardTrendQuery
     public function __construct(
         private DashboardOrderScope $scope,
         private DashboardSeriesQuery $seriesQuery,
+        private OrderStatusIdMap $statusIds,
     ) {}
 
     /**
@@ -54,19 +55,29 @@ final class DashboardTrendQuery
     /** @return array{view: 'confirmation', labels: array<int, string>, series: list<array<string, mixed>>} */
     private function confirmation($query, DashboardFilter $filter, callable $statusId, callable $statusIds): array
     {
-        $confirmedIds = $statusIds(DashboardStatusGroups::CONFIRMED);
-        $canceledIds = $statusIds(DashboardStatusGroups::CANCELED);
+        // D4: the trend answers the same four questions as the cards — how many
+        // arrived, how many the desk cleared (the numerator: confirmed or
+        // already shipped), how many it canceled (including wrong_number) and
+        // how many it failed to reach.
+        $confirmedIds = $this->statusIds->idsForKeys([
+            ...ConfirmationStatsGroups::keys(ConfirmationStatsGroups::CONFIRMED),
+            ...ConfirmationStatsGroups::keys(ConfirmationStatsGroups::PASSED_TO_DELIVERY),
+        ]);
+        $canceledIds = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys(ConfirmationStatsGroups::CANCELED));
+        $failedIds = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys(ConfirmationStatsGroups::FAILED));
 
         $result = $this->seriesQuery->series($query, $filter, [
             ['key' => 'received', 'expression' => 'COUNT(*)'],
             ['key' => 'confirmed', 'expression' => $this->countWhen($this->in('orders.status_id', $confirmedIds)), 'bindings' => $confirmedIds],
             ['key' => 'canceled', 'expression' => $this->countWhen($this->in('orders.status_id', $canceledIds)), 'bindings' => $canceledIds],
+            ['key' => 'failed', 'expression' => $this->countWhen($this->in('orders.status_id', $failedIds)), 'bindings' => $failedIds],
         ]);
 
         return $this->assemble('confirmation', $result, [
             ['key' => 'received', 'label' => __('dashboard.series_received'), 'hex' => self::ACCENT_TOKEN, 'axis' => 'y', 'type' => 'line'],
             ['key' => 'confirmed', 'label' => __('dashboard.series_confirmed'), 'hex' => $this->hex($filter->storeId, OrderStatus::CONFIRMED), 'axis' => 'y', 'type' => 'line'],
             ['key' => 'canceled', 'label' => __('dashboard.series_canceled'), 'hex' => $this->hex($filter->storeId, OrderStatus::CANCELED, OrderStatus::CANCELLED), 'axis' => 'y', 'type' => 'line'],
+            ['key' => 'failed', 'label' => __('dashboard.series_failed'), 'hex' => 'token:danger', 'axis' => 'y', 'type' => 'line'],
         ]);
     }
 

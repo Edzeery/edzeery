@@ -83,10 +83,13 @@ it('reopens the line when the store asks for the wider preset', function () {
     $recommended = csrReport()->build($rows);
     $wide = csrReport(ConfirmationRateDenominator::PRESET_EXCLUDE_DUPLICATE_AND_DEFERRED)->build($rows);
 
-    expect($recommended['denominator'])->toBe(10)
-        ->and($recommended['rate'])->toBe(80)
+    // D12: the delivered order stays inside the numerator (it left the desk
+    // confirmed), so the recommended line is 8 + 45 over 8 + 45 + 1 + 1 = 96%.
+    // The wider preset also carries the pending bucket: 53 over 60 = 88%.
+    expect($recommended['denominator'])->toBe(55)
+        ->and($recommended['rate'])->toBe(96)
         ->and($wide['denominator'])->toBe(60)
-        ->and($wide['rate'])->toBe(13);
+        ->and($wide['rate'])->toBe(88);
 });
 
 it('reports a zero rate instead of dividing by nothing', function () {

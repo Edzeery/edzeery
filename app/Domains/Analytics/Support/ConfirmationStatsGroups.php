@@ -4,14 +4,22 @@ namespace App\Domains\Analytics\Support;
 
 /**
  * Single source of the confirmation-statistics tab's status buckets
- * (docs/plans/confirmation-statistics-redesign.md § 3, decisions D6/D9).
+ * (docs/plans/confirmation-statistics-redesign.md § 3, decisions D6/D9/D12).
  *
  * Deliberately separate from {@see DashboardStatusGroups}: the dashboard's
  * CONFIRMED group is a wide KPI bucket that also swallows the delivery
- * outcomes, while the confirmation tab counts only the desk's confirmed,
- * preparing and processing states. Anything unmapped — including a store's own
- * custom statuses until D11 links them — lands in UNCLASSIFIED and is shown as
- * such rather than silently dropped.
+ * outcomes, while the confirmation tab counts the desk's own states.
+ *
+ * PHASE 37-L (D12) split the old DELIVERY_OUTCOMES bucket in two:
+ *  - PASSED_TO_DELIVERY — the order left the desk (shipped…unclaimed). These
+ *    orders stay "confirmed" for the rate, so shipping an order never lowers
+ *    it (the drift the phase fixes).
+ *  - OTHER — on_hold/paid/draft, which are neither confirmed nor written off
+ *    and therefore never enter the rate; they show as a muted extra group.
+ *
+ * Anything unmapped — including a store's own custom statuses until D11 links
+ * them — lands in UNCLASSIFIED and is shown as such rather than silently
+ * dropped.
  */
 final class ConfirmationStatsGroups
 {
@@ -27,7 +35,9 @@ final class ConfirmationStatsGroups
 
     public const DUPLICATE = 'duplicate';
 
-    public const DELIVERY_OUTCOMES = 'delivery_outcomes';
+    public const PASSED_TO_DELIVERY = 'passed_to_delivery';
+
+    public const OTHER = 'other';
 
     public const UNCLASSIFIED = 'unclassified';
 
@@ -52,18 +62,32 @@ final class ConfirmationStatsGroups
 
         'duplicate' => self::DUPLICATE,
 
-        'shipped' => self::DELIVERY_OUTCOMES,
-        'in_transit' => self::DELIVERY_OUTCOMES,
-        'out_for_delivery' => self::DELIVERY_OUTCOMES,
-        'completed' => self::DELIVERY_OUTCOMES,
-        'delivered' => self::DELIVERY_OUTCOMES,
-        'returned' => self::DELIVERY_OUTCOMES,
-        'refunded' => self::DELIVERY_OUTCOMES,
-        'on_hold' => self::DELIVERY_OUTCOMES,
-        'undeliverable' => self::DELIVERY_OUTCOMES,
-        'unclaimed' => self::DELIVERY_OUTCOMES,
-        'paid' => self::DELIVERY_OUTCOMES,
-        'draft' => self::DELIVERY_OUTCOMES,
+        'shipped' => self::PASSED_TO_DELIVERY,
+        'in_transit' => self::PASSED_TO_DELIVERY,
+        'out_for_delivery' => self::PASSED_TO_DELIVERY,
+        'completed' => self::PASSED_TO_DELIVERY,
+        'delivered' => self::PASSED_TO_DELIVERY,
+        'returned' => self::PASSED_TO_DELIVERY,
+        'refunded' => self::PASSED_TO_DELIVERY,
+        'undeliverable' => self::PASSED_TO_DELIVERY,
+        'unclaimed' => self::PASSED_TO_DELIVERY,
+
+        'on_hold' => self::OTHER,
+        'paid' => self::OTHER,
+        'draft' => self::OTHER,
+    ];
+
+    /**
+     * The buckets the numerator of the confirmation rate sums (D1/D12): the
+     * desk confirmed it, or it has already left for delivery. A confirmed
+     * order that ships stays in the numerator, so shipping never moves the
+     * rate; only canceled/failed orders pull it down.
+     *
+     * @return list<string>
+     */
+    public const NUMERATOR_GROUPS = [
+        self::CONFIRMED,
+        self::PASSED_TO_DELIVERY,
     ];
 
     /**
@@ -78,7 +102,8 @@ final class ConfirmationStatsGroups
             self::CANCELED,
             self::DEFERRED,
             self::DUPLICATE,
-            self::DELIVERY_OUTCOMES,
+            self::PASSED_TO_DELIVERY,
+            self::OTHER,
             self::UNCLASSIFIED,
         ];
     }

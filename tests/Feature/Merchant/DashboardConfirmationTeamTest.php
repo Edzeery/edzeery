@@ -212,14 +212,15 @@ test('the rate tab follows the base tab and shows the rate plus its group breakd
 
     $alpha = ctfCard($html, 'Alpha');
 
-    // confirmed 1 of (confirmed 1 + cancelled 1) = 50%. The rate tab lists the
-    // base tab's six status rows, so delivery outcomes stay out of it.
-    expect($alpha)->toContain('50')
-        ->and($alpha)->toContain('1 / 2')
+    // D12: the delivered order counts as confirmed and stays inside the rate,
+    // so the rate is confirmed+delivered over confirmed+delivered+canceled =
+    // 2 / 3 = 67%. The rate tab lists each group, passed-to-delivery included.
+    expect($alpha)->toContain('67')
+        ->and($alpha)->toContain('2 / 3')
         ->and($alpha)->toContain(__('dashboard.group_confirmed').' 1')
         ->and($alpha)->toContain(__('dashboard.group_canceled').' 1')
         ->and($alpha)->toContain(__('dashboard.group_pending').' 0')
-        ->and($alpha)->not->toContain(__('dashboard.group_delivery_outcomes'));
+        ->and($alpha)->toContain(__('dashboard.group_passed_to_delivery').' 1');
 });
 
 test('deleted orders never enter the rate but always show as a trash badge', function () {
@@ -229,10 +230,10 @@ test('deleted orders never enter the rate but always show as a trash badge', fun
 
     // The trashed order is confirmed, so the confirmed chip still shows 1 and
     // carries the trash badge (the deleted_brackets tooltip) while the rate
-    // still reads 1 / 2 — the deleted order is outside it (D7).
+    // still reads 2 / 3 — the deleted order is outside it (D7).
     expect($rate)->toContain(__('dashboard.group_confirmed').' 1')
         ->and($rate)->toContain(__('dashboard.group_deleted_hint', ['count' => 1, 'group' => __('dashboard.group_confirmed')]))
-        ->and($rate)->toContain('1 / 2');
+        ->and($rate)->toContain('2 / 3');
 });
 
 test('the without trash toggle hides a soft-deleted member, the with trash toggle names it', function () {

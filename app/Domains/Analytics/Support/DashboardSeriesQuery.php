@@ -46,8 +46,15 @@ final class DashboardSeriesQuery
         $driver = DB::getDriverName();
         $granularity = DateBucket::granularityFor($from, $to);
 
+        // D4: the axis the dashboard was read on decides which instant a row is
+        // bucketed by. A row the desk never stamped falls back to its creation
+        // date, matching how DashboardOrderScope admits it into the window.
+        $basisColumn = $filter->dateBasis === DashboardFilter::DATE_BASIS_LAST_STATUS
+            ? 'COALESCE(orders.last_status_changed_at, orders.created_at)'
+            : 'orders.created_at';
+
         $query = (clone $baseQuery)
-            ->selectRaw($this->bucket->bucketExpression($driver, $granularity, $filter->utcOffsetSeconds));
+            ->selectRaw($this->bucket->bucketExpression($driver, $granularity, $filter->utcOffsetSeconds, $basisColumn));
 
         foreach ($metrics as $metric) {
             $query->selectRaw($metric['expression'].' as '.$metric['key'], $metric['bindings'] ?? []);

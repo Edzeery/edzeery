@@ -183,7 +183,7 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->toContain(__('dashboard.filter_member'))
         ->toContain(__('dashboard.all_members'))
         ->toContain('wire:loading.class')
-        ->toContain('wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension"');
+        ->toContain('wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension,dateBasis,productIds,teamTrash,teamSearch,setConfirmationTab"');
 
     // OWNER sees the member list, and holds both a confirmation capability and
     // STATS_DELIVERY, so the stats view switch is offered straight away: it

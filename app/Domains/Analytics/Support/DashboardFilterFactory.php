@@ -4,7 +4,6 @@ namespace App\Domains\Analytics\Support;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
 use App\Domains\Shipping\Models\ShippingProvider;
-use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use Carbon\CarbonImmutable;
@@ -12,6 +11,10 @@ use Carbon\CarbonImmutable;
 final class DashboardFilterFactory
 {
     private const FALLBACK_TIMEZONE = 'Africa/Algiers';
+
+    public function __construct(
+        private readonly DashboardMemberResolver $members = new DashboardMemberResolver,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $input
@@ -29,11 +32,28 @@ final class DashboardFilterFactory
         // stored in UTC and every query compares against that clock.
         [$from, $to] = $this->resolveWindow($period, $now, $input);
 
-        [$memberId, $memberDimension, $memberScopeIds, $memberLocked, $memberUnattributedOnly] = $this->resolveMember(
+        [$memberId, $memberDimension, $memberScopeIds, $memberLocked, $memberUnattributedOnly] = $this->members->resolve(
             $currentMembership,
             $input['memberId'] ?? null,
             $input['memberDimension'] ?? null
         );
+
+        $carrierId = $this->resolveCarrier($input, $storeId);
+        $dateBasis = $this->resolveDateBasis($input['dateBasis'] ?? null);
+        $productIds = $this->resolveIdList($input['productIds'] ?? null);
+        $variantIds = $this->resolveIdList($input['variantIds'] ?? null);
+
+        // D3: a filter without a control in the active view is dropped from the
+        // DTO (the Livewire property keeps its value, so switching view restores
+        // it). Confirmation has no carrier picker; delivery has no product picker
+        // and always answers on the order's own creation date.
+        if ($memberDimension === 'delivery') {
+            $productIds = null;
+            $variantIds = null;
+            $dateBasis = DashboardFilter::DATE_BASIS_CREATED;
+        } else {
+            $carrierId = null;
+        }
 
         return new DashboardFilter(
             period: $period,
@@ -42,16 +62,16 @@ final class DashboardFilterFactory
             timezone: $timezone,
             // Buckets are shifted by the offset in effect at the end of the window.
             utcOffsetSeconds: ($to ?? $now)->getOffset(),
-            carrierId: $this->resolveCarrier($input, $storeId),
+            carrierId: $carrierId,
             memberId: $memberId,
             memberDimension: $memberDimension,
             memberScopeIds: $memberScopeIds,
             storeId: $storeId ?? '',
             memberLocked: $memberLocked,
             memberUnattributedOnly: $memberUnattributedOnly,
-            dateBasis: $this->resolveDateBasis($input['dateBasis'] ?? null),
-            productIds: $this->resolveIdList($input['productIds'] ?? null),
-            variantIds: $this->resolveIdList($input['variantIds'] ?? null),
+            dateBasis: $dateBasis,
+            productIds: $productIds,
+            variantIds: $variantIds,
         );
     }
 
@@ -171,100 +191,5 @@ final class DashboardFilterFactory
         return $from->diffInDays($to) > 366
             ? [$from, $from->addDays(366)->endOfDay()]
             : [$from, $to];
-    }
-
-    /**
-     * Returns [memberId, dimension, memberScopeIds, memberLocked,
-     * memberUnattributedOnly], where memberScopeIds is null for "every member"
-     * and an explicit list otherwise. The sentinel UNATTRIBUTED selects the
-     * unattributed cohort (confirmed_by IS NULL).
-     *
-     * @return array{0: ?string, 1: string, 2: ?array<int, string>, 3: bool, 4: bool}
-     */
-    private function resolveMember(?StoreMembership $current, ?string $memberId, ?string $memberDimension): array
-    {
-        if (! $current || ! $current->is_active) {
-            // Fail closed: without a membership nothing is visible.
-            return [null, 'confirmation', [], true, false];
-        }
-
-        // OWNER/ADMIN are roles, not permissions: StoreRoles grants both of them
-        // TEAM_VIEW, so team visibility is fully described by these two checks.
-        $hasTeamView = $current->hasPermission(StorePermissionEnum::STATS_TEAM_VIEW->value)
-            || $current->hasPermission(StorePermissionEnum::TEAM_VIEW->value);
-
-        $hasTeamViewOwn = ! $hasTeamView
-            && $current->hasPermission(StorePermissionEnum::TEAM_VIEW_OWN->value);
-
-        $canConfirm = $current->hasPermission(StorePermissionEnum::STATS_CONFIRMATION->value)
-            || $current->hasPermission(StorePermissionEnum::ORDER_CONFIRM->value);
-
-        $canDeliver = $current->hasPermission(StorePermissionEnum::STATS_DELIVERY->value);
-
-        $dimension = $this->resolveDimension($memberDimension, $canConfirm, $canDeliver);
-
-        // The unattributed cohort (confirmed_by IS NULL) is a store-wide pick,
-        // exposed when the member can see the whole team's numbers. The sentinel
-        // is not a membership id, so it can never reach keepIfAllowed.
-        if ($hasTeamView && $memberId === DashboardFilter::UNATTRIBUTED) {
-            return [DashboardFilter::UNATTRIBUTED, $dimension, [DashboardFilter::UNATTRIBUTED], false, true];
-        }
-
-        if ($hasTeamView) {
-            $allowed = StoreMembership::query()
-                ->where('store_id', $current->store_id)
-                ->where('is_active', true)
-                ->pluck('id')
-                ->all();
-
-            $selected = $this->keepIfAllowed($memberId, $allowed);
-
-            // No pick means no restriction: this is the whole point of a free choice.
-            return [$selected, $dimension, $selected ? [$selected] : null, false, false];
-        }
-
-        if ($hasTeamViewOwn) {
-            $allowed = $current->subordinates()
-                ->where('is_active', true)
-                ->pluck('id')
-                ->push($current->id)
-                ->unique()
-                ->all();
-
-            $selected = $this->keepIfAllowed($memberId, $allowed);
-
-            // No pick means the whole team: self plus subordinates.
-            return [$selected, $dimension, $selected ? [$selected] : $allowed, false, false];
-        }
-
-        return [$current->id, $dimension, [$current->id], true, false];
-    }
-
-    /**
-     * @param  array<int, string>  $allowed
-     */
-    private function keepIfAllowed(?string $memberId, array $allowed): ?string
-    {
-        return $memberId !== null && in_array($memberId, $allowed, true) ? $memberId : null;
-    }
-
-    /**
-     * A dimension is only honoured when the member actually holds that
-     * capability; otherwise they fall back to confirmation when they can
-     * confirm, and to delivery when they cannot.
-     */
-    private function resolveDimension(?string $requested, bool $canConfirm, bool $canDeliver): string
-    {
-        $requested = strtolower($requested ?? '');
-
-        if ($requested === 'confirmation' && $canConfirm) {
-            return 'confirmation';
-        }
-
-        if ($requested === 'delivery' && $canDeliver) {
-            return 'delivery';
-        }
-
-        return $canConfirm ? 'confirmation' : 'delivery';
     }
 }

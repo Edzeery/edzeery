@@ -111,6 +111,14 @@ it('reads the granularity the same way for a reversed window', function () {
  */
 function sqliteBuckets(array $instants, string $granularity, int $offset): array
 {
+    // The helper runs the literal SQLite expression against the live
+    // connection, so it only holds when the suite is on SQLite. The
+    // driver-spelling tests above still cover the MySQL/pgsql SQL on any
+    // connection (phpunit.mysql.xml runs them there).
+    if (DB::connection()->getDriverName() !== 'sqlite') {
+        \PHPUnit\Framework\Assert::markTestSkipped('Live bucket queries are written against SQLite.');
+    }
+
     $userId = \App\Models\User::query()->create([
         'name' => 'Bucket',
         'email' => 'bucket-'.uniqid().'@example.com',

@@ -317,14 +317,15 @@ it('breaks orders down by status, state and delivery type', function () {
 
     $filter = ($this->filter)();
 
-    // The doughnut maps only the statuses that actually have orders, and D2
-    // collapses the confirmed group: both delivered orders read as one
-    // "confirmed" slice, matching the confirmation-rate KPI beside it.
+    // The doughnut reads the confirmation report (D2/D12): a delivered order
+    // lands in its own passed-to-delivery group rather than being collapsed
+    // into "confirmed", so both delivered orders read as one slice that matches
+    // the confirmation-rate KPI beside it.
     $statuses = $this->service->statusBreakdown($filter);
     expect($statuses)->toHaveCount(2)
-        ->and($statuses->pluck('key')->sort()->values()->all())->toBe(['confirmed', 'pending'])
-        ->and($statuses->firstWhere('key', 'confirmed')->count)->toBe(2)
-        ->and($statuses->firstWhere('key', 'confirmed')->label)->not->toBeEmpty()
+        ->and($statuses->pluck('key')->sort()->values()->all())->toBe(['passed_to_delivery', 'pending'])
+        ->and($statuses->firstWhere('key', 'passed_to_delivery')->count)->toBe(2)
+        ->and($statuses->firstWhere('key', 'passed_to_delivery')->label)->not->toBeEmpty()
         // Integer percentages that always add up to the whole chart.
         ->and($statuses->pluck('percent')->sum())->toBe(100);
 
@@ -361,15 +362,29 @@ it('leaves orders without a state out of the state breakdown only', function () 
         ->and(array_sum(dftValues($this->service->trendSeries($filter), 'received')))->toBe(2);
 });
 
-it('filters every block by carrier and discards a carrier from another store', function () {
-    ($this->order)(['shipping_provider_id' => $this->carrierA->id]);
-    ($this->order)(['shipping_provider_id' => $this->carrierB->id]);
+it('filters the delivery view by carrier and discards a carrier from another store', function () {
+    $orderA = ($this->order)(['shipping_provider_id' => $this->carrierA->id]);
+    $orderB = ($this->order)(['shipping_provider_id' => $this->carrierB->id]);
 
-    $forA = ($this->filter)(['carrierId' => $this->carrierA->id]);
+    // The delivery cohort is tracked orders (D3), so both rows need a tracking
+    // row; the carrier clause itself still reads orders.shipping_provider_id.
+    foreach ([$orderA, $orderB] as $order) {
+        OrderTracking::query()->create([
+            'store_id' => $this->store->id,
+            'order_id' => $order->id,
+            'shipping_provider_id' => $order->shipping_provider_id,
+        ]);
+    }
+
+    // The confirmation view drops the carrier (D3), so carrier scoping is
+    // exercised on the delivery dimension where the control exists.
+    $delivery = ['memberDimension' => 'delivery'];
+
+    $forA = ($this->filter)($delivery + ['carrierId' => $this->carrierA->id]);
     expect($forA->carrierId)->toBe($this->carrierA->id)
         ->and($this->service->summary($forA)['total_orders'])->toBe(1)
         ->and($this->service->statusBreakdown($forA)->sum('count'))->toBe(1)
-        ->and(array_sum(dftValues($this->service->trendSeries($forA), 'received')))->toBe(1)
+        ->and(array_sum(dftValues($this->service->trendSeries($forA), 'delivered')))->toBe(1)
         ->and($this->service->ordersByState($forA)->sum('count'))->toBe(1)
         ->and($this->service->deliveryTypeBreakdown($forA)->sum('count'))->toBe(1);
 
@@ -381,9 +396,13 @@ it('filters every block by carrier and discards a carrier from another store', f
         'is_active' => true,
     ]);
 
-    $discarded = ($this->filter)(['carrierId' => $foreignCarrier->id]);
+    $discarded = ($this->filter)($delivery + ['carrierId' => $foreignCarrier->id]);
     expect($discarded->carrierId)->toBeNull()
         ->and($this->service->summary($discarded)['total_orders'])->toBe(2);
+
+    // The confirmation view drops the carrier control entirely (D3), so a
+    // carrier id never reaches a confirmation block.
+    expect(($this->filter)(['carrierId' => $this->carrierA->id])->carrierId)->toBeNull();
 });
 
 it('filters the confirmation dimension by the confirmed member', function () {
@@ -426,14 +445,19 @@ it('filters the delivery dimension by the confirmed member', function () {
         ->and($mine->fresh()->confirmed_by_membership_id)->toBe($this->memberA->id);
 });
 
-it('keeps pending confirmations outside the date window but inside carrier and member', function () {
+it('respects the date window in the pending queue and still scopes the assignment', function () {
     $oldPending = ($this->order)([
         'status_id' => $this->status['pending'],
         'assigned_to_membership_id' => $this->memberA->id,
         'shipping_provider_id' => $this->carrierA->id,
         'created_at' => CarbonImmutable::parse('2025-11-02 08:00:00', 'UTC'),
     ]);
-    $todayPending = ($this->order)([
+    $todayA = ($this->order)([
+        'status_id' => $this->status['pending'],
+        'assigned_to_membership_id' => $this->memberA->id,
+        'shipping_provider_id' => $this->carrierA->id,
+    ]);
+    $todayB = ($this->order)([
         'status_id' => $this->status['pending'],
         'assigned_to_membership_id' => $this->memberB->id,
         'shipping_provider_id' => $this->carrierB->id,
@@ -444,22 +468,25 @@ it('keeps pending confirmations outside the date window but inside carrier and m
         'created_at' => CarbonImmutable::parse('2026-03-10 08:00:00', 'UTC'),
     ]);
 
-    // A "today" window still surfaces the November order: nothing is left waiting.
+    // D4: the queue obeys the same date window as every other confirmation
+    // block, so the November order is left out of a "today" window.
     $pending = $this->service->pendingConfirmationOrders(($this->filter)());
     expect($pending)->toHaveCount(2)
         ->and($pending->pluck('id')->sort()->values()->all())
-        ->toBe(collect([$oldPending->id, $todayPending->id])->sort()->values()->all())
-        ->and($pending->pluck('number')->all())->toContain($oldPending->number, $todayPending->number);
+        ->toBe(collect([$todayA->id, $todayB->id])->sort()->values()->all())
+        ->and($pending->pluck('number')->all())->not->toContain($oldPending->number);
 
-    // Carrier still applies even though the date window does not.
+    // D3: the confirmation view drops the carrier, so a carrier pick narrows
+    // nothing here (the control only exists on the delivery view).
     expect($this->service->pendingConfirmationOrders(
         ($this->filter)(['carrierId' => $this->carrierA->id])
-    )->pluck('id')->all())->toBe([$oldPending->id]);
+    )->pluck('id')->sort()->values()->all())->toBe(collect([$todayA->id, $todayB->id])->sort()->values()->all());
 
-    // And so does the confirmation member.
+    // The confirmation member is an assignment key for the pending workload,
+    // so it narrows the queue to that member's unconfirmed orders.
     expect($this->service->pendingConfirmationOrders(
         ($this->filter)(['memberId' => $this->memberB->id, 'memberDimension' => 'confirmation'])
-    )->pluck('id')->all())->toBe([$todayPending->id]);
+    )->pluck('id')->all())->toBe([$todayB->id]);
 });
 
 it('ranks top selling products inside the scoped window', function () {
@@ -517,7 +544,11 @@ it('scopes top selling products by carrier and confirmation member', function ()
     expect($byMember)->toHaveCount(1)
         ->and((int) $byMember->first()->total_qty)->toBe(3);
 
-    $byCarrier = $this->service->topSellingProducts(($this->filter)(['carrierId' => $this->carrierB->id]));
+    // The confirmation view drops the carrier (D3), so it is scoped on the
+    // delivery dimension, where the control lives.
+    $byCarrier = $this->service->topSellingProducts(
+        ($this->filter)(['carrierId' => $this->carrierB->id, 'memberDimension' => 'delivery'])
+    );
     expect((int) $byCarrier->first()->total_qty)->toBe(9);
 
     // A foreign member resolves to "no restriction", because the factory only
@@ -624,4 +655,67 @@ it('plots one point per bucket for the selected period', function () {
     );
     expect($empty['labels'])->toHaveCount(2)
         ->and(array_sum(dftValues($empty, 'received')))->toBe(0);
+});
+
+it('moves every confirmation block with the product pick and leaves delivery untouched', function () {
+    // The product axis is a confirmation control (D3/D4): it narrows the
+    // headline, the status breakdown, the states, the delivery-type split and
+    // the received trend at once, and the delivery view drops it.
+    $widget = makeProduct('Widget');
+
+    $withProduct = ($this->order)();
+    $without = ($this->order)();
+    addItem($withProduct, $widget, quantity: 2, price: 10);
+
+    foreach ([$withProduct, $without] as $order) {
+        OrderTracking::query()->create([
+            'store_id' => $this->store->id,
+            'order_id' => $order->id,
+        ]);
+    }
+
+    $confirmation = ($this->filter)(['variantIds' => [$widget]]);
+
+    expect($this->service->summary($confirmation)['total_orders'])->toBe(1)
+        ->and($this->service->statusBreakdown($confirmation)->sum('count'))->toBe(1)
+        ->and($this->service->ordersByState($confirmation)->sum('count'))->toBe(1)
+        ->and($this->service->deliveryTypeBreakdown($confirmation)->sum('count'))->toBe(1)
+        ->and(array_sum(dftValues($this->service->trendSeries($confirmation), 'received')))->toBe(1);
+
+    // The delivery view ignores the product pick, so both tracked orders stay.
+    $delivery = ($this->filter)(['variantIds' => [$widget], 'memberDimension' => 'delivery']);
+
+    expect($delivery->variantIds)->toBeNull()
+        ->and($delivery->productIds)->toBeNull()
+        ->and($this->service->statusBreakdown($delivery)->sum('count'))->toBe(2)
+        ->and(array_sum(dftValues($this->service->trendSeries($delivery), 'delivered')))->toBe(2);
+});
+
+it('honours the last-status axis in confirmation and pins delivery to the creation date', function () {
+    // An old order whose status moved today only shows up on the last-status
+    // axis; the confirmation blocks read it, the delivery view never does (D3/D4).
+    $moved = ($this->order)([
+        'status_id' => $this->status['confirmed'],
+        'created_at' => CarbonImmutable::parse('2026-02-05 08:00:00', 'UTC'),
+    ]);
+    $moved->forceFill(['last_status_changed_at' => now()])->save();
+
+    ($this->order)();
+
+    expect($this->service->summary(($this->filter)())['total_orders'])->toBe(1);
+
+    $lastStatus = ($this->filter)(['dateBasis' => DashboardFilter::DATE_BASIS_LAST_STATUS]);
+
+    expect($lastStatus->dateBasis)->toBe(DashboardFilter::DATE_BASIS_LAST_STATUS)
+        ->and($this->service->summary($lastStatus)['total_orders'])->toBe(2)
+        ->and($this->service->statusBreakdown($lastStatus)->sum('count'))->toBe(2)
+        ->and(array_sum(dftValues($this->service->trendSeries($lastStatus), 'received')))->toBe(2);
+
+    // Delivery pins the creation axis, so the same request cannot widen it.
+    $delivery = ($this->filter)([
+        'dateBasis' => DashboardFilter::DATE_BASIS_LAST_STATUS,
+        'memberDimension' => 'delivery',
+    ]);
+
+    expect($delivery->dateBasis)->toBe(DashboardFilter::DATE_BASIS_CREATED);
 });

@@ -21,13 +21,19 @@ it('sends the unanswered states to failed and both cancel spellings to canceled'
         ->and(ConfirmationStatsGroups::in('wrong_number', ConfirmationStatsGroups::CANCELED))->toBeTrue();
 });
 
-it('keeps deferred, duplicate and delivery outcomes in their own buckets', function () {
+it('keeps deferred, duplicate and the split delivery buckets in their own buckets', function () {
     expect(ConfirmationStatsGroups::in('postponed', ConfirmationStatsGroups::DEFERRED))->toBeTrue()
         ->and(ConfirmationStatsGroups::in('out_of_stock', ConfirmationStatsGroups::DEFERRED))->toBeTrue()
         ->and(ConfirmationStatsGroups::in('duplicate', ConfirmationStatsGroups::DUPLICATE))->toBeTrue();
 
-    foreach (['shipped', 'in_transit', 'out_for_delivery', 'completed', 'delivered', 'returned', 'refunded', 'on_hold', 'undeliverable', 'unclaimed', 'paid', 'draft'] as $key) {
-        expect(ConfirmationStatsGroups::group($key))->toBe(ConfirmationStatsGroups::DELIVERY_OUTCOMES);
+    // D12: everything that has left the desk stays "confirmed" for the rate.
+    foreach (['shipped', 'in_transit', 'out_for_delivery', 'completed', 'delivered', 'returned', 'refunded', 'undeliverable', 'unclaimed'] as $key) {
+        expect(ConfirmationStatsGroups::group($key))->toBe(ConfirmationStatsGroups::PASSED_TO_DELIVERY);
+    }
+
+    // on_hold/paid/draft are neither confirmed nor written off: the muted extra.
+    foreach (['on_hold', 'paid', 'draft'] as $key) {
+        expect(ConfirmationStatsGroups::group($key))->toBe(ConfirmationStatsGroups::OTHER);
     }
 });
 
@@ -42,5 +48,5 @@ it('lists the keys of a group straight from the same map', function () {
         ->and(ConfirmationStatsGroups::keys(ConfirmationStatsGroups::PENDING))
         ->toBe(['pending'])
         ->and(ConfirmationStatsGroups::all())
-        ->toContain('confirmed', 'pending', 'failed', 'canceled', 'deferred', 'duplicate', 'delivery_outcomes', 'unclassified');
+        ->toContain('confirmed', 'pending', 'failed', 'canceled', 'deferred', 'duplicate', 'passed_to_delivery', 'other', 'unclassified');
 });

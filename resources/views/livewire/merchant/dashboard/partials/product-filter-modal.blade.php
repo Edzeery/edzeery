@@ -52,7 +52,9 @@
                 {{-- Counter --}}
                 <div class="px-5 pb-2">
                     <span class="text-xs text-ink-muted"
-                        x-text="(searchTerm && searchTerm.length >= 2 ? visibleCount : {{ count($filterProductResults) }}) + ' ' + @js(__('dashboard.products_selected'))"></span>
+                        data-total-count="{{ count($filterProductResults) }}"
+                        data-selected-label="{{ __('dashboard.products_selected') }}"
+                        x-text="(searchTerm && searchTerm.length >= 2 ? visibleCount : Number($el.dataset.totalCount)) + ' ' + $el.dataset.selectedLabel"></span>
                 </div>
 
                 {{-- Selected chip strip --}}

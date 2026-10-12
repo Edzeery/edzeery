@@ -31,22 +31,26 @@ final class DateBucket
 
     /**
      * Groups orders by the period they fall into **in the store timezone**.
-     * created_at is stored in UTC, so the key is shifted by the offset that was
-     * in effect at the end of the window before being formatted.
+     * The instant is stored in UTC, so the key is shifted by the offset that
+     * was in effect at the end of the window before being formatted.
+     *
+     * $column is the basis the axis was selected on: the creation date by
+     * default, or the last-status column (with a creation-date fallback for
+     * rows the desk never stamped) when the dashboard is read on that axis.
      *
      * @param  int  $offsetSeconds  Always cast to int here; it never comes from
      *                              user input (it is the store timezone offset).
      */
-    public function bucketExpression(string $driver, string $granularity, int $offsetSeconds): string
+    public function bucketExpression(string $driver, string $granularity, int $offsetSeconds, string $column = 'orders.created_at'): string
     {
         $offsetSeconds = (int) $offsetSeconds;
         $format = $this->sqlFormat($driver, $granularity);
 
         return match ($driver) {
-            'sqlite' => "strftime('{$format}', orders.created_at, '{$offsetSeconds} seconds') as bucket",
-            'mysql', 'mariadb' => "DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL {$offsetSeconds} SECOND), '{$format}') as bucket",
-            'pgsql' => "to_char(orders.created_at + interval '{$offsetSeconds} seconds', '{$format}') as bucket",
-            default => "DATE_FORMAT(orders.created_at, '{$format}') as bucket",
+            'sqlite' => "strftime('{$format}', {$column}, '{$offsetSeconds} seconds') as bucket",
+            'mysql', 'mariadb' => "DATE_FORMAT(DATE_ADD({$column}, INTERVAL {$offsetSeconds} SECOND), '{$format}') as bucket",
+            'pgsql' => "to_char({$column} + interval '{$offsetSeconds} seconds', '{$format}') as bucket",
+            default => "DATE_FORMAT({$column}, '{$format}') as bucket",
         };
     }
 

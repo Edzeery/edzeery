@@ -3,17 +3,24 @@
 namespace App\Domains\Analytics\Support;
 
 /**
- * The denominator of the confirmation rate (docs/plans/confirmation-statistics-redesign.md § 4.1).
+ * Picks the buckets under the confirmation rate's line
+ * (docs/plans/confirmation-statistics-redesign.md § 4, decision D12).
  *
- * The numerator is always the CONFIRMED bucket; this class decides which
- * buckets sit under the line. It is the same list for the headline card, every
- * team row and the total, which is what keeps the three from drifting apart.
+ * The numerator is fixed — CONFIRMED + PASSED_TO_DELIVERY, see
+ * {@see ConfirmationStatsGroups::NUMERATOR_GROUPS} — so shipping a confirmed
+ * order never lowers the rate. This class only decides what else counts
+ * against it.
  */
 final class ConfirmationRateDenominator
 {
-    /** Settled orders only: the desk either confirmed it, or wrote it off. */
+    /**
+     * The settled desk outcomes: the order was confirmed (or already shipped),
+     * or it was written off. Pending, deferred, duplicate and "other" stay out:
+     * they are not the desk's final word.
+     */
     public const DEFAULT_GROUPS = [
         ConfirmationStatsGroups::CONFIRMED,
+        ConfirmationStatsGroups::PASSED_TO_DELIVERY,
         ConfirmationStatsGroups::CANCELED,
         ConfirmationStatsGroups::FAILED,
     ];
@@ -21,10 +28,11 @@ final class ConfirmationRateDenominator
     /** "Every order except the duplicates and the deferred ones." */
     public const PRESET_EXCLUDE_DUPLICATE_AND_DEFERRED = [
         ConfirmationStatsGroups::CONFIRMED,
+        ConfirmationStatsGroups::PASSED_TO_DELIVERY,
         ConfirmationStatsGroups::PENDING,
         ConfirmationStatsGroups::FAILED,
         ConfirmationStatsGroups::CANCELED,
-        ConfirmationStatsGroups::DELIVERY_OUTCOMES,
+        ConfirmationStatsGroups::OTHER,
         ConfirmationStatsGroups::UNCLASSIFIED,
     ];
 

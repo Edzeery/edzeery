@@ -4,7 +4,10 @@
     // ConfirmationStatsReport), so the headline, the group cards and the rate
     // always answer the same scan.
 
-    $rateGroups = ['confirmed', 'canceled', 'pending', 'failed', 'duplicate', 'deferred'];
+    // The rate row: the two numerator/denominator groups plus the ones the
+    // rate excludes; PASSED_TO_DELIVERY keeps its "delivery outcomes" card and
+    // OTHER is the muted bucket that never enters the rate (D12).
+    $rateGroups = ['confirmed', 'canceled', 'pending', 'failed', 'duplicate', 'deferred', 'passed_to_delivery', 'other'];
 
     $groupDot = [
         'confirmed' => 'bg-success-500',
@@ -13,7 +16,8 @@
         'canceled' => 'bg-ink-muted',
         'deferred' => 'bg-accent-400',
         'duplicate' => 'bg-indigo-400',
-        'delivery_outcomes' => 'bg-sky-400',
+        'passed_to_delivery' => 'bg-sky-400',
+        'other' => 'bg-ink-muted/40',
         'unclassified' => 'bg-ink-muted/50',
     ];
 
@@ -38,21 +42,21 @@
                 <span class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface text-accent-600 shadow-sm">
                     <x-edz.icon name="cart" class="h-6 w-6" />
                 </span>
-                <p class="text-sm font-medium uppercase tracking-wider text-gray-600 dark:text-ink-muted">{{ __('dashboard.total_orders') }}</p>
+                <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ __('dashboard.total_orders') }}</p>
                 <p class="mt-2 text-5xl font-bold leading-none tracking-tighter text-ink">{{ $totalOrders }}</p>
-                <p class="mt-2 text-sm text-gray-600 dark:text-ink-muted">{{ __('dashboard.confirmed_of_total', ['total' => $totalOrders]) }}, {{ __('dashboard.group_confirmed') }}: {{ $confirmed }}</p>
+                <p class="mt-2 text-sm text-ink-muted">{{ __('dashboard.confirmed_of_total', ['total' => $totalOrders]) }}, {{ __('dashboard.group_confirmed') }}: {{ $confirmed }}</p>
             </div>
             <div class="rounded-2xl bg-surface-secondary/60 p-6 text-center">
                 <span class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-surface text-danger-fg-strong shadow-sm">
                     <x-edz.icon name="trash" class="h-6 w-6" />
                 </span>
-                <p class="text-sm font-medium uppercase tracking-wider text-gray-600 dark:text-ink-muted">{{ __('dashboard.trash_orders') }}</p>
+                <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ __('dashboard.trash_orders') }}</p>
                 <p @class([
                     'mt-2 text-5xl font-bold leading-none tracking-tighter',
                     'text-danger-600' => $trashOrders > 0,
-                    'text-gray-500 dark:text-ink-muted' => $trashOrders === 0,
+                    'text-ink-muted' => $trashOrders === 0,
                 ])>{{ $trashOrders }}</p>
-                <p class="mt-2 text-sm text-gray-600 dark:text-ink-muted">{{ __('dashboard.deleted_brackets', ['count' => $trashOrders]) }}</p>
+                <p class="mt-2 text-sm text-ink-muted">{{ __('dashboard.deleted_brackets', ['count' => $trashOrders]) }}</p>
             </div>
         </div>
     @else
@@ -60,38 +64,44 @@
              and the charts with the doughnut drop underneath. --}}
         <div class="flex items-end justify-between gap-3">
             <div class="min-w-0">
-                <p class="text-sm font-medium uppercase tracking-wider text-gray-600 dark:text-ink-muted">{{ __('dashboard.confirmation_rate') }}</p>
+                <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ __('dashboard.confirmation_rate') }}</p>
                 <div class="mt-1 flex items-center gap-2">
-                    <p class="text-5xl font-bold tracking-tighter text-ink leading-none">{{ $rate }}<span class="text-2xl font-semibold text-gray-600 dark:text-ink-muted">%</span></p>
+                    <p class="text-5xl font-bold tracking-tighter text-ink leading-none">{{ $rate }}<span class="text-2xl font-semibold text-ink-muted">%</span></p>
                     <x-edz.tooltip :label="__('dashboard.confirmation_rate_explainer', ['confirmed' => $confirmed, 'denominator' => $denominator, 'rate' => $rate])" side="top" maxWidth="360px"
-                        class="text-gray-400 transition-colors hover:text-gray-600 dark:text-ink-muted/70 dark:hover:text-ink-muted">
+                        class="text-ink-muted/60 transition-colors hover:text-ink-muted">
                         <x-edz.icon name="information-circle" class="w-5 h-5" />
                     </x-edz.tooltip>
                 </div>
-                <p class="mt-2 text-sm text-gray-600 dark:text-ink-muted">{{ __('dashboard.confirmation_rate_basis', ['confirmed' => $confirmed, 'denominator' => $denominator]) }}</p>
+                <p class="mt-2 text-sm text-ink-muted">{{ __('dashboard.confirmation_rate_basis', ['confirmed' => $confirmed, 'denominator' => $denominator]) }}</p>
             </div>
             <span @class([
                 'inline-flex items-center gap-0.5 text-sm font-semibold px-2 py-1 rounded-full shrink-0',
-                'text-success-fg-strong bg-success-surface' => $rate >= 70,
-                'text-warning-fg-strong bg-warning-surface' => $rate < 70,
+                'text-success-fg-strong bg-success-surface' => $rate >= config('analytics.targets.confirmation_rate'),
+                'text-warning-fg-strong bg-warning-surface' => $rate < config('analytics.targets.confirmation_rate'),
             ])>
                 {{ $rate }}%
             </span>
         </div>
         <div class="w-full bg-surface-secondary rounded-full h-2.5 overflow-hidden my-5">
-            <div class="h-2.5 rounded-full transition-all duration-700 ease-out-expo {{ $rate >= 70 ? 'bg-success-500' : 'bg-warning-500' }}"
+            <div class="h-2.5 rounded-full transition-all duration-700 ease-out-expo {{ $rate >= config('analytics.targets.confirmation_rate') ? 'bg-success-500' : 'bg-warning-500' }}"
                  style="width: {{ $rate }}%"></div>
         </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             @foreach ($rateGroups as $key)
-                @php($g = $groups[$key] ?? ['total' => 0, 'deleted' => 0])
-                <div class="rounded-xl border border-surface-border p-3.5">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span class="w-2 h-2 rounded-full shrink-0 {{ $groupDot[$key] }}"></span>
-                        <p class="text-sm font-medium text-gray-600 dark:text-ink-muted truncate">{{ __("dashboard.group_{$key}") }}</p>
+                @php
+                    $g = $groups[$key] ?? ['total' => 0, 'deleted' => 0];
+                    // "Other" never counts toward the rate, so it reads muted.
+                    $muted = $key === 'other';
+                @endphp
+                <div @class([
+                    'rounded-2xl border border-surface-border p-4',
+                    'bg-surface-secondary/40' => $muted,
+                ])>
+                    <div class="flex items-center gap-2">
+                        <span class="h-2 w-2 shrink-0 rounded-full {{ $groupDot[$key] ?? 'bg-ink-muted' }}"></span>
+                        <p class="truncate text-sm font-medium text-ink-muted">{{ __("dashboard.group_{$key}") }}</p>
                         <x-edz.tooltip :label="__('dashboard.group_'.$key.'_hint')" side="top"
-                            class="shrink-0 text-gray-400 transition-colors hover:text-gray-600 dark:text-ink-muted/70 dark:hover:text-ink-muted">
+                            class="shrink-0 text-ink-muted/60 transition-colors hover:text-ink-muted">
                             <x-edz.icon name="info-circle" class="w-4 h-4" />
                         </x-edz.tooltip>
                     </div>
@@ -108,7 +118,6 @@
                 </div>
             @endforeach
         </div>
-
-        <p class="mt-4 text-xs text-gray-600 dark:text-ink-muted">{{ __('dashboard.outside_rate') }}</p>
+        <p class="mt-4 text-sm text-ink-muted">{{ __('dashboard.outside_rate') }}</p>
     @endif
 </div>

@@ -5,7 +5,12 @@ use App\Domains\Analytics\Support\ConfirmationStatsGroups;
 
 it('falls back to the settled orders when nothing is configured', function () {
     expect(ConfirmationRateDenominator::resolve(null))
-        ->toBe([ConfirmationStatsGroups::CONFIRMED, ConfirmationStatsGroups::CANCELED, ConfirmationStatsGroups::FAILED])
+        ->toBe([
+            ConfirmationStatsGroups::CONFIRMED,
+            ConfirmationStatsGroups::PASSED_TO_DELIVERY,
+            ConfirmationStatsGroups::CANCELED,
+            ConfirmationStatsGroups::FAILED,
+        ])
         ->and(ConfirmationRateDenominator::resolve([]))
         ->toBe(ConfirmationRateDenominator::DEFAULT_GROUPS);
 });

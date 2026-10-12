@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PHASE 37-L — the analytics suite on MySQL 8.
+
+    phpunit.xml runs everything on sqlite/:memory:, which is fast but does not
+    share the production driver. The dashboard's trend/doughnut queries emit
+    driver-specific SQL (DATE_FORMAT over COALESCE, the (store_id,
+    last_status_changed_at) window), so this config re-runs the confirmation and
+    dashboard tests on MySQL to prove the SQL matches on the real engine.
+
+    Point DB_DATABASE at a DEDICATED test schema (created empty; the suite runs
+    RefreshDatabase). Never point it at the development database — the suite
+    drops and recreates every table.
+
+        mysql -u root -e "CREATE DATABASE IF NOT EXISTS edzeery_test"
+        vendor/bin/pest -c phpunit.mysql.xml
+
+    Every DB_* value can be overridden from the environment, so CI only has to
+    export the credentials.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="AnalyticsUnit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="AnalyticsFeature">
+            <file>tests/Feature/Merchant/DashboardFilterTest.php</file>
+            <file>tests/Feature/Merchant/DashboardFilterWiringTest.php</file>
+            <file>tests/Feature/Merchant/DashboardConfirmationSectionTest.php</file>
+            <file>tests/Feature/Merchant/DashboardConfirmationTeamTest.php</file>
+            <file>tests/Feature/Merchant/DashboardChartsPerViewTest.php</file>
+            <file>tests/Feature/Merchant/DashboardAnalyticsTimezoneTest.php</file>
+            <file>tests/Feature/Merchant/DashboardAnalyticsServiceTest.php</file>
+            <file>tests/Feature/Merchant/DashboardQueryBudgetTest.php</file>
+            <file>tests/Feature/Merchant/DashboardTeamPerformanceTest.php</file>
+            <file>tests/Feature/Merchant/ConfirmationStatsQueryTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="edzeery_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

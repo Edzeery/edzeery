@@ -3,9 +3,6 @@
 namespace App\Domains\Analytics\Services;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
-use App\Domains\Analytics\Support\ConfirmationRateDenominator;
-use App\Domains\Analytics\Support\ConfirmationStatsQuery;
-use App\Domains\Analytics\Support\ConfirmationStatsReport;
 use App\Domains\Analytics\Support\DashboardConfirmationTeam;
 use App\Domains\Analytics\Support\DashboardFilterFactory;
 use App\Domains\Analytics\Support\DashboardOrderScope;
@@ -28,6 +25,8 @@ class StoreDashboardAnalyticsService
 {
     private string $storeId;
 
+    private StoreConfirmationReportReader $confirmation;
+
     public function __construct(
         ?string $storeId = null,
         private ?DashboardOrderScope $scope = null,
@@ -38,6 +37,7 @@ class StoreDashboardAnalyticsService
         $this->scope = $this->scope ?? app(DashboardOrderScope::class);
         $this->statusIds = $this->statusIds ?? app(OrderStatusIdMap::class);
         $this->summaryQuery = $this->summaryQuery ?? app(DashboardSummaryQuery::class);
+        $this->confirmation = app(StoreConfirmationReportReader::class);
     }
 
     public function summary(?DashboardFilter $filter = null): array
@@ -94,7 +94,15 @@ class StoreDashboardAnalyticsService
     {
         $filter ??= app(DashboardFilterFactory::class)->make([], null);
 
-        return app(DashboardStatusBreakdown::class)->run($filter, $this->storeId);
+        $breakdown = app(DashboardStatusBreakdown::class);
+
+        // D2: the confirmation doughnut is served from the same report the
+        // cards and the team read, so it can never disagree with the rate.
+        if ($filter->memberDimension !== 'delivery') {
+            return $breakdown->forConfirmation($this->confirmation->report($filter)['groups']);
+        }
+
+        return $breakdown->run($filter, $this->storeId);
     }
 
     /**
@@ -165,27 +173,18 @@ class StoreDashboardAnalyticsService
     }
 
     /**
-     * The confirmation tab (M4): one grouped read (ConfirmationStatsQuery)
-     * folded by ConfirmationStatsReport, with the confirmation-rate denominator
-     * resolved from store_settings.confirmation_rate_denominator — the same
-     * preset the settings screen would offer, so card and rate always agree.
+     * The confirmation tab (M4): the one report the cards, doughnut and rate read.
      *
      * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}
      */
     public function confirmationStats(?DashboardFilter $filter = null): array
     {
-        $filter ??= app(DashboardFilterFactory::class)->make([], null);
-
-        $rows = app(ConfirmationStatsQuery::class)->run($filter);
-
-        return (new ConfirmationStatsReport($this->confirmationDenominatorGroups()))->build($rows);
+        return $this->confirmation->report($filter ?? app(DashboardFilterFactory::class)->make([], null));
     }
 
     /**
-     * The confirmation team section (M5): the same grouped read as the headline
-     * cards, folded per membership so a member row is a slice of the same scan
-     * (decision D5). The $members list already carries the without/with-trash
-     * decision; a soft-deleted member is marked so the view can say so.
+     * The confirmation team section (M5): the same grouped read as the cards,
+     * folded per membership (decision D5). A soft-deleted member is marked.
      *
      * @param  Collection<int, object{id: string, name: string, deleted?: bool}>  $members
      * @return list<array<string, mixed>>
@@ -194,33 +193,13 @@ class StoreDashboardAnalyticsService
     {
         $filter ??= app(DashboardFilterFactory::class)->make([], null);
 
-        $rows = app(ConfirmationStatsQuery::class)->run($filter);
-        $summaries = (new ConfirmationStatsReport($this->confirmationDenominatorGroups()))->perMember($rows);
-
-        return app(DashboardConfirmationTeam::class)->present($summaries, $filter, $members);
+        return app(DashboardConfirmationTeam::class)
+            ->present($this->confirmation->perMember($filter), $filter, $members);
     }
 
     /**
-     * The confirmation-rate denominator preset resolved from
-     * store_settings.confirmation_rate_denominator. currentStore() was already
-     * resolved (settings included) by the filter factory earlier in the same
-     * request, so this is a cached relation — no extra query on render.
-     *
-     * @return list<string>
-     */
-    private function confirmationDenominatorGroups(): array
-    {
-        return ConfirmationRateDenominator::resolve(
-            currentStore()?->settings?->confirmation_rate_denominator
-        );
-    }
-
-    /**
-     * Ranked by quantity sold inside the scoped window.
-     *
-     * This used to hard-code "since the start of the current month" on the app
-     * clock, which made the card disagree with every other block on a filtered
-     * dashboard. Without a filter the original current-month window is kept.
+     * Ranked by quantity sold inside the scoped window; the current month is
+     * kept only when no filter is given.
      */
     public function topSellingProducts(?DashboardFilter $filter = null, int $limit = 5): Collection
     {

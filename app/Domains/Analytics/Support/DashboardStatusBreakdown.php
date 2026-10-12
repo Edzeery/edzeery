@@ -59,6 +59,50 @@ final class DashboardStatusBreakdown
     }
 
     /**
+     * The confirmation doughnut (PHASE 37-L, D2): one slice per confirmation
+     * group, coloured by theme token, straight from the same report the cards
+     * and the team read. Groups with no orders draw nothing, and no group is
+     * merged into another — "confirmed" and "passed to delivery" stay visible
+     * as the distinct answers they are.
+     *
+     * @param  array<string, array{total: int, deleted: int}>  $groups
+     * @return Collection<int, object{key: string, count: int, label: string, hex: string, percent: int}>
+     */
+    public function forConfirmation(array $groups): Collection
+    {
+        $colors = [
+            ConfirmationStatsGroups::CONFIRMED => 'token:success',
+            ConfirmationStatsGroups::PENDING => 'token:warning',
+            ConfirmationStatsGroups::FAILED => 'token:danger',
+            ConfirmationStatsGroups::CANCELED => 'token:muted',
+            ConfirmationStatsGroups::DEFERRED => 'token:info',
+            ConfirmationStatsGroups::DUPLICATE => 'token:accent',
+            ConfirmationStatsGroups::PASSED_TO_DELIVERY => 'token:info',
+            ConfirmationStatsGroups::OTHER => 'token:muted',
+            ConfirmationStatsGroups::UNCLASSIFIED => 'token:muted',
+        ];
+
+        $rows = collect();
+
+        foreach (ConfirmationStatsGroups::all() as $group) {
+            $count = (int) ($groups[$group]['total'] ?? 0);
+
+            if ($count <= 0) {
+                continue;
+            }
+
+            $rows->push((object) [
+                'key' => $group,
+                'count' => $count,
+                'label' => __('dashboard.group_'.$group),
+                'hex' => $colors[$group],
+            ]);
+        }
+
+        return $this->withPercent($rows->sortByDesc('count')->values());
+    }
+
+    /**
      * Every confirmed-group key becomes the one `confirmed` slice; all other
      * statuses (pending, no_answer_*, postponed, on_hold, wrong_number, the
      * cancelled aliases, custom keys) keep their own slice.

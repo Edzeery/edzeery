@@ -114,13 +114,19 @@ it('collapses the shipping flow into one confirmed slice that reads like the KPI
     $breakdown = $service->statusBreakdown($filter);
     $summary = $service->summary($filter);
 
-    expect($breakdown->pluck('key')->sort()->values()->all())->toBe(['cancelled', 'confirmed', 'pending'])
-        // Confirmed, delivered and returned all passed the confirmation desk.
-        ->and($breakdown->firstWhere('key', 'confirmed')->count)->toBe(4)
+    expect($breakdown->pluck('key')->sort()->values()->all())
+        ->toBe(['canceled', 'confirmed', 'passed_to_delivery', 'pending'])
+        // Confirmed, delivered and returned all passed the confirmation desk,
+        // split into the desk's own confirmation and the shipped group (D12).
+        ->and($breakdown->firstWhere('key', 'confirmed')->count)->toBe(1)
+        ->and($breakdown->firstWhere('key', 'passed_to_delivery')->count)->toBe(3)
         ->and($breakdown->sum('count'))->toBe($summary['total_orders'])
         ->and($breakdown->pluck('percent')->sum())->toBe(100)
-        ->and($breakdown->firstWhere('key', 'confirmed')->percent)
-        ->toBe((int) $summary['confirmation_rate']);
+        // The slices are the report's own groups: they can never disagree.
+        ->and($breakdown->firstWhere('key', 'confirmed')->count)
+        ->toBe($service->confirmationStats($filter)['groups']['confirmed']['total'])
+        ->and($breakdown->firstWhere('key', 'passed_to_delivery')->count)
+        ->toBe($service->confirmationStats($filter)['groups']['passed_to_delivery']['total']);
 });
 
 it('reads delivery slices from tracked orders only and counts an order once', function () {
@@ -149,9 +155,10 @@ it('reads delivery slices from tracked orders only and counts an order once', fu
         ->and($delivery->firstWhere('key', 'delivered')->count)->toBe(2)
         ->and($delivery->sum('count'))->toBe(4)
         ->and($delivery->pluck('percent')->sum())->toBe(100)
-        // The confirmation view still sees the unshipped order.
+        // The confirmation view still sees the unshipped order, and counts the
+        // shipped ones in their own passed-to-delivery group (D12).
         ->and($confirmation->sum('count'))->toBe(5)
-        ->and($confirmation->pluck('key')->sort()->values()->all())->toBe(['confirmed', 'pending']);
+        ->and($confirmation->pluck('key')->sort()->values()->all())->toBe(['passed_to_delivery', 'pending']);
 });
 
 it('plots the two views over the same axis with the metrics each view leads with', function () {
@@ -269,7 +276,7 @@ it('keeps an axis of empty buckets when a window holds no orders', function () {
     expect($service->statusBreakdown($empty))->toBeEmpty()
         ->and($trend['labels'])->toHaveCount(2)
         ->and(array_sum(dcvTrend($trend, 'received')))->toBe(0)
-        ->and(collect($trend['series'])->pluck('key')->all())->toBe(['received', 'confirmed', 'canceled']);
+        ->and(collect($trend['series'])->pluck('key')->all())->toBe(['received', 'confirmed', 'canceled', 'failed']);
 
     // Nothing at all: no axis to draw, and still a keyed series per metric.
     $bare = $service->trendSeries(new DashboardFilter(
@@ -304,7 +311,9 @@ it('rounds slice percentages so the legend always adds up to 100', function (arr
 })->with([
     'one slice' => [['pending', 'pending'], 1],
     'three equal slices' => [['pending', 'cancelled', 'on_hold'], 3],
-    'five equal slices' => [['pending', 'cancelled', 'on_hold', 'wrong_number', 'postponed'], 5],
+    // Five statuses fold into four confirmation groups: cancelled + wrong_number
+    // share the CANCELED bucket, on_hold is OTHER, postponed is DEFERRED.
+    'four groups from five statuses' => [['pending', 'cancelled', 'on_hold', 'wrong_number', 'postponed'], 4],
     'eighty twenty' => [['pending', 'pending', 'pending', 'pending', 'cancelled'], 2],
 ]);
 
