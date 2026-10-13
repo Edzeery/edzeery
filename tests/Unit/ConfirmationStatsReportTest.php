@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Analytics\Support\ConfirmationRateDenominator;
+use App\Domains\Analytics\Support\ConfirmationRate;
 use App\Domains\Analytics\Support\ConfirmationStatsGroups;
 use App\Domains\Analytics\Support\ConfirmationStatsReport;
 
@@ -9,26 +9,63 @@ function csrRow(?string $member, string $key, int $total, int $deleted = 0): arr
     return ['membership_id' => $member, 'status_key' => $key, 'total' => $total, 'deleted' => $deleted];
 }
 
-function csrReport(?array $denominator = null): ConfirmationStatsReport
+function csrReport(string $kind = ConfirmationRate::GROSS, array $excluded = []): ConfirmationStatsReport
 {
-    return new ConfirmationStatsReport(ConfirmationRateDenominator::resolve($denominator));
+    return new ConfirmationStatsReport($kind, $excluded);
 }
 
-it('measures confirmed against the settled orders by default', function () {
+it('measures the gross rate over every order created in the window', function () {
     $rows = [
         csrRow(null, 'confirmed', 6),
         csrRow(null, 'preparing', 2),
         csrRow(null, 'canceled', 2),
-        csrRow(null, 'no_answer_1', 0),
+        csrRow(null, 'no_answer_1', 4),
+        csrRow(null, 'pending', 6),
     ];
 
     $summary = csrReport()->build($rows);
 
-    // 8 confirmed out of 8 + 2 canceled + 0 failed = 80%.
-    expect($summary['confirmed'])->toBe(8)
-        ->and($summary['denominator'])->toBe(10)
-        ->and($summary['rate'])->toBe(80)
+    // 8 confirmed (confirmed + moved-on) of every 20 created = 40%.
+    expect($summary['kind'])->toBe(ConfirmationRate::GROSS)
+        ->and($summary['confirmed'])->toBe(8)
+        ->and($summary['denominator'])->toBe(20)
+        ->and($summary['rate'])->toBe(40)
         ->and($summary['groups'][ConfirmationStatsGroups::CANCELED]['total'])->toBe(2);
+});
+
+it('measures the net rate over the settled desk outcomes only', function () {
+    $rows = [
+        csrRow(null, 'confirmed', 8),
+        csrRow(null, 'canceled', 2),
+        csrRow(null, 'no_answer_1', 9),
+        csrRow(null, 'pending', 5),
+    ];
+
+    $summary = csrReport(ConfirmationRate::NET)->build($rows);
+
+    // 8 confirmed of (8 + 2) settled = 80%; the pending and failed stay out.
+    expect($summary['kind'])->toBe(ConfirmationRate::NET)
+        ->and($summary['confirmed'])->toBe(8)
+        ->and($summary['denominator'])->toBe(10)
+        ->and($summary['rate'])->toBe(80);
+});
+
+it('drops an excluded status key from the gross denominator', function () {
+    $rows = [
+        csrRow(null, 'confirmed', 2),
+        csrRow(null, 'canceled', 1),
+        csrRow(null, 'no_answer_1', 7),
+    ];
+
+    $plain = csrReport()->build($rows);
+    $excluded = csrReport(ConfirmationRate::GROSS, ['no_answer_1'])->build($rows);
+
+    // 2 of 10 = 20%, then no_answer_1 leaves the line: 2 of 3 = 67%.
+    expect($plain['denominator'])->toBe(10)
+        ->and($plain['rate'])->toBe(20)
+        ->and($excluded['denominator'])->toBe(3)
+        ->and($excluded['rate'])->toBe(67)
+        ->and($excluded['excluded'])->toBe(7);
 });
 
 it('never lets a trashed order move the rate but still counts it in the bucket', function () {
@@ -64,35 +101,32 @@ it('keeps the headline card equal to the team total and to the sum of its rows',
 
     expect($card['confirmed'])->toBe($confirmed)
         ->and($card['denominator'])->toBe($denominator)
-        ->and($card['rate'])->toBe(83)
         // A single member row is build() over exactly that member's rows.
         ->and($members['b'])->toBe($report->build([csrRow('b', 'confirmed', 5), csrRow('b', 'canceled', 1)]))
-        ->and($members['b']['rate'])->toBe(83);
+        ->and($members['b']['rate'])->toBe(83)
+        ->and($members['b']['kind'])->toBe(ConfirmationRate::GROSS);
 });
 
-it('reopens the line when the store asks for the wider preset', function () {
-    $rows = [
-        csrRow(null, 'confirmed', 8),
-        csrRow(null, 'canceled', 1),
-        csrRow(null, 'failed', 0),
-        csrRow(null, 'no_answer_1', 1),
-        csrRow(null, 'pending', 5),
-        csrRow(null, 'delivered', 45),
-    ];
+it('flags the groups that sit outside the rate', function () {
+    $gross = csrReport()->build([]);
 
-    $recommended = csrReport()->build($rows);
-    $wide = csrReport(ConfirmationRateDenominator::PRESET_EXCLUDE_DUPLICATE_AND_DEFERRED)->build($rows);
+    // Nothing is outside on a bare gross basis.
+    expect(array_filter($gross['outside']))->toBe([]);
 
-    // D12: the delivered order stays inside the numerator (it left the desk
-    // confirmed), so the recommended line is 8 + 45 over 8 + 45 + 1 + 1 = 96%.
-    // The wider preset also carries the pending bucket: 53 over 60 = 88%.
-    expect($recommended['denominator'])->toBe(55)
-        ->and($recommended['rate'])->toBe(96)
-        ->and($wide['denominator'])->toBe(60)
-        ->and($wide['rate'])->toBe(88);
+    // Excluding every failed status takes the whole failed bucket out.
+    $excluded = csrReport(ConfirmationRate::GROSS, ConfirmationStatsGroups::keys(ConfirmationStatsGroups::FAILED))->build([]);
+    expect($excluded['outside'][ConfirmationStatsGroups::FAILED])->toBeTrue()
+        ->and($excluded['outside'][ConfirmationStatsGroups::PENDING])->toBeFalse();
+
+    // The net basis leaves every desk bucket but confirmed/canceled out.
+    $net = csrReport(ConfirmationRate::NET)->build([]);
+    expect($net['outside'][ConfirmationStatsGroups::PENDING])->toBeTrue()
+        ->and($net['outside'][ConfirmationStatsGroups::CONFIRMED])->toBeFalse()
+        ->and($net['outside'][ConfirmationStatsGroups::CANCELED])->toBeFalse();
 });
 
 it('reports a zero rate instead of dividing by nothing', function () {
     expect(csrReport()->build([])['rate'])->toBe(0)
-        ->and(csrReport()->build([csrRow(null, 'postponed', 4)])['rate'])->toBe(0);
+        ->and(csrReport()->build([csrRow(null, 'postponed', 4)])['rate'])->toBe(0)
+        ->and(csrReport(ConfirmationRate::NET)->build([csrRow(null, 'postponed', 4)])['rate'])->toBe(0);
 });

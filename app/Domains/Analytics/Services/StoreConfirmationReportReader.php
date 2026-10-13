@@ -3,7 +3,7 @@
 namespace App\Domains\Analytics\Services;
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
-use App\Domains\Analytics\Support\ConfirmationRateDenominator;
+use App\Domains\Analytics\Support\ConfirmationRate;
 use App\Domains\Analytics\Support\ConfirmationStatsQuery;
 use App\Domains\Analytics\Support\ConfirmationStatsReport;
 
@@ -21,21 +21,19 @@ class StoreConfirmationReportReader
     private array $rows = [];
 
     /**
-     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}
+     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}
      */
     public function report(DashboardFilter $filter): array
     {
-        return (new ConfirmationStatsReport($this->denominatorGroups()))
-            ->build($this->rows($filter));
+        return $this->reportFor($filter)->build($this->rows($filter));
     }
 
     /**
-     * @return array<string, array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}>
+     * @return array<string, array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}>
      */
     public function perMember(DashboardFilter $filter): array
     {
-        return (new ConfirmationStatsReport($this->denominatorGroups()))
-            ->perMember($this->rows($filter));
+        return $this->reportFor($filter)->perMember($this->rows($filter));
     }
 
     /**
@@ -47,16 +45,16 @@ class StoreConfirmationReportReader
     }
 
     /**
-     * The denominator preset from store_settings.confirmation_rate_denominator.
+     * The report's rules (PHASE 37-N2): the date basis picks gross or net, and
+     * the store's locked exclusions drop their status keys from every term.
      * currentStore() was already resolved (settings included) earlier in the
      * request, so this is a cached relation — no extra query on render.
-     *
-     * @return list<string>
      */
-    private function denominatorGroups(): array
+    private function reportFor(DashboardFilter $filter): ConfirmationStatsReport
     {
-        return ConfirmationRateDenominator::resolve(
-            currentStore()?->settings?->confirmation_rate_denominator
+        return new ConfirmationStatsReport(
+            ConfirmationRate::kindForBasis($filter->dateBasis),
+            currentStore()?->settings?->excludedConfirmationStatusKeys() ?? [],
         );
     }
 }

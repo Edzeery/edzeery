@@ -14,11 +14,15 @@ use Illuminate\Support\Collection;
  * "rate" card (group summary + rate bar) without a second scan. Deleted orders
  * travel in their own column and never enter the rate (D7); the members
  * without/with-trash toggle only decides which members are named.
+ *
+ * PHASE 37-N2: every row also carries the rate's `kind` (gross/net), the
+ * configured exclusions' order count and the per-group "outside the rate" flag,
+ * so a member card reads the same basis as the headline it sits under.
  */
 final class DashboardConfirmationTeam
 {
     /**
-     * @param  array<string, array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}>  $summaries  Keyed by membership id; '' holds the unattributed bucket.
+     * @param  array<string, array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}>  $summaries  Keyed by membership id; '' holds the unattributed bucket.
      * @param  Collection<int, object{id: string, name: string, deleted?: bool}>  $members
      * @return list<array<string, mixed>>
      */
@@ -32,6 +36,11 @@ final class DashboardConfirmationTeam
         // One selected member already is the total; a team or an unrestricted
         // store needs the sum so the rows reconcile with the headline above.
         $showsTotal = $filter->memberScopeIds === null || count((array) $filter->memberScopeIds) > 1;
+
+        // Every member summary shares the report's rules; blank rows and the
+        // total below carry the same kind/outside map so the rate wording never
+        // drifts inside one render.
+        $rules = $this->rules($summaries, $filter);
 
         $shown = [];
 
@@ -75,7 +84,7 @@ final class DashboardConfirmationTeam
                     ? $names[$filter->memberId]->name
                     : $filter->memberId;
 
-                $shown[] = $this->row($this->blank(), $filter->memberId, $name, 'member', false);
+                $shown[] = $this->row($this->blank($rules), $filter->memberId, $name, 'member', false);
             }
         }
 
@@ -84,14 +93,37 @@ final class DashboardConfirmationTeam
         usort($shown, fn (array $a, array $b) => $b['total'] <=> $a['total'] ?: strcmp((string) $a['name'], (string) $b['name']));
 
         if ($showsTotal) {
-            $shown[] = $this->total($shown);
+            $shown[] = $this->total($shown, $rules);
         }
 
         return $shown;
     }
 
     /**
-     * @param  array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}  $summary
+     * @param  array<string, array<string, mixed>>  $summaries
+     * @return array{kind: string, outside: array<string, bool>}
+     */
+    private function rules(array $summaries, DashboardFilter $filter): array
+    {
+        foreach ($summaries as $summary) {
+            return [
+                'kind' => (string) ($summary['kind'] ?? ConfirmationRate::GROSS),
+                'outside' => $summary['outside'] ?? [],
+            ];
+        }
+
+        $kind = ConfirmationRate::kindForBasis($filter->dateBasis);
+        $outside = [];
+
+        foreach (ConfirmationStatsGroups::all() as $group) {
+            $outside[$group] = ConfirmationRate::groupOutside($kind, $group, []);
+        }
+
+        return ['kind' => $kind, 'outside' => $outside];
+    }
+
+    /**
+     * @param  array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}  $summary
      * @return array<string, mixed>
      */
     private function row(array $summary, ?string $id, ?string $name, string $type, bool $deletedMember): array
@@ -114,6 +146,9 @@ final class DashboardConfirmationTeam
             'confirmed' => (int) $summary['confirmed'],
             'denominator' => (int) $summary['denominator'],
             'rate' => (int) $summary['rate'],
+            'kind' => $summary['kind'] ?? ConfirmationRate::GROSS,
+            'excluded' => (int) ($summary['excluded'] ?? 0),
+            'outside' => $summary['outside'] ?? [],
             'total' => $total,
             'trash' => $trash,
         ];
@@ -121,13 +156,15 @@ final class DashboardConfirmationTeam
 
     /**
      * @param  list<array<string, mixed>>  $shown
+     * @param  array{kind: string, outside: array<string, bool>}  $rules
      * @return array<string, mixed>
      */
-    private function total(array $shown): array
+    private function total(array $shown, array $rules): array
     {
         $groups = $this->blankGroups();
         $confirmed = 0;
         $denominator = 0;
+        $excluded = 0;
 
         foreach ($shown as $row) {
             foreach ($groups as $key => $_) {
@@ -137,14 +174,20 @@ final class DashboardConfirmationTeam
 
             $confirmed += (int) $row['confirmed'];
             $denominator += (int) $row['denominator'];
+            $excluded += (int) ($row['excluded'] ?? 0);
         }
+
+        $first = $shown[0] ?? null;
 
         return $this->row(
             [
                 'groups' => $groups,
                 'confirmed' => $confirmed,
                 'denominator' => $denominator,
-                'rate' => $denominator > 0 ? max(0, min(100, (int) round(($confirmed / $denominator) * 100))) : 0,
+                'rate' => ConfirmationRate::percent($confirmed, $denominator),
+                'kind' => $first['kind'] ?? $rules['kind'],
+                'excluded' => $excluded,
+                'outside' => $first['outside'] ?? $rules['outside'],
             ],
             null,
             null,
@@ -153,10 +196,21 @@ final class DashboardConfirmationTeam
         );
     }
 
-    /** @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int} */
-    private function blank(): array
+    /**
+     * @param  array{kind: string, outside: array<string, bool>}  $rules
+     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}
+     */
+    private function blank(array $rules): array
     {
-        return ['groups' => $this->blankGroups(), 'confirmed' => 0, 'denominator' => 0, 'rate' => 0];
+        return [
+            'groups' => $this->blankGroups(),
+            'confirmed' => 0,
+            'denominator' => 0,
+            'rate' => 0,
+            'kind' => $rules['kind'],
+            'excluded' => 0,
+            'outside' => $rules['outside'],
+        ];
     }
 
     /** @return array<string, array{total: int, deleted: int}> */

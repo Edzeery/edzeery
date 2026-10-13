@@ -16,7 +16,9 @@ final class DashboardFilter implements Arrayable
 
     /**
      * Date axis of the confirmation tab (D2): the order's creation instant, or
-     * the last instant its status moved (orders.last_status_changed_at).
+     * the last confirmation attempt (orders.confirmation_status_changed_at,
+     * frozen once the order is confirmed). The URL value stays
+     * `last_status_changed` for backwards compatibility.
      */
     public const DATE_BASIS_CREATED = 'created';
 

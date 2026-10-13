@@ -50,7 +50,7 @@ final class DashboardSeriesQuery
         // bucketed by. A row the desk never stamped falls back to its creation
         // date, matching how DashboardOrderScope admits it into the window.
         $basisColumn = $filter->dateBasis === DashboardFilter::DATE_BASIS_LAST_STATUS
-            ? 'COALESCE(orders.last_status_changed_at, orders.created_at)'
+            ? 'COALESCE(orders.confirmation_status_changed_at, orders.created_at)'
             : 'orders.created_at';
 
         $query = (clone $baseQuery)

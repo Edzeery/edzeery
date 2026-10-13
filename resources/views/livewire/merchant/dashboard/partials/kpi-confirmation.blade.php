@@ -12,11 +12,14 @@
     @php
         $confRate = (int) ($confirmationStats['rate'] ?? 0);
         $confTarget = (int) config('analytics.targets.confirmation_rate');
+        // PHASE 37-N2: the KPI reads the same basis wording as the rate tab.
+        $confKind = (string) ($confirmationStats['kind'] ?? 'gross');
+        $confRateLabel = __($confKind === 'net' ? 'dashboard.confirmation_rate_net' : 'dashboard.confirmation_rate_gross');
     @endphp
     <div @class(['lg:col-span-1', 'lg:col-span-3' => ! $showPendingCard])>
         <div class="edz-card edz-card--padded group h-full">
             <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ __('dashboard.confirmation_rate') }}</p>
+                <p class="text-xs font-medium text-ink-muted uppercase tracking-wider">{{ $confRateLabel }}</p>
                 <span class="inline-flex items-center gap-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full
                     {{ $confRate >= $confTarget ? 'text-success-fg-strong bg-success-surface' : 'text-warning-fg-strong bg-warning-surface' }}">
                     {{ $confRate }}%
@@ -27,7 +30,7 @@
                     {{ $confRate >= $confTarget ? 'bg-success-600' : 'bg-warning-600' }}"
                      style="width: {{ $confRate }}%"></div>
             </div>
-            <p class="mt-2 text-xs text-ink-muted">{{ __('dashboard.confirmation_rate_basis', [
+            <p class="mt-2 text-xs text-ink-muted">{{ __($confKind === 'net' ? 'dashboard.confirmation_rate_net_basis' : 'dashboard.confirmation_rate_gross_basis', [
                 'confirmed' => (int) ($confirmationStats['confirmed'] ?? 0),
                 'denominator' => (int) ($confirmationStats['denominator'] ?? 0),
             ]) }}</p>

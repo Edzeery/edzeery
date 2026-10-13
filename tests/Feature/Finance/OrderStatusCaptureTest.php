@@ -390,3 +390,65 @@ test('every status transition advances last_status_changed_at, even backward mov
     $order = $app->transition($order, 'pending', null, $member, 'manual');
     expect($order->fresh()->last_status_changed_at->format('Y-m-d H:i:s'))->toBe('2026-10-05 11:00:00');
 });
+
+test('creating an order seeds the confirmation axis from created_at', function () {
+    [, $store] = fcoActor();
+
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00'));
+    $order = fcoOrder($store);
+
+    expect($order->confirmation_status_changed_at)->not->toBeNull()
+        ->and($order->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe($order->created_at->format('Y-m-d H:i:s'));
+});
+
+test('an unconfirmed order advances its confirmation axis on every status change', function () {
+    [, $store, $member] = fcoActor();
+    $app = app(OrderService::class);
+
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00'));
+    $order = fcoOrder($store);
+    $createdStamp = $order->confirmation_status_changed_at->format('Y-m-d H:i:s');
+
+    $this->travelTo(Carbon::parse('2026-10-05 09:00:00'));
+    $app->transition($order, 'no_answer_1', null, $member, 'manual');
+    expect($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe('2026-10-05 09:00:00')
+        ->not->toBe($createdStamp);
+
+    $this->travelTo(Carbon::parse('2026-10-05 10:00:00'));
+    $app->transition($order, 'no_answer_2', null, $member, 'manual');
+    expect($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe('2026-10-05 10:00:00')
+        ->and($order->fresh()->confirmed_at)->toBeNull();
+});
+
+test('a confirmed order freezes its confirmation axis at the confirmation moment', function () {
+    [, $store, $member] = fcoActor();
+    $app = app(OrderService::class);
+
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00'));
+    $order = fcoOrder($store);
+
+    $this->travelTo(Carbon::parse('2026-10-05 09:00:00'));
+    $order = $app->transition($order, 'confirmed', null, $member, 'manual');
+    $confirmedStamp = $order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s');
+
+    expect($order->confirmed_at->format('Y-m-d H:i:s'))->toBe('2026-10-05 09:00:00')
+        ->and($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe('2026-10-05 09:00:00');
+
+    // Later moves never restate the period the order was confirmed in.
+    $this->travelTo(Carbon::parse('2026-10-05 10:00:00'));
+    $app->transition($order, 'preparing', null, $member, 'manual');
+    expect($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))->toBe($confirmedStamp);
+
+    $this->travelTo(Carbon::parse('2026-10-05 11:00:00'));
+    $app->transition($order, 'shipped', null, $member, 'manual');
+    expect($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))->toBe($confirmedStamp);
+
+    // A forced reversal (carrier deletes the parcel) is still not a restatement.
+    $this->travelTo(Carbon::parse('2026-10-06 09:00:00'));
+    $app->revertTo($order, 'cancelled', 'late cancel', $member, 'manual');
+    expect($order->fresh()->confirmation_status_changed_at->format('Y-m-d H:i:s'))->toBe($confirmedStamp);
+});

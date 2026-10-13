@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Analytics\Support\ConfirmationStatsGroups;
 use App\Domains\Plan\Services\FeatureUsageService;
 use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\StoreRoleEnum;
@@ -36,6 +37,7 @@ state([
     'secondary_color' => '#ffffff',
     'font_family' => 'Cairo',
     'landing_template' => 'single_product',
+    'confirmation_excluded_status_keys' => [],
 ]);
 
 mount(function (): void {
@@ -85,6 +87,8 @@ $createStore = function (): void {
         'slug' => ['required', 'string', 'max:255', Rule::unique('stores')->whereNull('deleted_at')],
         'currency' => ['required', 'string', 'max:10'],
         'landing_template' => ['required', 'string', Rule::in(\App\Enums\Store\LandingTemplateEnum::values())],
+        'confirmation_excluded_status_keys' => ['nullable', 'array'],
+        'confirmation_excluded_status_keys.*' => ['string', Rule::in(ConfirmationStatsGroups::excludableKeys())],
     ]);
 
     $user = auth()->user();
@@ -123,6 +127,18 @@ $createStore = function (): void {
                 'guest_checkout' => $this->guest_checkout,
             ]
         );
+
+        // PHASE 37-N2 (D1/D2): the optional exclusions chosen at creation. An
+        // empty pick leaves the setting open (editable once later); naming any
+        // status stamps the lock straight away.
+        $excluded = array_values(array_unique(array_filter((array) $this->confirmation_excluded_status_keys)));
+
+        if ($excluded !== []) {
+            $store->settings()->updateOrCreate([], [
+                'confirmation_excluded_status_keys' => $excluded,
+                'confirmation_exclusions_locked_at' => now(),
+            ]);
+        }
 
         $store->seo()->updateOrCreate(
             ['store_id' => $store->id],
@@ -442,6 +458,23 @@ $createStore = function (): void {
                                             <div class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform peer-checked:translate-x-5 transition-transform"></div>
                                         </div>
                                     </label>
+                                </div>
+
+                                {{-- PHASE 37-N2 (D1/D2): the optional confirmation-rate
+                                     exclusions. Leaving it empty keeps the setting open;
+                                     naming any status locks the choice straight away. --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-ink mb-1.5">{{ __('merchant_panel.confirmation_exclusions') }}</label>
+                                    <p class="text-xs text-ink-muted mb-2">{{ __('merchant_panel.confirmation_exclusions_desc') }}</p>
+                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        @foreach (ConfirmationStatsGroups::excludableKeys() as $key)
+                                            <label class="flex items-center gap-2 rounded-xl bg-surface-secondary border border-surface-border/50 p-3 cursor-pointer transition hover:border-brand-border">
+                                                <x-edz.checkbox wire:model="confirmation_excluded_status_keys" value="{{ $key }}" />
+                                                <span class="text-sm text-ink">{{ __("status.{$key}") }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                    @error('confirmation_excluded_status_keys.*') <p class="mt-1.5 text-xs font-medium text-red-500">{{ $message }}</p> @enderror
                                 </div>
                             </div>
                         @endif

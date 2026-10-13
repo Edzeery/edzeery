@@ -705,7 +705,7 @@ it('honours the last-status axis in confirmation and pins delivery to the creati
         'status_id' => $this->status['confirmed'],
         'created_at' => CarbonImmutable::parse('2026-02-05 08:00:00', 'UTC'),
     ]);
-    $moved->forceFill(['last_status_changed_at' => now()])->save();
+    $moved->forceFill(['confirmation_status_changed_at' => now()])->save();
 
     ($this->order)();
 

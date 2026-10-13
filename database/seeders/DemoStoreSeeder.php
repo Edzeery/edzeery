@@ -1512,6 +1512,26 @@ class DemoStoreSeeder extends Seeder
             $prevKey = $key;
         }
 
+        // PHASE 37-N1 (D1/T5): stamp the "last confirmation attempt" axis so
+        // the demo store's two date bases visibly differ. A confirmed order is
+        // frozen at its confirmation moment — the demo's confirmed transition
+        // time, which the real observer would also pin — while an order that
+        // was never confirmed keeps its most recent status change (created_at
+        // when it never moved). The observer's own created() stamp is created_at
+        // for every row; this overwrites it with the authoritative timeline.
+        $confirmationStatusChangedAt = $confirmedTransition !== null
+            ? $order->confirmed_at
+            : $createdAt;
+
+        if ($confirmedTransition === null && ! empty($spec['history'])) {
+            $lastTransition = end($spec['history']);
+            $confirmationStatusChangedAt = $createdAt->copy()->addHours((int) $lastTransition[3]);
+        }
+
+        Order::whereKey($order->id)->update([
+            'confirmation_status_changed_at' => $confirmationStatusChangedAt,
+        ]);
+
         foreach ($spec['events'] ?? [] as $event) {
             $byId = ! empty($event['by']) ? $ctx['members']->get($event['by'])?->id : null;
             $this->addAuditEvent(

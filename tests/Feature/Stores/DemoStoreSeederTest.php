@@ -102,6 +102,37 @@ test('confirmed demo orders carry the credit key and unconfirmed ones stay unatt
         ->and($pending->confirmed_at)->toBeNull();
 });
 
+test('demo orders stamp the confirmation axis so the two date bases differ', function () {
+    $this->seed(DemoStoreSeeder::class);
+
+    $store = Store::where('slug', 'demo')->sole();
+
+    $orders = \App\Models\Orders\Order::withoutGlobalScopes()
+        ->where('store_id', $store->id)
+        ->get();
+
+    expect($orders)->not->toBeEmpty()
+        ->and($orders->whereNull('confirmation_status_changed_at'))->toHaveCount(0);
+
+    $byNumber = $orders->keyBy('number');
+
+    // A confirmed order is pinned to its confirmation moment.
+    $confirmed = $byNumber['21006'];
+    expect($confirmed->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe($confirmed->confirmed_at->format('Y-m-d H:i:s'));
+
+    // An order confirmed then shipped stays pinned at confirmation, not the ship.
+    $shipped = $byNumber['21009'];
+    expect($shipped->confirmed_at)->not->toBeNull()
+        ->and($shipped->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe($shipped->confirmed_at->format('Y-m-d H:i:s'));
+
+    // A never-touched order keeps its creation stamp.
+    $pending = $byNumber['21001'];
+    expect($pending->confirmation_status_changed_at->format('Y-m-d H:i:s'))
+        ->toBe($pending->created_at->format('Y-m-d H:i:s'));
+});
+
 test('demo order assignments only reference confirmation-role members', function () {
     $this->seed(DemoStoreSeeder::class);
 

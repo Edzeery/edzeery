@@ -82,4 +82,10 @@ return [
     'verified' => 'تم التحقق',
     'visible' => 'مرئي',
     'warning' => 'تحذير',
+    'no_answer_1' => 'لا رد (١)',
+    'no_answer_2' => 'لا رد (٢)',
+    'no_answer_3' => 'لا رد (٣)',
+    'postponed' => 'مؤجّل',
+    'out_of_stock' => 'غير متوفر',
+    'duplicate' => 'مكرّر',
 ];

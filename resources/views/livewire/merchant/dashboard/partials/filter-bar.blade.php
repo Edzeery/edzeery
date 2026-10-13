@@ -174,6 +174,11 @@
                                    wire:model.live="dateBasis"
                                    class="rounded">
                             <span>{{ __("dashboard.{$label}") }}</span>
+                            <x-edz.tooltip :label="__('dashboard.'.$label.'_hint')" side="top" maxWidth="260px"
+                                class="shrink-0 text-ink-muted transition-colors hover:text-ink"
+                                x-on:click.prevent.stop>
+                                <x-edz.icon name="info-circle" class="h-3.5 w-3.5" />
+                            </x-edz.tooltip>
                         </label>
                     @endforeach
                 </div>

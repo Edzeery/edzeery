@@ -63,14 +63,31 @@ final class DashboardTrendQuery
         $metrics = [];
         $series = [];
 
-        foreach (ConfirmationStatsGroups::all() as $group) {
-            $ids = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys($group));
+        // PHASE 37-N1 (D2): the stack reads the same "ever confirmed" rule as
+        // the cards and the doughnut. The confirmed band is the evidence
+        // predicate itself; every desk bucket excludes ever-confirmed rows, so
+        // an order that ships stays in the confirmed band and never reappears
+        // under a desk state.
+        $evidence = new ConfirmationEvidence($this->statusIds);
 
-            $metrics[] = [
-                'key' => $group,
-                'expression' => $this->countWhen($this->in('orders.status_id', $ids)),
-                'bindings' => $ids,
-            ];
+        foreach (ConfirmationStatsGroups::all() as $group) {
+            if ($group === ConfirmationStatsGroups::CONFIRMED) {
+                $metrics[] = [
+                    'key' => $group,
+                    'expression' => $this->countWhen($evidence->condition()),
+                    'bindings' => $evidence->bindings(),
+                ];
+            } else {
+                $ids = $this->statusIds->idsForKeys(ConfirmationStatsGroups::keys($group));
+
+                $metrics[] = [
+                    'key' => $group,
+                    'expression' => $this->countWhen(
+                        '('.$evidence->negatedCondition().') AND '.$this->in('orders.status_id', $ids)
+                    ),
+                    'bindings' => array_merge($evidence->bindings(), $ids),
+                ];
+            }
 
             $series[] = [
                 'key' => $group,

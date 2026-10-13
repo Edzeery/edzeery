@@ -54,9 +54,17 @@ class OrderObserver
     {
         app(OrderAuditService::class)->created($order);
 
+        // PHASE 37-N1 (D1): an order starts life unconfirmed, so the "last
+        // confirmation attempt" axis begins at its creation instant. Both axes
+        // are stamped together so a fresh row is never NULL on either.
+        $stamp = $order->created_at ?? now();
+
         DB::table('orders')
             ->where('id', $order->id)
-            ->update(['last_status_changed_at' => $order->created_at ?? now()]);
+            ->update([
+                'last_status_changed_at' => $stamp,
+                'confirmation_status_changed_at' => $stamp,
+            ]);
     }
 
     /**
@@ -127,9 +135,11 @@ class OrderObserver
             'reason' => $meta['reason'] ?? null,
         ]);
 
+        $now = now();
+
         DB::table('orders')
             ->where('id', $order->id)
-            ->update(['last_status_changed_at' => now()]);
+            ->update(['last_status_changed_at' => $now]);
 
         // PHASE 38-C — first-write-wins event stamps (C.1/C.2). Atomic CAS
         // (WHERE <column> IS NULL) inside the SAME transaction as the status
@@ -139,8 +149,24 @@ class OrderObserver
         // silently credited.
         $actorId = $meta['changed_by_membership_id'] ?? null;
 
+        // Whether the order already carried its confirmation stamp before this
+        // transition; read before the CAS below can set it.
+        $wasConfirmed = $order->confirmed_at !== null;
+
         if (OrderStatusStage::isEarningConfirmation($status->key)) {
-            OrderStatusCapture::stampConfirmation($order, $actorId, now());
+            OrderStatusCapture::stampConfirmation($order, $actorId, $now);
+        }
+
+        // PHASE 37-N1 (D1): while the order is unconfirmed this axis follows
+        // every status change (including backward moves, so the desk's latest
+        // attempt is the one that counts). The change that confirms the order
+        // freezes it at the confirmation moment — the same $now handed to the
+        // stamp — and every later ship / deliver / return / cancel leaves it
+        // untouched, so a confirmed order's period never restates.
+        if (! $wasConfirmed) {
+            DB::table('orders')
+                ->where('id', $order->id)
+                ->update(['confirmation_status_changed_at' => $now]);
         }
 
         match ($status->key) {

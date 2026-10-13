@@ -1,10 +1,12 @@
 <?php
 
+use App\Domains\Analytics\Support\ConfirmationStatsGroups;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\StoreSetting;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
@@ -32,6 +34,8 @@ state([
     'allow_price_edit' => false,
     'min_order_qty' => null,
     'max_order_qty' => null,
+    'confirmation_excluded_status_keys' => [],
+    'confirmation_exclusions_locked' => false,
 ]);
 
 mount(function (): void {
@@ -57,6 +61,10 @@ mount(function (): void {
     if (Schema::hasColumn('store_settings', 'min_order_qty')) {
         $this->min_order_qty = $settings->min_order_qty ?? null;
         $this->max_order_qty = $settings->max_order_qty ?? null;
+    }
+    if (Schema::hasColumn('store_settings', 'confirmation_excluded_status_keys')) {
+        $this->confirmation_excluded_status_keys = $settings->excludedConfirmationStatusKeys();
+        $this->confirmation_exclusions_locked = $settings->confirmationExclusionsLocked();
     }
 });
 
@@ -136,6 +144,46 @@ $save = function (): void {
 
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.settings_saved'));
 };
+
+$saveConfirmationExclusions = function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    $store = currentStore();
+    abort_unless($store, 404);
+
+    if (! Schema::hasColumn('store_settings', 'confirmation_excluded_status_keys')) {
+        return;
+    }
+
+    // PHASE 37-N2 (D2): the exclusions are a one-shot choice. Once the store
+    // has saved (even an empty list), the columns are frozen at the model too.
+    if ($this->confirmation_exclusions_locked || $store->settings?->confirmationExclusionsLocked()) {
+        $this->confirmation_exclusions_locked = true;
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.confirmation_exclusions_locked'));
+
+        return;
+    }
+
+    $this->validate([
+        'confirmation_excluded_status_keys' => ['array'],
+        'confirmation_excluded_status_keys.*' => ['string', Rule::in(ConfirmationStatsGroups::excludableKeys())],
+    ]);
+
+    try {
+        $store->settings()->updateOrCreate([], [
+            'confirmation_excluded_status_keys' => array_values(array_unique($this->confirmation_excluded_status_keys ?? [])),
+            'confirmation_exclusions_locked_at' => now(),
+        ]);
+    } catch (\RuntimeException $e) {
+        $this->confirmation_exclusions_locked = true;
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+
+        return;
+    }
+
+    $this->confirmation_exclusions_locked = true;
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.confirmation_exclusions_saved'));
+};
 ?>
 
 <div x-data="{ activeTab: 'branding' }">
@@ -157,6 +205,7 @@ $save = function (): void {
                             'commerce'   => ['icon' => 'credit-card',   'label' => __('merchant_panel.commerce')],
                             'inventory'  => ['icon' => 'cube',          'label' => __('merchant_panel.inventory_group')],
                             'languages'  => ['icon' => 'language',      'label' => __('merchant_panel.languages')],
+                            'confirmation' => ['icon' => 'funnel',      'label' => __('merchant_panel.confirmation_exclusions')],
                         ];
                     @endphp
                     @foreach ($tabs as $tabKey => $tab)
@@ -466,6 +515,71 @@ $save = function (): void {
                                 <p class="text-xs text-ink-muted mt-2">{{ __('merchant_panel.supported_languages_desc') }}</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {{-- Tab: Confirmation rate exclusions (PHASE 37-N2, D1/D2).
+                     The desk statuses the store keeps out of the rate. One-shot:
+                     the first save stamps the lock and the section turns read-only. --}}
+                <div x-show="activeTab === 'confirmation'" x-transition>
+                    <div class="edz-card edz-card--padded">
+                        <h3 class="text-base font-semibold text-ink mb-2 flex items-center gap-2">
+                            <x-edz.icon name="funnel" class="w-5 h-5 text-accent-500" />
+                            {{ __('merchant_panel.confirmation_exclusions') }}
+                        </h3>
+                        <p class="text-sm text-ink-muted mb-5">{{ __('merchant_panel.confirmation_exclusions_desc') }}</p>
+
+                        @if ($confirmation_exclusions_locked)
+                            <div class="flex items-start gap-2 rounded-xl border border-surface-border bg-surface-secondary/50 p-4 mb-4">
+                                <x-edz.icon name="lock-closed" class="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" />
+                                <p class="text-sm text-ink-muted">{{ __('merchant_panel.confirmation_exclusions_locked_hint') }}</p>
+                            </div>
+                            @if (count($confirmation_excluded_status_keys))
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($confirmation_excluded_status_keys as $key)
+                                        <span class="inline-flex items-center rounded-full bg-danger-surface px-2.5 py-1 text-xs font-semibold text-danger-fg-strong">
+                                            {{ __("status.{$key}") }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-ink-muted">{{ __('dashboard.outside_rate') }}: —</p>
+                            @endif
+                        @else
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach (ConfirmationStatsGroups::excludableKeys() as $key)
+                                    <label class="flex items-center gap-2 rounded-xl border border-surface-border p-3 cursor-pointer transition hover:border-accent-border">
+                                        <x-edz.checkbox wire:model="confirmation_excluded_status_keys" value="{{ $key }}" />
+                                        <span class="text-sm text-ink">{{ __("status.{$key}") }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('confirmation_excluded_status_keys.*') <p class="text-danger-fg text-xs mt-2">{{ $message }}</p> @enderror
+
+                            <div class="mt-5 flex justify-end" x-data="{ confirming: false }">
+                                <button type="button" class="edz-btn edz-btn--primary" x-on:click="confirming = true">
+                                    <x-edz.icon name="lock-closed" class="w-4 h-4 me-1" />
+                                    {{ __('merchant_panel.confirmation_exclusions_confirm') }}
+                                </button>
+
+                                <div x-show="confirming" x-transition.opacity
+                                     class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+                                    <div class="w-full max-w-md rounded-2xl border border-surface-border bg-surface p-6 shadow-card" x-on:click.outside="confirming = false">
+                                        <h4 class="text-base font-semibold text-ink">{{ __('merchant_panel.confirmation_exclusions_confirm_title') }}</h4>
+                                        <p class="mt-2 text-sm text-ink-muted">{{ __('merchant_panel.confirmation_exclusions_confirm_text') }}</p>
+                                        <div class="mt-5 flex justify-end gap-2">
+                                            <button type="button" class="edz-btn" x-on:click="confirming = false">
+                                                {{ __('buttons.cancel') }}
+                                            </button>
+                                            <button type="button" class="edz-btn edz-btn--primary"
+                                                x-on:click="confirming = false; $wire.saveConfirmationExclusions()">
+                                                {{ __('merchant_panel.confirmation_exclusions_confirm') }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 

@@ -105,6 +105,22 @@ final class ConfirmationStatsGroups
         ];
     }
 
+    /**
+     * The status keys a store may keep out of the rate (PHASE 37-N2, D1): the
+     * desk's own states, but never CONFIRMED or CANCELED — the numerator and
+     * the net denominator cannot be excluded, or the ratio would have no
+     * meaning.
+     *
+     * @return list<string>
+     */
+    public static function excludableKeys(): array
+    {
+        return array_keys(array_filter(
+            self::MAP,
+            static fn (string $group): bool => $group !== self::CONFIRMED && $group !== self::CANCELED
+        ));
+    }
+
     public static function group(string $statusKey): string
     {
         return self::MAP[$statusKey] ?? self::OTHER;

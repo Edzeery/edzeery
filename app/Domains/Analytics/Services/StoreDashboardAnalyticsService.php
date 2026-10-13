@@ -175,7 +175,7 @@ class StoreDashboardAnalyticsService
     /**
      * The confirmation tab (M4): the one report the cards, doughnut and rate read.
      *
-     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int}
+     * @return array{groups: array<string, array{total: int, deleted: int}>, confirmed: int, denominator: int, rate: int, kind: string, excluded: int, outside: array<string, bool>}
      */
     public function confirmationStats(?DashboardFilter $filter = null): array
     {

@@ -157,7 +157,8 @@
                         {{-- Rate: the member's rate, then one status per line —
                              status, its order count, then the deleted (n) badge. --}}
                         <div class="mt-4 text-center">
-                            <p class="text-4xl font-bold leading-none tracking-tighter text-ink tabular-nums">{{ $row['rate'] }}<span class="text-lg font-semibold text-ink-muted">%</span></p>
+                            <p class="text-xs font-medium uppercase tracking-wider text-ink-muted">{{ __(($row['kind'] ?? 'gross') === 'net' ? 'dashboard.confirmation_rate_net' : 'dashboard.confirmation_rate_gross') }}</p>
+                            <p class="mt-1 text-4xl font-bold leading-none tracking-tighter text-ink tabular-nums">{{ $row['rate'] }}<span class="text-lg font-semibold text-ink-muted">%</span></p>
                             <p class="mt-1 text-sm text-ink-muted">{{ $row['confirmed'] }} / {{ $row['denominator'] }}</p>
                         </div>
 

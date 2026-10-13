@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class DashboardSummaryQuery
 {
-    public function __construct(private DashboardOrderScope $scope) {}
+    public function __construct(
+        private DashboardOrderScope $scope,
+        private OrderStatusIdMap $statusIds,
+    ) {}
 
     /**
      * @param  Builder<\App\Models\Orders\Order>  $baseQuery
@@ -49,9 +52,18 @@ final class DashboardSummaryQuery
         // The Confirmation view leads with the two states an operator acts on.
         // Both spellings of cancelled are counted, because stores configure
         // either key and the doughnut already treats them as one alias.
-        $pendingCount = (clone $current)->whereIn('status_id', $statusIds(DashboardStatusGroups::PENDING))->count();
+        // PHASE 37-N1 (D2): an ever-confirmed order belongs to `confirmed`,
+        // never to a desk bucket, so these two exclude the evidence rows — an
+        // order that confirmed then shipped is not a pending-order-to-act-on.
+        $evidence = new ConfirmationEvidence($this->statusIds);
+
+        $pendingCount = (clone $current)
+            ->whereIn('status_id', $statusIds(DashboardStatusGroups::PENDING))
+            ->whereRaw($evidence->negatedCondition(), $evidence->bindings())
+            ->count();
         $canceledCount = (clone $current)
             ->whereIn('status_id', $statusIds(DashboardStatusGroups::CANCELED))
+            ->whereRaw($evidence->negatedCondition(), $evidence->bindings())
             ->count();
 
         return [

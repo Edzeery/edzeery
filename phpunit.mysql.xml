@@ -38,6 +38,7 @@
             <file>tests/Feature/Merchant/DashboardQueryBudgetTest.php</file>
             <file>tests/Feature/Merchant/DashboardTeamPerformanceTest.php</file>
             <file>tests/Feature/Merchant/ConfirmationStatsQueryTest.php</file>
+            <file>tests/Feature/Merchant/ConfirmationExclusionsTest.php</file>
         </testsuite>
     </testsuites>
     <php>

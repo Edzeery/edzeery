@@ -43,11 +43,14 @@ final class DashboardOrderScope
     }
 
     /**
-     * The window on the chosen date basis (D2). "Last status date" is written
-     * sargable — a plain `last_status_changed_at BETWEEN` short-circuitable by
-     * the (store_id, last_status_changed_at) index — with the created-at range
-     * only as the fallback for the rows the backfill could not stamp (no
-     * history at all), so those are still counted rather than silently lost.
+     * The window on the chosen date basis (D2). PHASE 37-N1 (D1/D3): the
+     * "last status" basis reads `confirmation_status_changed_at` — the last
+     * confirmation attempt, frozen once the order is confirmed — so a
+     * confirmed order is never restated by a later ship/deliver/return. It is
+     * written sargable — a plain `confirmation_status_changed_at BETWEEN`
+     * short-circuitable by the (store_id, confirmation_status_changed_at)
+     * index — with the created-at range only as the fallback for a row the
+     * backfill could not stamp, so those are still counted rather than lost.
      */
     private function applyDateWindow(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
     {
@@ -68,9 +71,9 @@ final class DashboardOrderScope
         }
 
         $query->where(function ($window) use ($from, $to) {
-            $window->whereBetween('orders.last_status_changed_at', [$from, $to])
+            $window->whereBetween('orders.confirmation_status_changed_at', [$from, $to])
                 ->orWhere(function ($unstamped) use ($from, $to) {
-                    $unstamped->whereNull('orders.last_status_changed_at')
+                    $unstamped->whereNull('orders.confirmation_status_changed_at')
                         ->whereBetween('orders.created_at', [$from, $to]);
                 });
         });

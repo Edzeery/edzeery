@@ -88,7 +88,8 @@ test('the confirmation section renders its headline, trash figure and every grou
 test('the rate tab renders the rate, its basis and only the six ratio groups', function () {
     [$owner, $store] = dfwOwnerStore();
 
-    // 1 confirmed + 1 canceled + 1 pending => rate = 1 / (1+1) = 50%.
+    // Default basis (created) is the gross rate: 1 confirmed of all 3 orders
+    // created in the period => 1 / 3 = 33%.
     dscOrder($store, OrderStatus::CONFIRMED);
     dscOrder($store, OrderStatus::CANCELED);
     dscOrder($store, OrderStatus::PENDING);
@@ -101,9 +102,9 @@ test('the rate tab renders the rate, its basis and only the six ratio groups', f
 
     expect($html)
         ->toContain(__('dashboard.confirmation_tab_rate'))
-        ->toContain('50%')
-        ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 1, 'denominator' => 2]))
-        ->toContain(__('dashboard.outside_rate'));
+        ->toContain('33%')
+        ->toContain(__('dashboard.confirmation_rate_gross'))
+        ->toContain(__('dashboard.confirmation_rate_gross_basis', ['confirmed' => 1, 'denominator' => 3]));
 
     // The rate tab keeps the rate groups only: no delivery group, no
     // unclassified bucket.
@@ -291,7 +292,7 @@ test('a shipped order stays inside the confirmation rate', function () {
 
     expect($html)
         ->toContain('75%')
-        ->toContain(__('dashboard.confirmation_rate_basis', ['confirmed' => 3, 'denominator' => 4]))
+        ->toContain(__('dashboard.confirmation_rate_gross_basis', ['confirmed' => 3, 'denominator' => 4]))
         ->toContain(__('dashboard.group_confirmed'))
         ->not->toContain('passed_to_delivery');
 });

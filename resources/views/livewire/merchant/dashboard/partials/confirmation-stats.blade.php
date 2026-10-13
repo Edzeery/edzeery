@@ -23,6 +23,15 @@
     $rate = (int) ($confirmationStats['rate'] ?? 0);
     $totalOrders = collect($groups)->sum('total');
     $trashOrders = collect($groups)->sum('deleted');
+
+    // PHASE 37-N2: the date basis names the rate (gross vs net) and its wording;
+    // the exclusions mark the groups they removed and add a footnote.
+    $kind = (string) ($confirmationStats['kind'] ?? 'gross');
+    $excluded = (int) ($confirmationStats['excluded'] ?? 0);
+    $outside = $confirmationStats['outside'] ?? [];
+    $rateLabel = __($kind === 'net' ? 'dashboard.confirmation_rate_net' : 'dashboard.confirmation_rate_gross');
+    $rateExplainer = __($kind === 'net' ? 'dashboard.confirmation_rate_net_explainer' : 'dashboard.confirmation_rate_gross_explainer', ['confirmed' => $confirmed, 'denominator' => $denominator, 'rate' => $rate]);
+    $rateBasis = __($kind === 'net' ? 'dashboard.confirmation_rate_net_basis' : 'dashboard.confirmation_rate_gross_basis', ['confirmed' => $confirmed, 'denominator' => $denominator]);
 @endphp
 
 <div wire:key="confirmation-stats-{{ $filter->hash() }}"
@@ -61,15 +70,15 @@
         {{-- The rate's one home is the KPI card; here we keep the large figure
              and its bar without a second badge (D3, de-duplication). --}}
         <div class="min-w-0">
-            <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ __('dashboard.confirmation_rate') }}</p>
+            <p class="text-sm font-medium uppercase tracking-wider text-ink-muted">{{ $rateLabel }}</p>
             <div class="mt-1 flex items-center gap-2">
                 <p class="text-5xl font-bold tracking-tighter text-ink leading-none">{{ $rate }}<span class="text-2xl font-semibold text-ink-muted">%</span></p>
-                <x-edz.tooltip :label="__('dashboard.confirmation_rate_explainer', ['confirmed' => $confirmed, 'denominator' => $denominator, 'rate' => $rate])" side="top" maxWidth="360px"
+                <x-edz.tooltip :label="$rateExplainer" side="top" maxWidth="360px"
                     class="text-ink-muted transition-colors hover:text-ink">
                     <x-edz.icon name="information-circle" class="w-5 h-5" />
                 </x-edz.tooltip>
             </div>
-            <p class="mt-2 text-sm text-ink-muted">{{ __('dashboard.confirmation_rate_basis', ['confirmed' => $confirmed, 'denominator' => $denominator]) }}</p>
+            <p class="mt-2 text-sm text-ink-muted">{{ $rateBasis }}</p>
         </div>
         <div class="w-full bg-surface-secondary rounded-full h-2.5 overflow-hidden my-5">
             <div class="h-2.5 rounded-full transition-all duration-700 ease-out-expo {{ $rate >= config('analytics.targets.confirmation_rate') ? 'bg-success-500' : 'bg-warning-500' }}"
@@ -79,12 +88,15 @@
             @foreach ($rateGroups as $key)
                 @php
                     $g = $groups[$key] ?? ['total' => 0, 'deleted' => 0];
-                    // "Other" never counts toward the rate, so it reads muted.
-                    $muted = $key === 'other';
+                    // A group that contributes nothing to the rate (the net basis
+                    // leaves the desk buckets out; the gross basis drops a group
+                    // once every one of its statuses is excluded) reads muted and
+                    // carries the "outside the rate" tag.
+                    $isOutside = (bool) ($outside[$key] ?? false);
                 @endphp
                 <div @class([
                     'rounded-2xl border border-surface-border p-4',
-                    'bg-surface-secondary/40' => $muted,
+                    'bg-surface-secondary/40' => $isOutside,
                 ])>
                     <div class="flex items-center gap-2">
                         <span class="h-2 w-2 shrink-0 rounded-full {{ $groupDot[$key] ?? 'bg-ink-muted' }}"></span>
@@ -104,9 +116,16 @@
                             </x-edz.tooltip>
                         @endif
                     </div>
+                    @if ($isOutside)
+                        <span class="mt-3 inline-flex items-center rounded-full bg-surface-secondary px-2 py-0.5 text-[11px] font-medium text-ink-muted">
+                            {{ __('dashboard.outside_rate') }}
+                        </span>
+                    @endif
                 </div>
             @endforeach
         </div>
-        <p class="mt-4 text-sm text-ink-muted">{{ __('dashboard.outside_rate') }}</p>
+        @if ($excluded > 0)
+            <p class="mt-4 text-sm text-ink-muted">{{ __('dashboard.excluded_from_rate', ['count' => $excluded]) }}</p>
+        @endif
     @endif
 </div>

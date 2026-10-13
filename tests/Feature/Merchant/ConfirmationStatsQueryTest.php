@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Analytics\DTOs\DashboardFilter;
-use App\Domains\Analytics\Support\ConfirmationRateDenominator;
+use App\Domains\Analytics\Support\ConfirmationRate;
 use App\Domains\Analytics\Support\ConfirmationStatsGroups;
 use App\Domains\Analytics\Support\ConfirmationStatsQuery;
 use App\Domains\Analytics\Support\ConfirmationStatsReport;
@@ -134,7 +134,7 @@ test('an order whose status moved inside the window is counted on the last-statu
     $order = csqOrder($store, $member->id, 'confirmed', 'CSQ-AXIS-1');
     $order->forceFill([
         'created_at' => now()->subDays(10),
-        'last_status_changed_at' => now(),
+        'confirmation_status_changed_at' => now(),
     ])->save();
 
     $today = now()->startOfDay();
@@ -168,7 +168,7 @@ test('the report folds the query rows so the card, a member row and the total ag
     csqOrder($store, $memberA->id, 'confirmed', 'CRR-A-TRASH')->delete();
 
     $rows = app(ConfirmationStatsQuery::class)->run(csqFilter($store));
-    $report = new ConfirmationStatsReport(ConfirmationRateDenominator::resolve(null));
+    $report = new ConfirmationStatsReport(ConfirmationRate::GROSS, []);
 
     $card = $report->build($rows);
     $members = $report->perMember($rows);

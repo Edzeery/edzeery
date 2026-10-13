@@ -82,4 +82,10 @@ return [
     'verified' => 'Vérifié',
     'visible' => 'Visible',
     'warning' => 'Avertissement',
+    'no_answer_1' => 'Sans réponse (1)',
+    'no_answer_2' => 'Sans réponse (2)',
+    'no_answer_3' => 'Sans réponse (3)',
+    'postponed' => 'Reporté',
+    'out_of_stock' => 'Rupture de stock',
+    'duplicate' => 'Doublon',
 ];
