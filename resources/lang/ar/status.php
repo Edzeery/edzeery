@@ -88,4 +88,7 @@ return [
     'postponed' => 'مؤجّل',
     'out_of_stock' => 'غير متوفر',
     'duplicate' => 'مكرّر',
+    'wrong_number' => 'رقم خاطئ',
+    'undeliverable' => 'تعذّر التوصيل',
+    'unclaimed' => 'غير مُستلَم',
 ];

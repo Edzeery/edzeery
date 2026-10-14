@@ -7,6 +7,7 @@ use App\Models\Orders\OrderItem;
 use App\Models\Products\Product;
 use App\Models\Products\ProductVariant;
 use App\Models\Stores\Store;
+use Carbon\CarbonImmutable;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
@@ -27,10 +28,20 @@ use Livewire\Volt\Volt;
 */
 
 beforeEach(function () {
+    // PHASE 37-N6: pin the clock mid-day. "today" is built in the store's
+    // timezone (Africa/Algiers, UTC+1); an implicit created_at = now() could
+    // otherwise fall past the store-day boundary between creating an order and
+    // querying it, dropping it out of the window and flipping the count.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
     $this->seed(SystemStatusesSeeder::class);
     $this->seed(PlansSeeder::class);
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
 });
 
 /**
@@ -45,6 +56,10 @@ function dscOrder(Store $store, OrderStatus $status, array $extra = []): Order
         'total_amount' => 1500,
         'status_id' => app(OrderStatusIdMap::class)->id($status),
         'delivery_type' => 'home',
+        // PHASE 37-N6: stamp the frozen clock explicitly so the row can never
+        // straddle the store-day boundary of the default "today" window.
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 }
 
@@ -142,7 +157,7 @@ test('confirmed orders resolve into the section and soft-deleted ones stay brack
         ->toContain(__('dashboard.trash_orders'));
 });
 
-test('the date basis pills are confirmation-only and live-bound', function () {
+test('the date basis pills are confirmation and delivery, live-bound', function () {
     [$owner, $store] = dfwOwnerStore();
 
     $html = $this->actingAs($owner)
@@ -173,10 +188,11 @@ test('the date basis pills are confirmation-only and live-bound', function () {
         ->assertOk()
         ->getContent();
 
+    // PHASE 37-N7 (E): the delivery view carries the same date basis and
+    // product picker controls the confirmation view does.
     expect($delivery)
-        ->not->toContain('wire:model.live="dateBasis"')
-        ->not->toContain('id="dashboard-product-filter"')
-        ->not->toContain(__('dashboard.product_filter_title'));
+        ->toContain('wire:model.live="dateBasis"')
+        ->toContain('id="dashboard-product-filter"');
 });
 
 test('the product filter opens a modal and toggles url-backed picks', function () {

@@ -664,10 +664,10 @@ it('plots one point per bucket for the selected period', function () {
         ->and(dftTotal($empty))->toBe(0);
 });
 
-it('moves every confirmation block with the product pick and leaves delivery untouched', function () {
-    // The product axis is a confirmation control (D3/D4): it narrows the
+it('moves every confirmation block with the product pick and narrows delivery too', function () {
+    // The product axis is a shared control (PHASE 37-N7/D1): it narrows the
     // headline, the status breakdown, the states, the delivery-type split and
-    // the received trend at once, and the delivery view drops it.
+    // the received trend at once, and the delivery view now keeps it.
     $widget = makeProduct('Widget');
 
     $withProduct = ($this->order)();
@@ -689,23 +689,28 @@ it('moves every confirmation block with the product pick and leaves delivery unt
         ->and($this->service->deliveryTypeBreakdown($confirmation)->sum('count'))->toBe(1)
         ->and(dftTotal($this->service->trendSeries($confirmation)))->toBe(1);
 
-    // The delivery view ignores the product pick, so both tracked orders stay.
+    // The delivery view keeps the product pick (PHASE 37-N7/D1), so it narrows
+    // to the single tracked order that carries the widget.
     $delivery = ($this->filter)(['variantIds' => [$widget], 'memberDimension' => 'delivery']);
 
-    expect($delivery->variantIds)->toBeNull()
+    expect($delivery->variantIds)->not->toBeNull()
         ->and($delivery->productIds)->toBeNull()
-        ->and($this->service->statusBreakdown($delivery)->sum('count'))->toBe(2)
-        ->and(array_sum(dftValues($this->service->trendSeries($delivery), 'delivered')))->toBe(2);
+        ->and($this->service->statusBreakdown($delivery)->sum('count'))->toBe(1)
+        ->and(array_sum(dftValues($this->service->trendSeries($delivery), 'delivered')))->toBe(1);
 });
 
-it('honours the last-status axis in confirmation and pins delivery to the creation date', function () {
+it('honours the last-status axis in confirmation and delivery', function () {
     // An old order whose status moved today only shows up on the last-status
-    // axis; the confirmation blocks read it, the delivery view never does (D3/D4).
+    // axis; the confirmation blocks read their attempt stamp, the delivery view
+    // reads the order's own last transition, and both honour it (PHASE 37-N7/D1).
     $moved = ($this->order)([
         'status_id' => $this->status['confirmed'],
         'created_at' => CarbonImmutable::parse('2026-02-05 08:00:00', 'UTC'),
     ]);
-    $moved->forceFill(['confirmation_status_changed_at' => now()])->save();
+    $moved->forceFill([
+        'confirmation_status_changed_at' => now(),
+        'last_status_changed_at' => now(),
+    ])->save();
 
     ($this->order)();
 
@@ -718,11 +723,13 @@ it('honours the last-status axis in confirmation and pins delivery to the creati
         ->and($this->service->statusBreakdown($lastStatus)->sum('count'))->toBe(2)
         ->and(dftTotal($this->service->trendSeries($lastStatus)))->toBe(2);
 
-    // Delivery pins the creation axis, so the same request cannot widen it.
+    // The delivery view now honours the last-status axis too (PHASE 37-N7/D1),
+    // so the same request widens it to both orders.
     $delivery = ($this->filter)([
         'dateBasis' => DashboardFilter::DATE_BASIS_LAST_STATUS,
         'memberDimension' => 'delivery',
     ]);
 
-    expect($delivery->dateBasis)->toBe(DashboardFilter::DATE_BASIS_CREATED);
+    expect($delivery->dateBasis)->toBe(DashboardFilter::DATE_BASIS_LAST_STATUS)
+        ->and($this->service->summary($delivery)['total_orders'])->toBe(2);
 });

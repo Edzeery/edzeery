@@ -22,6 +22,16 @@ use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    // PHASE 37-N6: freeze mid-day (store in Africa/Algiers) so the default
+    // "today" window cannot drift off an order's implicit created_at.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
+});
+
 /** A store in Algiers with the statuses both charts read. */
 function dcvStore(): array
 {
@@ -205,7 +215,9 @@ it('plots the two views over the same axis with the metrics each view leads with
         ->and(array_sum(dcvTrend($delivery, 'revenue')))->toBe(1500.0)
         ->and(collect($confirmation['series'])->pluck('axis')->unique()->all())->toBe(['y'])
         ->and(collect($delivery['series'])->firstWhere('key', 'revenue')['axis'])->toBe('y1')
-        ->and(collect($delivery['series'])->firstWhere('key', 'delivered')['type'])->toBe('bar');
+        // PHASE 37-N9: delivery draws smooth monotone curves, not bars.
+        ->and(collect($delivery['series'])->firstWhere('key', 'delivered')['type'])->toBe('line')
+        ->and(collect($delivery['series'])->firstWhere('key', 'returned')['type'])->toBe('line');
 });
 
 it('answers period, carrier and member filters the same way on both charts', function () {
@@ -357,7 +369,7 @@ test('the chart block paints the fixes owner review asked for', function () {
     expect($source)
         ->toContain("themeColor('--edz-color-surface', 'rgb(255, 255, 255)')")
         ->toContain('borderColor: data.statusKeys.map(() => resolvedSurface)')
-        ->toContain('borderWidth: isStackedBar ? 2 : 2');
+        ->toContain('borderWidth: 2');
 
     // 4. D3: one colour per group, resolved from the single config map through
     //    the theme token, shared by the trend, the doughnut and the legend.
@@ -366,13 +378,13 @@ test('the chart block paints the fixes owner review asked for', function () {
         ->toContain("themeColor('--edz-color-' + groupColors[key], fallback)")
         ->toContain('legend: { display: false }');
 
-    // 5. The confirmation trend stacks the seven groups as bars up to 62
-    //    buckets and falls back to lines past that.
+    // 5. PHASE 37-N4: the confirmation trend is one smooth monotone curve per
+    //    group plus a browser-derived total band - never a stacked bar.
     expect($source)
-        ->toContain('const stackedBars = isConfirmation')
-        ->toContain('data.chartLabels.length <= 62')
-        ->toContain('x: { stacked: stackedBars')
-        ->toContain('stacked: stackedBars');
+        ->toContain("cubicInterpolationMode: 'monotone'")
+        ->toContain('_isTotal: true')
+        ->toContain("const isConfirmation = data.trendView !== 'delivery'")
+        ->not->toContain('stackedBars');
 
     // 6. The delivery view keeps its money line: the axis still speaks in
     //    currency, and the metric type still reaches the dataset.

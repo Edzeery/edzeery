@@ -5,6 +5,7 @@ use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Support\StoreRoles;
+use Carbon\CarbonImmutable;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
@@ -26,10 +27,18 @@ use Spatie\Permission\Models\Role;
 */
 
 beforeEach(function () {
+    // PHASE 37-N6: pin the clock mid-day (store timezone resolves to
+    // Africa/Algiers) so the default "today" window is deterministic.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
     $this->seed(SystemStatusesSeeder::class);
     $this->seed(PlansSeeder::class);
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
 });
 
 function cexOwnerStore(): array

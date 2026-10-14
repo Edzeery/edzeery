@@ -10,13 +10,6 @@
     // rate. OTHER is the muted bucket that never enters the rate.
     $rateGroups = ['confirmed', 'canceled', 'pending', 'failed', 'duplicate', 'deferred', 'other'];
 
-    // D3: one colour per group, defined once in config/analytics.php and read by
-    // every block (these cards, the doughnut, the trend and the team rows).
-    $groupDot = array_map(
-        static fn (string $token): string => 'bg-'.$token,
-        config('analytics.group_colors'),
-    );
-
     $groups = $confirmationStats['groups'] ?? [];
     $confirmed = (int) ($confirmationStats['confirmed'] ?? 0);
     $denominator = (int) ($confirmationStats['denominator'] ?? 0);
@@ -99,7 +92,11 @@
                     'bg-surface-secondary/40' => $isOutside,
                 ])>
                     <div class="flex items-center gap-2">
-                        <span class="h-2 w-2 shrink-0 rounded-full {{ $groupDot[$key] ?? 'bg-ink-muted' }}"></span>
+                        {{-- PHASE 37-N3: the group colour is an inline style from the
+                             one config map (a dynamic utility class built from the token
+                             would never be compiled), so it always paints and matches
+                             the charts. --}}
+                        <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ \App\Domains\Analytics\Support\GroupColor::css($key) }}"></span>
                         <p class="truncate text-sm font-medium text-ink-muted">{{ __("dashboard.group_{$key}") }}</p>
                         <x-edz.tooltip :label="__('dashboard.group_'.$key.'_hint')" side="top"
                             class="shrink-0 text-ink-muted transition-colors hover:text-ink">

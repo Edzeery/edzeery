@@ -18,10 +18,17 @@ use Illuminate\Support\Str;
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 beforeEach(function () {
+    // PHASE 37-N6: pin the clock so any now()-relative backfill input is stable.
+    Carbon::setTestNow(Carbon::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
     $this->seed(SystemStatusesSeeder::class);
     $this->seed(PlansSeeder::class);
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
 });
 
 function cabStore(): Store

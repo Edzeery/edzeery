@@ -41,6 +41,8 @@ class StoreSetting extends Model
         'finance_capture_started_at',
         'confirmation_excluded_status_keys',
         'confirmation_exclusions_locked_at',
+        'delivery_excluded_status_keys',
+        'delivery_exclusions_locked_at',
     ];
 
     protected $casts = [
@@ -59,6 +61,8 @@ class StoreSetting extends Model
         'finance_capture_started_at' => 'datetime',
         'confirmation_excluded_status_keys' => 'array',
         'confirmation_exclusions_locked_at' => 'datetime',
+        'delivery_excluded_status_keys' => 'array',
+        'delivery_exclusions_locked_at' => 'datetime',
     ];
 
     /**
@@ -66,17 +70,28 @@ class StoreSetting extends Model
      * (even an empty one) stamps confirmation_exclusions_locked_at; from then on
      * any attempt to move either column is refused here — at the model, so no
      * Livewire action or stray request can slip past the UI.
+     *
+     * PHASE 37-N7 (D4): delivery carries its own independent one-shot pair.
      */
     protected static function booted(): void
     {
         static::updating(function (self $setting): void {
-            $locked = $setting->getOriginal('confirmation_exclusions_locked_at') !== null;
+            $confirmationLocked = $setting->getOriginal('confirmation_exclusions_locked_at') !== null;
 
-            if ($locked && $setting->isDirty([
+            if ($confirmationLocked && $setting->isDirty([
                 'confirmation_excluded_status_keys',
                 'confirmation_exclusions_locked_at',
             ])) {
                 throw new RuntimeException(__('merchant_panel.confirmation_exclusions_locked'));
+            }
+
+            $deliveryLocked = $setting->getOriginal('delivery_exclusions_locked_at') !== null;
+
+            if ($deliveryLocked && $setting->isDirty([
+                'delivery_excluded_status_keys',
+                'delivery_exclusions_locked_at',
+            ])) {
+                throw new RuntimeException(__('merchant_panel.delivery_exclusions_locked'));
             }
         });
     }
@@ -96,6 +111,23 @@ class StoreSetting extends Model
     public function confirmationExclusionsLocked(): bool
     {
         return $this->confirmation_exclusions_locked_at !== null;
+    }
+
+    /**
+     * The status keys the store keeps out of the delivery rate. An unset (null)
+     * setting means "exclude nothing".
+     *
+     * @return list<string>
+     */
+    public function excludedDeliveryStatusKeys(): array
+    {
+        return array_values(array_map('strval', $this->delivery_excluded_status_keys ?? []));
+    }
+
+    /** Whether the one-shot delivery exclusions choice has already been made. */
+    public function deliveryExclusionsLocked(): bool
+    {
+        return $this->delivery_exclusions_locked_at !== null;
     }
 
     /* ================= Relations ================= */

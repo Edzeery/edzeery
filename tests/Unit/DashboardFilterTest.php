@@ -286,11 +286,14 @@ it('changes the hash when any filter input changes', function () {
         ->and($hash(['period' => 'custom', 'dateFrom' => '2026-03-01', 'dateTo' => '2026-03-05']))
         ->not->toBe($hash(['period' => 'custom', 'dateFrom' => '2026-03-02', 'dateTo' => '2026-03-05']));
 
-    // D3: the delivery view has no product control, so the product/variant picks
-    // are dropped there, while the carrier pick now takes part in the hash.
+    // PHASE 37-N7 (D1): the delivery view now carries the date basis and the
+    // product/variant picks, so all three take part in the hash alongside the
+    // carrier pick.
     $delivery = ['memberDimension' => 'delivery'];
     expect($hash($delivery + ['carrierId' => null]))->not->toBe($hash($delivery))
-        ->and($hash($delivery + ['productIds' => [$carrier->id]]))->toBe($hash($delivery));
+        ->and($hash($delivery + ['dateBasis' => DashboardFilter::DATE_BASIS_LAST_STATUS]))->not->toBe($hash($delivery))
+        ->and($hash($delivery + ['productIds' => [$carrier->id]]))->not->toBe($hash($delivery))
+        ->and($hash($delivery + ['variantIds' => [$carrier->id]]))->not->toBe($hash($delivery));
 });
 
 it('gives an identical filter the same hash and separates different ones', function () {

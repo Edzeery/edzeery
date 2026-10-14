@@ -70,10 +70,18 @@ final class DashboardOrderScope
             return;
         }
 
-        $query->where(function ($window) use ($from, $to) {
-            $window->whereBetween('orders.confirmation_status_changed_at', [$from, $to])
-                ->orWhere(function ($unstamped) use ($from, $to) {
-                    $unstamped->whereNull('orders.confirmation_status_changed_at')
+        // PHASE 37-N7 (D1): the Delivery view's "last status" axis is the
+        // order's own last transition (orders.last_status_changed_at, stamped on
+        // creation and on every move); Confirmation keeps its confirmation-
+        // attempt axis. Both share the same unstamped fallback to created_at.
+        $column = $filter->memberDimension === 'delivery'
+            ? 'orders.last_status_changed_at'
+            : 'orders.confirmation_status_changed_at';
+
+        $query->where(function ($window) use ($from, $to, $column) {
+            $window->whereBetween($column, [$from, $to])
+                ->orWhere(function ($unstamped) use ($from, $to, $column) {
+                    $unstamped->whereNull($column)
                         ->whereBetween('orders.created_at', [$from, $to]);
                 });
         });
@@ -114,11 +122,20 @@ final class DashboardOrderScope
     }
 
     /**
-     * Delivery charts answer questions about shipped orders, so their cohort
-     * is orders carrying at least one tracking row for this store. Existence
-     * is enough: a re-shipped order with several attempts is still one order.
+     * PHASE 37-N9 — the Delivery view's single cohort: an order handed to a
+     * shipping company, i.e. one carrying at least one tracking row for this
+     * store. Every delivery block walks it, so the count tab, the rate, the
+     * per-status breakdown, the trend and the team table all describe the same
+     * "sent to a carrier" set instead of the whole order ledger.
+     *
+     * Existence is enough: a re-shipped order with several attempts is still one
+     * order. The cohort is deliberately status-agnostic — a tracked order that
+     * was later canceled or came back undeliverable still belongs to the
+     * delivery story, and the store's exclusions are what keep such keys out of
+     * the rate. A carrier merely chosen on a ready-to-ship order (a provider
+     * without a tracking row) is not yet delivered, so it stays out.
      */
-    public function trackedOnly(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
+    public function deliveryCohort(EloquentBuilder|QueryBuilder $query, DashboardFilter $filter): void
     {
         $query->whereExists(function ($sub) use ($filter) {
             $sub->selectRaw('1')

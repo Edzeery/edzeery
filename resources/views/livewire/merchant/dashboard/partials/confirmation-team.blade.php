@@ -4,11 +4,6 @@
      explanatory tooltip and never enter the rate (D7); the without/with-trash
      toggle only decides which members are named. --}}
 @php
-    // D3: the same one-colour-per-group map as the cards, doughnut and trend.
-    $groupDot = array_map(
-        static fn (string $token): string => 'bg-'.$token,
-        config('analytics.group_colors'),
-    );
 
     // D3 (team cards): the four core groups always read; the rarer buckets only
     // appear on a row that actually carries them, so a card never lists a wall
@@ -185,7 +180,8 @@
                                 @endphp
                                 <div class="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                                     <span class="flex min-w-0 flex-1 items-center gap-2">
-                                        <span class="h-2 w-2 shrink-0 rounded-full {{ $groupDot[$key] }}"></span>
+                                        {{-- PHASE 37-N3: inline style from the one config map, never a dynamic class. --}}
+                                        <span class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ \App\Domains\Analytics\Support\GroupColor::css($key) }}"></span>
                                         <span class="truncate text-sm text-ink-muted">{{ __("dashboard.group_{$key}") }}</span>
                                     </span>
                                     <span class="w-10 shrink-0 text-center text-base font-semibold text-ink tabular-nums">{{ $g['total'] }}</span>

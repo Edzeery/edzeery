@@ -43,15 +43,31 @@ final class DashboardFilterFactory
         $productIds = $this->resolveIdList($input['productIds'] ?? null);
         $variantIds = $this->resolveIdList($input['variantIds'] ?? null);
 
-        // D3: a filter without a control in the active view is dropped from the
-        // DTO (the Livewire property keeps its value, so switching view restores
-        // it). Confirmation has no carrier picker; delivery has no product picker
-        // and always answers on the order's own creation date.
-        if ($memberDimension === 'delivery') {
+        // D3/D4: a filter without a control in the active view is dropped from
+        // the DTO (the Livewire property keeps its value, so switching view
+        // restores it). Top is the executive view: it answers on the period
+        // alone, so every refinement is dropped and the member scope opens to
+        // the whole store.
+        //
+        // PHASE 37-N7 (D1): Delivery now keeps the date basis and the product
+        // pick like Confirmation, and still owns the carrier pick; Confirmation
+        // keeps dropping the carrier.
+        $isTopView = ($input['view'] ?? null) === 'top';
+
+        if ($isTopView) {
+            $memberId = null;
+            // Keep the requested dimension (confirmation vs delivery) so the
+            // team queries still pick the right metric and grouping key; the
+            // dimension itself filters nothing here.
+            $memberDimension = ($input['memberDimension'] ?? null) === 'delivery' ? 'delivery' : 'confirmation';
+            $memberScopeIds = null;
+            $memberLocked = false;
+            $memberUnattributedOnly = false;
+            $carrierId = null;
+            $dateBasis = DashboardFilter::DATE_BASIS_CREATED;
             $productIds = null;
             $variantIds = null;
-            $dateBasis = DashboardFilter::DATE_BASIS_CREATED;
-        } else {
+        } elseif ($memberDimension !== 'delivery') {
             $carrierId = null;
         }
 

@@ -167,7 +167,7 @@ function tpfRename(StoreMembership $membership, string $name): void
     User::query()->whereKey($membership->user_id)->update(['name' => $name]);
 }
 
-test('the delivery view counts workload by the newest tracking member and credit by the confirmer', function () {
+test('the delivery view counts workload and credit by the newest tracking member', function () {
     [$user, $store] = tpfStore();
 
     $alpha = tpfMembership($store, null, StoreRoleEnum::STAFF);
@@ -197,7 +197,7 @@ test('the delivery view counts workload by the newest tracking member and credit
         ->and(tpfRow($html, __('dashboard.team_total')))->not->toBe([]);
 });
 
-test('credit follows the confirmer, workload counts the tracking member once', function () {
+test('the delivery view credits the member whose tracking shipped the order', function () {
     [$user, $store] = tpfStore();
 
     $alpha = tpfMembership($store, null, StoreRoleEnum::STAFF);
@@ -207,9 +207,9 @@ test('credit follows the confirmer, workload counts the tracking member once', f
 
     $alphaConfirmed = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::CONFIRMED), 'assigned_to_membership_id' => $alpha->id, 'confirmed_by_membership_id' => $alpha->id]);
     $alphaDelivered = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::DELIVERED), 'total_amount' => 300, 'assigned_to_membership_id' => $alpha->id, 'confirmed_by_membership_id' => $alpha->id]);
-    // Confirmed by Alpha but shipped through Gamma's port: the money and the
-    // delivery credit stay with Alpha (§ 11 has no delivered_by); Gamma only
-    // carries the workload for the handling.
+    // Confirmed by Alpha but shipped through Gamma's port: PHASE 37-N9 gives the
+    // delivery credit (delivered, money) to the shipper whose newest tracking
+    // row carried it, so Gamma owns this one and Alpha never sees it.
     $pivot = tpfOrder($store, ['status_id' => tpfStatus(OrderStatus::DELIVERED), 'total_amount' => 700, 'confirmed_by_membership_id' => $alpha->id]);
 
     tpfTracking($store, $alphaConfirmed, $alpha, '01J000000000000000000002AA');
@@ -218,8 +218,10 @@ test('credit follows the confirmer, workload counts the tracking member once', f
 
     $html = tpfHtml($user, $store);
 
-    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '2', '0', '1', '67%', '0%', '1,000.00 DZD'])
-        ->and(tpfRow($html, 'Gamma'))->toBe(['Gamma', '1', '0', '0', '0', '0%', '0%', '0.00 DZD']);
+    // Alpha shipped two, delivered one: 1/2 = 50%.
+    expect(tpfRow($html, 'Alpha'))->toBe(['Alpha', '2', '1', '0', '1', '50%', '0%', '300.00 DZD'])
+        // Gamma shipped one and delivered it: 1/1 = 100%.
+        ->and(tpfRow($html, 'Gamma'))->toBe(['Gamma', '1', '1', '0', '0', '100%', '0%', '700.00 DZD']);
 });
 
 test('a tracking-only member is named on the delivery view', function () {

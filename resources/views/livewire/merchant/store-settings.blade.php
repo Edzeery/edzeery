@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Analytics\Support\ConfirmationStatsGroups;
+use App\Domains\Analytics\Support\DeliveryStatsGroups;
 use App\Enums\Store\StorePermissionEnum;
 use App\Models\Stores\Store;
 use App\Models\Stores\StoreSetting;
@@ -36,6 +37,8 @@ state([
     'max_order_qty' => null,
     'confirmation_excluded_status_keys' => [],
     'confirmation_exclusions_locked' => false,
+    'delivery_excluded_status_keys' => [],
+    'delivery_exclusions_locked' => false,
 ]);
 
 mount(function (): void {
@@ -65,6 +68,10 @@ mount(function (): void {
     if (Schema::hasColumn('store_settings', 'confirmation_excluded_status_keys')) {
         $this->confirmation_excluded_status_keys = $settings->excludedConfirmationStatusKeys();
         $this->confirmation_exclusions_locked = $settings->confirmationExclusionsLocked();
+    }
+    if (Schema::hasColumn('store_settings', 'delivery_excluded_status_keys')) {
+        $this->delivery_excluded_status_keys = $settings->excludedDeliveryStatusKeys();
+        $this->delivery_exclusions_locked = $settings->deliveryExclusionsLocked();
     }
 });
 
@@ -184,6 +191,46 @@ $saveConfirmationExclusions = function (): void {
     $this->confirmation_exclusions_locked = true;
     $this->dispatch('swal', type: 'success', title: __('merchant_panel.confirmation_exclusions_saved'));
 };
+
+$saveDeliveryExclusions = function (): void {
+    abort_unless(canStore(StorePermissionEnum::STORE_UPDATE->value), 403);
+
+    $store = currentStore();
+    abort_unless($store, 404);
+
+    if (! Schema::hasColumn('store_settings', 'delivery_excluded_status_keys')) {
+        return;
+    }
+
+    // PHASE 37-N7 (D4): independent of the confirmation choice, and a one-shot
+    // one: the first save (even an empty list) freezes the columns at the model.
+    if ($this->delivery_exclusions_locked || $store->settings?->deliveryExclusionsLocked()) {
+        $this->delivery_exclusions_locked = true;
+        $this->dispatch('swal', type: 'error', title: __('merchant_panel.delivery_exclusions_locked'));
+
+        return;
+    }
+
+    $this->validate([
+        'delivery_excluded_status_keys' => ['array'],
+        'delivery_excluded_status_keys.*' => ['string', Rule::in(DeliveryStatsGroups::excludableKeys())],
+    ]);
+
+    try {
+        $store->settings()->updateOrCreate([], [
+            'delivery_excluded_status_keys' => array_values(array_unique($this->delivery_excluded_status_keys ?? [])),
+            'delivery_exclusions_locked_at' => now(),
+        ]);
+    } catch (\RuntimeException $e) {
+        $this->delivery_exclusions_locked = true;
+        $this->dispatch('swal', type: 'error', title: $e->getMessage());
+
+        return;
+    }
+
+    $this->delivery_exclusions_locked = true;
+    $this->dispatch('swal', type: 'success', title: __('merchant_panel.delivery_exclusions_saved'));
+};
 ?>
 
 <div x-data="{ activeTab: 'branding' }">
@@ -206,6 +253,7 @@ $saveConfirmationExclusions = function (): void {
                             'inventory'  => ['icon' => 'cube',          'label' => __('merchant_panel.inventory_group')],
                             'languages'  => ['icon' => 'language',      'label' => __('merchant_panel.languages')],
                             'confirmation' => ['icon' => 'funnel',      'label' => __('merchant_panel.confirmation_exclusions')],
+                            'delivery'     => ['icon' => 'truck',       'label' => __('merchant_panel.delivery_exclusions')],
                         ];
                     @endphp
                     @foreach ($tabs as $tabKey => $tab)
@@ -574,6 +622,71 @@ $saveConfirmationExclusions = function (): void {
                                             <button type="button" class="edz-btn edz-btn--primary"
                                                 x-on:click="confirming = false; $wire.saveConfirmationExclusions()">
                                                 {{ __('merchant_panel.confirmation_exclusions_confirm') }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Tab: Delivery rate exclusions (PHASE 37-N7, D4). Independent
+                     from the confirmation set: the two rates answer different
+                     questions. One-shot, like the confirmation pair. --}}
+                <div x-show="activeTab === 'delivery'" x-transition>
+                    <div class="edz-card edz-card--padded">
+                        <h3 class="text-base font-semibold text-ink mb-2 flex items-center gap-2">
+                            <x-edz.icon name="truck" class="w-5 h-5 text-accent-500" />
+                            {{ __('merchant_panel.delivery_exclusions') }}
+                        </h3>
+                        <p class="text-sm text-ink-muted mb-5">{{ __('merchant_panel.delivery_exclusions_desc') }}</p>
+
+                        @if ($delivery_exclusions_locked)
+                            <div class="flex items-start gap-2 rounded-xl border border-surface-border bg-surface-secondary/50 p-4 mb-4">
+                                <x-edz.icon name="lock-closed" class="w-4 h-4 mt-0.5 shrink-0 text-ink-muted" />
+                                <p class="text-sm text-ink-muted">{{ __('merchant_panel.delivery_exclusions_locked_hint') }}</p>
+                            </div>
+                            @if (count($delivery_excluded_status_keys))
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach ($delivery_excluded_status_keys as $key)
+                                        <span class="inline-flex items-center rounded-full bg-danger-surface px-2.5 py-1 text-xs font-semibold text-danger-fg-strong">
+                                            {{ __("status.{$key}") }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-sm text-ink-muted">{{ __('dashboard.outside_rate') }}: —</p>
+                            @endif
+                        @else
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                @foreach (DeliveryStatsGroups::excludableKeys() as $key)
+                                    <label class="flex items-center gap-2 rounded-xl border border-surface-border p-3 cursor-pointer transition hover:border-accent-border">
+                                        <x-edz.checkbox wire:model="delivery_excluded_status_keys" value="{{ $key }}" />
+                                        <span class="text-sm text-ink">{{ __("status.{$key}") }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('delivery_excluded_status_keys.*') <p class="text-danger-fg text-xs mt-2">{{ $message }}</p> @enderror
+
+                            <div class="mt-5 flex justify-end" x-data="{ confirming: false }">
+                                <button type="button" class="edz-btn edz-btn--primary" x-on:click="confirming = true">
+                                    <x-edz.icon name="lock-closed" class="w-4 h-4 me-1" />
+                                    {{ __('merchant_panel.delivery_exclusions_confirm') }}
+                                </button>
+
+                                <div x-show="confirming" x-transition.opacity
+                                     class="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+                                    <div class="w-full max-w-md rounded-2xl border border-surface-border bg-surface p-6 shadow-card" x-on:click.outside="confirming = false">
+                                        <h4 class="text-base font-semibold text-ink">{{ __('merchant_panel.delivery_exclusions_confirm_title') }}</h4>
+                                        <p class="mt-2 text-sm text-ink-muted">{{ __('merchant_panel.delivery_exclusions_confirm_text') }}</p>
+                                        <div class="mt-5 flex justify-end gap-2">
+                                            <button type="button" class="edz-btn" x-on:click="confirming = false">
+                                                {{ __('buttons.cancel') }}
+                                            </button>
+                                            <button type="button" class="edz-btn edz-btn--primary"
+                                                x-on:click="confirming = false; $wire.saveDeliveryExclusions()">
+                                                {{ __('merchant_panel.delivery_exclusions_confirm') }}
                                             </button>
                                         </div>
                                     </div>

@@ -88,4 +88,7 @@ return [
     'postponed' => 'Postponed',
     'out_of_stock' => 'Out of stock',
     'duplicate' => 'Duplicate',
+    'wrong_number' => 'Wrong number',
+    'undeliverable' => 'Undeliverable',
+    'unclaimed' => 'Unclaimed',
 ];

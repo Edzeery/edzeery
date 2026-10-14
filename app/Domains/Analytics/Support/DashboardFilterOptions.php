@@ -48,8 +48,13 @@ final class DashboardFilterOptions
      * The members a stats tab may name: the store's active members, narrowed to
      * the tab's cohort (§ 11.4) when a dimension is given, so a tracking-only
      * member can never surface in the Confirmation view and vice-versa.
+     *
+     * PHASE 37-N7 (D8): $cohort further narrows the Delivery team section to the
+     * confirmation team (all / with / without).
+     *
+     * @param  string|null  $cohort  DashboardMemberCohort::COHORT_*.
      */
-    public function members(?StoreMembership $current, ?string $dimension = null, bool $includeTrashed = false): Collection
+    public function members(?StoreMembership $current, ?string $dimension = null, bool $includeTrashed = false, ?string $cohort = null): Collection
     {
         if (! $current || ! $current->is_active) {
             return collect();
@@ -77,6 +82,7 @@ final class DashboardFilterOptions
             : $query->where('is_active', true);
 
         app(DashboardMemberCohort::class)->constrain($query, $dimension);
+        app(DashboardMemberCohort::class)->constrainConfirmationCohort($query, $cohort);
 
         if ($hasTeamView) {
             // all
@@ -122,8 +128,9 @@ final class DashboardFilterOptions
 
         // The sentinel cohort is always a store-wide option, but its label
         // follows the active key (PHASE 37-M, D1): on Confirmation the key is
-        // the assignment, so it reads «غير مُسنَدة» (no work); on Delivery the
-        // key is the financial credit, so it reads «بلا رصيد» (no credit).
+        // the assignment, so it reads «غير مُسنَدة» (no work); on Delivery
+        // (PHASE 37-N9) the key is the shipping member, so it reads
+        // «بلا رصيد» (shipped by nobody the store can name).
         $options[] = [
             'value' => DashboardFilter::UNATTRIBUTED,
             'label' => $dimension === 'delivery'

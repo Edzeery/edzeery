@@ -1,13 +1,14 @@
 {{-- Confirmation KPI row (PHASE 37-L split, de-duplicated in 37-M2): the
      confirmation rate from the one report, and the live pending queue — which
-     now carries the awaiting-confirmation count as a badge in its own header,
-     so the count is not repeated in a second card. --}}
+     carries the awaiting-confirmation count as a badge in its own header, so the
+     count is not repeated in a second card. PHASE 37-N5: this row belongs to the
+     Confirmation tab and is gated by that tab's permission, not STATS_TOP_KPIS. --}}
 @php
     $showPendingCard = $canConfirm;
 @endphp
-@if ($canTopKpis || $showPendingCard)
+@if ($canConfirmStats || $showPendingCard)
 <div class="edz-stagger grid grid-cols-1 gap-4 mb-6 lg:grid-cols-3">
-    @if ($canTopKpis)
+    @if ($canConfirmStats)
     {{-- Confirmation Rate — the one home of the rate and its badge. --}}
     @php
         $confRate = (int) ($confirmationStats['rate'] ?? 0);
@@ -38,7 +39,7 @@
     </div>
     @endif
     @if ($showPendingCard)
-    <div @class(['lg:col-span-2', 'lg:col-span-3' => ! $canTopKpis])>
+    <div @class(['lg:col-span-2', 'lg:col-span-3' => ! $canConfirmStats])>
         @include('livewire.merchant.dashboard.partials.pending-orders')
     </div>
     @endif

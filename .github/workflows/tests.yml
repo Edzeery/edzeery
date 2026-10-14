@@ -29,6 +29,15 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/composer
+            ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -43,8 +52,20 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      # tee the run so the exact failure output survives into test-output.log;
+      # pipefail keeps the step's exit code that of the tests, not of tee.
       - name: Run the suite
-        run: php artisan test
+        run: |
+          set -o pipefail
+          php artisan test 2>&1 | tee test-output.log
+
+      - name: Upload test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-sqlite-output
+          path: test-output.log
+          if-no-files-found: ignore
 
   mysql:
     name: Pest (MySQL 8)
@@ -80,6 +101,15 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/composer
+            ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -97,6 +127,16 @@ jobs:
       # phpunit.mysql.xml pins the host, port, database and APP_DOMAIN, and the
       # service above runs root with an empty password, so no secrets are
       # needed. Run it through Pest directly — the artisan test wrapper does not
-      # forward a custom PHPUnit config.
+      # forward a custom PHPUnit config. tee keeps the failure output for upload.
       - name: Run the analytics suite on MySQL 8
-        run: vendor/bin/pest -c phpunit.mysql.xml
+        run: |
+          set -o pipefail
+          vendor/bin/pest -c phpunit.mysql.xml 2>&1 | tee test-output.log
+
+      - name: Upload test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-mysql-output
+          path: test-output.log
+          if-no-files-found: ignore

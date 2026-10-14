@@ -20,10 +20,18 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
+    // PHASE 37-N6: pin the clock mid-day so the default "today" window is
+    // deterministic for orders created with an implicit created_at.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
     $this->seed(SystemStatusesSeeder::class);
     $this->seed(PlansSeeder::class);
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
 });
 
 function csqUser(): User

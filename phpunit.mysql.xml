@@ -33,6 +33,8 @@
             <file>tests/Feature/Merchant/DashboardConfirmationSectionTest.php</file>
             <file>tests/Feature/Merchant/DashboardConfirmationTeamTest.php</file>
             <file>tests/Feature/Merchant/DashboardChartsPerViewTest.php</file>
+            <file>tests/Feature/Merchant/GroupColorDotsTest.php</file>
+            <file>tests/Feature/Merchant/ConfirmationTrendCurveTest.php</file>
             <file>tests/Feature/Merchant/DashboardAnalyticsTimezoneTest.php</file>
             <file>tests/Feature/Merchant/DashboardAnalyticsServiceTest.php</file>
             <file>tests/Feature/Merchant/DashboardQueryBudgetTest.php</file>

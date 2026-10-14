@@ -272,3 +272,25 @@
 - **T7 (اختبارات):** `DashboardDesignContrastTest` (3) يحسب التباين من `resources/css/app.css`: كل لون مجموعة ≥3:1 وكل توكن نص ≥4.5:1 (فاتح)، ونص الوضع الداكن ≥4.5:1؛ اختبار الحرس أُضيف إليه منع `text-ink-muted/`/`text-ink-soft/`/`text-ink/`؛ legend `<bdi>` وقواعد بطاقة الفريق (إخفاء الصفوف/الشرائح الصفرية) في `DashboardChartsPerViewTest` و`DashboardConfirmationTeamTest`.
 - **التحقق:** `--filter="Dashboard"` **161 نجاحًا (1013 تأكيدًا)**؛ `--filter="Confirmation"` **83**؛ `tests/Unit` **145**؛ `pint --test` نظيف على كل الملفات المعدّلة. تحديث اختبارات الاتجاه (7 series بدل received/confirmed/canceled/failed) في `DashboardFilterTest`/`DashboardAnalyticsTimezoneTest`/`DashboardChartsPerViewTest`.
 - **معايير القبول المتبقية:** المراجعة البصرية للقطات 375/768/1440 (RTL/LTR، فاتح/داكن) بيد المستخدم؛ تشغيل الـworkflow فعليًا في GitHub.
+
+### 37-N3 — ألوان نقاط المجموعات inline بدل الأصناف الديناميكية (منفّذ ومُعتمد بصريًا، 2026-10-13)
+- **`GroupColor`** (جديد، `app/Domains/Analytics/Support/GroupColor.php`): `token()` يعيد توكن المجموعة و`css()` يعيد `rgb(var(--edz-color-<token>))`، بمصدر واحد `config('analytics.group_colors')` وبقيمة احتياطية `currentColor`.
+- **القوالب:** `charts.blade.php` (`$dotFor`) و`confirmation-stats.blade.php` و`confirmation-team.blade.php` تستخدم `style="background-color: …"`؛ اختفى `$groupDot` وكل تركيب `'bg-'.$token` من قوالب التأكيد.
+- **الاختبارات:** `Unit/GroupColorTest` (مطابقة css لكل مجموعة + تعريف كل توكن في `app.css`) و`Feature/Merchant/GroupColorDotsTest` (البطاقات/legend/الفريق inline، مشاركة القيمة، واختبار مسح يمنع `'bg-'` في قوالب الداشبورد).
+- **التحقق:** Unit 2، Feature 3 (SQLite + MySQL)، بلا انحدار (`--filter="Dashboard"` 163)؛ `pint --test` نظيف.
+
+### 37-N4 — منحنيات ناعمة لاتجاه التأكيد (منفّذ، ومُعتمد بصريًا 375/768/1440، 2026-10-13)
+- **التأكيد:** صار `type:'line'` بـ`cubicInterpolationMode:'monotone'` (بلا `tension`؛ Chart.js 4.5.1 يتجاهله مع monotone)، وحُذف `stackedBars` نهائيًا. أُضيف **شريط الإجمالي المشتق في JS** (`_isTotal:true`، `order:-1`، `fill` خفيف، `pointRadius:0`) بلا أي تعديل استعلام/حمولة.
+- **التفاعل:** `interaction {mode:'index',intersect:false}` للتأكيد مع `tooltip.filter` يستثني شريط الإجمالي و`footer` يحسب المجموع؛ وسيلة إيضاحية تفاعلية للتأكيد فقط (`setDatasetVisibility` + `aria-pressed` + `opacity-40`) مع إعادة تطبيق الحالة بعد إعادة الرسم (تبديل الثيم). **التوصيل بلا تغيير حرفي**.
+- **حالة الصفر:** نافذة تأكيد كل قيمها صفر ⇒ لوحة «لا بيانات» بدل محور فارغ (`$trendHasValues`/`$showTrend`)؛ التوصيل يبقى كما هو.
+- **الاختبارات:** `ConfirmationTrendCurveTest` (جديد، 3) يفحص المصدر (`monotone`/`_isTotal`/حارس فروع التوصيل/غياب `stackedBars`) والسلوك (صفر-التأكيد مقابل محور التوصيل، ظهور الكانفس عند وجود قيمة)؛ تحديث الكتلتين 3 و5 في `DashboardChartsPerViewTest`؛ أُضيف الملف إلى `phpunit.mysql.xml`.
+- **التحقق:** `--filter="Dashboard"` **163 نجاحًا (1059 تأكيدًا)**؛ `ConfirmationTrendCurveTest` (SQLite+MySQL) 3؛ `pint --test` نظيف. المراجعة البصرية 375/768/1440 (RTL/LTR، فاتح/داكن) أقرّها المستخدم.
+
+### 37-N5 — تقسيم الداشبورد إلى ثلاث تابات رئيسية (منفّذ آليًا، بانتظار المراجعة البصرية، 2026-10-13)
+- **الحالة (مصدر واحد):** `#[Url(as:'t')] public ?string $tab` هو المرجع؛ `activeTab()` يتحقق من `permittedTabs()` ثم من البذرة القديمة `#[Url(as:'md')] $memberDimension` ثم أول تاب مسموح. `setTab()` يمسح البذرة والمُحدَّد وبحث الفريق. `resetFilters()` يمسح `$tab` أيضًا. الـtablist يُرسم عند **≥2 تاب مسموح** فقط، وإلا عنوان `<h1>`.
+- **الصلاحيات (D1):** confirmation = `ORDER_CONFIRM || STATS_CONFIRMATION`؛ delivery = `STATS_DELIVERY`؛ top = `STATS_TOP_KPIS`. الترتيب: confirmation, delivery, top.
+- **العروض:** `kpi-top` (البطاقات الأربع: إجمالي/عائد/معدل إرجاع/AOV) + `top-members` (قائمتا أفضل المؤكّدين/المسلّمين، top-5 في الـpartial) للتاب top؛ بلا مخططات. التاب delivery يفقد صفّ KPIs (انتقل إلى top) وdate-basis/product. التأكيد يحتفظ بمنطق count/rate (أُعيد زرّ التحويل الداخلي في `dashboard.blade.php`).
+- **الفلاتر (D4):** المصنع يقرأ `view`؛ `view=top` يصفّر carrier/dateBasis/product/member scope/dimension-attribution ويُبقي مقياس العضو الصحيح. الـpartial يقيّد الضوابط (carrier: delivery، date-basis/product: confirmation، member: confirmation|delivery). حُذفت راديوات dimension وشريحة الـdimension.
+- **الحجب/الحذف:** حُذف `kpi-delivery.blade.php`؛ قائمة best- أعضاء تُبنى من `confirmationTeam()`/`teamPerformance()` مع `$topFilter` مطابق للتاب؛ تُخفى إن كان العضو مقفولًا أو العدد ≤1.
+- **الاختبارات:** أُعيدت كتابة كتل 37-E في `DashboardFilterWiringTest` (أسerts التابات بحسب `wire:click="setTab('…')"`، `wire:target` يضم `setTab`، legacy `md`، AOV في top عبر `?t=top`). لم تُمس اختبارات `?md=`/`?ct=` الحالية.
+- **التحقق:** `--filter="Dashboard"` **97 نجاحًا (760 تأكيدًا)**؛ `--filter="Confirmation"` **57**؛ MySQL `-c phpunit.mysql.xml` **145 نجاحًا، 9 متجاوزة**؛ `pint --test` نظيف على كل الملفات المعدّلة. **معايير القبول المتبقية:** المراجعة البصرية 375/768/1440 (RTL/LTR، فاتح/داكن، تنقّل لوحة المفاتيح) بيد المستخدم.

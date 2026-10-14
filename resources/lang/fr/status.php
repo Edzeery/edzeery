@@ -88,4 +88,7 @@ return [
     'postponed' => 'Reporté',
     'out_of_stock' => 'Rupture de stock',
     'duplicate' => 'Doublon',
+    'wrong_number' => 'Numéro erroné',
+    'undeliverable' => 'Impossible à livrer',
+    'unclaimed' => 'Non réclamé',
 ];

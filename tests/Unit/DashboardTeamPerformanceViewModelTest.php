@@ -215,6 +215,47 @@ it('sums the total across exactly the rows it shows', function () {
     ]);
 });
 
+it('carries the two return states and a net delivery rate on the delivery view', function () {
+    $rows = tpPresent(
+        // PHASE 37-N9: Delivery never reads the credit side, so every figure
+        // (delivered, returned, money) arrives on the work row.
+        [],
+        [tpWork('m1', [
+            'assigned' => 4,
+            'delivered' => 2,
+            'returned' => 1,
+            'returned_coming' => 4,
+            'returned_processed' => 2,
+        ])],
+        tpFilter(['memberDimension' => 'delivery', 'memberScopeIds' => ['m1']]),
+        ['m1' => 'Amir'],
+    );
+
+    expect($rows[0])->toMatchArray([
+        'delivered' => 2,
+        'returned' => 1,
+        'returned_coming' => 4,
+        'returned_processed' => 2,
+        // Of the four orders the member shipped, two were delivered.
+        'delivery_rate' => 50,
+        // Of the three settled outcomes, one came back.
+        'return_rate' => 33,
+        'delivery_rate_net' => 67,
+    ]);
+});
+
+it('keeps the two return states at zero on the confirmation view', function () {
+    $rows = tpPresent(
+        [tpCredit('m1', ['confirmed' => 2])],
+        [tpWork('m1', ['assigned' => 2, 'returned_coming' => 5, 'returned_processed' => 1])],
+        tpFilter(['memberScopeIds' => ['m1']]),
+        ['m1' => 'Amir'],
+    );
+
+    expect($rows[0]['returned_coming'])->toBe(0)
+        ->and($rows[0]['returned_processed'])->toBe(0);
+});
+
 it('keeps the selected member as a zero row when the period is empty for them', function () {
     $rows = tpPresent(
         [],

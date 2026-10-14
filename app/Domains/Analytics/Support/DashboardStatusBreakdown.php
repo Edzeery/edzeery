@@ -40,7 +40,7 @@ final class DashboardStatusBreakdown
             ->whereNull('orders.deleted_at');
 
         if ($delivery) {
-            $this->scope->trackedOnly($query, $filter);
+            $this->scope->deliveryCohort($query, $filter);
         }
 
         $this->scope->apply($query, $filter);

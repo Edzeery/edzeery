@@ -9,9 +9,9 @@
     ];
 
     // The stats view is chosen by permission, not by whether a member is selected.
-    $canConfirmStats = $canConfirm || $canStatsConfirmation;
-    $canSwitchStatsView = $canConfirmStats && $canStatsDelivery;
-    $defaultDimension = $canConfirmStats ? 'confirmation' : 'delivery';
+    // The carrier filter belongs to the delivery view only (D4); the date basis
+    // and the product filter are confirmation-view refinements. The Top view has
+    // no refinements at all — only the period applies.
 
     $activeCarrier = $filter->carrierId
         ? $filterOptions['carriers']->firstWhere('id', $filter->carrierId)
@@ -24,25 +24,16 @@
         ? $filterOptions['members']->firstWhere('id', $filter->memberId)
         : null;
 
-    $dimensionLabel = $filter->memberDimension
-        ? __("dashboard.dimension_{$filter->memberDimension}")
-        : null;
+    $hasBasisAndProducts = $isConfirmationView || $isDeliveryView;
 
-    // Only worth a chip once it differs from what this user would get anyway.
-    $dimensionIsOverridden = $filter->memberDimension !== null
-        && $filter->memberDimension !== $defaultDimension;
-
-    // The carrier filter belongs to the delivery view only (D4); the date basis
-    // and the product filter are confirmation-view refinements.
-    $dateBasisDiffers = ! $isDeliveryView
+    $dateBasisDiffers = $hasBasisAndProducts
         && $filter->dateBasis !== \App\Domains\Analytics\DTOs\DashboardFilter::DATE_BASIS_CREATED;
-    $productsSelected = ! $isDeliveryView && count($filter->productIds ?? []) > 0;
+    $productsSelected = $hasBasisAndProducts && count($filter->productIds ?? []) > 0;
 
     $hasActiveFilters = $filter->period !== 'today'
         || filled($activeCarrier)
         || filled($activeMember)
         || $unattributedSelected
-        || $dimensionIsOverridden
         || $dateBasisDiffers
         || $productsSelected;
 @endphp
@@ -130,8 +121,8 @@
             </div>
         @endif
 
-        {{-- Product filter: confirmation view only. --}}
-        @if (! $isDeliveryView)
+        {{-- Product filter: Confirmation and Delivery (PHASE 37-N7, D1). --}}
+        @if ($isConfirmationView || $isDeliveryView)
             <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
                 <label class="edz-label" for="dashboard-product-filter">{{ __('dashboard.filter_products') }}</label>
                 <button type="button" id="dashboard-product-filter" wire:click="openProductFilter"
@@ -147,7 +138,7 @@
         @endif
 
         @unless ($filter->memberLocked)
-            @if ($filterOptions['memberOptions'])
+            @if (($isConfirmationView || $isDeliveryView) && $filterOptions['memberOptions'])
                 <div class="flex flex-col gap-1 w-full sm:w-auto min-w-[15rem] md:min-w-[14rem]">
                     <label class="edz-label" for="dashboard-member">{{ __('dashboard.filter_member') }}</label>
                     <x-edz.select
@@ -161,8 +152,9 @@
             @endif
         @endunless
 
-        {{-- Date basis: confirmation view only (orders.created_at vs last status change). --}}
-        @if (! $isDeliveryView)
+        {{-- Date basis: Confirmation and Delivery (orders.created_at vs last
+             status change). PHASE 37-N7 (D1) extended it to Delivery. --}}
+        @if ($isConfirmationView || $isDeliveryView)
             <div class="flex flex-col gap-1 w-full sm:w-auto">
                 <span class="edz-label">{{ __('dashboard.date_basis') }}</span>
                 <div class="flex items-center gap-3 px-3 py-2 rounded-md border border-surface-border bg-surface">
@@ -185,31 +177,9 @@
             </div>
         @endif
 
-        {{-- Anyone who can read both sides of the dashboard switches the whole
-             view; anyone who can read only one gets a fixed badge. --}}
-        @if ($canSwitchStatsView)
-            <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <span class="edz-label">{{ __('dashboard.stats_view') }}</span>
-                <div class="flex items-center gap-3 px-3 py-2 rounded-md border border-surface-border bg-surface">
-                    @foreach (['confirmation', 'delivery'] as $dimension)
-                        <label class="flex items-center gap-1.5 text-xs text-ink" for="dashboard-dimension-{{ $dimension }}">
-                            <input id="dashboard-dimension-{{ $dimension }}"
-                                   type="radio"
-                                   value="{{ $dimension }}"
-                                   wire:model.live="memberDimension"
-                                   @disabled($dimension === ($filter->memberDimension ?? $defaultDimension))
-                                   class="rounded">
-                            <span>{{ __("dashboard.dimension_{$dimension}") }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            </div>
-        @elseif (filled($dimensionLabel))
-            <div class="flex flex-col gap-1 w-full sm:w-auto">
-                <span class="edz-label">{{ __('dashboard.stats_view') }}</span>
-                <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
-            </div>
-        @endif
+        {{-- Stats views are tabs now (PHASE 37-N5): the switch moved out of the
+             bar into the tab strip above the panel, so no dimension control is
+             rendered here any more. --}}
     </div>
 
     @if ($hasActiveFilters)
@@ -239,10 +209,6 @@
                 </span>
             @endif
 
-            @if ($dimensionIsOverridden)
-                <span class="edz-badge edz-badge--neutral">{{ $dimensionLabel }}</span>
-            @endif
-
             @if ($productsSelected)
                 <span class="edz-badge edz-badge--neutral">{{ count($filter->productIds) }} {{ __('dashboard.products_selected') }}</span>
             @endif
@@ -258,6 +224,6 @@
     @endif
 </div>
 
-@if (! $isDeliveryView)
+@if ($isConfirmationView || $isDeliveryView)
     @include('livewire.merchant.dashboard.partials.product-filter-modal')
 @endif

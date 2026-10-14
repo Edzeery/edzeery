@@ -40,9 +40,9 @@ final class DashboardTrendQuery
         $query = Order::query()->where('store_id', $filter->storeId)->whereNull('deleted_at');
 
         if ($delivery) {
-            // D3: the delivery cohort is orders with a tracking row, counted
-            // once however many attempts they have.
-            $this->scope->trackedOnly($query, $filter);
+            // PHASE 37-N9: the delivery cohort is every order carrying a
+            // tracking row, counted once however many attempts it has.
+            $this->scope->deliveryCohort($query, $filter);
         }
 
         $this->scope->apply($query, $filter);
@@ -114,8 +114,8 @@ final class DashboardTrendQuery
         ]);
 
         return $this->assemble('delivery', $result, [
-            ['key' => 'delivered', 'label' => __('dashboard.series_delivered'), 'hex' => $this->hex($filter->storeId, OrderStatus::DELIVERED), 'axis' => 'y', 'type' => 'bar'],
-            ['key' => 'returned', 'label' => __('dashboard.series_returned'), 'hex' => $this->hex($filter->storeId, OrderStatus::RETURNED), 'axis' => 'y', 'type' => 'bar'],
+            ['key' => 'delivered', 'label' => __('dashboard.series_delivered'), 'hex' => $this->hex($filter->storeId, OrderStatus::DELIVERED), 'axis' => 'y', 'type' => 'line'],
+            ['key' => 'returned', 'label' => __('dashboard.series_returned'), 'hex' => $this->hex($filter->storeId, OrderStatus::RETURNED), 'axis' => 'y', 'type' => 'line'],
             ['key' => 'revenue', 'label' => __('dashboard.series_revenue'), 'hex' => self::ACCENT_TOKEN, 'axis' => 'y1', 'type' => 'line'],
         ]);
     }

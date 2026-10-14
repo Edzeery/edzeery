@@ -1,11 +1,13 @@
 <?php
 
 use App\Domains\Shipping\Models\ShippingProvider;
+use App\Enums\Store\StorePermissionEnum;
 use App\Enums\Store\StoreRoleEnum;
 use App\Models\Orders\Order;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Support\StoreRoles;
+use Carbon\CarbonImmutable;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
@@ -30,10 +32,18 @@ use Spatie\Permission\Models\Role;
 */
 
 beforeEach(function () {
+    // PHASE 37-N6: freeze mid-day so "today" (Africa/Algiers) cannot drift off
+    // an order's implicit created_at while the request is built.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->seed(RolesAndPermissionsSeeder::class);
     $this->seed(StoreRolesAndPermissionsSeeder::class);
     $this->seed(SystemStatusesSeeder::class);
     $this->seed(PlansSeeder::class);
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
 });
 
 /**
@@ -85,6 +95,9 @@ function dfwOrder(Store $store, \App\Models\User $user, ?ShippingProvider $carri
             ->id(\App\Enums\Store\OrderStatus::DELIVERED),
         'delivery_type' => 'home',
         'shipping_provider_id' => $carrier?->id,
+        // PHASE 37-N6: deterministic timestamps for the default "today" window.
+        'created_at' => now(),
+        'updated_at' => now(),
     ]);
 }
 
@@ -176,24 +189,26 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->getContent();
 
     // The bar is included above the KPI region. The default (confirmation) view
-    // drops the carrier control (D4) but keeps member, dimension and date basis.
+    // drops the carrier control (D4) but keeps member and date basis.
     expect($html)
         ->not->toContain(__('dashboard.filter_carrier'))
         ->not->toContain(__('dashboard.all_carriers'))
         ->toContain(__('dashboard.filter_member'))
         ->toContain(__('dashboard.all_members'))
         ->toContain('wire:loading.class')
-        ->toContain('wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension,dateBasis,productIds,teamTrash,teamSearch,setConfirmationTab"');
+        ->toContain('wire:target="period,dateFrom,dateTo,carrierId,memberId,memberDimension,dateBasis,productIds,teamTrash,teamCohort,teamSearch,setConfirmationTab,setDeliveryTab,setTab"');
 
     // OWNER sees the member list, and holds both a confirmation capability and
-    // STATS_DELIVERY, so the stats view switch is offered straight away: it
-    // selects the whole dashboard view, not just member attribution.
+    // STATS_DELIVERY, so all three view tabs are offered: the tab, not a member
+    // pick, selects the whole dashboard view.
     expect($html)
         ->toContain('wire:model.live="memberId"')
         ->not->toContain('wire:model.live="carrierId"')
-        ->toContain('wire:model.live="memberDimension"')
+        ->toContain('wire:click="setTab(\'confirmation\')"')
+        ->toContain('wire:click="setTab(\'delivery\')"')
+        ->toContain('wire:click="setTab(\'top\')"')
         ->toContain('search')
-        ->toContain(__('dashboard.stats_view'));
+        ->toContain(__('dashboard.tab_delivery'));
 
     // The same owner in the delivery view gets the carrier control back.
     $deliveryHtml = $this->actingAs($user)
@@ -218,56 +233,99 @@ test('dashboard renders the filter bar from pre-built options without querying i
         ->not->toContain('dark:');
 });
 
-test('the stats view switch is offered without picking a member first', function () {
+test('the view tabs are offered without picking a member first', function () {
     [$owner, $store] = dfwOwnerStore();
 
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
-    // No member is selected and none is needed: the switch drives the KPI row
-    // and the lists, so it must not wait for a member filter to appear.
+    // No member is selected and none is needed: the view drives the KPI row and
+    // the lists, so its tabs must not wait for a member filter to appear.
     Volt::test('merchant.dashboard')
         ->assertSet('memberId', null)
-        ->assertSeeHtml('wire:model.live="memberDimension"')
-        ->assertSee(__('dashboard.dimension_confirmation'))
-        ->assertSee(__('dashboard.dimension_delivery'));
+        ->assertSeeHtml('wire:click="setTab(\'confirmation\')"')
+        ->assertSeeHtml('wire:click="setTab(\'delivery\')"')
+        ->assertSeeHtml('wire:click="setTab(\'top\')"')
+        ->assertSee(__('dashboard.tab_confirmation'))
+        ->assertSee(__('dashboard.tab_delivery'))
+        ->assertSee(__('dashboard.tab_top'));
 });
 
-test('switching the stats view swaps the KPI row and the lists', function () {
+test('the view tabs lead the page as a centred, icon-led control', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    $html = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug]))
+        ->assertOk()
+        ->getContent();
+
+    // The tabs come before the filter bar: the user picks the lens first, then
+    // narrows it — reversing the old order where the filters led the page.
+    expect(strpos($html, 'id="dashboard-tab-confirmation"'))
+        ->toBeLessThan(strpos($html, 'wire:model.live="memberId"'));
+
+    // Every permitted view is a tab wired to its own panel.
+    expect($html)
+        ->toContain('aria-controls="dashboard-panel-confirmation"')
+        ->toContain('aria-controls="dashboard-panel-delivery"')
+        ->toContain('aria-controls="dashboard-panel-top"');
+
+    $source = file_get_contents(
+        resource_path('views/livewire/merchant/dashboard/partials/tabs.blade.php')
+    );
+
+    expect($source)
+        ->toContain('justify-center')
+        ->toContain("'confirmation' => 'check-circle'")
+        ->toContain("'delivery' => 'truck'")
+        ->toContain("'top' => 'trending-up'")
+        ->not->toContain('dark:')
+        ->not->toContain('gray-');
+});
+
+test('switching the view tab swaps the KPI row and the lists', function () {
     [$owner, $store] = dfwOwnerStore();
 
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
     // Confirmation is the default for a user who can confirm: it leads with the
-    // two actionable states and shows the pending queue.
+    // actionable states and shows the pending queue, never the delivery body.
     Volt::test('merchant.dashboard')
+        ->assertSet('tab', null)
         ->assertSee(__('dashboard.pending_confirmation_count'))
         ->assertSee(__('dashboard.canceled_count'))
         ->assertSee(__('dashboard.pending_confirmation'))
-        ->assertDontSee(__('dashboard.revenue_delivered_in_period'))
-        ->assertDontSee(__('dashboard.delivery_breakdown'));
+        ->assertDontSee(__('dashboard.delivery_breakdown'))
+        ->assertDontSee(__('dashboard.aov'));
 
-    // Switching to delivery replaces both.
+    // Delivery swaps the queue for the delivery-rate cards; the where-are-the-
+    // orders pair moved up to Top (PHASE 37-N7/D5).
     Volt::test('merchant.dashboard')
-        ->set('memberDimension', 'delivery')
-        ->assertSet('memberDimension', 'delivery')
-        ->assertSee(__('dashboard.revenue_delivered_in_period'))
-        ->assertSee(__('dashboard.return_rate'))
-        ->assertSee(__('dashboard.delivery_breakdown'))
+        ->call('setTab', 'delivery')
+        ->assertSet('tab', 'delivery')
+        ->assertSee(__('dashboard.delivery_rate_gross'))
+        ->assertSee(__('dashboard.delivery_stats_title'))
+        ->assertDontSee(__('dashboard.delivery_breakdown'))
         ->assertDontSee(__('dashboard.pending_confirmation_count'))
         ->assertDontSee(__('dashboard.canceled_count'))
         ->assertDontSee(__('dashboard.pending_confirmation'));
 
-    // Back again, proving the switch is not one-way.
+    // Top is the executive board: the four headline cards, the rankings and the
+    // where-are-the-orders pair.
     Volt::test('merchant.dashboard')
-        ->set('memberDimension', 'confirmation')
-        ->assertSee(__('dashboard.pending_confirmation_count'))
-        ->assertDontSee(__('dashboard.delivery_breakdown'));
+        ->call('setTab', 'top')
+        ->assertSet('tab', 'top')
+        ->assertSee(__('dashboard.aov'))
+        ->assertSee(__('dashboard.return_rate'))
+        ->assertSee(__('dashboard.delivery_breakdown'))
+        ->assertDontSee(__('dashboard.pending_confirmation_count'));
 });
 
-test('a user with only the confirmation capability gets a fixed badge, not a switch', function () {
+test('a user with only the confirmation capability gets a heading, not tabs', function () {
     [$owner, $store] = dfwOwnerStore();
 
-    // STAFF carries STATS_CONFIRMATION but not STATS_DELIVERY.
+    // STAFF carries STATS_CONFIRMATION but neither STATS_DELIVERY nor
+    // STATS_TOP_KPIS, so exactly one view is permitted.
     $staff = roleUser('merchant');
     dfwMembership($store, $staff, StoreRoleEnum::STAFF);
 
@@ -277,44 +335,65 @@ test('a user with only the confirmation capability gets a fixed badge, not a swi
         ->assertOk()
         ->getContent();
 
-    // The view is still labelled, just not selectable.
+    // The single view is still labelled, but as a heading with no view tab
+    // strip (the count/rate control is a separate, inner tablist).
     expect($html)
-        ->toContain(__('dashboard.stats_view'))
-        ->toContain(__('dashboard.dimension_confirmation'))
-        ->not->toContain('wire:model.live="memberDimension"');
+        ->toContain(__('dashboard.tab_confirmation'))
+        ->not->toContain('id="dashboard-tab-')
+        ->not->toContain('wire:click="setTab(');
 });
 
-test('the stats view is only chipped once it differs from the user default', function () {
+test('the legacy md seed still selects the view for old links', function () {
     [$owner, $store] = dfwOwnerStore();
 
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
-    // OWNER defaults to confirmation, so asking for confirmation is not an
-    // override and nothing is chipped.
-    expect($this->actingAs($owner)
-        ->withSession(['current_store_id' => $store->id])
-        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'confirmation']))
-        ->assertOk()
-        ->getContent())
-        ->not->toContain(__('dashboard.active_filters'));
-
-    // Delivery is the override, so it is surfaced with a reset affordance.
+    // Pre-37-N5 links selected the whole view with ?md=delivery. The tab now
+    // owns that state, but the old parameter seeds it so the link keeps working.
+    // The delivery view is marked by its own carrier filter (D1).
     expect($this->actingAs($owner)
         ->withSession(['current_store_id' => $store->id])
         ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
         ->assertOk()
         ->getContent())
-        ->toContain(__('dashboard.active_filters'))
-        ->toContain(__('dashboard.dimension_delivery'))
-        ->toContain(__('dashboard.reset_filters'));
+        ->toContain(__('dashboard.filter_carrier'));
 });
 
-test('member select is hidden and the dimension is fixed when the member is locked', function () {
+test('the delivery team section offers a centred search and a cohort pick', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    // The tracking-team controls live on the delivery view (PHASE 37-N7/D8):
+    // a debounced search, a cohort dropdown (all / with / without the
+    // confirmation team) and the trash toggle.
+    $html = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
+        ->assertOk()
+        ->getContent();
+
+    expect($html)
+        ->toContain('wire:model.live.debounce.300ms="teamSearch"')
+        ->toContain('wire:change="setTeamCohort($event.target.value)"')
+        ->toContain('wire:model="teamCohort"')
+        // The cohort options ride inside the custom select's JSON payload.
+        ->toContain(__('dashboard.team_cohort_with'))
+        ->toContain(__('dashboard.team_cohort_without'));
+
+    // The setter narrows to a known cohort and ignores anything else.
+    Volt::test('merchant.dashboard')
+        ->call('setTab', 'delivery')
+        ->call('setTeamCohort', 'with')
+        ->assertSet('teamCohort', 'with')
+        ->call('setTeamCohort', 'not-a-cohort')
+        ->assertSet('teamCohort', 'with');
+});
+
+test('member select is hidden and the carrier stays away when the member is locked', function () {
     [$owner, $store] = dfwOwnerStore();
 
     // STAFF carries neither team-view nor team-view-own, so the factory locks
     // the scope to the current membership. STAFF also lacks STATS_DELIVERY, so
-    // the stats view cannot be switched at all.
+    // the delivery view (and its carrier filter) cannot be opened at all.
     $staff = roleUser('merchant');
     dfwMembership($store, $staff, StoreRoleEnum::STAFF);
 
@@ -326,10 +405,7 @@ test('member select is hidden and the dimension is fixed when the member is lock
 
     expect($html)
         ->not->toContain('wire:model.live="memberId"')
-        ->not->toContain('wire:model.live="memberDimension"')
         ->not->toContain('wire:model.live="carrierId"')
-        // The locked dimension is still reported, just not selectable.
-        ->toContain(__('dashboard.dimension_confirmation'))
         // D4: the carrier filter is part of the delivery view only, so a
         // locked, confirmation-only user never sees it.
         ->not->toContain(__('dashboard.filter_carrier'));
@@ -509,26 +585,64 @@ test('member select options follow the existing scope rules and hint the role', 
         ->toBe(['', \App\Domains\Analytics\DTOs\DashboardFilter::UNATTRIBUTED]);
 });
 
-test('the aov card lives only in the delivery KPI row', function () {
+test('the delivery team cohort pick names exactly the tracking-only members', function () {
+    [$owner, $store] = dfwOwnerStore();
+
+    // Three STAFF members that differ only by which workflow they belong to.
+    $confirmer = dfwMembership($store, roleUser('merchant'), StoreRoleEnum::STAFF);
+    $confirmer->syncPermissions([StorePermissionEnum::ORDER_CONFIRM->value]);
+
+    $tracker = dfwMembership($store, roleUser('merchant'), StoreRoleEnum::STAFF);
+    $tracker->syncPermissions([StorePermissionEnum::CRM_ORDER_TRACKING->value]);
+
+    $both = dfwMembership($store, roleUser('merchant'), StoreRoleEnum::STAFF);
+    $both->syncPermissions([
+        StorePermissionEnum::ORDER_CONFIRM->value,
+        StorePermissionEnum::CRM_ORDER_TRACKING->value,
+    ]);
+
+    $ownerMembership = $store->memberships()->where('user_id', $owner->id)->first();
+    $options = app(\App\Domains\Analytics\Support\DashboardFilterOptions::class);
+    $ids = fn (string $cohort) => $options->members($ownerMembership, 'delivery', false, $cohort)->pluck('id')->all();
+
+    // PHASE 37-N9: "without the confirmation team" is exactly the tracking-only
+    // members — the work side the Delivery view now names.
+    expect($ids('without'))->toContain($tracker->id)
+        ->and($ids('without'))->not->toContain($confirmer->id)
+        ->and($ids('without'))->not->toContain($both->id)
+        ->and($ids('without'))->not->toContain($ownerMembership->id);
+
+    // "With" is management plus the confirmation team.
+    expect($ids('with'))->toContain($confirmer->id, $both->id, $ownerMembership->id)
+        ->and($ids('with'))->not->toContain($tracker->id);
+});
+
+test('the aov card lives only in the top KPI row', function () {
     [$owner, $store] = dfwOwnerStore();
     $this->actingAs($owner)->withSession(['current_store_id' => $store->id]);
 
-    $htmlConfirmation = $this->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'confirmation']))
-        ->assertOk()->getContent();
-    $htmlDelivery = $this->get(route('merchant.dashboard', ['store' => $store->slug, 'md' => 'delivery']))
-        ->assertOk()->getContent();
+    // 37-N5 moved the four headline cards (AOV among them) into the Top view;
+    // the Confirmation and Delivery bodies no longer carry them.
+    $topHtml = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 't' => 'top']))
+        ->assertOk()
+        ->getContent();
 
-    $marker = 'uppercase tracking-wider">'.__('dashboard.aov').'</p>';
+    $confirmationHtml = $this->actingAs($owner)
+        ->withSession(['current_store_id' => $store->id])
+        ->get(route('merchant.dashboard', ['store' => $store->slug, 't' => 'confirmation']))
+        ->assertOk()
+        ->getContent();
 
-    // Delivery leads with AOV in its KPI row; the confirmation view dropped the
-    // AOV card entirely (its KPIs are confirmation-centric).
-    expect(substr_count($htmlDelivery, $marker))->toBe(1)
-        ->and(substr_count($htmlConfirmation, $marker))->toBe(0);
+    expect($topHtml)
+        ->toContain(__('dashboard.aov'))
+        ->toContain('xl:grid-cols-4');
 
-    // Delivery opens up to four KPI columns on xl; the confirmation row is the
-    // rate plus the pending queue (T3 merged the count into the queue header).
-    expect($htmlDelivery)->toContain('xl:grid-cols-4')
-        ->and($htmlConfirmation)->toContain('lg:grid-cols-3');
+    // The confirmation row is the rate plus the pending queue.
+    expect($confirmationHtml)
+        ->not->toContain(__('dashboard.aov'))
+        ->toContain('lg:grid-cols-3');
 });
 
 test('the trend draws straight segments with points only where there is activity', function () {

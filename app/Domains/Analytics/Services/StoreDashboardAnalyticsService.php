@@ -27,6 +27,8 @@ class StoreDashboardAnalyticsService
 
     private StoreConfirmationReportReader $confirmation;
 
+    private StoreDeliveryReportReader $delivery;
+
     public function __construct(
         ?string $storeId = null,
         private ?DashboardOrderScope $scope = null,
@@ -38,6 +40,7 @@ class StoreDashboardAnalyticsService
         $this->statusIds = $this->statusIds ?? app(OrderStatusIdMap::class);
         $this->summaryQuery = $this->summaryQuery ?? app(DashboardSummaryQuery::class);
         $this->confirmation = app(StoreConfirmationReportReader::class);
+        $this->delivery = app(StoreDeliveryReportReader::class);
     }
 
     public function summary(?DashboardFilter $filter = null): array
@@ -180,6 +183,18 @@ class StoreDashboardAnalyticsService
     public function confirmationStats(?DashboardFilter $filter = null): array
     {
         return $this->confirmation->report($filter ?? app(DashboardFilterFactory::class)->make([], null));
+    }
+
+    /**
+     * PHASE 37-N7 (N8) — the delivery tab's read: the delivered/returned counts
+     * and the gross/net rate behind the two cards and the KPI strip (D3/D6),
+     * plus the per-status buckets the count/rate breakdown draws.
+     *
+     * @return array{kind: string, delivered: int, returned: int, denominator: int, delivery_rate: int, return_rate: int, excluded: int, deleted: int, groups: array<string, array{total: int, deleted: int}>, outside: array<string, bool>, total_orders: int, trash_orders: int}
+     */
+    public function deliveryStats(?DashboardFilter $filter = null): array
+    {
+        return $this->delivery->report($filter ?? app(DashboardFilterFactory::class)->make([], null));
     }
 
     /**

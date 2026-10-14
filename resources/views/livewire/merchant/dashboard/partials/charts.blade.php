@@ -3,12 +3,13 @@
     // (server-rendered) and the chart series (client-rendered) can never drift.
     $groupColors = config('analytics.group_colors');
 
-    // A server-side dot for a legend row: a group token becomes a class, the
+    // A server-side dot for a legend row: a group token paints from its design
+    // token (PHASE 37-N3 — an inline style, never a dynamic Tailwind class), the
     // resolved chart tokens become a class, and a store's own status hex falls
     // back to an inline colour (the delivery view still reads those).
     $dotFor = function (string $key, ?string $hex) use ($groupColors): array {
         if (isset($groupColors[$key])) {
-            return ['class' => 'bg-'.$groupColors[$key], 'style' => null];
+            return ['class' => '', 'style' => 'background-color: '.\App\Domains\Analytics\Support\GroupColor::css($key)];
         }
 
         $tokenClass = match ($hex) {
@@ -23,6 +24,17 @@
 
         return ['class' => $tokenClass ?? 'rounded-full', 'style' => $tokenClass ? null : 'background-color: '.($hex ?: 'currentColor')];
     };
+
+    // PHASE 37-N4 — the confirmation trend is drawn as smooth monotone curves
+    // (one per group plus a derived total band), and an all-zero confirmation
+    // window falls back to the same empty panel an empty window shows. PHASE
+    // 37-N9 gives the delivery view the same smooth curves (delivered /
+    // returned plus the delivered-revenue line) instead of bars.
+    $isConfirmationView = ($trend['view'] ?? 'confirmation') !== 'delivery';
+    $trendHasValues = collect($trend['series'] ?? [])->contains(
+        fn (array $s): bool => array_sum($s['values'] ?? []) > 0
+    );
+    $showTrend = ! empty($trend['labels']) && (! $isConfirmationView || $trendHasValues);
 @endphp
 
 <div wire:key="dash-charts-{{ $filter->hash() }}" x-data="{
@@ -46,27 +58,44 @@
             }
         };
         this.$nextTick(attempt);
+    },
+    toggleTrendSeries(key, event) {
+        const el = event.currentTarget;
+        const hidden = el.getAttribute('aria-pressed') === 'true';
+        const next = !hidden;
+        window.__dashCharts?.toggleTrend?.(key, !next);
+        el.setAttribute('aria-pressed', String(next));
+        el.classList.toggle('opacity-40', next);
     }
 }" x-init="renderCharts()">
 
     <div class="edz-stagger grid grid-cols-1 gap-6 @if (empty($narrowCharts)) lg:grid-cols-3 @endif mb-6">
-        {{-- Trend — one chart per stats view. Confirmation stacks the seven
-             groups as bars (lines past 62 buckets); Delivery keeps its bars
-             plus the delivered-revenue line. --}}
+        {{-- Trend — one chart per stats view. Confirmation is one smooth
+             monotone curve per group plus a derived total band; Delivery draws
+             its delivered / returned curves plus the delivered-revenue line. --}}
         <div class="lg:col-span-2 edz-card edz-card--padded">
             <h3 class="text-sm font-semibold tracking-tight text-ink mb-4">
-                {{ ($trend['view'] ?? 'confirmation') === 'delivery'
-                    ? __('dashboard.chart_delivery_trend', ['period' => $periodLabel])
-                    : __('dashboard.chart_confirmation_trend', ['period' => $periodLabel]) }}
+                {{ $isConfirmationView
+                    ? __('dashboard.chart_confirmation_trend', ['period' => $periodLabel])
+                    : __('dashboard.chart_delivery_trend', ['period' => $periodLabel]) }}
             </h3>
-            @if (! empty($trend['labels']))
+            @if ($showTrend)
                 <div class="h-64"><canvas id="salesChart" wire:ignore></canvas></div>
                 {{-- HTML legend (D3): RTL-safe, so a label and its digits never
-                     swap places. The canvas legend is switched off below. --}}
+                     swap places. The canvas legend is switched off below. On the
+                     confirmation view each item toggles its own curve (37-N4);
+                     the delivery legend stays static. --}}
                 <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-2">
                     @foreach ($trend['series'] as $s)
                         @php($dot = $dotFor($s['key'], $s['hex']))
-                        <li class="flex items-center gap-2 text-xs text-ink-muted">
+                        <li class="flex items-center gap-2 text-xs text-ink-muted @if ($isConfirmationView) cursor-pointer select-none @endif"
+                            @if ($isConfirmationView)
+                                role="button" tabindex="0" aria-pressed="false" data-trend-series="{{ $s['key'] }}"
+                                x-on:click="toggleTrendSeries('{{ $s['key'] }}', $event)"
+                                x-on:keydown.enter.prevent="toggleTrendSeries('{{ $s['key'] }}', $event)"
+                                x-on:keydown.space.prevent="toggleTrendSeries('{{ $s['key'] }}', $event)"
+                            @endif
+                        >
                             <span class="h-2.5 w-2.5 shrink-0 rounded-full {{ $dot['class'] }}" @if ($dot['style']) style="{{ $dot['style'] }}" @endif></span>
                             <span>{{ $s['label'] }}</span>
                         </li>
@@ -153,12 +182,11 @@
             // window still gets a four-count scale instead of a full-height bar.
             const hasPositive = (values) => Array.isArray(values) && values.some(v => Number(v) > 0);
 
-            // D3: the confirmation trend is stacked bars up to 62 buckets (a
-            // day-per-point month); past that a bar per group per bucket would
-            // be unreadable, so it falls back to lines.
+            // PHASE 37-N4: the confirmation trend is one smooth monotone curve
+            // per group plus a derived total band - never bars. PHASE 37-N9
+            // gives the delivery view the same curves (plus its revenue line).
             const isConfirmation = data.trendView !== 'delivery';
-            const stackedBars = isConfirmation && Array.isArray(data.chartLabels)
-                && data.chartLabels.length > 0 && data.chartLabels.length <= 62;
+            window.__dashCharts.trendKeyIndex = {};
 
             // Only an hourly axis holds 24 mostly-empty buckets, which is why
             // its zero buckets carry no marker; wider axes keep theirs.
@@ -192,39 +220,93 @@
             const yValues = valuesFor('y');
             const y1Values = valuesFor('y1');
 
-            const datasets = series.map(s => {
+            const datasets = series.map((s, i) => {
                 const color = isConfirmation ? groupColor(s.key, s.hex) : colorFor(s.hex);
-                const type = stackedBars ? 'bar' : (isConfirmation ? 'line' : s.type);
-                const isLine = type === 'line';
-                const isStackedBar = stackedBars;
+
+                // PHASE 37-N4: one smooth monotone curve per group. Legend items
+                // map to these datasets by index, so the order must match the
+                // server-rendered legend exactly.
+                if (isConfirmation) {
+                    window.__dashCharts.trendKeyIndex[s.key] = i;
+
+                    return {
+                        label: s.label,
+                        type: 'line',
+                        data: s.values,
+                        yAxisID: s.axis,
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0,
+                        cubicInterpolationMode: 'monotone',
+                        borderWidth: 2,
+                        pointRadius: (ctx) => pointRadius(ctx, s.values),
+                        pointHoverRadius: pointHoverRadius(s.values),
+                        pointBackgroundColor: color,
+                        pointBorderColor: resolvedSurface,
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: color,
+                        pointHoverBorderColor: resolvedSurface,
+                    };
+                }
+
+                const isLine = s.type === 'line';
+
                 return {
                     label: s.label,
-                    type: type,
+                    type: s.type,
                     data: s.values,
                     yAxisID: s.axis,
-                    borderColor: isStackedBar ? resolvedSurface : color,
-                    backgroundColor: isStackedBar ? color : (isLine ? toRgba(color, 0.08) : toRgba(color, 0.7)),
+                    borderColor: color,
+                    backgroundColor: isLine ? toRgba(color, 0.08) : toRgba(color, 0.7),
                     fill: isLine && s.axis === 'y1',
+                    // PHASE 37-N9: the delivery trend is a curve too, so a line
+                    // metric interpolates smoothly. Bars ignore this key.
                     tension: 0, stepped: false,
-                    // A 2px surface border separates the stacked segments.
-                    borderWidth: isStackedBar ? 2 : 2,
+                    cubicInterpolationMode: isLine ? 'monotone' : undefined,
+                    borderWidth: 2,
                     borderRadius: isLine ? 0 : 3,
                     pointRadius: (ctx) => isLine ? pointRadius(ctx, s.values) : 0,
-                    pointHoverRadius: isLine ? pointHoverRadius(s.values) : 0,
+                    pointHoverRadius: showPoints(s.values) ? 5 : 0,
                     pointHoverBackgroundColor: color,
                 };
             });
+
+            // The total band is derived in the browser from the group counts, so
+            // no query or payload change is needed. It is drawn behind the group
+            // curves and kept out of the tooltip rows (the footer carries it).
+            if (isConfirmation && series.length) {
+                const totals = (data.chartLabels || []).map((_, i) =>
+                    series.reduce((sum, s) => sum + Number((s.values || [])[i] || 0), 0));
+
+                datasets.push({
+                    label: @js(__('dashboard.chart_total')),
+                    _isTotal: true,
+                    type: 'line',
+                    data: totals,
+                    yAxisID: 'y',
+                    borderColor: resolvedFontColor,
+                    backgroundColor: toRgba(resolvedFontColor, 0.08),
+                    fill: true,
+                    tension: 0,
+                    cubicInterpolationMode: 'monotone',
+                    borderWidth: 2,
+                    order: -1,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                });
+            }
 
             ['s', 'st'].forEach(k => { if (window.__dashCharts[k]) { window.__dashCharts[k].destroy(); window.__dashCharts[k] = null; } });
 
             const trendCanvas = data.chartLabels && data.chartLabels.length ? document.getElementById('salesChart') : null;
             if (trendCanvas) {
                 const scales = {
-                    x: { stacked: stackedBars, grid: { color: resolvedGridColor, drawBorder: false }, border: { display: false }, ticks: { color: resolvedFontColor } },
+                    x: { stacked: false, grid: { color: resolvedGridColor, drawBorder: false }, border: { display: false }, ticks: { color: resolvedFontColor, autoSkip: true } },
                     y: {
                         position: 'left',
                         beginAtZero: true,
-                        stacked: stackedBars,
+                        stacked: false,
                         suggestedMax: hasPositive(yValues) ? undefined : 4,
                         grid: { color: resolvedGridColor, drawBorder: false },
                         border: { display: false },
@@ -257,23 +339,31 @@
                         }
                     }
                 };
-                // A stacked bucket reads its own total under the per-group lines.
-                if (stackedBars) {
+                // PHASE 37-N4: an index-mode tooltip lists every group in the
+                // bucket and its total. The derived total band is filtered out of
+                // the rows and surfaces once, as the footer.
+                if (isConfirmation) {
+                    trendTooltip.filter = (item) => item.dataset._isTotal !== true;
                     trendTooltip.callbacks.footer = (items) => {
-                        if (! items.length) return '';
-                        const total = items.reduce((sum, item) => sum + Number(item.parsed.y || 0), 0);
+                        const groups = items.filter(item => item.dataset._isTotal !== true);
+                        if (! groups.length) return '';
+                        const total = groups.reduce((sum, item) => sum + Number(item.parsed.y || 0), 0);
                         return `${@js(__('dashboard.chart_total'))}: ${num(total)}`;
                     };
                 }
                 const trendCanvasEl = document.getElementById('salesChart');
                 if (trendCanvasEl && Chart.getChart(trendCanvasEl)) Chart.getChart(trendCanvasEl).destroy();
                 window.__dashCharts.s = new Chart(trendCanvasEl, {
-                    type: stackedBars ? 'bar' : 'line',
+                    type: 'line',
                     data: { labels: data.chartLabels, datasets: datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: { mode: stackedBars ? 'index' : 'nearest', intersect: ! stackedBars },
+                        // Confirmation reads the whole bucket (index/loose);
+                        // delivery keeps its per-point nearest hit.
+                        interaction: isConfirmation
+                            ? { mode: 'index', intersect: false }
+                            : { mode: 'nearest', intersect: true },
                         plugins: {
                             // The legend is server-rendered HTML (D3); the canvas one is off.
                             legend: { display: false },
@@ -282,6 +372,16 @@
                         scales: scales
                     }
                 });
+
+                // A theme swap rebuilds the chart; keep any group the owner hid
+                // through the legend hidden across the rebuild.
+                if (isConfirmation) {
+                    document.querySelectorAll('[data-trend-series][aria-pressed="true"]').forEach(el => {
+                        const idx = window.__dashCharts.trendKeyIndex?.[el.getAttribute('data-trend-series')];
+                        if (idx !== undefined) window.__dashCharts.s.setDatasetVisibility(idx, false);
+                    });
+                    window.__dashCharts.s.update();
+                }
             }
 
             const counts = Array.isArray(data.statusCounts) ? data.statusCounts : [];
@@ -349,6 +449,17 @@
                     }
                 });
             }
+        };
+
+        // PHASE 37-N4 — the HTML legend toggles a confirmation curve. Kept on
+        // the shared chart bag so the Alpine click handler can reach the chart
+        // without knowing its internals.
+        window.__dashCharts.toggleTrend = (key, visible) => {
+            const chart = window.__dashCharts.s;
+            const index = window.__dashCharts.trendKeyIndex ? window.__dashCharts.trendKeyIndex[key] : undefined;
+            if (! chart || index === undefined) return;
+            chart.setDatasetVisibility(index, visible);
+            chart.update();
         };
 
         if (!window.__dashCharts.mo) {

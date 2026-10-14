@@ -10,6 +10,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    // PHASE 37-N6: freeze mid-day in the store timezone (Asia/Riyadh) so the
+    // default "today" window cannot drift off an implicit created_at.
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-03-10 12:00:00', 'UTC'));
+
     $this->user = \App\Models\User::query()->create([
         'name' => 'Test User',
         'email' => 'test-'.uniqid().'@example.com',
@@ -25,6 +29,10 @@ beforeEach(function () {
         'is_active' => true,
         'user_id' => $this->user->id,
     ]);
+});
+
+afterEach(function () {
+    CarbonImmutable::setTestNow();
 });
 
 it('runs analytics methods with default filter', function () {

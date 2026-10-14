@@ -41,7 +41,10 @@ final class DashboardTeamPerformanceQuery
         $canceled = $this->in($statusIds(DashboardStatusGroups::CANCELED));
         $confirmed = $this->in($statusIds(DashboardStatusGroups::CONFIRMED));
 
-        $credit = $this->aggregate($baseQuery, $filter, 'orders.confirmed_by_membership_id', [
+        // PHASE 37-N9: Delivery credits the member who shipped the order, not
+        // the confirmer, so its figures all come from the work aggregate and the
+        // confirmed_by ledger is never read. Confirmation keeps the credit side.
+        $credit = $delivery ? [] : $this->aggregate($baseQuery, $filter, 'orders.confirmed_by_membership_id', [
             'confirmed' => $this->countWhen($confirmed, false),
             'confirmed_deleted' => $this->countWhen($confirmed, true),
             'delivered' => $this->countWhen($delivered, false),
@@ -58,19 +61,80 @@ final class DashboardTeamPerformanceQuery
         // WHERE clauses mention stay unambiguous.
         $groupKey = $delivery ? $this->latestMembership($filter) : 'orders.assigned_to_membership_id';
 
-        $work = $this->aggregate($baseQuery, $filter, $groupKey, [
-            'assigned' => $this->countAll(false),
-            'assigned_deleted' => $this->countAll(true),
-            'pending' => $this->countWhen($pending, false),
-            'pending_deleted' => $this->countWhen($pending, true),
-            'canceled' => $this->countWhen($canceled, false),
-            'canceled_deleted' => $this->countWhen($canceled, true),
-        ]);
+        $work = $this->aggregate($baseQuery, $filter, $groupKey, $this->workColumns($filter, $delivery, [
+            'pending' => $pending,
+            'canceled' => $canceled,
+            'delivered' => $delivered,
+            'returned' => $returned,
+        ]));
 
         return [
             'credit' => array_map(fn ($row) => $this->cast($row), $credit),
             'work' => array_map(fn ($row) => $this->cast($row), $work),
         ];
+    }
+
+    /**
+     * The workload aggregate's columns. Confirmation keeps the 37-J shape.
+     * Delivery (PHASE 37-N7, D2/D9; PHASE 37-N9) carries every figure the card
+     * shows: the settled statuses (delivered / returned) and their money are
+     * credited to the member whose newest tracking row shipped the order, and
+     * the two return states read off that same row ("الراجعة" is a registered
+     * return not yet processed, "المرجعة" is one that has been). Status columns
+     * stay keyed to orders.status_id; the tracking ones probe the newest row, so
+     * a re-shipped order counts once.
+     *
+     * @param  array{pending: array{0: string, 1: array<int, string>}, canceled: array{0: string, 1: array<int, string>}, delivered: array{0: string, 1: array<int, string>}, returned: array{0: string, 1: array<int, string>}}  $conditions
+     * @return array<string, array{0: string, 1: array<int, string>}>
+     */
+    private function workColumns(DashboardFilter $filter, bool $delivery, array $conditions): array
+    {
+        $columns = [
+            'assigned' => $this->countAll(false),
+            'assigned_deleted' => $this->countAll(true),
+            'pending' => $this->countWhen($conditions['pending'], false),
+            'pending_deleted' => $this->countWhen($conditions['pending'], true),
+            'canceled' => $this->countWhen($conditions['canceled'], false),
+            'canceled_deleted' => $this->countWhen($conditions['canceled'], true),
+        ];
+
+        if (! $delivery) {
+            return $columns;
+        }
+
+        $columns['delivered'] = $this->countWhen($conditions['delivered'], false);
+        $columns['delivered_deleted'] = $this->countWhen($conditions['delivered'], true);
+        $columns['returned'] = $this->countWhen($conditions['returned'], false);
+        $columns['returned_deleted'] = $this->countWhen($conditions['returned'], true);
+        $columns['returned_coming'] = $this->countWhen(
+            $this->newestTrackingWhen($filter, 'order_trackings.returned_at IS NOT NULL AND order_trackings.processed_at IS NULL'),
+            false,
+        );
+        $columns['returned_processed'] = $this->countWhen(
+            $this->newestTrackingWhen($filter, 'order_trackings.processed_at IS NOT NULL'),
+            false,
+        );
+        // PHASE 37-N9: the money the member's shipped orders brought, summed on
+        // live delivered rows only, so a returned order never contributes.
+        $columns['revenue'] = ['SUM(CASE WHEN '.$conditions['delivered'][0].' AND orders.deleted_at IS NULL THEN orders.total_amount ELSE 0 END)', $conditions['delivered'][1]];
+
+        return $columns;
+    }
+
+    /**
+     * A condition on the order's newest tracking row. order_trackings is not
+     * unique per order, so the probe is pinned to MAX(id) (ULIDs sort by time);
+     * the store binding mirrors latestMembership().
+     *
+     * @return array{0: string, 1: array<int, string>}
+     */
+    private function newestTrackingWhen(DashboardFilter $filter, string $predicate): array
+    {
+        $sql = 'EXISTS (select 1 from order_trackings where order_trackings.id = ('
+            .'select MAX(m.id) from order_trackings as m where m.store_id = ? and m.order_id = orders.id)'
+            .' and '.$predicate.')';
+
+        return [$sql, [$filter->storeId]];
     }
 
     /**
@@ -84,6 +148,13 @@ final class DashboardTeamPerformanceQuery
         // The same window, carrier and member scope the KPIs use, so the Total
         // row always equals summary()['total_orders'] for the active filter.
         $this->scope->apply($query, $filter);
+
+        // PHASE 37-N9: the Delivery team counts the same tracking cohort as the
+        // other delivery blocks, so its member rows describe orders actually
+        // handed to a carrier rather than the whole order ledger.
+        if ($filter->memberDimension === 'delivery') {
+            $this->scope->deliveryCohort($query, $filter);
+        }
 
         $select = [$groupKey.' as membership_id'];
         $bindings = [];
@@ -139,6 +210,8 @@ final class DashboardTeamPerformanceQuery
             'delivered_deleted' => (int) ($row->delivered_deleted ?? 0),
             'returned' => (int) ($row->returned ?? 0),
             'returned_deleted' => (int) ($row->returned_deleted ?? 0),
+            'returned_coming' => (int) ($row->returned_coming ?? 0),
+            'returned_processed' => (int) ($row->returned_processed ?? 0),
             'revenue' => (float) ($row->revenue ?? 0),
         ];
     }
