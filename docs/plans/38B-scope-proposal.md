@@ -85,7 +85,7 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 - Compensation plan (select: active published plans for store), version (auto latest published at effective date), effective_from (datetime/local), reason, effective_to (only when replacing/ending).
 
 ### Validation/permissions
-- finance.manage required to assign/change plans. Read with finance.view.
+- finance.accounts.manage required to assign/change plans. Read with finance.accounts.view.
 - Cannot assign plan with effective_from in the past in a way that overwrites closed history (must create new assignment replacing current).
 - Plan must be active and effective_from >= plan effective_from.
 
@@ -117,7 +117,7 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 - Defaulting: when finance enabled first time, set accrual_start_date = finance_capture_started_at ?? now() (non-destructive).
 
 ### Files/Tests
-- Migration, model update, settings UI (store settings page) with finance tab gated by finance.manage.
+- Migration, model update, settings UI (store settings page) with finance tab gated by finance.accounts.manage.
 - Tests: defaults, validation, multi-tenant.
 
 ### Qs
@@ -138,7 +138,7 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 - Compensation: if member_fault true for return reason, flag for evaluation (future 38-D; this phase only models structure/UI).
 
 ### Files
-- Migration, model app/Models/Finance/ReturnReason.php, service, CRUD Livewire/Volt for store settings → return reasons (gated finance.manage).
+- Migration, model app/Models/Finance/ReturnReason.php, service, CRUD Livewire/Volt for store settings → return reasons (gated finance.accounts.manage).
 - Translations.
 
 ### Tests
@@ -150,13 +150,13 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 
 ## 6) Map custom statuses to stage (statuses.stage) + warning
 
-**Objective:** UI to map custom statuses to lifecycle stage. System statuses read-only; custom editable only with finance.manage. Every change audited; explicit notice about past orders.
+**Objective:** UI to map custom statuses to lifecycle stage. System statuses read-only; custom editable only with finance.accounts.manage. Every change audited; explicit notice about past orders.
 
 ### Rules
 
 - Existing statuses.stage enum: pending/confirmed/in_delivery/delivered/returned/canceled/other (38-C).
 - System order statuses: read-only (derived via OrderStatusStage). Non-order remain other.
-- Custom order statuses: editable to valid stage with finance.manage. Changing stage does not rewrite history; affects future classification.
+- Custom order statuses: editable to valid stage with finance.accounts.manage. Changing stage does not rewrite history; affects future classification.
 - Audit: every change logged in finance_audit_logs (subject_type status_stage_mapping, before/after, actor).
 - Warning banner: show when any used custom status remains other ("does not apply to past orders").
 
@@ -167,15 +167,15 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 
 ## 7) Permissions
 
-**Objective:** finance.view/manage/pay/close_period consistent with repo. Owner only by default; no invented roles. Use existing permission mechanism (canStore / permission enum). No Spatie/AuthServiceProvider assumptions. Member self-view in 38-L.
+**Objective:** finance.accounts.view/manage/pay/close_period consistent with repo. Owner only by default; no invented roles. Use existing permission mechanism (canStore / permission enum). No Spatie/AuthServiceProvider assumptions. Member self-view in 38-L.
 
 ### Implementation
 
-- Add to StorePermissionEnum values: finance.view, finance.manage, finance.pay, finance.close_period.
+- Add to StorePermissionEnum values: finance.accounts.view, finance.accounts.manage, finance.accounts.pay, finance.accounts.close_period (enum cases FINANCE_ACCOUNTS_VIEW/MANAGE/PAY/CLOSE_PERIOD, same style as the existing FINANCE_DEBT_VIEW).
 - Lang files AR/EN/FR under lang/*/permissions.php (or store permissions as per repo).
 - Update database/seeders/StoreRolesAndPermissionsSeeder.php: grant to owner only by default (no other roles).
 - Use existing gates/middleware/policies; do not assume Spatie facade names unless present.
-- Member form compensation section hidden (not disabled) without finance.manage; never exposes other members' terms to users lacking finance.manage.
+- Member form compensation section hidden (not disabled) without finance.accounts.manage; never exposes other members' terms to users lacking finance.accounts.manage.
 
 ### Files/Tests
 
@@ -206,7 +206,7 @@ This is a full specification for Phase 38-B. No code is to be implemented now; t
 - Permissions/enum/seeder + backend tests.
 
 ### 38-B2 (UI)
-- Member form child Volt component (hidden without finance.manage), append-only term creation.
+- Member form child Volt component (hidden without finance.accounts.manage), append-only term creation.
 - finance settings tab; return reasons CRUD with template; status->stage mapping UI with audit/warning.
 - Translations AR/EN/FR, RTL, responsive (375/768/1440).
 
