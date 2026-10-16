@@ -79,3 +79,4 @@
   - Pages: fluid `grid-cols-1 md:grid-cols-2|3`, avatar header `flex-col sm:flex-row`, `flex-1 min-w-0`, `flex justify-end` actions, `max-w-2xl|3xl mx-auto` — single column at 375px.
   - `x-edz.select` (`resources/js/components/edz-select.js:67-79`, `_forms.scss:359-365`): bottom-sheet mode <640px — `position:fixed; bottom:0; left:50%; translateX(-50%); width:min(480, innerWidth-16); max-height:60vh`, z-index:70 (never overflows); anchored + scroll/resize reposition >=640px.
   - flatpickr: CSS bundled via `resources/js/panel.js:4`; calendar width 307.875px fits 343px available at 375px; JS positionElement clamps to viewport.
+E.1: Rider Portal foundation planning document prepared (rider-login, per-store accounts, invitations). - analysis only
