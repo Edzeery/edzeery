@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Auth\AuthSecurityLogger;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class AdminSessionController extends Controller
     /**
      * Handle an incoming admin/staff authentication request.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AuthSecurityLogger $logger): RedirectResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -32,6 +33,8 @@ class AdminSessionController extends Controller
         ]);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            $logger->loginFailed($request);
+
             return back()->withErrors([
                 'email' => __('auth.invalid_credentials'),
             ])->onlyInput('email');
@@ -41,6 +44,8 @@ class AdminSessionController extends Controller
 
         // هذا السيرفر خاص بموظفي المنصة فقط
         if (! $user->isPlatformStaff()) {
+            $logger->loginFailed($request);
+
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -51,6 +56,8 @@ class AdminSessionController extends Controller
         }
 
         $request->session()->regenerate();
+
+        $logger->loginSucceeded($user, $request);
 
         return redirect()->intended(
             Filament::getPanel('super-admin')->getUrl()

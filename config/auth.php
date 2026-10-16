@@ -111,4 +111,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Breach Check
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, the default password rule will reject passwords found in
+    | known data breaches (via the Have I Been Pwned range API). Disabled by
+    | default so tests and offline environments stay deterministic.
+    |
+    */
+
+    'password_uncompromised' => (bool) env('AUTH_PASSWORD_UNCOMPROMISED', false),
+
 ];

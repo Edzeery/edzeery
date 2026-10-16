@@ -46,6 +46,7 @@ return [
     'terms_link' => 'Términos',
     'thanks' => 'Gracias por usar :app_name',
     'throttle' => 'Demasiados intentos de inicio de sesión. Por favor inténtalo de nuevo después de :seconds segundos.',
+    'toggle_password_visibility' => 'Mostrar u ocultar la contraseña',
     'verification_link_sent' => 'Se ha enviado un nuevo enlace de verificación a tu correo electrónico.',
     'verify_email_notice' => 'Por favor, verifica tu correo electrónico antes de continuar.',
     'verify_email_title' => 'Verifica tu correo electrónico',

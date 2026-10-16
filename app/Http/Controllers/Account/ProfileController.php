@@ -13,8 +13,9 @@ class ProfileController extends Controller
     public function index(GetProfileAction $getProfileAction)
     {
         $profile = $getProfileAction->execute(user());
-  $countries = \App\Models\Locations\Country::all();
-        return view('merchant.account.index', compact('profile' , 'countries'));
+        $countries = \App\Models\Locations\Country::all();
+
+        return view('merchant.account.index', compact('profile', 'countries'));
     }
 
     public function update(UpdateProfileRequest $request, AccountService $service)

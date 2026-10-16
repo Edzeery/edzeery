@@ -46,6 +46,7 @@ return [
     'terms_link' => 'Terms',
     'thanks' => 'Thank you for using :app_name',
     'throttle' => 'Too many login attempts. Please try again after :seconds seconds.',
+    'toggle_password_visibility' => 'Show or hide password',
     'verification_link_sent' => 'A new verification link has been sent to your email address.',
     'verify_email_notice' => 'Please verify your email before continuing.',
     'verify_email_title' => 'Verify your email',

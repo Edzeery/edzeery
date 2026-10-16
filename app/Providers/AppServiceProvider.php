@@ -20,13 +20,18 @@ use App\Observers\SubscriptionObserver;
 use App\Support\StoreContext;
 use App\Support\StoreScopedCache;
 use BezhanSalleh\LanguageSwitch\LanguageSwitch;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -115,5 +120,76 @@ class AppServiceProvider extends ServiceProvider
         Subscription::observe(SubscriptionObserver::class);
 
         Paginator::useBootstrapFive();
+
+        $this->registerRateLimiters();
+        $this->configurePasswordDefaults();
+    }
+
+    /**
+     * Named rate limiters guarding the public authentication endpoints
+     * (login, admin login, registration, password reset request/submit).
+     *
+     * Keys combine the submitted email with the client IP so both a single
+     * account and a single source cannot be hammered, while shared offices
+     * behind one IP are not locked out by a single targeted account.
+     */
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('auth-login', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($this->emailIpKey($request)),
+                Limit::perMinute(20)->by($request->ip()),
+            ];
+        });
+
+        RateLimiter::for('auth-register', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        RateLimiter::for('auth-password-email', function (Request $request) {
+            $email = $this->normalizedEmail($request);
+
+            return [
+                Limit::perMinute(3)->by($email . '|' . $request->ip()),
+                Limit::perHour(5)->by($email),
+                Limit::perHour(15)->by($request->ip()),
+            ];
+        });
+
+        RateLimiter::for('auth-password-reset', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($this->emailIpKey($request)),
+                Limit::perMinute(15)->by($request->ip()),
+            ];
+        });
+    }
+
+    /**
+     * Apply a single, stronger password policy everywhere
+     * `Password::defaults()` is used (register, update, reset).
+     */
+    private function configurePasswordDefaults(): void
+    {
+        Password::defaults(function () {
+            $rule = Password::min(12)->mixedCase()->numbers()->symbols();
+
+            // Breach-corpus check hits an external API; opt-in so tests and
+            // offline environments stay deterministic.
+            if (config('auth.password_uncompromised', false)) {
+                $rule->uncompromised();
+            }
+
+            return $rule;
+        });
+    }
+
+    private function normalizedEmail(Request $request): string
+    {
+        return Str::transliterate(Str::lower(trim((string) $request->input('email'))));
+    }
+
+    private function emailIpKey(Request $request): string
+    {
+        return $this->normalizedEmail($request) . '|' . $request->ip();
     }
 }

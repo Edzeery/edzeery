@@ -1,12 +1,12 @@
 <?php
 
-use App\Models\billing\Subscription;
+use App\Enums\Store\StoreRoleEnum;
 use App\Models\Billing\BillingAddress;
+use App\Models\billing\Subscription;
 use App\Models\Plans\Plan;
 use App\Models\Stores\Store;
 use App\Models\Stores\Team\StoreMembership;
 use App\Models\User;
-use App\Enums\Store\StoreRoleEnum;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\StoreRolesAndPermissionsSeeder;
@@ -111,19 +111,19 @@ test('billing page lists only stores the user owns (phase 36.7 privacy)', functi
     $owner = User::factory()->create();
 
     $store = Store::create([
-        'user_id'   => $owner->id,
-        'name'      => 'Owned Store Alpha',
-        'slug'      => 'owned-store-alpha',
-        'status'    => 'active',
+        'user_id' => $owner->id,
+        'name' => 'Owned Store Alpha',
+        'slug' => 'owned-store-alpha',
+        'status' => 'active',
     ]);
 
     $member = User::factory()->create();
     StoreMembership::create([
-        'store_id'   => $store->id,
-        'user_id'    => $member->id,
+        'store_id' => $store->id,
+        'user_id' => $member->id,
         'invited_by' => $owner->id,
-        'is_active'  => true,
-        'role'       => StoreRoleEnum::MANAGER->value,
+        'is_active' => true,
+        'role' => StoreRoleEnum::MANAGER->value,
     ]);
 
     // The owner sees their own store billing card.

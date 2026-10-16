@@ -30,6 +30,12 @@ with([
                 <span class="edz-sidebar__label">{{ __('merchant_panel.profile') }}</span>
             </a>
 
+            <a href="{{ route('account.security') }}" wire:navigate
+               class="edz-sidebar__link @if (request()->routeIs('account.security')) edz-sidebar__link--active @endif">
+                <x-edz.icon name="lock-closed" class="edz-sidebar__icon" />
+                <span class="edz-sidebar__label">{{ __('account.security') }}</span>
+            </a>
+
             <a href="{{ route('merchant.choose-store') }}" wire:navigate
                class="edz-sidebar__link @if (request()->routeIs('merchant.choose-store')) edz-sidebar__link--active @endif">
                 <x-edz.icon name="grid" class="edz-sidebar__icon" />

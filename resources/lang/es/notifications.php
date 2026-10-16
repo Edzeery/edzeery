@@ -12,6 +12,8 @@ return [
     'new_transaction' => 'Se ha agregado una nueva transacción 🧾',
     'no_notifications' => 'No hay notificaciones por el momento.',
     'notifications' => 'Notificaciones',
+    'password_changed_body' => 'La contraseña de tu cuenta (:email) acaba de ser cambiada. Si no fuiste tú, restablece tu contraseña de inmediato y contacta con soporte.',
+    'password_changed_subject' => 'Tu contraseña ha sido cambiada',
     'password_updated' => 'Contraseña actualizada exitosamente 🔑',
     'payment_failed' => 'Pago fallido ❌',
     'payment_rejected_body' => 'Tu envío de pago manual fue rechazado. Razón: :reason. Por favor reenvía con los datos correctos.',

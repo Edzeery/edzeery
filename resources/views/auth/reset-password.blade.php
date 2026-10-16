@@ -12,31 +12,29 @@
             {{-- Email Address --}}
             <div>
                 <x-input-label for="email" :value="__('auth.email')" />
-                <x-text-input id="email" name="email" type="email" class="mt-1 block w-full"
+                <x-text-input id="email" name="email" type="email" inputmode="email" class="mt-1 block w-full"
                     :value="old('email', $request->email)" required autofocus autocomplete="username" />
                 <x-input-error :messages="$errors->get('email')" class="mt-1.5" />
             </div>
 
             {{-- Password --}}
             <div>
-                <x-input-label for="password" :value="__('auth.password_label')" />
-                <x-text-input id="password" name="password" type="password" class="mt-1 block w-full"
-                    required autocomplete="new-password" />
+                <x-password-input id="password" name="password" :label="__('auth.password_label')"
+                    autocomplete="new-password" required />
                 <x-input-error :messages="$errors->get('password')" class="mt-1.5" />
             </div>
 
             {{-- Confirm Password --}}
             <div>
-                <x-input-label for="password_confirmation" :value="__('auth.confirm_password')" />
-                <x-text-input id="password_confirmation" name="password_confirmation" type="password"
-                    class="mt-1 block w-full" required autocomplete="new-password" />
+                <x-password-input id="password_confirmation" name="password_confirmation" :label="__('auth.confirm_password')"
+                    autocomplete="new-password" required />
                 <x-input-error :messages="$errors->get('password_confirmation')" class="mt-1.5" />
             </div>
 
             {{-- Submit Button --}}
             <div class="pt-2">
                 <x-primary-button class="w-full justify-center">
-                    <ion-icon name="key-outline" class="text-lg"></ion-icon>
+                    <x-edz.icon name="lock-closed" class="w-5 h-5" aria-hidden="true" />
                     {{ __('buttons.reset') }}
                 </x-primary-button>
             </div>

@@ -3,8 +3,18 @@
 <script>
     (function() {
         var t = localStorage.getItem('edz-theme');
-        if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        if (!t) {
+            var m = document.cookie.match(/(?:^|; )edz-theme=([^;]+)/);
+            if (m) t = decodeURIComponent(m[1]);
+        }
+        if (t === 'dark') {
             document.documentElement.classList.add('dark');
+        } else if (t === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
         }
     })();
 </script>

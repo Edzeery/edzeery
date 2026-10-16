@@ -10,8 +10,8 @@ test('new users can register', function () {
     $response = $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
+        'password' => 'Str0ng!Passw0rd#2026',
+        'password_confirmation' => 'Str0ng!Passw0rd#2026',
     ]);
 
     // Registration creates the user but does not auto-login

@@ -2,10 +2,10 @@
 
 namespace App\Domains\Account\Actions\Profile;
 
-use App\Models\User;
 use App\Domains\Account\DTOs\AccountProfileData;
 use App\Enums\Platform\UserRoleEnum;
 use App\Enums\Store\StoreRoleEnum;
+use App\Models\User;
 
 class GetProfileAction
 {
@@ -17,7 +17,7 @@ class GetProfileAction
             'country',
             'state',
             'city',
-            'merchantRole'
+            'merchantRole',
         ]);
 
         $roleName = $user->merchantRole->first()?->name;
@@ -28,6 +28,7 @@ class GetProfileAction
                 ?? StoreRoleEnum::tryFrom($roleName);
         }
 
+        $avatar = $user->profile?->avatarUrl() ?? asset('img/icons/noimg.png');
 
         return new AccountProfileData(
             membershipRole: $membershipRole,
@@ -37,9 +38,7 @@ class GetProfileAction
             phone: $user->profile?->phone,
             address: $user->profile?->address,
             birthdate: $user->profile?->birthdate,
-            avatar: $user->profile?->profile_picture
-                ? asset('storage/' . $user->profile->profile_picture)
-                : asset('/storage/img/icons/noimg.png'),
+            avatar: $avatar,
 
             country: $user->country?->code,
             state: $user->state?->name,
@@ -47,6 +46,11 @@ class GetProfileAction
 
             language: $user->settings?->preferences['language'] ?? 'ar',
             theme: $user->settings?->preferences['theme'] ?? 'light',
+
+            country_id: $user->country_id,
+            state_id: $user->state_id,
+            city_id: $user->city_id,
+            avatarPath: $user->profile?->profile_picture,
         );
     }
 }

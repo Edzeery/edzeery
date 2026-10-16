@@ -24,6 +24,11 @@ class AccountProfileData
 
         public readonly ?string $language,
         public readonly ?string $theme,
+
+        public readonly ?string $country_id = null,
+        public readonly ?string $state_id = null,
+        public readonly ?string $city_id = null,
+        public readonly ?string $avatarPath = null,
     ) {}
 
     public function toArray(): array

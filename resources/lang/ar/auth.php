@@ -46,6 +46,7 @@ return [
     'terms_link' => 'الشروط',
     'thanks' => 'شكرًا لاستخدامك :app_name',
     'throttle' => 'محاولات تسجيل الدخول كثيرة جدًا. يُرجى المحاولة مرة أخرى بعد :seconds ثوانٍ.',
+    'toggle_password_visibility' => 'إظهار أو إخفاء كلمة المرور',
     'verification_link_sent' => 'تم إرسال رابط التأكيد الجديد إلى بريدك الإلكتروني.',
     'verify_email_notice' => 'يرجى تأكيد بريدك الإلكتروني قبل المتابعة.',
     'verify_email_title' => 'تأكيد البريد الإلكتروني',

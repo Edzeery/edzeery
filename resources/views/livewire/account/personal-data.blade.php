@@ -3,6 +3,7 @@
 use App\Domains\Account\DTOs\SettingsData;
 use App\Domains\Account\Services\AccountService;
 use App\Http\Requests\Account\Settings\UpdateSettingsRequest;
+
 use function Livewire\Volt\layout;
 use function Livewire\Volt\mount;
 use function Livewire\Volt\state;
@@ -32,19 +33,46 @@ mount(function (): void {
     $this->marketing_notifications = $prefs['marketing_notifications'] ?? false;
 });
 
-$saveSettings = function (UpdateSettingsRequest $request, AccountService $service): void {
+$saveSettings = function (AccountService $service): void {
+    $validated = $this->validate(UpdateSettingsRequest::rulesFor());
+
     $service->updateSettings(
         auth()->user(),
-        SettingsData::fromArray($request->validated())
+        SettingsData::fromArray($validated)
     );
 
+    if (! empty($validated['language']) && in_array($validated['language'], ['ar', 'en', 'fr', 'es'], true)) {
+        session()->put('locale', $validated['language']);
+        \Illuminate\Support\Facades\Cookie::queue('lang', $validated['language'], 60 * 24 * 365);
+    }
+
+    if (array_key_exists('theme', $validated) && $validated['theme'] !== null) {
+        $theme = $validated['theme'];
+        \Illuminate\Support\Facades\Cookie::queue('edz-theme', $theme, 60 * 24 * 365);
+        $this->dispatch('edz-theme-applied', theme: $theme);
+    }
+
     $this->dispatch('swal', type: 'success', title: __('notifications.settings_updated'));
+
+    if (! empty($validated['language']) && $validated['language'] !== app()->getLocale()) {
+        $this->redirectRoute('account.personal-data');
+    }
 };
 ?>
-
 <div class="max-w-3xl mx-auto space-y-6">
+    <div x-data="{
+        applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'dark' || theme === 'light') {
+                localStorage.setItem('edz-theme', theme);
+            } else {
+                localStorage.removeItem('edz-theme');
+            }
+            const dark = theme === 'dark' || (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            html.classList.toggle('dark', dark);
+        }
+    }" x-on:edz-theme-applied.window="applyTheme($event.detail.theme)"></div>
     <form wire:submit="saveSettings" x-data="edzDirty()">
-        {{-- Language & Region --}}
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div class="flex items-center gap-3">
@@ -89,8 +117,6 @@ $saveSettings = function (UpdateSettingsRequest $request, AccountService $servic
                 </div>
             </div>
         </div>
-
-        {{-- Appearance --}}
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div class="flex items-center gap-3">
@@ -108,9 +134,7 @@ $saveSettings = function (UpdateSettingsRequest $request, AccountService $servic
                     @foreach (['light' => '☀️ ' . __('merchant_panel.theme_light'), 'dark' => '🌙 ' . __('merchant_panel.theme_dark'), 'system' => '💻 ' . __('merchant_panel.theme_system')] as $value => $label)
                         <label class="cursor-pointer">
                             <input type="radio" wire:model="theme" value="{{ $value }}" class="sr-only peer" />
-                            <div class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-center transition-all
-                                        peer-checked:border-accent-500 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-900/20
-                                        hover:border-gray-300 dark:hover:border-gray-600">
+                            <div class="p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-center transition-all peer-checked:border-accent-500 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-900/20 hover:border-gray-300 dark:hover:border-gray-600">
                                 <span class="text-sm font-medium text-ink">{{ $label }}</span>
                             </div>
                         </label>
@@ -118,8 +142,6 @@ $saveSettings = function (UpdateSettingsRequest $request, AccountService $servic
                 </div>
             </div>
         </div>
-
-        {{-- Notifications --}}
         <div class="edz-card mb-6">
             <div class="edz-card__header">
                 <div class="flex items-center gap-3">
@@ -151,7 +173,6 @@ $saveSettings = function (UpdateSettingsRequest $request, AccountService $servic
                 @endforeach
             </div>
         </div>
-
         <div class="flex justify-end">
             <button type="submit" class="edz-btn edz-btn--primary">
                 <x-edz.icon name="check-circle" class="w-4 h-4" />

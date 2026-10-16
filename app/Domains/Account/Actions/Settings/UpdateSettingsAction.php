@@ -2,8 +2,8 @@
 
 namespace App\Domains\Account\Actions\Settings;
 
-use App\Models\User;
 use App\Domains\Account\DTOs\SettingsData;
+use App\Models\User;
 
 class UpdateSettingsAction
 {

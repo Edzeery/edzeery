@@ -46,6 +46,7 @@ return [
     'terms_link' => 'Conditions',
     'thanks' => 'Merci d’utiliser :app_name',
     'throttle' => 'Trop de tentatives de connexion. Veuillez réessayer après :seconds secondes.',
+    'toggle_password_visibility' => 'Afficher ou masquer le mot de passe',
     'verification_link_sent' => 'Un nouveau lien de vérification a été envoyé à votre adresse e-mail.',
     'verify_email_notice' => 'Veuillez vérifier votre adresse e-mail avant de continuer.',
     'verify_email_title' => 'Vérifiez votre e-mail',

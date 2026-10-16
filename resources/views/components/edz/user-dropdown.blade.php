@@ -21,8 +21,10 @@
 <x-edz.dropdown align="right" width="260px">
     <x-slot name="trigger">
         <span class="edz-dropdown__avatar">
-            @if (auth()->user()->profile?->profile_picture)
-                <img src="{{ asset('/storage/img/users/profiles/' . auth()->user()->profile->profile_picture) }}" alt="{{ auth()->user()->name }}" />
+            @if (auth()->user()->profile?->avatarUrl())
+                <img src="{{ auth()->user()->profile->avatarUrl() }}" alt="{{ auth()->user()->name }}" />
+            @elseif (auth()->user()->profile?->profile_picture)
+                <img src="{{ asset('storage/' . auth()->user()->profile->profile_picture) }}" alt="{{ auth()->user()->name }}" />
             @else
                 <img src="{{ asset('img/icons/noimg.png') }}" alt="{{ auth()->user()->name }}" />
             @endif

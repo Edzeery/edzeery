@@ -13,7 +13,7 @@
             {{-- Email Address --}}
             <div>
                 <x-input-label for="email" :value="__('auth.email')" />
-                <x-text-input id="email" name="email" type="email" class="mt-1 block w-full"
+                <x-text-input id="email" name="email" type="email" inputmode="email" class="mt-1 block w-full"
                     :value="old('email')" required autofocus autocomplete="username" />
                 <x-input-error :messages="$errors->get('email')" class="mt-1.5" />
             </div>
@@ -21,7 +21,7 @@
             {{-- Submit Button --}}
             <div class="pt-2">
                 <x-primary-button class="w-full justify-center">
-                    <ion-icon name="mail-outline" class="text-lg"></ion-icon>
+                    <x-edz.icon name="mail" class="w-5 h-5" aria-hidden="true" />
                     {{ __('buttons.send') }}
                 </x-primary-button>
             </div>

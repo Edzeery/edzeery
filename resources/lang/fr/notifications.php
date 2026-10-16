@@ -12,6 +12,8 @@ return [
     'new_transaction' => 'Une nouvelle transaction a été ajoutée 🧾',
     'no_notifications' => 'Aucune notification pour le moment.',
     'notifications' => 'Notifications',
+    'password_changed_body' => 'Le mot de passe de votre compte (:email) vient d\'être modifié. Si vous n\'êtes pas à l\'origine de cette action, réinitialisez votre mot de passe immédiatement et contactez le support.',
+    'password_changed_subject' => 'Votre mot de passe a été modifié',
     'password_updated' => 'Mot de passe mis à jour avec succès 🔑',
     'payment_failed' => 'Échec du paiement ❌',
     'payment_rejected_body' => 'Votre soumission de paiement manuel a été rejetée. Raison: :reason. Veuillez resoumettre avec les bons détails.',

@@ -4,31 +4,44 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\PasswordChangedNotification;
+use App\Services\Auth\AuthSecurityLogger;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
-use Illuminate\View\View;
 
 class NewPasswordController extends Controller
 {
     /**
      * Display the password reset view.
+     *
+     * The token is part of the URL, so we suppress the Referer header on this
+     * page to keep the token out of any outbound third-party requests.
      */
-    public function create(Request $request): View
+    public function create(Request $request): Response
     {
-        return view('auth.reset-password', ['request' => $request]);
+        return response()
+            ->view('auth.reset-password', ['request' => $request])
+            ->header('Referrer-Policy', 'no-referrer');
     }
 
     /**
      * Handle an incoming new password request.
      *
+     * The token consumption is serialized per account (cache lock) and wrapped
+     * in a transaction so a token cannot be redeemed twice under concurrency.
+     *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AuthSecurityLogger $logger): RedirectResponse
     {
         $request->validate([
             'token' => ['required'],
@@ -36,27 +49,47 @@ class NewPasswordController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user) use ($request) {
-                $user->forceFill([
-                    'password' => Hash::make($request->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+        $email = (string) $request->input('email');
+        $lock = Cache::lock('password-reset:'.Str::lower($email), 10);
+        $resetUser = null;
 
-                event(new PasswordReset($user));
-            }
-        );
+        try {
+            $lock->block(3);
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+            $status = DB::transaction(function () use ($request, &$resetUser) {
+                return Password::reset(
+                    $request->only('email', 'password', 'password_confirmation', 'token'),
+                    function (User $user) use ($request, &$resetUser) {
+                        $user->forceFill([
+                            'password' => Hash::make($request->password),
+                            'remember_token' => Str::random(60),
+                        ])->save();
+
+                        $resetUser = $user;
+
+                        event(new PasswordReset($user));
+                    }
+                );
+            });
+        } catch (LockTimeoutException) {
+            return back()->withInput($request->only('email'))
+                ->withErrors(['email' => __('passwords.throttled')]);
+        } finally {
+            $lock->release();
+        }
+
+        if ($status === Password::PASSWORD_RESET && $resetUser instanceof User) {
+            $logger->passwordResetSucceeded($resetUser);
+            $resetUser->notify(new PasswordChangedNotification($resetUser->email));
+
+            return redirect()->route('login')->with('status', __($status));
+        }
+
+        $logger->passwordResetFailed($request);
+
+        // Never disclose whether the account exists — invalid user and invalid
+        // token both surface as a generic "link is invalid" message.
+        return back()->withInput($request->only('email'))
+            ->withErrors(['email' => __('passwords.token')]);
     }
 }

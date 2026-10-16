@@ -32,6 +32,7 @@ Route::prefix('merchant/account')
     ->group(function () {
 
         Volt::route('/profile', 'account.profile')->name('profile');
+        Volt::route('/security', 'account.security')->name('security');
         Volt::route('/billing', 'account.billing')->name('billing');
         Volt::route('/personal-data', 'account.personal-data')->name('personal-data');
 

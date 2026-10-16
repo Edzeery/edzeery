@@ -2,14 +2,13 @@
 
 namespace App\Domains\Account\Services;
 
-use App\Models\User;
+use App\Domains\Account\Actions\Profile\UpdateProfileAction;
+use App\Domains\Account\Actions\Security\UpdatePasswordAction;
+use App\Domains\Account\Actions\Settings\UpdateSettingsAction;
+use App\Domains\Account\DTOs\PasswordData;
 use App\Domains\Account\DTOs\ProfileData;
 use App\Domains\Account\DTOs\SettingsData;
-use App\Domains\Account\DTOs\PasswordData;
-
-use App\Domains\Account\Actions\Profile\UpdateProfileAction;
-use App\Domains\Account\Actions\Settings\UpdateSettingsAction;
-use App\Domains\Account\Actions\Security\UpdatePasswordAction;
+use App\Models\User;
 
 class AccountService
 {

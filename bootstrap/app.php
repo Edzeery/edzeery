@@ -30,7 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
-            \App\Http\Middleware\ResolveStoreContextFromHost::class,
+            // Invalidate any other active sessions as soon as the account
+            // password changes (web surfaces). The Filament super-admin panel
+            // already registers this middleware.
+            \Illuminate\Session\Middleware\AuthenticateSession::class,
         ]);
         // SetLocale removed from api group — sessions are not started on API routes
 

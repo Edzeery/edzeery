@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Account;
 
 use App\Domains\Account\DTOs\SettingsData;

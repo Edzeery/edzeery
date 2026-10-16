@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Domains\Account\DTOs;
 
 class SettingsData

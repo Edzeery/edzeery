@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Auth\AuthSecurityLogger;
 use App\Services\Auth\LoginRedirectService;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(Request $request, LoginRedirectService $redirectService)
+    public function store(Request $request, LoginRedirectService $redirectService, AuthSecurityLogger $logger)
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -33,6 +34,8 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            $logger->loginFailed($request);
+
             return back()->withErrors([
                 'email' => __('auth.invalid_credentials'),
             ])->onlyInput('email');
@@ -43,6 +46,8 @@ class AuthenticatedSessionController extends Controller
         // صفحة تسجيل الدخول هذه خاصة بالتجار والمستخدمين فقط.
         // موظفو المنصة (سوبر أدمن / أدمن / دعم فني / دعم عملاء) يدخلون من صفحة منفصلة.
         if ($user->isPlatformStaff()) {
+            $logger->loginFailed($request);
+
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -51,6 +56,9 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+
+        $logger->loginSucceeded($user, $request);
+
         return redirect()->to(
             $redirectService->handle($user)
         );

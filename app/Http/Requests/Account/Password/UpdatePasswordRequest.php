@@ -23,7 +23,16 @@ class UpdatePasswordRequest extends FormRequest
     {
         return [
             'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
+            'new_password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ];
+    }
+
+    /**
+     * Rules evaluated against a plain data payload, for Livewire/Volt actions
+     * that validate component state instead of a live HTTP request.
+     */
+    public static function rulesFor(array $data = []): array
+    {
+        return (new static)->replace($data)->rules();
     }
 }

@@ -12,6 +12,8 @@ return [
     'new_transaction' => 'A new transaction has been added 🧾',
     'no_notifications' => 'No notifications at the moment.',
     'notifications' => 'Notifications',
+    'password_changed_body' => 'The password for your account (:email) was just changed. If this was not you, reset your password immediately and contact support.',
+    'password_changed_subject' => 'Your password was changed',
     'password_updated' => 'Password updated successfully 🔑',
     'payment_failed' => 'Payment failed ❌',
     'payment_rejected_body' => 'Your manual payment submission has been rejected. Reason: :reason. Please resubmit with correct details.',

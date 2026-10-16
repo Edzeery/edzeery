@@ -30,13 +30,13 @@ test('password can be updated via security endpoint', function () {
         ->actingAs($user)
         ->post('/merchant/account/password', [
             'current_password' => 'password',
-            'new_password' => 'new-password-123',
-            'new_password_confirmation' => 'new-password-123',
+            'new_password' => 'New-password-123!',
+            'new_password_confirmation' => 'New-password-123!',
         ]);
 
     $response->assertRedirect();
     $this->assertTrue(
-        \Illuminate\Support\Facades\Hash::check('new-password-123', $user->fresh()->password)
+        \Illuminate\Support\Facades\Hash::check('New-password-123!', $user->fresh()->password)
     );
 });
 
@@ -47,8 +47,8 @@ test('correct password must be provided to update password', function () {
         ->actingAs($user)
         ->post('/merchant/account/password', [
             'current_password' => 'wrong-password',
-            'new_password' => 'new-password-123',
-            'new_password_confirmation' => 'new-password-123',
+            'new_password' => 'New-password-123!',
+            'new_password_confirmation' => 'New-password-123!',
         ]);
 
     $response->assertSessionHasErrors();

@@ -24,4 +24,13 @@ class UpdateSettingsRequest extends FormRequest
             'marketing_notifications' => 'nullable|boolean',
         ];
     }
+
+    /**
+     * Rules evaluated against a plain data payload, for Livewire/Volt actions
+     * that validate component state instead of a live HTTP request.
+     */
+    public static function rulesFor(array $data = []): array
+    {
+        return (new static)->replace($data)->rules();
+    }
 }
