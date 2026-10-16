@@ -72,3 +72,10 @@
   - `app/Domains/Account/Actions/Profile/UpdateProfileAction.php`: `filled()` guards so empty-string country/state/city/birthdate become null (Livewire state uses `''`, and no ConvertEmptyStringsToNull middleware applies to component state; avoids FK violations).
   - `app/Domains/Account/Models/Profile.php`: `protected $primaryKey = 'user_id'` (table PK is user_id; previously `save()` ran `UPDATE ... WHERE id = NULL`, a silent no-op that never persisted avatar removal or later phone/address edits).
   - Verification: new `tests/Feature/Account/AccountFormsTest.php` (10 tests); Account + Profile + PasswordUpdate = 30 passed; Pint on 23+9 touched files; `php -l` clean. Deleted temp TmpDiag* tests.
+
+- [x] **A-Account-Responsive -- audit -- 375/768/1440 (no code changes needed)**
+  - Shell/sidebar (`resources/css/layouts/_sidebar.scss`, `_shell.scss`): off-canvas drawer <1024px (topbar `edz-topbar__trigger` hamburger + `.edz-shell--open .edz-sidebar` + `edz-overlay`), fixed rail >=1024px (`edz-topbar__collapse-toggle` shown only there), RTL-aware (`inset-inline-start`, `[dir=rtl]` transform). Content padding 1rem/1.5rem/2rem at <640/640-1023/>=1024; `max-width: var(--edz-content-max)` + `margin-inline:auto`.
+  - Tabs (`resources/views/livewire/account/partials/tabs.blade.php:12-23`): `overflow-x-auto edz-scroll snap-x`; items `flex-1 sm:flex-none whitespace-nowrap snap-start`, `px-3 py-2 text-xs` -> `sm:px-5 sm:py-2.5 sm:text-sm` — no cramping/wrapping at 375px (scrolls instead).
+  - Pages: fluid `grid-cols-1 md:grid-cols-2|3`, avatar header `flex-col sm:flex-row`, `flex-1 min-w-0`, `flex justify-end` actions, `max-w-2xl|3xl mx-auto` — single column at 375px.
+  - `x-edz.select` (`resources/js/components/edz-select.js:67-79`, `_forms.scss:359-365`): bottom-sheet mode <640px — `position:fixed; bottom:0; left:50%; translateX(-50%); width:min(480, innerWidth-16); max-height:60vh`, z-index:70 (never overflows); anchored + scroll/resize reposition >=640px.
+  - flatpickr: CSS bundled via `resources/js/panel.js:4`; calendar width 307.875px fits 343px available at 375px; JS positionElement clamps to viewport.
